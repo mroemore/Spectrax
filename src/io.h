@@ -6,6 +6,7 @@
 #include "gui.h"
 #include "settings.h"
 #include "sequencer.h"
+#include "sample.h"
 
 #define MAGIC_HEADER "SEQ1"
 #define PATTERN_SECTION "PATT"
@@ -29,6 +30,9 @@ typedef enum {
     SEQ_ERROR_MEMORY
 } SequencerFileResult;
 
+
+//Sample load_raw_sample(const char *filename, int sample_rate);
+Sample load_wav_sample(const char *filename);
 /**
  * @brief Saves a colour scheme to a binary file
  * @param filename Path to save the colour scheme file

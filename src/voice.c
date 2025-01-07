@@ -9,7 +9,6 @@
 VoiceManager* createVoiceManager(Settings* settings){
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-        vm->voiceCount[i] = settings->defaultVoiceCount;
         initVoicePool(vm, i, settings->defaultVoiceCount, settings->voiceTypes[i]);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }

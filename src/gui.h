@@ -14,6 +14,7 @@
 #define MAX_BUTTON_COLS 64
 #define MAX_BUTTON_CONTAINER_ROWS 64
 #define MAX_BUTTON_CONTAINER_COLS 64
+#define OSCILLOSCOPE_HISTORY 1024
 
 typedef enum {
 	GLOBAL,
@@ -26,6 +27,9 @@ typedef enum {
 typedef void (*DrawCallback)(void* self);
 typedef void (*OnPressCallback)(Parameter* parameter, float value);
 typedef void (*CallbackApplicator)(void* self, float value);
+
+
+
 
 typedef struct {
 	Color backgroundColor; //17, 7, 8

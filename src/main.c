@@ -21,9 +21,8 @@
 #define NOTE_DURATION .5 // Duration of each note in seconds
 #define TEMPO_DEFAULT 120
 #define MAX_VOLUME 0.8f	  // Maximum volume to avoid clipping
-#define LOG_FILE "debug.log"
 #define SAMPLE_COUNT 4
-#define SAMPLE_FILE "Bass1.wav" // WAV file other file: VEC1Bass001A.wav
+#define SAMPLE_FILE "resources/samples/Bass1.wav" // WAV file other file: VEC1Bass001A.wav
 #define SAMPLE_FILE_2 "resources/samples/VEC2 Bassdrums Clubby 002.wav"
 #define SAMPLE_FILE_3 "resources/samples/VEC2 Snares 001.wav"
 #define SAMPLE_FILE_4 "resources/samples/VEC2 Cymbals HH Closed 01.wav"
@@ -34,7 +33,6 @@ typedef struct
 	int sequence_index;
 	int samples_per_beat;
 	int samples_elapsed;
-	FILE *log_file;
 	Sample samples[SAMPLE_COUNT];
 	int active_sequencer_index;
 	Arranger* arranger;
@@ -185,6 +183,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 int main(void)
 {
+	printf(INSTALL_DIR);
 	PaStream *stream;
 	PaError err;
 	paTestData data; 
@@ -196,12 +195,6 @@ int main(void)
 
 	ApplicationState* appState = createApplicationState();
 	
-	data.log_file = fopen(LOG_FILE, "w");
-	if (!data.log_file)
-	{
-		printf("Failed to open log file\n");
-		return 1;
-	}
 	data.modList = createModList();
 	data.arranger = createArranger(settings);
 	data.patternList = createPatternList();
@@ -210,10 +203,10 @@ int main(void)
 	//loadSequencerState("s1.sng", data.arranger, data.patternList);
 	data.sequencer = createSequencer(data.arranger);
 
-	data.samples[0] = load_wav_sample(SAMPLE_FILE, data.log_file);
-	data.samples[1] = load_wav_sample(SAMPLE_FILE_2, data.log_file);
-	data.samples[2] = load_wav_sample(SAMPLE_FILE_3, data.log_file);
-	data.samples[3] = load_wav_sample(SAMPLE_FILE_4, data.log_file);
+	data.samples[0] = load_wav_sample(SAMPLE_FILE);
+	data.samples[1] = load_wav_sample(SAMPLE_FILE_2);
+	data.samples[2] = load_wav_sample(SAMPLE_FILE_3);
+	data.samples[3] = load_wav_sample(SAMPLE_FILE_4);
 	if (!data.samples[0].data)
 	{
 		fprintf(stderr, "Failed to load sample\n");
@@ -231,23 +224,23 @@ int main(void)
 	add_drawable(&inputsGui->base, GLOBAL);
 
 
-	int graphCount = MAX_SEQUENCER_CHANNELS*MAX_VOICES_PER_CHANNEL;
-	GraphGui* gs[MAX_SEQUENCER_CHANNELS][settings->defaultVoiceCount];
+	// int graphCount = MAX_SEQUENCER_CHANNELS*MAX_VOICES_PER_CHANNEL;
+	// GraphGui* gs[MAX_SEQUENCER_CHANNELS][settings->defaultVoiceCount];
 
-	int gpad = 2;	
-	int xoff = 10;
-	int gmaxw = (int)800/(xoff+gpad);
-	int yoff = 0;
-	int gheight = 12;
-	for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++)
-	{
-		for(int j = 0; j < settings->defaultVoiceCount; j++){
-			char* name = (char*)malloc(10 * sizeof(char));
-			snprintf(name, 10, "C%i,V:%i ",i+1, j+1);
-			gs[i][j] = createGraphGui(&data.voiceManager->voicePools[i][j]->volume->currentValue, name, 0.0f, 1.0f, i * 26, j*13, gheight, MAX_GRAPH_HISTORY);
-			add_drawable(&gs[i][j]->base, SCENE_PATTERN);
-		}
-	}
+	// int gpad = 2;	
+	// int xoff = 10;
+	// int gmaxw = (int)800/(xoff+gpad);
+	// int yoff = 0;
+	// int gheight = 12;
+	// for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++)
+	// {
+	// 	for(int j = 0; j < settings->defaultVoiceCount; j++){
+	// 		char* name = (char*)malloc(10 * sizeof(char));
+	// 		snprintf(name, 10, "C%i,V:%i ",i+1, j+1);
+	// 		gs[i][j] = createGraphGui(&data.voiceManager->voicePools[i][j]->volume->currentValue, name, 0.0f, 1.0f, i * 26, j*13, gheight, MAX_GRAPH_HISTORY);
+	// 		add_drawable(&gs[i][j]->base, SCENE_PATTERN);
+	// 	}
+	// }
 	
 	data.active_sequencer_index = 0;
 	data.sequence_index = 0;
@@ -330,11 +323,11 @@ int main(void)
 	while (!WindowShouldClose())
 	{
 		updateInputState(appState->inputState);
-		for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-			for (int j = 0; j < MAX_VOICES_PER_CHANNEL; j++){
-				updateGraphGui(gs[i][j]);
-			}
-		}
+		// for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
+		// 	for (int j = 0; j < MAX_VOICES_PER_CHANNEL; j++){
+		// 		updateGraphGui(gs[i][j]);
+		// 	}
+		// }
 		BeginDrawing();
 		clearBg();
 		//DrawText("It works!", 20, 20, 20, BLACK);
@@ -479,7 +472,6 @@ int main(void)
 	if (err != paNoError)
 		goto error;
 	Pa_Terminate();
-	fclose(data.log_file);
 
 	for(int i = 0; i < SAMPLE_COUNT; i++){
 		free_sample(&data.samples[i]);
@@ -491,7 +483,7 @@ int main(void)
 	return err;
 error:
 	Pa_Terminate();
-	fclose(data.log_file);
+	///fclose(data.log_file);
 	
 	for(int i =0; i < SAMPLE_COUNT; i++){
 		free_sample(&data.samples[i]);

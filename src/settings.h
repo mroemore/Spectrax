@@ -9,6 +9,10 @@
 #define MAX_SEQUENCE_LENGTH 24
 #define NOTE_INFO_SIZE 2 // One for note index, one for octave index
 
+#ifndef INSTALL_DIR
+#define INSTALL_DIR "C:/msys64/home/Krang/portaudio/build/bin/"
+#endif
+
 #define SETTINGS_PATH "settings.dat"
 #define SONG_FOLDER_PATH "songs/"
 #define SAMPLE_FOLDER_PATH "samples/"

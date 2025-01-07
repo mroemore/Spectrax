@@ -78,6 +78,7 @@ void InitGUI(void)
 	globalDrawableList = create_drawable_list(); // Initialize globalDrawableList
 
 	InitWindow(screenWidth, screenHeight, "Raylib basic window");
+	
 	textFont = LoadFont("resources/fonts/setback.png");
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
 
