@@ -1,0 +1,215 @@
+\doxysection{sample.\+h File Reference}
+\hypertarget{sample_8h}{}\label{sample_8h}\index{sample.h@{sample.h}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_sample}{Sample}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_sample}{Sample}} \mbox{\hyperlink{sample_8h_ad09593ef8892c5d430713166e2444e1f}{load\+\_\+raw\+\_\+sample}} (const char \texorpdfstring{$\ast$}{*}filename, int sample\+\_\+rate)
+\item 
+\mbox{\hyperlink{struct_sample}{Sample}} \mbox{\hyperlink{sample_8h_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample}} (const char \texorpdfstring{$\ast$}{*}filename, FILE \texorpdfstring{$\ast$}{*}log\+\_\+file)
+\item 
+void \mbox{\hyperlink{sample_8h_add9f671d332488fdb6a78573e29600d0}{free\+\_\+sample}} (\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}sample)
+\item 
+float \mbox{\hyperlink{sample_8h_a213c2c0404dd735a8a4feeaf3e4c32fb}{get\+\_\+sample\+\_\+value}} (\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}sample, float \texorpdfstring{$\ast$}{*}sample\+\_\+position, float phase\+\_\+increment, int pa\+\_\+sr, int loop)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{sample_8h_add9f671d332488fdb6a78573e29600d0}\index{sample.h@{sample.h}!free\_sample@{free\_sample}}
+\index{free\_sample@{free\_sample}!sample.h@{sample.h}}
+\doxysubsubsection{\texorpdfstring{free\_sample()}{free\_sample()}}
+{\footnotesize\ttfamily \label{sample_8h_add9f671d332488fdb6a78573e29600d0} 
+void free\+\_\+sample (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}}]{sample}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00142\ \{}
+\DoxyCodeLine{00143\ \ \ \ \ \textcolor{keywordflow}{if}\ (sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}})}
+\DoxyCodeLine{00144\ \ \ \ \ \{}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ free(sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}});}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}\ =\ NULL;}
+\DoxyCodeLine{00147\ \ \ \ \ \}}
+\DoxyCodeLine{00148\ \ \ \ \ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}\ =\ 0;}
+\DoxyCodeLine{00149\ \ \ \ \ sample-\/>\mbox{\hyperlink{struct_sample_acfe167fa37e8c344d35513a27a1fc439}{sample\_rate}}\ =\ 0;}
+\DoxyCodeLine{00150\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sample_8h_a213c2c0404dd735a8a4feeaf3e4c32fb}\index{sample.h@{sample.h}!get\_sample\_value@{get\_sample\_value}}
+\index{get\_sample\_value@{get\_sample\_value}!sample.h@{sample.h}}
+\doxysubsubsection{\texorpdfstring{get\_sample\_value()}{get\_sample\_value()}}
+{\footnotesize\ttfamily \label{sample_8h_a213c2c0404dd735a8a4feeaf3e4c32fb} 
+float get\+\_\+sample\+\_\+value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}}]{sample}{, }\item[{float \texorpdfstring{$\ast$}{*}}]{sample\+\_\+position}{, }\item[{float}]{phase\+\_\+increment}{, }\item[{int}]{pa\+\_\+sr}{, }\item[{int}]{loop}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00153\ \ \ \ \ \textcolor{comment}{//\ Validate\ the\ sample}}
+\DoxyCodeLine{00154\ \ \ \ \ \textcolor{keywordflow}{if}\ (!sample\ ||\ !sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}\ ||\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}\ <=\ 0)\ \{}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Invalid\ sample\ or\ data\(\backslash\)n"{}});}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 0.0f;}
+\DoxyCodeLine{00157\ \ \ \ \ \}}
+\DoxyCodeLine{00158\ \ \ \ \ \textcolor{keywordtype}{float}\ adjusted\_phase\_increment\ =\ phase\_increment\ *\ (pa\_sr\ /\ (sample-\/>\mbox{\hyperlink{struct_sample_acfe167fa37e8c344d35513a27a1fc439}{sample\_rate}}\ /\ \ sample-\/>\mbox{\hyperlink{struct_sample_a54badbeec4c73b5e7f8a065ec3c0d627}{bit}})*2);}
+\DoxyCodeLine{00159\ \ \ \ \ *sample\_position\ +=\ adjusted\_phase\_increment;}
+\DoxyCodeLine{00160\ }
+\DoxyCodeLine{00161\ \ \ \ \ \textcolor{keywordflow}{if}\ (*sample\_position\ >=\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}})\ \{}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(loop)\{}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \ \ \ \ *sample\_position\ -\/=\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}};}
+\DoxyCodeLine{00164\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ \ \ \ \ *sample\_position\ =\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}-\/1;}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00167\ \ \ \ \ \}}
+\DoxyCodeLine{00168\ \ \ \ \ \textcolor{comment}{//\ Calculate\ the\ wavetable\ indices\ and\ interpolation\ fraction}}
+\DoxyCodeLine{00169\ \ \ \ \ \textcolor{keywordtype}{int}\ indexFloor\ =\ (int)*sample\_position;}
+\DoxyCodeLine{00170\ \ \ \ \ \textcolor{keywordtype}{int}\ indexCeil\ =\ (indexFloor\ +\ 1)\ \%\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}};\ \textcolor{comment}{//\ Wrap\ around\ at\ the\ end}}
+\DoxyCodeLine{00171\ \ \ \ \ \textcolor{keywordtype}{float}\ frac\ =\ *sample\_position\ -\/\ indexFloor;}
+\DoxyCodeLine{00172\ }
+\DoxyCodeLine{00173\ \ \ \ \ \textcolor{comment}{//\ Perform\ linear\ interpolation\ between\ indexFloor\ and\ indexCeil}}
+\DoxyCodeLine{00174\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}[indexFloor]\ *\ (1.0f\ -\/\ frac)\ +\ sample-\/>\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}[indexCeil]\ *\ frac;}
+\DoxyCodeLine{00175\ \ \ \ \ \textcolor{keywordflow}{if}(*sample\_position\ >=\ sample-\/>\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}-\/2)\{}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00177\ \ \ \ \ \}}
+\DoxyCodeLine{00178\ \ \ \ \ \textcolor{keywordflow}{return}\ value;}
+\DoxyCodeLine{00179\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sample_8h_ad09593ef8892c5d430713166e2444e1f}\index{sample.h@{sample.h}!load\_raw\_sample@{load\_raw\_sample}}
+\index{load\_raw\_sample@{load\_raw\_sample}!sample.h@{sample.h}}
+\doxysubsubsection{\texorpdfstring{load\_raw\_sample()}{load\_raw\_sample()}}
+{\footnotesize\ttfamily \label{sample_8h_ad09593ef8892c5d430713166e2444e1f} 
+\mbox{\hyperlink{struct_sample}{Sample}} load\+\_\+raw\+\_\+sample (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{int}]{sample\+\_\+rate}{}\end{DoxyParamCaption})}
+
+\Hypertarget{sample_8h_a8d196820eb4a3cbf7ea36daf9436999e}\index{sample.h@{sample.h}!load\_wav\_sample@{load\_wav\_sample}}
+\index{load\_wav\_sample@{load\_wav\_sample}!sample.h@{sample.h}}
+\doxysubsubsection{\texorpdfstring{load\_wav\_sample()}{load\_wav\_sample()}}
+{\footnotesize\ttfamily \label{sample_8h_a8d196820eb4a3cbf7ea36daf9436999e} 
+\mbox{\hyperlink{struct_sample}{Sample}} load\+\_\+wav\+\_\+sample (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{FILE \texorpdfstring{$\ast$}{*}}]{log\+\_\+file}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00028\ \{}
+\DoxyCodeLine{00029\ \ \ \ \ \mbox{\hyperlink{struct_sample}{Sample}}\ sample\ =\ \{NULL,\ 0,\ 0\};\ \ \ \ \ \textcolor{comment}{//\ Initialize\ sample\ with\ default\ values}}
+\DoxyCodeLine{00030\ \ \ \ \ FILE\ *file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}rb"{}});\ \textcolor{comment}{//\ Open\ the\ file\ in\ binary\ read\ mode}}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)}
+\DoxyCodeLine{00032\ \ \ \ \ \{}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ open\ sample\ file:\ \%s\(\backslash\)n"{}},\ filename);\ \textcolor{comment}{//\ Error\ if\ file\ cannot\ be\ opened}}
+\DoxyCodeLine{00034\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00035\ \ \ \ \ \}}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \ \ \ \ \mbox{\hyperlink{struct_w_a_v_header}{WAVHeader}}\ header;}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(\&header,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_w_a_v_header}{WAVHeader}}),\ 1,\ file)\ !=\ 1)}
+\DoxyCodeLine{00039\ \ \ \ \ \{}
+\DoxyCodeLine{00040\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ read\ WAV\ header\(\backslash\)n"{}});\ \textcolor{comment}{//\ Error\ if\ header\ cannot\ be\ read}}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00043\ \ \ \ \ \}}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordflow}{if}\ (strncmp(header.\mbox{\hyperlink{struct_w_a_v_header_ad5bb83fc7dbce95f2927aed7e650bf89}{chunkID}},\ \textcolor{stringliteral}{"{}RIFF"{}},\ 4)\ !=\ 0\ ||\ strncmp(header.\mbox{\hyperlink{struct_w_a_v_header_a0b9772c21239902ba44b8324c5f7797d}{format}},\ \textcolor{stringliteral}{"{}WAVE"{}},\ 4)\ !=\ 0)}
+\DoxyCodeLine{00046\ \ \ \ \ \{}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Invalid\ or\ unsupported\ WAV\ file\ format\(\backslash\)n"{}});\ \textcolor{comment}{//\ Error\ if\ file\ is\ not\ a\ valid\ WAV}}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00049\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00050\ \ \ \ \ \}}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{comment}{//\ Log\ the\ extracted\ metadata}}
+\DoxyCodeLine{00053\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Loaded\ WAV\ file:\ \%s\(\backslash\)n"{}},\ filename);}
+\DoxyCodeLine{00054\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Chunk\ ID:\ \%.4s\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_ad5bb83fc7dbce95f2927aed7e650bf89}{chunkID}});}
+\DoxyCodeLine{00055\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Chunk\ Size:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a0ea90297703093d87bb5d44236737645}{chunkSize}});}
+\DoxyCodeLine{00056\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Format:\ \%.4s\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a0b9772c21239902ba44b8324c5f7797d}{format}});}
+\DoxyCodeLine{00057\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Subchunk1\ ID:\ \%.4s\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_afb63adb2aacdd68458d8f4e1fa31fb39}{subchunk1ID}});}
+\DoxyCodeLine{00058\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Subchunk1\ Size:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a44320da5df58fdbe03dca1c1f6d2745f}{subchunk1Size}});}
+\DoxyCodeLine{00059\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Audio\ Format:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a7ee8b59a97275af80f962b106d6172da}{audioFormat}});}
+\DoxyCodeLine{00060\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Number\ of\ Channels:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}});}
+\DoxyCodeLine{00061\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Sample\ Rate:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a1f02d15eacba5240d2c0a9591e44a766}{sampleRate}});}
+\DoxyCodeLine{00062\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Byte\ Rate:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a508bf4bb6d37addf1825352b647a57d1}{byteRate}});}
+\DoxyCodeLine{00063\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Block\ Align:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a6a638320660414de078c54967bf239e0}{blockAlign}});}
+\DoxyCodeLine{00064\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Bits\ Per\ Sample:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}});}
+\DoxyCodeLine{00065\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Subchunk2\ ID:\ \%.4s\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_ac7a6a70cead8369a4a79585e1e84aa42}{subchunk2ID}});}
+\DoxyCodeLine{00066\ \ \ \ \ fprintf(log\_file,\ \textcolor{stringliteral}{"{}Subchunk2\ Size:\ \%u\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}});}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{comment}{//\ Ensure\ the\ "{}data"{}\ subchunk\ is\ found}}
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordflow}{if}\ (strncmp(header.\mbox{\hyperlink{struct_w_a_v_header_ac7a6a70cead8369a4a79585e1e84aa42}{subchunk2ID}},\ \textcolor{stringliteral}{"{}data"{}},\ 4)\ !=\ 0)}
+\DoxyCodeLine{00070\ \ \ \ \ \{}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ find\ data\ subchunk\(\backslash\)n"{}});}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00074\ \ \ \ \ \}}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_acfe167fa37e8c344d35513a27a1fc439}{sample\_rate}}\ =\ header.\mbox{\hyperlink{struct_w_a_v_header_a1f02d15eacba5240d2c0a9591e44a766}{sampleRate}};}
+\DoxyCodeLine{00077\ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}\ =\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}}\ /\ (header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}}\ /\ 4);}
+\DoxyCodeLine{00078\ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_a54badbeec4c73b5e7f8a065ec3c0d627}{bit}}\ =\ header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}}\ *\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}};}
+\DoxyCodeLine{00079\ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}\ =\ (\textcolor{keywordtype}{float}\ *)malloc(sample.\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}}\ *\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{float}));}
+\DoxyCodeLine{00080\ \ \ \ \ \textcolor{keywordflow}{if}\ (!sample.\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}})}
+\DoxyCodeLine{00081\ \ \ \ \ \{}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ allocate\ memory\ for\ sample\ data\(\backslash\)n"{}});}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00085\ \ \ \ \ \}}
+\DoxyCodeLine{00086\ }
+\DoxyCodeLine{00087\ \ \ \ \ \textcolor{comment}{//\ Read\ and\ convert\ PCM\ data\ to\ float}}
+\DoxyCodeLine{00088\ \ \ \ \ \textcolor{keywordflow}{if}\ (header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}}\ ==\ 8)}
+\DoxyCodeLine{00089\ \ \ \ \ \{}
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ uint8\_t\ *pcm\_data\ =\ (uint8\_t\ *)malloc(header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}});}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(pcm\_data,\ 1,\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}},\ file)\ !=\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}})}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ read\ WAV\ data\(\backslash\)n"{}});}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ free(pcm\_data);}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (uint32\_t\ i\ =\ 0;\ i\ <\ sample.\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}};\ i++)}
+\DoxyCodeLine{00099\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00100\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 0.0f;}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (uint16\_t\ ch\ =\ 0;\ ch\ <\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}};\ ch++)}
+\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ value\ +=\ (pcm\_data[i\ *\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}}\ +\ ch]\ -\/\ 128)\ /\ 128.0f;}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}[i]\ =\ value\ /\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}};}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ free(pcm\_data);}
+\DoxyCodeLine{00108\ \ \ \ \ \}}
+\DoxyCodeLine{00109\ \ \ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}}\ ==\ 16)}
+\DoxyCodeLine{00110\ \ \ \ \ \{}
+\DoxyCodeLine{00111\ \ \ \ \ \ \ \ \ int16\_t\ *pcm\_data\ =\ (int16\_t\ *)malloc(header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}});}
+\DoxyCodeLine{00112\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(pcm\_data,\ \textcolor{keyword}{sizeof}(int16\_t),\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}}\ /\ 2,\ file)\ !=\ header.\mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2Size}}\ /\ 2)}
+\DoxyCodeLine{00113\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Failed\ to\ read\ WAV\ data\(\backslash\)n"{}});}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \ \ \ \ free(pcm\_data);}
+\DoxyCodeLine{00116\ \ \ \ \ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00117\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (uint32\_t\ i\ =\ 0;\ i\ <\ sample.\mbox{\hyperlink{struct_sample_a5814be2767ea0de5ebc52b551456661c}{length}};\ i++)}
+\DoxyCodeLine{00120\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 0.0f;}
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (uint16\_t\ ch\ =\ 0;\ ch\ <\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}};\ ch++)}
+\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00124\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ value\ +=\ pcm\_data[i\ *\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}}\ +\ ch]\ /\ 32768.0f;}
+\DoxyCodeLine{00125\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ \ \ \ \ \ \ sample.\mbox{\hyperlink{struct_sample_a8750416c5ff8b3528933f3d301efb0c0}{data}}[i]\ =\ value\ /\ header.\mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{numChannels}};}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ free(pcm\_data);}
+\DoxyCodeLine{00129\ \ \ \ \ \}}
+\DoxyCodeLine{00130\ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{00131\ \ \ \ \ \{}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ fprintf(stderr,\ \textcolor{stringliteral}{"{}Unsupported\ bit\ depth:\ \%d\(\backslash\)n"{}},\ header.\mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bitsPerSample}});}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00134\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00135\ \ \ \ \ \}}
+\DoxyCodeLine{00136\ }
+\DoxyCodeLine{00137\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00138\ \ \ \ \ \textcolor{keywordflow}{return}\ sample;}
+\DoxyCodeLine{00139\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+

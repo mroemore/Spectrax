@@ -1,0 +1,49 @@
+\doxysection{Pattern Struct Reference}
+\hypertarget{struct_pattern}{}\label{struct_pattern}\index{Pattern@{Pattern}}
+
+
+Represents a musical pattern containing a sequence of notes. each row is a note, each column contains the octave and a note index from 0-\/12.  
+
+
+
+
+{\ttfamily \#include $<$sequencer.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\+\_\+size}}
+\item 
+int \mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}} \mbox{[}\mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\+\_\+\+SEQUENCE\+\_\+\+LENGTH}}\mbox{]}\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Represents a musical pattern containing a sequence of notes. each row is a note, each column contains the octave and a note index from 0-\/12. 
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}\index{Pattern@{Pattern}!notes@{notes}}
+\index{notes@{notes}!Pattern@{Pattern}}
+\doxysubsubsection{\texorpdfstring{notes}{notes}}
+{\footnotesize\ttfamily \label{struct_pattern_abdfbab70e231de4bb69bc715923ddd00} 
+int Pattern\+::notes\mbox{[}\mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\+\_\+\+SEQUENCE\+\_\+\+LENGTH}}\mbox{]}\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe}{add\+Pattern()}}, \mbox{\hyperlink{sequencer_8c_aa9717313b1c987f80a5d1af3ca0f6091}{edit\+Current\+Note()}}, \mbox{\hyperlink{sequencer_8c_a94e8680068cf71eea6e206d7b2e90071}{edit\+Current\+Note\+Relative()}}, \mbox{\hyperlink{sequencer_8c_a1a15c27d8aa1f8c6fab8fb732b928f99}{edit\+Step()}}, \mbox{\hyperlink{sequencer_8c_a376879b96448fd667f0667be5902acee}{get\+Current\+Step()}}, \mbox{\hyperlink{sequencer_8c_a0afd21c469d9d7f042d8f66be3666af5}{get\+Step()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, and \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}.
+
+\Hypertarget{struct_pattern_a2393e340b61feda3b21292fc19205768}\index{Pattern@{Pattern}!pattern\_size@{pattern\_size}}
+\index{pattern\_size@{pattern\_size}!Pattern@{Pattern}}
+\doxysubsubsection{\texorpdfstring{pattern\_size}{pattern\_size}}
+{\footnotesize\ttfamily \label{struct_pattern_a2393e340b61feda3b21292fc19205768} 
+int Pattern\+::pattern\+\_\+size}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe}{add\+Pattern()}}, \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}, \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, and \mbox{\hyperlink{sequencer_8c_a1be243fd566f52694dd1006b217039db}{select\+Step()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{sequencer_8h}{sequencer.\+h}}\end{DoxyCompactItemize}

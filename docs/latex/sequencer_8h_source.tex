@@ -1,0 +1,70 @@
+\doxysection{sequencer.\+h}
+\hypertarget{sequencer_8h_source}{}\label{sequencer_8h_source}\mbox{\hyperlink{sequencer_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ SEQUENCER\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ SEQUENCER\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{settings_8h}{settings.h}}"{}}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#define\ MAX\_PATTERNS\ 255}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#define\ MAX\_SONG\_LENGTH\ 255}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ MAX\_SEQUENCE\_LENGTH\ 24}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#define\ NOTE\_INFO\_SIZE\ 2\ }\textcolor{comment}{//\ One\ for\ note\ index,\ one\ for\ octave\ index}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00014\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}};}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[\mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\_SEQUENCE\_LENGTH}}][\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}];}
+\DoxyCodeLine{00017\ \}\ \mbox{\hyperlink{struct_pattern}{Pattern}};}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}};}
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{struct_pattern}{Pattern}}\ \mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[\mbox{\hyperlink{sequencer_8h_a24c48ef77929deff9e40e141a891dbb8}{MAX\_PATTERNS}}];}
+\DoxyCodeLine{00022\ \}\ \mbox{\hyperlink{struct_pattern_list}{PatternList}};}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct}}
+\DoxyCodeLine{00025\ \{}
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}};}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}};}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}};}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a0336394d075942924f0310d618955d70}{beats\_per\_minute}};}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}};}
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a3d10d319666aaae81604b3a81d0110d7}{voiceTypes}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}][\mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}}];}
+\DoxyCodeLine{00035\ \}\ \mbox{\hyperlink{struct_arranger}{Arranger}};}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct}}
+\DoxyCodeLine{00038\ \{}
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_sequencer_ac291f3ea0e99fc2592d8ca7253478fef}{selected\_index}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00043\ \}\ \mbox{\hyperlink{struct_sequencer}{Sequencer}};}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00050\ \mbox{\hyperlink{struct_pattern_list}{PatternList}}*\ \mbox{\hyperlink{sequencer_8h_af2e1440977d13b4ca82c0c98ff205969}{createPatternList}}();}
+\DoxyCodeLine{00056\ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *\mbox{\hyperlink{sequencer_8h_a46506c4b10210da836bb454b64f56f4e}{createArranger}}();}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00063\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_abd4490dc259a4ba9d955dc06110d3960}{addChannel}}(\mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \textcolor{keywordtype}{int}\ channelIndex);}
+\DoxyCodeLine{00069\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_aecf022a168a1749dd1483bc6db72545e}{removeChannel}}(\mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \textcolor{keywordtype}{int}\ channelIndex);}
+\DoxyCodeLine{00077\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{sequencer_8h_a23d6e49cf900698cd515b99b9672b9fe}{addPattern}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternSize,\ \textcolor{keywordtype}{int}\ notes[][\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}]);}
+\DoxyCodeLine{00083\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_aae47fd5dd568fa28fb9f8d5c6c878350}{addPatternToArranger}}(\mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger,\ \textcolor{keywordtype}{int}\ patternId,\ \textcolor{keywordtype}{int}\ sequencer\_id,\ \textcolor{keywordtype}{int}\ column);}
+\DoxyCodeLine{00091\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_a4423d5dd366ccb9aa18b2b284d504b0f}{addBlankIfEmpty}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}*\ patternList,\ \mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \textcolor{keywordtype}{int}\ sequencerId,\ \textcolor{keywordtype}{int}\ row);}
+\DoxyCodeLine{00097\ \mbox{\hyperlink{struct_sequencer}{Sequencer}}*\ \mbox{\hyperlink{sequencer_8h_ad21cc03af22456f81cfe2f25330f6597}{createSequencer}}(\mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger);}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00106\ \textcolor{keywordtype}{int}\ *\mbox{\hyperlink{sequencer_8h_a0afd21c469d9d7f042d8f66be3666af5}{getStep}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ noteIndex);}
+\DoxyCodeLine{00114\ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{sequencer_8h_a376879b96448fd667f0667be5902acee}{getCurrentStep}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ noteIndex);}
+\DoxyCodeLine{00124\ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{sequencer_8h_aff1910ede8d818b37af321ecccd09ca4}{selectArrangerCell}}(\mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \textcolor{keywordtype}{int}\ checkBlankPattern,\ \textcolor{keywordtype}{int}\ relativex,\ \textcolor{keywordtype}{int}\ relativey,\ \textcolor{keywordtype}{int}\ *selectedArrangerCell);}
+\DoxyCodeLine{00132\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{sequencer_8h_a1be243fd566f52694dd1006b217039db}{selectStep}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ selectedStep);}
+\DoxyCodeLine{00141\ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{sequencer_8h_aa9717313b1c987f80a5d1af3ca0f6091}{editCurrentNote}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ noteIndex,\ \textcolor{keywordtype}{int}\ note[\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}]);}
+\DoxyCodeLine{00150\ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{sequencer_8h_a94e8680068cf71eea6e206d7b2e90071}{editCurrentNoteRelative}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ noteIndex,\ \textcolor{keywordtype}{int}\ note[\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}]);}
+\DoxyCodeLine{00157\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_a36df01b35d893a8f8bb49a5e1ad4c425}{incrementSequencer}}(\mbox{\hyperlink{struct_sequencer}{Sequencer}}*\ sequencer,\ \mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger);}
+\DoxyCodeLine{00158\ }
+\DoxyCodeLine{00166\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_a1a15c27d8aa1f8c6fab8fb732b928f99}{editStep}}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \textcolor{keywordtype}{int}\ patternIndex,\ \textcolor{keywordtype}{int}\ noteIndex,\ \textcolor{keywordtype}{int}\ note[\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}]);}
+\DoxyCodeLine{00171\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_a3b7c9ddc992bf12a0abfaa50aa296a59}{stopPlaying}}(\mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger);}
+\DoxyCodeLine{00179\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{sequencer_8h_a126eba9a0bbfff09da99c0751ba4942f}{startPlaying}}(\mbox{\hyperlink{struct_sequencer}{Sequencer}}*\ sequencer,\ \mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *patternList,\ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger,\ \textcolor{keywordtype}{int}\ playMode);}
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00181\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

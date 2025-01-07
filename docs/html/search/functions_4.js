@@ -1,0 +1,6 @@
+var searchData=
+[
+  ['editcurrentnote_0',['editCurrentNote',['../sequencer_8c.html#aa9717313b1c987f80a5d1af3ca0f6091',1,'editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c'],['../sequencer_8h.html#aa9717313b1c987f80a5d1af3ca0f6091',1,'editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c']]],
+  ['editcurrentnoterelative_1',['editCurrentNoteRelative',['../sequencer_8c.html#a94e8680068cf71eea6e206d7b2e90071',1,'editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c'],['../sequencer_8h.html#a94e8680068cf71eea6e206d7b2e90071',1,'editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c']]],
+  ['editstep_2',['editStep',['../sequencer_8c.html#a1a15c27d8aa1f8c6fab8fb732b928f99',1,'editStep(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c'],['../sequencer_8h.html#a1a15c27d8aa1f8c6fab8fb732b928f99',1,'editStep(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]):&#160;sequencer.c']]]
+];

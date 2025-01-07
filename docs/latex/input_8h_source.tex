@@ -1,0 +1,106 @@
+\doxysection{input.\+h}
+\hypertarget{input_8h_source}{}\label{input_8h_source}\mbox{\hyperlink{input_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ INPUT\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ INPUT\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}raylib.h"{}}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#define\ MAX\_INPUT\_HISTORY\ 128}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00010\ \ \ \ \ \mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0ad930e7f402c859a3e4fdc518e76e68a8}{INPUT\_TYPE\_KEYBOARD}},}
+\DoxyCodeLine{00011\ \ \ \ \ \mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0af4697e9a0388204f823debec4e36c847}{INPUT\_TYPE\_GAMEPAD}}}
+\DoxyCodeLine{00012\ \}\ \mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0}{InputDeviceType}};}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00015\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6a94efaa5b883f5c0761cd187609f5a5c9}{KM\_LEFT}},}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6a4e70bc0509e8e0aa839bfacd10387470}{KM\_RIGHT}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6a0afee94780e014b62687d9a610a415c2}{KM\_UP}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ac268db9743c1f91fbee388ee2f83b155}{KM\_DOWN}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6a70eda033f7349288de5332691c5ba0b9}{KM\_SELECT}},}
+\DoxyCodeLine{00020\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6aa2c81d87b45f27f44f5a79703087824c}{KM\_START}},}
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6afd239feff497dee0a56738e226a84e41}{KM\_EDIT}},}
+\DoxyCodeLine{00022\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6aed368b533d5f53f4e2c05ea353eef1e8}{KM\_FUNCTION}},}
+\DoxyCodeLine{00023\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ad79812e11083c0abc2289d0a26286a5c}{KM\_NAV\_LEFT}},}
+\DoxyCodeLine{00024\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6a934b3e56ee75e5e0b1fc5276aaa32eab}{KM\_NAV\_RIGHT}},}
+\DoxyCodeLine{00025\ \ \ \ \ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ab2d4377ac4240d64d9a161445ea80195}{KEY\_MAPPING\_COUNT}}}
+\DoxyCodeLine{00026\ \}\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{KeyMapping}};}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ KEYBOARD\_MAP[]\ =\ \{}
+\DoxyCodeLine{00029\ \ \ \ \ KEY\_LEFT,}
+\DoxyCodeLine{00030\ \ \ \ \ KEY\_RIGHT,}
+\DoxyCodeLine{00031\ \ \ \ \ KEY\_UP,}
+\DoxyCodeLine{00032\ \ \ \ \ KEY\_DOWN,}
+\DoxyCodeLine{00033\ \ \ \ \ KEY\_LEFT\_SHIFT,}
+\DoxyCodeLine{00034\ \ \ \ \ KEY\_ENTER,}
+\DoxyCodeLine{00035\ \ \ \ \ KEY\_Z,}
+\DoxyCodeLine{00036\ \ \ \ \ KEY\_X,}
+\DoxyCodeLine{00037\ \ \ \ \ KEY\_Q,}
+\DoxyCodeLine{00038\ \ \ \ \ KEY\_W}
+\DoxyCodeLine{00039\ \};}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ KEY\_NAMES[]\ =\ \{}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{stringliteral}{"{}LEFT"{}},}
+\DoxyCodeLine{00043\ \ \ \ \ \textcolor{stringliteral}{"{}RIGHT"{}},}
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{stringliteral}{"{}UP"{}},}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{stringliteral}{"{}DOWN"{}},}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{stringliteral}{"{}SELECT"{}},}
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{stringliteral}{"{}START"{}},}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{stringliteral}{"{}EDIT"{}},}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{stringliteral}{"{}FUNC"{}},}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{stringliteral}{"{}SCN<"{}},}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{stringliteral}{"{}SCN>"{}}}
+\DoxyCodeLine{00052\ \};}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \textcolor{keyword}{static}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ GAMEPAD\_MAP[]\ =\ \{}
+\DoxyCodeLine{00055\ \ \ \ \ GAMEPAD\_BUTTON\_LEFT\_FACE\_LEFT,}
+\DoxyCodeLine{00056\ \ \ \ \ GAMEPAD\_BUTTON\_LEFT\_FACE\_RIGHT,}
+\DoxyCodeLine{00057\ \ \ \ \ GAMEPAD\_BUTTON\_LEFT\_FACE\_UP,}
+\DoxyCodeLine{00058\ \ \ \ \ GAMEPAD\_BUTTON\_LEFT\_FACE\_DOWN,}
+\DoxyCodeLine{00059\ \ \ \ \ GAMEPAD\_BUTTON\_MIDDLE\_LEFT,}
+\DoxyCodeLine{00060\ \ \ \ \ GAMEPAD\_BUTTON\_MIDDLE\_RIGHT,}
+\DoxyCodeLine{00061\ \ \ \ \ GAMEPAD\_BUTTON\_RIGHT\_FACE\_DOWN,}
+\DoxyCodeLine{00062\ \ \ \ \ GAMEPAD\_BUTTON\_RIGHT\_FACE\_LEFT,}
+\DoxyCodeLine{00063\ \ \ \ \ GAMEPAD\_BUTTON\_LEFT\_TRIGGER\_1,}
+\DoxyCodeLine{00064\ \ \ \ \ GAMEPAD\_BUTTON\_RIGHT\_TRIGGER\_1}
+\DoxyCodeLine{00065\ \};}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}};}
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{struct_key_state_ae1a1c97efbbbad85b4545303be70ed9b}{wasPressed}};}
+\DoxyCodeLine{00070\ \}\ \mbox{\hyperlink{struct_key_state}{KeyState}};}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00073\ \ \ \ \ \mbox{\hyperlink{struct_key_state}{KeyState}}\ \mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[\mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ab2d4377ac4240d64d9a161445ea80195}{KEY\_MAPPING\_COUNT}}];}
+\DoxyCodeLine{00074\ \ \ \ \ \mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0}{InputDeviceType}}\ \mbox{\hyperlink{struct_input_state_a0558cb339ee5c7ea939a54bba40e2992}{deviceType}};}
+\DoxyCodeLine{00075\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{struct_input_state_aa15f6eee939e3ce909ab3a7ac959da18}{currentMap}};}
+\DoxyCodeLine{00076\ \ \ \ \ \textcolor{keywordtype}{int}*\ \mbox{\hyperlink{struct_input_state_a65d906421168a8e77705b37dfe62d1c9}{inputHistory}};}
+\DoxyCodeLine{00077\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}};}
+\DoxyCodeLine{00078\ \}\ \mbox{\hyperlink{struct_input_state}{InputState}};}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00081\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_app_state_data_a73880c9d07f94677f8cb9d7e1f0ec9d0}{thing}};}
+\DoxyCodeLine{00082\ \}\ \mbox{\hyperlink{struct_app_state_data}{AppStateData}};}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ \textcolor{keyword}{typedef}\ void\ (*\mbox{\hyperlink{input_8h_a07c3dadec9a65e75e038542545637d3f}{SceneInputHandler}})(\mbox{\hyperlink{struct_input_state}{InputState}}*\ input,\ \mbox{\hyperlink{struct_app_state_data}{AppStateData}}*\ data);}
+\DoxyCodeLine{00085\ }
+\DoxyCodeLine{00086\ \textcolor{comment}{//\ typedef\ struct\ \{}}
+\DoxyCodeLine{00087\ \textcolor{comment}{//\ \ \ \ \ SceneInputHandler\ handlers[SCENE\_COUNT];}}
+\DoxyCodeLine{00088\ \textcolor{comment}{//\ \}\ SceneManager;}}
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00090\ \textcolor{comment}{//\ typedef\ struct\ \{}}
+\DoxyCodeLine{00091\ \textcolor{comment}{//\ \ \ \ \ void\ (*execute)(GameData*\ data);}}
+\DoxyCodeLine{00092\ \textcolor{comment}{//\ \ \ \ \ void\ (*undo)(GameData*\ data);}}
+\DoxyCodeLine{00093\ \textcolor{comment}{//\ \}\ Command;}}
+\DoxyCodeLine{00094\ }
+\DoxyCodeLine{00095\ \mbox{\hyperlink{struct_input_state}{InputState}}*\ \mbox{\hyperlink{input_8h_a59b0e3fae5d4a30b96317c31598aeabb}{createInputState}}(\mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0}{InputDeviceType}}\ type);}
+\DoxyCodeLine{00096\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{input_8h_ade2700cdca20c67ab026fc03ab76a1da}{isKeyHeld}}(\mbox{\hyperlink{struct_input_state}{InputState}}*\ state,\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{KeyMapping}}\ keyCode);}
+\DoxyCodeLine{00097\ \textcolor{keywordtype}{bool}\ \mbox{\hyperlink{input_8h_ad4e1087d35c668f45ee48dfdd482b2f8}{isKeyJustPressed}}(\mbox{\hyperlink{struct_input_state}{InputState}}*\ state,\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{KeyMapping}}\ keyCode);}
+\DoxyCodeLine{00098\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{input_8h_aa935f40452058e5dd16aaf4725e82711}{updateInputState}}(\mbox{\hyperlink{struct_input_state}{InputState}}*\ state);}
+\DoxyCodeLine{00099\ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{input_8h_a130a8449e01fb02b5368d190a7a5e232}{getMappedKeyCode}}(\mbox{\hyperlink{struct_input_state}{InputState}}*\ state,\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{KeyMapping}}\ key);}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

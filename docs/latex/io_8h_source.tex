@@ -1,0 +1,45 @@
+\doxysection{io.\+h}
+\hypertarget{io_8h_source}{}\label{io_8h_source}\mbox{\hyperlink{io_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ IO\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ IO\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <stdlib.h>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{gui_8h}{gui.h}}"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{settings_8h}{settings.h}}"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{sequencer_8h}{sequencer.h}}"{}}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#define\ MAGIC\_HEADER\ "{}SEQ1"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ PATTERN\_SECTION\ "{}PATT"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#define\ ARRANGER\_SECTION\ "{}ARRG"{}}}
+\DoxyCodeLine{00013\ }
+\DoxyCodeLine{00014\ \textcolor{comment}{//\ File\ operation\ results}}
+\DoxyCodeLine{00015\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02ac542004ab939b96377b0b1ccd48946b7}{FILE\_ERROR\_READ}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02aa630ea3211debd7a6f1b3803e66d3c9c}{FILE\_ERROR\_WRITE}},}
+\DoxyCodeLine{00020\ \ \ \ \ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a59413acd484f9fd5940fa48bb912bd2d}{FILE\_ERROR\_FORMAT}}}
+\DoxyCodeLine{00021\ \}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}};}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a274edc266d695198fd8dd759797639c7}{SEQ\_OK}},}
+\DoxyCodeLine{00025\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a54276461b1aaf5c8921fba7112025d85}{SEQ\_ERROR\_OPEN}},}
+\DoxyCodeLine{00026\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a6cc293a8aea8980e6569442b4722f1cd}{SEQ\_ERROR\_READ}},}
+\DoxyCodeLine{00027\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76af2e32ae73ca0c27ed47708cdf3227f33}{SEQ\_ERROR\_WRITE}},}
+\DoxyCodeLine{00028\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76ad37d6bc5b16ac9c67797472255d72bde}{SEQ\_ERROR\_FORMAT}},}
+\DoxyCodeLine{00029\ \ \ \ \ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a6c88415ad910f771f12110f1b3b6c29e}{SEQ\_ERROR\_MEMORY}}}
+\DoxyCodeLine{00030\ \}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{SequencerFileResult}};}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00039\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}}\ \mbox{\hyperlink{io_8h_a22a0fa54facdb8d991e45e222db52ead}{saveColourScheme}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_colour_scheme}{ColourScheme}}*\ colourScheme);}
+\DoxyCodeLine{00049\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}}\ \mbox{\hyperlink{io_8h_a415efc3af04aa636ce892a89ce50d30b}{loadColourScheme}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_colour_scheme}{ColourScheme}}*\ colourScheme);}
+\DoxyCodeLine{00059\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}}\ \mbox{\hyperlink{io_8h_ad73e7d721b9560a5463ee1a7ce2918f6}{loadColourSchemeTxt}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ Color*\ colourArray[],\ \textcolor{keywordtype}{int}\ arraySize);}
+\DoxyCodeLine{00069\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{SequencerFileResult}}\ \mbox{\hyperlink{io_8h_a18b2dfb386b19c9b8a56ed880d3a7f25}{saveSequencerState}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \mbox{\hyperlink{struct_pattern_list}{PatternList}}*\ patterns);}
+\DoxyCodeLine{00079\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{SequencerFileResult}}\ \mbox{\hyperlink{io_8h_aaad57709f4a1703fda3356ae6163bb29}{loadSequencerState}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_arranger}{Arranger}}*\ arranger,\ \mbox{\hyperlink{struct_pattern_list}{PatternList}}*\ patterns);}
+\DoxyCodeLine{00087\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}}\ \mbox{\hyperlink{io_8h_a0ee74bbd7a1d323b8c4533cfee28587b}{saveSettings}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_settings}{Settings}}*\ settings);}
+\DoxyCodeLine{00097\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{FileResult}}\ \mbox{\hyperlink{io_8h_a34b69ab24373985afad6a73ba8ec5f9e}{loadSettings}}(\textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ filename,\ \mbox{\hyperlink{struct_settings}{Settings}}*\ settings);}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00099\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

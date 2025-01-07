@@ -1,0 +1,56 @@
+\doxysection{envelope.\+h}
+\hypertarget{envelope_8h_source}{}\label{envelope_8h_source}\mbox{\hyperlink{envelope_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ ENVELOPE\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ ENVELOPE\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00005\ \ \ \ \ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950acfcf145f2788bf340ff3f3098bc54909}{ADD}},}
+\DoxyCodeLine{00006\ \ \ \ \ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a12b733d4941495e86811fe6ceeeff9da}{SUB}},}
+\DoxyCodeLine{00007\ \ \ \ \ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a086ab1f2f4dac104b6826ebe0eaba8fd}{MUL}},}
+\DoxyCodeLine{00008\ \ \ \ \ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a8565f0d60c3ba6d468661c49d86e9744}{DIV}}}
+\DoxyCodeLine{00009\ \}\ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950}{ModulationType}};}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00012\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}};}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_env_stage_aa53ea5f734eb54803d2c565dfa57e3fa}{duration\_in\_samples}};}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_env_stage_afa6c9138cd45a4ed2e1e25c735923f31}{curve}};}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_env_stage_a3c7304b3310680d55486da4c8404920c}{target}};}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_env_stage_a6e722d66ec5f33fa7c05cfbf5ea97320}{direction}};}
+\DoxyCodeLine{00017\ \}\ \mbox{\hyperlink{struct_env_stage}{EnvStage}};}
+\DoxyCodeLine{00018\ }
+\DoxyCodeLine{00019\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}};}
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}};}
+\DoxyCodeLine{00022\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}{running}};}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}{loop}};}
+\DoxyCodeLine{00024\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_envelope_a44383cfe11cae0a97253ad6633e94f25}{voice\_id}};}
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}};}
+\DoxyCodeLine{00026\ \ \ \ \ \mbox{\hyperlink{struct_env_stage}{EnvStage}}*\ \mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}};}
+\DoxyCodeLine{00027\ \}\ \mbox{\hyperlink{struct_envelope}{Envelope}};}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00030\ \ \ \ \ \textcolor{keywordtype}{float}\ *\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}};}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}};}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_mod_map_ac607273977e022519596ff047bbaaa10}{min\_val}};}
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_mod_map_a0302e1961d3a8df205350b7ce0b1dba4}{max\_val}};}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_mod_map_a66ca11d78c2829e9a6974a194c6c93c6}{attenuation}};}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_mod_map_a3dc9f4596defa70d3f5566e33601f829}{modType}};}
+\DoxyCodeLine{00036\ \}\ \mbox{\hyperlink{struct_mod_map}{ModMap}};}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_param_a1357f5cfdc472f292cd9042c5e7be6b8}{value}};}
+\DoxyCodeLine{00040\ \ \ \ \ \mbox{\hyperlink{struct_mod_map}{ModMap}}\ *\mbox{\hyperlink{struct_param_ac374cf47e03f62b6a9b454e890d1897e}{mod}};}
+\DoxyCodeLine{00041\ \}\ \mbox{\hyperlink{struct_param}{Param}};}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \mbox{\hyperlink{struct_mod_map}{ModMap}}*\ \mbox{\hyperlink{envelope_8h_a1786664b791103372e642505858255d0}{initModMap}}(\textcolor{keywordtype}{float}\ *target,\ \textcolor{keywordtype}{float}\ min,\ \textcolor{keywordtype}{float}\ max,\ \textcolor{keywordtype}{float}\ attenuation,\ \textcolor{keywordtype}{int}\ modType);}
+\DoxyCodeLine{00044\ \mbox{\hyperlink{struct_env_stage}{EnvStage}}*\ \mbox{\hyperlink{envelope_8h_a3bfcef4d1f9d9a411bef9a51778cb701}{initEnvStage}}(\textcolor{keywordtype}{float}\ rate,\ \textcolor{keywordtype}{float}\ curve,\ \textcolor{keywordtype}{int}\ direction);}
+\DoxyCodeLine{00045\ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ \mbox{\hyperlink{envelope_8h_a78021be178803b48b9e1ef4ef7b8f4de}{defaultAD}}(\textcolor{keywordtype}{float}\ attack\_sec,\ \textcolor{keywordtype}{float}\ decay\_sec,\ \textcolor{keywordtype}{int}\ voice\_id);}
+\DoxyCodeLine{00046\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{envelope_8h_a894798cd11760b4835eb6dc4f5257879}{tickEnv}}(\mbox{\hyperlink{struct_envelope}{Envelope}}\ *env);}
+\DoxyCodeLine{00047\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{envelope_8h_a3533dde36809a95970adc92b589e5709}{resetEnvelope}}(\mbox{\hyperlink{struct_envelope}{Envelope}}\ *env);\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00048\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{envelope_8h_ac435b115d046e461aa6d95000724941b}{apply\_envelope}}(\textcolor{keywordtype}{float}\ current,\ \textcolor{keywordtype}{float}\ total,\ \textcolor{keywordtype}{float}\ curve);}
+\DoxyCodeLine{00049\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{envelope_8h_a793b1f67dbd0dbadcdad49e820aca210}{applyModulation}}(\mbox{\hyperlink{struct_mod_map}{ModMap}}\ *param,\ \mbox{\hyperlink{struct_envelope}{Envelope}}\ *env);}
+\DoxyCodeLine{00050\ }
+\DoxyCodeLine{00051\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

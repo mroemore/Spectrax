@@ -1,0 +1,125 @@
+\doxysection{Arranger Struct Reference}
+\hypertarget{struct_arranger}{}\label{struct_arranger}\index{Arranger@{Arranger}}
+
+
+{\ttfamily \#include $<$sequencer.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\+\_\+indices}} \mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabled\+Channels}}
+\item 
+int \mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\+\_\+x}}
+\item 
+int \mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\+\_\+y}}
+\item 
+int \mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}}
+\item 
+int \mbox{\hyperlink{struct_arranger_a0336394d075942924f0310d618955d70}{beats\+\_\+per\+\_\+minute}}
+\item 
+int \mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}}
+\item 
+int \mbox{\hyperlink{struct_arranger_a3d10d319666aaae81604b3a81d0110d7}{voice\+Types}} \mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}} \mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}\mbox{[}\mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\+\_\+\+SONG\+\_\+\+LENGTH}}\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_arranger_a0336394d075942924f0310d618955d70}\index{Arranger@{Arranger}!beats\_per\_minute@{beats\_per\_minute}}
+\index{beats\_per\_minute@{beats\_per\_minute}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{beats\_per\_minute}{beats\_per\_minute}}
+{\footnotesize\ttfamily \label{struct_arranger_a0336394d075942924f0310d618955d70} 
+int Arranger\+::beats\+\_\+per\+\_\+minute}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a119e3ff72985270b391f42ee068b11b4}{create\+Transport\+Gui()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, and \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}.
+
+\Hypertarget{struct_arranger_a1e7fd20039479f7def0b55692699f098}\index{Arranger@{Arranger}!enabledChannels@{enabledChannels}}
+\index{enabledChannels@{enabledChannels}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{enabledChannels}{enabledChannels}}
+{\footnotesize\ttfamily \label{struct_arranger_a1e7fd20039479f7def0b55692699f098} 
+int Arranger\+::enabled\+Channels}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}{add\+Channel()}}, \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{sequencer_8c_ad21cc03af22456f81cfe2f25330f6597}{create\+Sequencer()}}, \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer()}}, \mbox{\hyperlink{sequencer_8c_aecf022a168a1749dd1483bc6db72545e}{remove\+Channel()}}, \mbox{\hyperlink{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}{select\+Arranger\+Cell()}}, and \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing()}}.
+
+\Hypertarget{struct_arranger_a19ad50f2330623205940d8842cd74525}\index{Arranger@{Arranger}!loop@{loop}}
+\index{loop@{loop}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}}
+{\footnotesize\ttfamily \label{struct_arranger_a19ad50f2330623205940d8842cd74525} 
+int Arranger\+::loop}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, and \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}.
+
+\Hypertarget{struct_arranger_a9ce765c632d4688ed2324a82e476d629}\index{Arranger@{Arranger}!playhead\_indices@{playhead\_indices}}
+\index{playhead\_indices@{playhead\_indices}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{playhead\_indices}{playhead\_indices}}
+{\footnotesize\ttfamily \label{struct_arranger_a9ce765c632d4688ed2324a82e476d629} 
+int Arranger\+::playhead\+\_\+indices\mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_a761b65b28a906ccb965be14b97e16c44}{draw\+Song\+Minimap\+Gui()}}, \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, and \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing()}}.
+
+\Hypertarget{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}\index{Arranger@{Arranger}!playing@{playing}}
+\index{playing@{playing}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{playing}{playing}}
+{\footnotesize\ttfamily \label{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3} 
+int Arranger\+::playing}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing()}}, and \mbox{\hyperlink{sequencer_8c_a3b7c9ddc992bf12a0abfaa50aa296a59}{stop\+Playing()}}.
+
+\Hypertarget{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}\index{Arranger@{Arranger}!selected\_x@{selected\_x}}
+\index{selected\_x@{selected\_x}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{selected\_x}{selected\_x}}
+{\footnotesize\ttfamily \label{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9} 
+int Arranger\+::selected\+\_\+x}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, \mbox{\hyperlink{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}{select\+Arranger\+Cell()}}, and \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing()}}.
+
+\Hypertarget{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}\index{Arranger@{Arranger}!selected\_y@{selected\_y}}
+\index{selected\_y@{selected\_y}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{selected\_y}{selected\_y}}
+{\footnotesize\ttfamily \label{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245} 
+int Arranger\+::selected\+\_\+y}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, and \mbox{\hyperlink{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}{select\+Arranger\+Cell()}}.
+
+\Hypertarget{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}\index{Arranger@{Arranger}!song@{song}}
+\index{song@{song}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{song}{song}}
+{\footnotesize\ttfamily \label{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb} 
+int Arranger\+::song\mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}\mbox{[}\mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\+\_\+\+SONG\+\_\+\+LENGTH}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f}{add\+Blank\+If\+Empty()}}, \mbox{\hyperlink{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}{add\+Channel()}}, \mbox{\hyperlink{sequencer_8c_ac6c1ecde8b7aa3cecf904f973c543dcd}{add\+Pattern\+To\+Arranger()}}, \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}, \mbox{\hyperlink{sequencer_8c_ad21cc03af22456f81cfe2f25330f6597}{create\+Sequencer()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_a761b65b28a906ccb965be14b97e16c44}{draw\+Song\+Minimap\+Gui()}}, \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}, \mbox{\hyperlink{sequencer_8c_aecf022a168a1749dd1483bc6db72545e}{remove\+Channel()}}, \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}, \mbox{\hyperlink{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}{select\+Arranger\+Cell()}}, and \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing()}}.
+
+\Hypertarget{struct_arranger_a3d10d319666aaae81604b3a81d0110d7}\index{Arranger@{Arranger}!voiceTypes@{voiceTypes}}
+\index{voiceTypes@{voiceTypes}!Arranger@{Arranger}}
+\doxysubsubsection{\texorpdfstring{voiceTypes}{voiceTypes}}
+{\footnotesize\ttfamily \label{struct_arranger_a3d10d319666aaae81604b3a81d0110d7} 
+int Arranger\+::voice\+Types\mbox{[}\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}{add\+Channel()}}, and \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{sequencer_8h}{sequencer.\+h}}\end{DoxyCompactItemize}

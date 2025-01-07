@@ -1,0 +1,137 @@
+\doxysection{Parameter Struct Reference}
+\hypertarget{struct_parameter}{}\label{struct_parameter}\index{Parameter@{Parameter}}
+
+
+{\ttfamily \#include $<$modsystem.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}}
+\item 
+float \mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{base\+Value}}
+\item 
+float \mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{current\+Value}}
+\item 
+float \mbox{\hyperlink{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462}{min\+Value}}
+\item 
+float \mbox{\hyperlink{struct_parameter_a2f1ec0f677642dccb3ea71f745322291}{max\+Value}}
+\item 
+float \mbox{\hyperlink{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36}{fine\+Increment}}
+\item 
+float \mbox{\hyperlink{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938}{coarse\+Increment}}
+\item 
+struct \mbox{\hyperlink{struct_mod_connection}{Mod\+Connection}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}
+\item 
+int \mbox{\hyperlink{struct_parameter_a98bc4baa8a19cc31bbf68ae58c14d1e4}{modulator\+\_\+count}}
+\item 
+void(\texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{on\+Change}} )(struct \mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}self, float new\+Value)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}\index{Parameter@{Parameter}!baseValue@{baseValue}}
+\index{baseValue@{baseValue}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{baseValue}{baseValue}}
+{\footnotesize\ttfamily \label{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c} 
+float Parameter\+::base\+Value}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{gui_8c_ae06c1a0d7330a7a8315471867178d8bb}{draw\+Button\+Gui()}}, \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{inc\+Parameter\+Base\+Value()}}, \mbox{\hyperlink{modsystem_8c_ad5a4bc1aa689ba445b4739c742113f3b}{modify\+Parameter\+Base\+Value()}}, \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}, and \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{set\+Parameter\+Base\+Value()}}.
+
+\Hypertarget{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938}\index{Parameter@{Parameter}!coarseIncrement@{coarseIncrement}}
+\index{coarseIncrement@{coarseIncrement}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{coarseIncrement}{coarseIncrement}}
+{\footnotesize\ttfamily \label{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938} 
+float Parameter\+::coarse\+Increment}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}{create\+Parameter\+Ex()}}, and \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{inc\+Parameter\+Base\+Value()}}.
+
+\Hypertarget{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}\index{Parameter@{Parameter}!currentValue@{currentValue}}
+\index{currentValue@{currentValue}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{currentValue}{currentValue}}
+{\footnotesize\ttfamily \label{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af} 
+float Parameter\+::current\+Value}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generate\+Drunk()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{get\+Parameter\+Value()}}, \mbox{\hyperlink{modsystem_8c_a95f112fe9095a9e86b4e4f7f1a853467}{get\+Parameter\+Value\+As\+Int()}}, \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}, and \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{set\+Parameter\+Value()}}.
+
+\Hypertarget{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36}\index{Parameter@{Parameter}!fineIncrement@{fineIncrement}}
+\index{fineIncrement@{fineIncrement}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{fineIncrement}{fineIncrement}}
+{\footnotesize\ttfamily \label{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36} 
+float Parameter\+::fine\+Increment}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}{create\+Parameter\+Ex()}}, and \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{inc\+Parameter\+Base\+Value()}}.
+
+\Hypertarget{struct_parameter_a2f1ec0f677642dccb3ea71f745322291}\index{Parameter@{Parameter}!maxValue@{maxValue}}
+\index{maxValue@{maxValue}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{maxValue}{maxValue}}
+{\footnotesize\ttfamily \label{struct_parameter_a2f1ec0f677642dccb3ea71f745322291} 
+float Parameter\+::max\+Value}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{set\+Parameter\+Base\+Value()}}, and \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{set\+Parameter\+Value()}}.
+
+\Hypertarget{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462}\index{Parameter@{Parameter}!minValue@{minValue}}
+\index{minValue@{minValue}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{minValue}{minValue}}
+{\footnotesize\ttfamily \label{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462} 
+float Parameter\+::min\+Value}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{set\+Parameter\+Base\+Value()}}, and \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{set\+Parameter\+Value()}}.
+
+\Hypertarget{struct_parameter_a98bc4baa8a19cc31bbf68ae58c14d1e4}\index{Parameter@{Parameter}!modulator\_count@{modulator\_count}}
+\index{modulator\_count@{modulator\_count}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{modulator\_count}{modulator\_count}}
+{\footnotesize\ttfamily \label{struct_parameter_a98bc4baa8a19cc31bbf68ae58c14d1e4} 
+int Parameter\+::modulator\+\_\+count}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{add\+Modulation()}}, and \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}.
+
+\Hypertarget{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}\index{Parameter@{Parameter}!modulators@{modulators}}
+\index{modulators@{modulators}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{modulators}{modulators}}
+{\footnotesize\ttfamily \label{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2} 
+struct \mbox{\hyperlink{struct_mod_connection}{Mod\+Connection}}\texorpdfstring{$\ast$}{*} Parameter\+::modulators}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{add\+Modulation()}}, \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{free\+Parameter()}}, and \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}.
+
+\Hypertarget{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}\index{Parameter@{Parameter}!name@{name}}
+\index{name@{name}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{name}{name}}
+{\footnotesize\ttfamily \label{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22} 
+char\texorpdfstring{$\ast$}{*} Parameter\+::name}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, and \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{free\+Parameter()}}.
+
+\Hypertarget{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}\index{Parameter@{Parameter}!onChange@{onChange}}
+\index{onChange@{onChange}!Parameter@{Parameter}}
+\doxysubsubsection{\texorpdfstring{onChange}{onChange}}
+{\footnotesize\ttfamily \label{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d} 
+void(\texorpdfstring{$\ast$}{*} Parameter\+::on\+Change) (struct \mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}self, float new\+Value)}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}, \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{set\+Parameter\+Base\+Value()}}, and \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{set\+Parameter\+Value()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{modsystem_8h}{modsystem.\+h}}\end{DoxyCompactItemize}

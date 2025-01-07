@@ -1,0 +1,26 @@
+\doxysection{appstate.\+h}
+\hypertarget{appstate_8h_source}{}\label{appstate_8h_source}\mbox{\hyperlink{appstate_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ APPSTATE\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ APPSTATE\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{gui_8h}{gui.h}}"{}}\ }
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{input_8h}{input.h}}"{}}\ }
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00008\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_application_state_a4ca381835896ce104297bee850b31fbb}{currentPattern}};}
+\DoxyCodeLine{00009\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_application_state_a003eb40b05a29adb904d464cc2719434}{selectedPattern}};}
+\DoxyCodeLine{00010\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_application_state_a3c5d6208a6fab2278e6844ad8ce8023a}{selectedStep}};}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc}{selectedArrangerCell}}[2];}
+\DoxyCodeLine{00012\ \ \ \ \ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600}{Scene}}\ \mbox{\hyperlink{struct_application_state_a3b09129de8fd114726ab802bd6288610}{currentScene}};}
+\DoxyCodeLine{00013\ \ \ \ \ \mbox{\hyperlink{struct_input_state}{InputState}}*\ \mbox{\hyperlink{struct_application_state_a4e86c63d39e094bd9429233f38cd8d75}{inputState}};}
+\DoxyCodeLine{00014\ \}\ \mbox{\hyperlink{struct_application_state}{ApplicationState}};}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{appstate_8h_a0edeaa8a08dcf6277aea3cd212432b70}{initApplicationState}}();}
+\DoxyCodeLine{00017\ \mbox{\hyperlink{struct_application_state}{ApplicationState}}*\ \mbox{\hyperlink{appstate_8h_a1734f034e7ff1626a10f26eaae3f3a55}{createApplicationState}}();}
+\DoxyCodeLine{00018\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{appstate_8h_a9f4a06e10011add1ed3a2c4480fb4356}{incrementScene}}();}
+\DoxyCodeLine{00019\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{appstate_8h_ae6ab4d9196fea920019af29bd809ffa1}{decrementScene}}();}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

@@ -1,0 +1,15 @@
+{
+	"files.associations": {
+		"sequencer.h": "c",
+		"stdlib.h": "c",
+		"envelope.h": "c",
+		"stdbool.h": "c",
+		"voice.h": "c",
+		"distortion.h": "c",
+		"input.h": "c",
+		"raylib.h": "c",
+		"oscillator.h": "c",
+		"stdio.h": "c",
+		"modsystem.h": "c"
+	}
+}

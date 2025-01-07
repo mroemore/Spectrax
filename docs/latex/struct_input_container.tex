@@ -1,0 +1,182 @@
+\doxysection{Input\+Container Struct Reference}
+\hypertarget{struct_input_container}{}\label{struct_input_container}\index{InputContainer@{InputContainer}}
+
+
+{\ttfamily \#include $<$gui.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_input_gui}{Input\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_ae6d3b3cc7cccb61d235fd60f15a8fcf3}{input\+Gui}} \mbox{[}\mbox{\hyperlink{containertest_8c_a79d644c2a8240f4825b61bf7c11164ae}{MAX\+\_\+\+IC\+\_\+\+SIZE}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_input_container_ac1873b46809072e505327d19873d7206}{input\+Gui\+Count}}
+\item 
+int \mbox{\hyperlink{struct_input_container_a6d69bf39d9fbbeaf4b50183ea562ccd2}{selected\+Input\+Index}}
+\item 
+struct \mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_a8e6bc301b597e66b59e8e1584d231fb8}{children}}
+\item 
+int \mbox{\hyperlink{struct_input_container_a3a42696fc507f7431035788fe6bbdeab}{child\+Count}}
+\item 
+int \mbox{\hyperlink{struct_input_container_afea01c018d33a62e478df5e02fe88cd3}{selected\+Child\+Index}}
+\item 
+struct \mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_af549a5b12c0831fbad1afe2fc4e929c8}{parent}}
+\item 
+struct \mbox{\hyperlink{struct_container_search_index}{Container\+Search\+Index}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_adf479506ea31da44ed414453bbc574d3}{index}}
+\item 
+\mbox{\hyperlink{struct_input_gui}{Input\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_aed65ff7519fca7df89d8f9aa2edb7fe5}{selected\+Input\+Gui}}
+\item 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}{button\+Refs}} \mbox{[}\mbox{\hyperlink{gui_8h_a7fd29d83b679306d4c79625c81ea6ff2}{MAX\+\_\+\+BUTTON\+\_\+\+ROWS}}\mbox{]}\mbox{[}\mbox{\hyperlink{gui_8h_aaae604ef4d9eadb9bfcd7b444aa3420f}{MAX\+\_\+\+BUTTON\+\_\+\+COLS}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{row\+Count}}
+\item 
+int \mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{column\+Count}} \mbox{[}\mbox{\hyperlink{gui_8h_a39bedb6a99963992eae24fc2cb769697}{MAX\+\_\+\+BUTTON\+\_\+\+CONTAINER\+\_\+\+COLS}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_input_container_a2b191db4f1154e20dc7a410fcd0d8664}{selected\+Row}}
+\item 
+int \mbox{\hyperlink{struct_input_container_aade95ee059ffde9b916d40cbd5aa7ab6}{selected\+Column}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}\index{InputContainer@{InputContainer}!buttonRefs@{buttonRefs}}
+\index{buttonRefs@{buttonRefs}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{buttonRefs}{buttonRefs}}
+{\footnotesize\ttfamily \label{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1} 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}}\texorpdfstring{$\ast$}{*} Input\+Container\+::button\+Refs\mbox{[}\mbox{\hyperlink{gui_8h_a7fd29d83b679306d4c79625c81ea6ff2}{MAX\+\_\+\+BUTTON\+\_\+\+ROWS}}\mbox{]}\mbox{[}\mbox{\hyperlink{gui_8h_aaae604ef4d9eadb9bfcd7b444aa3420f}{MAX\+\_\+\+BUTTON\+\_\+\+COLS}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{add\+Button\+To\+Container()}}, \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate()}}, \mbox{\hyperlink{gui_8c_a01e50e64cc29483a5a190ac56616efa6}{get\+Selected\+Input()}}, and \mbox{\hyperlink{gui_8c_a6538023304921acb5100c681bfe6c9b2}{remove\+Button\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_a3a42696fc507f7431035788fe6bbdeab}\index{InputContainer@{InputContainer}!childCount@{childCount}}
+\index{childCount@{childCount}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{childCount}{childCount}}
+{\footnotesize\ttfamily \label{struct_input_container_a3a42696fc507f7431035788fe6bbdeab} 
+int Input\+Container\+::child\+Count}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a6e37fd80d5f5cda6dc93223403112c2c}{add\+Child\+To\+Container()}}, \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, \mbox{\hyperlink{containertest_8c_ac59fa3a646953c9e786b416dc4f76158}{draw\+Container()}}, \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}, and \mbox{\hyperlink{containertest_8c_a16bd65f350692959f3a2c6ea5985504f}{remove\+Child\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_a8e6bc301b597e66b59e8e1584d231fb8}\index{InputContainer@{InputContainer}!children@{children}}
+\index{children@{children}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{children}{children}}
+{\footnotesize\ttfamily \label{struct_input_container_a8e6bc301b597e66b59e8e1584d231fb8} 
+struct \mbox{\hyperlink{struct_input_container}{Input\+Container}}\texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} Input\+Container\+::children}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a6e37fd80d5f5cda6dc93223403112c2c}{add\+Child\+To\+Container()}}, \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, \mbox{\hyperlink{containertest_8c_ac59fa3a646953c9e786b416dc4f76158}{draw\+Container()}}, \mbox{\hyperlink{containertest_8c_ace44701e8c7981137bf698f972751662}{free\+Container()}}, \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}, and \mbox{\hyperlink{containertest_8c_a16bd65f350692959f3a2c6ea5985504f}{remove\+Child\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}\index{InputContainer@{InputContainer}!columnCount@{columnCount}}
+\index{columnCount@{columnCount}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{columnCount}{columnCount}}
+{\footnotesize\ttfamily \label{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0} 
+int Input\+Container\+::column\+Count\mbox{[}\mbox{\hyperlink{gui_8h_a39bedb6a99963992eae24fc2cb769697}{MAX\+\_\+\+BUTTON\+\_\+\+CONTAINER\+\_\+\+COLS}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{add\+Button\+To\+Container()}}, \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate()}}, \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{create\+Input\+Container()}}, and \mbox{\hyperlink{gui_8c_a6538023304921acb5100c681bfe6c9b2}{remove\+Button\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_adf479506ea31da44ed414453bbc574d3}\index{InputContainer@{InputContainer}!index@{index}}
+\index{index@{index}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{index}{index}}
+{\footnotesize\ttfamily \label{struct_input_container_adf479506ea31da44ed414453bbc574d3} 
+struct \mbox{\hyperlink{struct_container_search_index}{Container\+Search\+Index}}\texorpdfstring{$\ast$}{*} Input\+Container\+::index}
+
+\Hypertarget{struct_input_container_ae6d3b3cc7cccb61d235fd60f15a8fcf3}\index{InputContainer@{InputContainer}!inputGui@{inputGui}}
+\index{inputGui@{inputGui}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{inputGui}{inputGui}}
+{\footnotesize\ttfamily \label{struct_input_container_ae6d3b3cc7cccb61d235fd60f15a8fcf3} 
+\mbox{\hyperlink{struct_input_gui}{Input\+Gui}}\texorpdfstring{$\ast$}{*} Input\+Container\+::input\+Gui\mbox{[}\mbox{\hyperlink{containertest_8c_a79d644c2a8240f4825b61bf7c11164ae}{MAX\+\_\+\+IC\+\_\+\+SIZE}}\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_af5aa92062b37078306f7cc321b7439d5}{add\+Input\+Gui\+To\+Container()}}, \mbox{\hyperlink{containertest_8c_ac59fa3a646953c9e786b416dc4f76158}{draw\+Container()}}, \mbox{\hyperlink{containertest_8c_a22077952060279945c7d850179f402ff}{get\+First\+Input\+Gui()}}, \mbox{\hyperlink{containertest_8c_adf6ae4d6bcc9e4560925af10b8038de1}{get\+Last\+Input\+Gui()}}, \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}, and \mbox{\hyperlink{containertest_8c_a905438b9850adfbd486e71e653b33725}{remove\+Gui\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_ac1873b46809072e505327d19873d7206}\index{InputContainer@{InputContainer}!inputGuiCount@{inputGuiCount}}
+\index{inputGuiCount@{inputGuiCount}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{inputGuiCount}{inputGuiCount}}
+{\footnotesize\ttfamily \label{struct_input_container_ac1873b46809072e505327d19873d7206} 
+int Input\+Container\+::input\+Gui\+Count}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_af5aa92062b37078306f7cc321b7439d5}{add\+Input\+Gui\+To\+Container()}}, \mbox{\hyperlink{containertest_8c_ac59fa3a646953c9e786b416dc4f76158}{draw\+Container()}}, \mbox{\hyperlink{containertest_8c_a22077952060279945c7d850179f402ff}{get\+First\+Input\+Gui()}}, \mbox{\hyperlink{containertest_8c_adf6ae4d6bcc9e4560925af10b8038de1}{get\+Last\+Input\+Gui()}}, \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}, and \mbox{\hyperlink{containertest_8c_a905438b9850adfbd486e71e653b33725}{remove\+Gui\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_af549a5b12c0831fbad1afe2fc4e929c8}\index{InputContainer@{InputContainer}!parent@{parent}}
+\index{parent@{parent}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{parent}{parent}}
+{\footnotesize\ttfamily \label{struct_input_container_af549a5b12c0831fbad1afe2fc4e929c8} 
+struct \mbox{\hyperlink{struct_input_container}{Input\+Container}}\texorpdfstring{$\ast$}{*} Input\+Container\+::parent}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a6e37fd80d5f5cda6dc93223403112c2c}{add\+Child\+To\+Container()}}, \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, and \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}.
+
+\Hypertarget{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}\index{InputContainer@{InputContainer}!rowCount@{rowCount}}
+\index{rowCount@{rowCount}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{rowCount}{rowCount}}
+{\footnotesize\ttfamily \label{struct_input_container_a92edf04f320b6292bc3b00f789e605cf} 
+int Input\+Container\+::row\+Count}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{add\+Button\+To\+Container()}}, \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate()}}, \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{create\+Input\+Container()}}, and \mbox{\hyperlink{gui_8c_a6538023304921acb5100c681bfe6c9b2}{remove\+Button\+From\+Container()}}.
+
+\Hypertarget{struct_input_container_afea01c018d33a62e478df5e02fe88cd3}\index{InputContainer@{InputContainer}!selectedChildIndex@{selectedChildIndex}}
+\index{selectedChildIndex@{selectedChildIndex}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{selectedChildIndex}{selectedChildIndex}}
+{\footnotesize\ttfamily \label{struct_input_container_afea01c018d33a62e478df5e02fe88cd3} 
+int Input\+Container\+::selected\+Child\+Index}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, and \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}.
+
+\Hypertarget{struct_input_container_aade95ee059ffde9b916d40cbd5aa7ab6}\index{InputContainer@{InputContainer}!selectedColumn@{selectedColumn}}
+\index{selectedColumn@{selectedColumn}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{selectedColumn}{selectedColumn}}
+{\footnotesize\ttfamily \label{struct_input_container_aade95ee059ffde9b916d40cbd5aa7ab6} 
+int Input\+Container\+::selected\+Column}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate()}}, \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{create\+Input\+Container()}}, and \mbox{\hyperlink{gui_8c_a01e50e64cc29483a5a190ac56616efa6}{get\+Selected\+Input()}}.
+
+\Hypertarget{struct_input_container_aed65ff7519fca7df89d8f9aa2edb7fe5}\index{InputContainer@{InputContainer}!selectedInputGui@{selectedInputGui}}
+\index{selectedInputGui@{selectedInputGui}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{selectedInputGui}{selectedInputGui}}
+{\footnotesize\ttfamily \label{struct_input_container_aed65ff7519fca7df89d8f9aa2edb7fe5} 
+\mbox{\hyperlink{struct_input_gui}{Input\+Gui}}\texorpdfstring{$\ast$}{*} Input\+Container\+::selected\+Input\+Gui}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, \mbox{\hyperlink{containertest_8c_a553404a07349b990522650bea4886856}{select\+Input\+Gui()}}, and \mbox{\hyperlink{containertest_8c_ae671e29f35ba17001aef0c20a20d2faf}{set\+Selected\+Input\+Gui()}}.
+
+\Hypertarget{struct_input_container_a6d69bf39d9fbbeaf4b50183ea562ccd2}\index{InputContainer@{InputContainer}!selectedInputIndex@{selectedInputIndex}}
+\index{selectedInputIndex@{selectedInputIndex}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{selectedInputIndex}{selectedInputIndex}}
+{\footnotesize\ttfamily \label{struct_input_container_a6d69bf39d9fbbeaf4b50183ea562ccd2} 
+int Input\+Container\+::selected\+Input\+Index}
+
+
+
+Referenced by \mbox{\hyperlink{containertest_8c_a66a42831c8fdfecbddb121fd9462525f}{create\+Input\+Container()}}, \mbox{\hyperlink{containertest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, and \mbox{\hyperlink{containertest_8c_ac24bcd7df457b19027fe12631ccf9cc4}{navigate\+Container()}}.
+
+\Hypertarget{struct_input_container_a2b191db4f1154e20dc7a410fcd0d8664}\index{InputContainer@{InputContainer}!selectedRow@{selectedRow}}
+\index{selectedRow@{selectedRow}!InputContainer@{InputContainer}}
+\doxysubsubsection{\texorpdfstring{selectedRow}{selectedRow}}
+{\footnotesize\ttfamily \label{struct_input_container_a2b191db4f1154e20dc7a410fcd0d8664} 
+int Input\+Container\+::selected\+Row}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate()}}, \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{create\+Input\+Container()}}, and \mbox{\hyperlink{gui_8c_a01e50e64cc29483a5a190ac56616efa6}{get\+Selected\+Input()}}.
+
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{containertest_8c}{containertest.\+c}}\item 
+\mbox{\hyperlink{gui_8h}{gui.\+h}}\end{DoxyCompactItemize}

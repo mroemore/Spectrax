@@ -1,0 +1,36 @@
+\doxysection{blit\+\_\+synth.\+h}
+\hypertarget{blit__synth_8h_source}{}\label{blit__synth_8h_source}\mbox{\hyperlink{blit__synth_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ BLIT\_SYNTH\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ BLIT\_SYNTH\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <math.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <stdint.h>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <stdbool.h>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdlib.h>}\ \textcolor{comment}{//\ Include\ for\ malloc}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <string.h>}\ \textcolor{comment}{//\ Include\ for\ memset}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#define\ NO\_BLIT\ false}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ TWOPI\ 2.0f\ *\ M\_PI}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_a57fe156b967a469b34c2de5caa5aab79}{dac\_center}};}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_af17781682980360a6a211ee7de93acf3}{dac\_max}};}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_a6bd7e293f3b74c51e29af2ef5610ba48}{osc\_val}};}
+\DoxyCodeLine{00017\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_a686f52bb85dd8df84f1796e512b5b22e}{osc\_val\_diff}};}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_ac346a093e56bd20169e04c5605badef2}{freq}};}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_a09e0d8cea68778ac0e4feb4b7477f136}{blit\_buffer}}[16];}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_blit_params_af1cd3736f5828bdddb1cf4de4c94b759}{impulse\_buffer}}[16];}
+\DoxyCodeLine{00021\ \}\ \mbox{\hyperlink{struct_blit_params}{BlitParams}};}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \mbox{\hyperlink{struct_blit_params}{BlitParams}}*\ \mbox{\hyperlink{blit__synth_8h_a5e38619ad8fb21ee1e1c35f9538feeaa}{init\_blit}}();}
+\DoxyCodeLine{00024\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_ad1b9d4686a3d8eab4f3e4173ea39f733}{blit\_synth}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment,\ \mbox{\hyperlink{struct_blit_params}{BlitParams}}*\ bp);}
+\DoxyCodeLine{00025\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_ae5e64470f657ae9719c340970b137b60}{poly\_blep}}(\textcolor{keywordtype}{float}\ phaseIncrement,\ \textcolor{keywordtype}{float}\ t);}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_ad491b6b22e762bd827c92bd241e3a821}{blep\_square}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00027\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_aa31158bcd30346bc7e0dabf71a98cdcb}{blep\_saw}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00028\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_a876eddce24a62a7fd8894ec72e536009}{blep\_tri}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00029\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{blit__synth_8h_a42c84e9ea0c6c531ecc3fbae97849c3b}{noblep\_sine}}(\textcolor{keywordtype}{float}\ phase);}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{preprocessor}{\#endif\ }}
+
+\end{DoxyCode}

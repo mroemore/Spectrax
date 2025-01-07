@@ -1,0 +1,1407 @@
+\doxysection{gui.\+c File Reference}
+\hypertarget{gui_8c}{}\label{gui_8c}\index{gui.c@{gui.c}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include "{}raylib.\+h"{}}\newline
+{\ttfamily \#include "{}gui.\+h"{}}\newline
+{\ttfamily \#include "{}input.\+h"{}}\newline
+{\ttfamily \#include "{}sequencer.\+h"{}}\newline
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+{\ttfamily \#include "{}notes.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{gui_8c_afeb2896482ae3affdf26cf42000668df}{init\+Custom\+Font}} (Font \texorpdfstring{$\ast$}{*}f, char \texorpdfstring{$\ast$}{*}path, int char\+Count, int width, int height)
+\item 
+void \mbox{\hyperlink{gui_8c_a08ab297bb5e06114bc9cd94e9a6b8168}{init\+Default\+Colour\+Scheme}} (\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}colour\+Scheme)
+\item 
+void \mbox{\hyperlink{gui_8c_a6f1243508e3497f5e61399268001994c}{set\+Colour\+Scheme}} (\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}colour\+Scheme)
+\item 
+Color \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_abf6d07dc1a195dbf25efa1839515533d}{get\+Color\+Scheme\+As\+Pointer\+Array}} ()
+\item 
+\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_af3999c6a0257b01027635b611b7e85cf}{get\+Colour\+Scheme}} ()
+\item 
+void \mbox{\hyperlink{gui_8c_a3aa032507669d9de42ad6390a8197c75}{clear\+Bg}} ()
+\item 
+void \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI}} (void)
+\item 
+\mbox{\hyperlink{struct_transport_gui}{Transport\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a119e3ff72985270b391f42ee068b11b4}{create\+Transport\+Gui}} (int \texorpdfstring{$\ast$}{*}playing, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int x, int y)
+\item 
+\mbox{\hyperlink{struct_sequencer_gui}{Sequencer\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a00aba07315bd70ed960d1649912ec50f}{create\+Sequencer\+Gui}} (\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}sequencer, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pl, int \texorpdfstring{$\ast$}{*}selected\+Pattern, int \texorpdfstring{$\ast$}{*}selected\+Note, int x, int y)
+\item 
+\mbox{\hyperlink{struct_graph_gui}{Graph\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a13bfde1bc7897d76221f935badcb0aee}{create\+Graph\+Gui}} (float \texorpdfstring{$\ast$}{*}target, char \texorpdfstring{$\ast$}{*}name, float min, float max, int x, int y, int h, int size)
+\item 
+\mbox{\hyperlink{struct_arranger_gui}{Arranger\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a4499de280e8aaf3f681afc9f392885bd}{create\+Arranger\+Gui}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int x, int y)
+\item 
+\mbox{\hyperlink{struct_song_minimap_gui}{Song\+Minimap\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a91d77ebef83f7a63c7205277c59c706b}{create\+Song\+Minimap\+Gui}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int \texorpdfstring{$\ast$}{*}song\+Index, int x, int y)
+\item 
+\mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{create\+Input\+Container}} ()
+\item 
+\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_ab839851b536d8c38aea4c7bdfadb52ef}{create\+Container\+Group}} ()
+\item 
+void \mbox{\hyperlink{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}{container\+Group\+Navigate}} (\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}cg, int row\+Inc, int col\+Inc)
+\item 
+void \mbox{\hyperlink{gui_8c_ad4662b0979b2eb9658a1781adef22f65}{add\+Container\+To\+Group}} (\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}cg, \mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}ic, int row, int col)
+\item 
+void \mbox{\hyperlink{gui_8c_a6538023304921acb5100c681bfe6c9b2}{remove\+Button\+From\+Container}} (\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*}btn\+Gui, \mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}btn\+Cont, \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600}{Scene}} scene)
+\item 
+void \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{add\+Button\+To\+Container}} (\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*}btn\+Gui, \mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}btn\+Cont, int row, int col)
+\item 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}{create\+Button\+Gui}} (int x, int y, int w, int h, char \texorpdfstring{$\ast$}{*}button\+Text, \mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param, void \texorpdfstring{$\ast$}{*}callback)
+\item 
+void \mbox{\hyperlink{gui_8c_ae06c1a0d7330a7a8315471867178d8bb}{draw\+Button\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{gui_8c_a5a2b9b5ae6fa91aba47e72ae6014175b}{apply\+Button\+Callback}} (void \texorpdfstring{$\ast$}{*}self, float value)
+\item 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a01e50e64cc29483a5a190ac56616efa6}{get\+Selected\+Input}} (\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}cg)
+\item 
+\mbox{\hyperlink{struct_envelope_gui}{Envelope\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a7202c79cce982475384f959a66788c05}{create\+Envelope\+Gui}} (\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env, int x, int y, int w, int h)
+\item 
+void \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{gui_8c_a1321ec14b7f7c6aee7044efa24530cb6}{draw\+Transport\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{gui_8c_a96fd7faef73a35061c5a4546ef45d271}{update\+Graph\+Gui}} (\mbox{\hyperlink{struct_graph_gui}{Graph\+Gui}} \texorpdfstring{$\ast$}{*}graph\+Gui)
+\item 
+void \mbox{\hyperlink{gui_8c_abdefbb55eb26879501c35858e836d6fe}{draw\+Graph\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}mod, int scene, int x, int y)
+\item 
+void \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{gui_8c_a761b65b28a906ccb965be14b97e16c44}{draw\+Song\+Minimap\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+\mbox{\hyperlink{struct_inputs_gui}{Inputs\+Gui}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_ae23001631fce9b55a2c6f18c2601ebea}{create\+Inputs\+Gui}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}input\+State, int x, int y)
+\item 
+void \mbox{\hyperlink{gui_8c_a0aa123f466b0448c599c56233314e30e}{draw\+Inputs\+Gui}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}{create\+\_\+drawable\+\_\+list}} ()
+\item 
+void \mbox{\hyperlink{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}{free\+\_\+drawable\+\_\+list}} (\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*}list)
+\item 
+void \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{remove\+Drawable}} (\mbox{\hyperlink{struct_drawable}{Drawable}} \texorpdfstring{$\ast$}{*}drawable, int scene)
+\item 
+void \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\+\_\+drawable}} (\mbox{\hyperlink{struct_drawable}{Drawable}} \texorpdfstring{$\ast$}{*}drawable, int scene)
+\item 
+void \mbox{\hyperlink{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}{Draw\+GUI}} (int current\+Scene)
+\item 
+void \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI}} (void)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{pattern\+Screen\+Drawable\+List}}
+\item 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{global\+Drawable\+List}}
+\item 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arranger\+Screen\+Drawable\+List}}
+\item 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrument\+Screen\+Drawable\+List}}
+\item 
+Font \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{text\+Font}}
+\item 
+Font \mbox{\hyperlink{gui_8c_a97a78143672d8fae461e1d937a210ccc}{symbol\+Font}}
+\item 
+\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{gui_8c_a3524a54f1546777ce3a8148c65b426d3}\index{gui.c@{gui.c}!add\_drawable@{add\_drawable}}
+\index{add\_drawable@{add\_drawable}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{add\_drawable()}{add\_drawable()}}
+{\footnotesize\ttfamily \label{gui_8c_a3524a54f1546777ce3a8148c65b426d3} 
+void add\+\_\+drawable (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_drawable}{Drawable}} \texorpdfstring{$\ast$}{*}}]{drawable}{, }\item[{int}]{scene}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00682\ \{}
+\DoxyCodeLine{00683\ \ \ \ \ \mbox{\hyperlink{struct_drawable_list}{DrawableList}}\ *list;}
+\DoxyCodeLine{00684\ \ \ \ \ \textcolor{keywordflow}{switch}(scene)\{}
+\DoxyCodeLine{00685\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600afde1bb5ef04b28059e61df449501f1c0}{GLOBAL}}:}
+\DoxyCodeLine{00686\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}};}
+\DoxyCodeLine{00687\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00688\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a7809c6e3b073a0a5f71b9cce1173d3da}{SCENE\_ARRANGER}}:}
+\DoxyCodeLine{00689\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}};}
+\DoxyCodeLine{00690\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00691\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600aad3dc43cc2060376fe49f57d7991ebb7}{SCENE\_PATTERN}}:}
+\DoxyCodeLine{00692\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}};}
+\DoxyCodeLine{00693\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00694\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a92ed70c564c764454a1a8d0b7a03cdf6}{SCENE\_INSTRUMENT}}:}
+\DoxyCodeLine{00695\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}};}
+\DoxyCodeLine{00696\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00697\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00698\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00699\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00700\ \ \ \ \ \}}
+\DoxyCodeLine{00701\ }
+\DoxyCodeLine{00702\ \ \ \ \ \textcolor{keywordflow}{if}\ (list-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}}\ ==\ list-\/>\mbox{\hyperlink{struct_drawable_list_aea9ba17ddc2bb428e4656977cbb21525}{capacity}})}
+\DoxyCodeLine{00703\ \ \ \ \ \{}
+\DoxyCodeLine{00704\ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_drawable_list_aea9ba17ddc2bb428e4656977cbb21525}{capacity}}\ +=\ 16;}
+\DoxyCodeLine{00705\ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}\ =\ (\mbox{\hyperlink{struct_drawable}{Drawable}}\ **)realloc(list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}},\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_drawable}{Drawable}}\ *)\ *\ list-\/>\mbox{\hyperlink{struct_drawable_list_aea9ba17ddc2bb428e4656977cbb21525}{capacity}});}
+\DoxyCodeLine{00706\ \ \ \ \ \}}
+\DoxyCodeLine{00707\ }
+\DoxyCodeLine{00708\ \ \ \ \ list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}[list-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}}++]\ =\ drawable;}
+\DoxyCodeLine{00709\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, \mbox{\hyperlink{gui_8c_a119e3ff72985270b391f42ee068b11b4}{create\+Transport\+Gui()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_ab5be728943c270dc0c90d077c247afd6}\index{gui.c@{gui.c}!addButtonToContainer@{addButtonToContainer}}
+\index{addButtonToContainer@{addButtonToContainer}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{addButtonToContainer()}{addButtonToContainer()}}
+{\footnotesize\ttfamily \label{gui_8c_ab5be728943c270dc0c90d077c247afd6} 
+void add\+Button\+To\+Container (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*}}]{btn\+Gui}{, }\item[{\mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}}]{btn\+Cont}{, }\item[{int}]{row}{, }\item[{int}]{col}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00326\ \ \ \ \ \textcolor{keywordflow}{if}(row\ <\ 0\ ||\ col\ <\ 0\ ||\ row\ >\ \mbox{\hyperlink{gui_8h_a0efda2ea586e2297272aebdcf39b2487}{MAX\_BUTTON\_CONTAINER\_ROWS}}\ -\/\ 1\ ||\ col\ >\ \mbox{\hyperlink{gui_8h_a39bedb6a99963992eae24fc2cb769697}{MAX\_BUTTON\_CONTAINER\_COLS}}\ -\/\ 1)\ \{}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}attempting\ out-\/of-\/bounds\ btn\ container\ insertion.\(\backslash\)n"{}});}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00329\ \ \ \ \ \}}
+\DoxyCodeLine{00330\ \ \ \ \ \textcolor{keywordtype}{int}\ insertRow\ =\ 0,\ insertCol\ =\ 0;}
+\DoxyCodeLine{00331\ \ \ \ \ printf(\textcolor{stringliteral}{"{}CONTAINER:count\ before\ add:\%i,\%i\ adding\ "{}},\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}},\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[row]);}
+\DoxyCodeLine{00332\ \ \ \ \ }
+\DoxyCodeLine{00333\ \ \ \ \ \textcolor{keywordflow}{if}(row\ >=\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}})\{}
+\DoxyCodeLine{00334\ \ \ \ \ \ \ \ \ insertRow\ =\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}};}
+\DoxyCodeLine{00335\ \ \ \ \ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}}++;}
+\DoxyCodeLine{00336\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ [ir,\ "{}});}
+\DoxyCodeLine{00337\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00338\ \ \ \ \ \ \ \ \ insertRow\ =\ row;}
+\DoxyCodeLine{00339\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ [nir,\ "{}});}
+\DoxyCodeLine{00340\ \ \ \ \ \}}
+\DoxyCodeLine{00341\ }
+\DoxyCodeLine{00342\ \ \ \ \ \textcolor{keywordflow}{if}(col\ >=\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[insertRow])\{}
+\DoxyCodeLine{00343\ \ \ \ \ \ \ \ \ insertCol\ =\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[insertRow];}
+\DoxyCodeLine{00344\ \ \ \ \ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[insertRow]++;}
+\DoxyCodeLine{00345\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}ic]\ "{}});}
+\DoxyCodeLine{00346\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00347\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00348\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}nic]\ "{}});}
+\DoxyCodeLine{00349\ }
+\DoxyCodeLine{00350\ \ \ \ \ \ \ \ \ insertCol\ =\ col;}
+\DoxyCodeLine{00351\ \ \ \ \ \}}
+\DoxyCodeLine{00352\ \ \ \ \ printf(btnGui-\/>\mbox{\hyperlink{struct_button_gui_afda690bf4904c09dbfe3345e802dd560}{buttonText}});}
+\DoxyCodeLine{00353\ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ at\ \%i,\ \%i\(\backslash\)n"{}},\ insertRow,\ insertCol);}
+\DoxyCodeLine{00354\ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}{buttonRefs}}[insertRow][insertCol]\ =\ btnGui;}
+\DoxyCodeLine{00355\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_ad4662b0979b2eb9658a1781adef22f65}\index{gui.c@{gui.c}!addContainerToGroup@{addContainerToGroup}}
+\index{addContainerToGroup@{addContainerToGroup}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{addContainerToGroup()}{addContainerToGroup()}}
+{\footnotesize\ttfamily \label{gui_8c_ad4662b0979b2eb9658a1781adef22f65} 
+void add\+Container\+To\+Group (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}}]{cg}{, }\item[{\mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}}]{ic}{, }\item[{int}]{row}{, }\item[{int}]{col}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00276\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00277\ \ \ \ \ \textcolor{keywordflow}{if}(row\ <\ 0\ ||\ col\ <\ 0\ ||\ row\ >\ \mbox{\hyperlink{gui_8h_a0efda2ea586e2297272aebdcf39b2487}{MAX\_BUTTON\_CONTAINER\_ROWS}}\ -\/\ 1\ ||\ col\ >\ \mbox{\hyperlink{gui_8h_a39bedb6a99963992eae24fc2cb769697}{MAX\_BUTTON\_CONTAINER\_COLS}}\ -\/\ 1)\ \{}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}attempting\ out-\/of-\/bounds\ group\ insertion.\(\backslash\)n"{}});}
+\DoxyCodeLine{00279\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00280\ \ \ \ \ \}}
+\DoxyCodeLine{00281\ \ \ \ \ printf(\textcolor{stringliteral}{"{}GROUP:count\ before\ add:\%i,\%i\ adding\ "{}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[row]);}
+\DoxyCodeLine{00282\ }
+\DoxyCodeLine{00283\ \ \ \ \ \textcolor{keywordtype}{int}\ insertRow\ =\ 0,\ insertCol\ =\ 0;}
+\DoxyCodeLine{00284\ \ \ \ \ \textcolor{keywordflow}{if}(row\ >=\ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}})\{}
+\DoxyCodeLine{00285\ \ \ \ \ \ \ \ \ insertRow\ =\ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}};}
+\DoxyCodeLine{00286\ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}}++;}
+\DoxyCodeLine{00287\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ [ir,\ "{}});}
+\DoxyCodeLine{00288\ }
+\DoxyCodeLine{00289\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00290\ \ \ \ \ \ \ \ \ insertRow\ =\ row;}
+\DoxyCodeLine{00291\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ [nir,\ "{}});}
+\DoxyCodeLine{00292\ }
+\DoxyCodeLine{00293\ \ \ \ \ \}}
+\DoxyCodeLine{00294\ \ \ \ \ \textcolor{keywordflow}{if}(col\ >=\ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[insertRow])\{}
+\DoxyCodeLine{00295\ \ \ \ \ \ \ \ \ insertCol\ =\ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[insertRow];}
+\DoxyCodeLine{00296\ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[insertRow]++;}
+\DoxyCodeLine{00297\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}ic]\ "{}});}
+\DoxyCodeLine{00298\ }
+\DoxyCodeLine{00299\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00300\ \ \ \ \ \ \ \ \ insertCol\ =\ col;}
+\DoxyCodeLine{00301\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}nic]\ "{}});}
+\DoxyCodeLine{00302\ \ \ \ \ \}}
+\DoxyCodeLine{00303\ \ \ \ \ printf(\textcolor{stringliteral}{"{}\ at\ \%i,\ \%i\(\backslash\)n"{}},\ insertRow,\ insertCol);}
+\DoxyCodeLine{00304\ }
+\DoxyCodeLine{00305\ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[insertRow][insertCol]\ =\ ic;}
+\DoxyCodeLine{00306\ \ \ \ \ }
+\DoxyCodeLine{00307\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a5a2b9b5ae6fa91aba47e72ae6014175b}\index{gui.c@{gui.c}!applyButtonCallback@{applyButtonCallback}}
+\index{applyButtonCallback@{applyButtonCallback}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{applyButtonCallback()}{applyButtonCallback()}}
+{\footnotesize\ttfamily \label{gui_8c_a5a2b9b5ae6fa91aba47e72ae6014175b} 
+void apply\+Button\+Callback (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{, }\item[{float}]{value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00388\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00389\ \ \ \ \ \mbox{\hyperlink{struct_button_gui}{ButtonGui}}*\ btnGui\ =\ (\mbox{\hyperlink{struct_button_gui}{ButtonGui}}*)self;}
+\DoxyCodeLine{00390\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}}.\mbox{\hyperlink{struct_drawable_a8a4a190934c2e5c954a44d6b09bf6816}{onPress}}(btnGui-\/>\mbox{\hyperlink{struct_button_gui_a22554de1a99de5fda49773368d41c063}{parameter}},\ value);}
+\DoxyCodeLine{00391\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}{create\+Button\+Gui()}}.
+
+\Hypertarget{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}\index{gui.c@{gui.c}!CleanupGUI@{CleanupGUI}}
+\index{CleanupGUI@{CleanupGUI}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{CleanupGUI()}{CleanupGUI()}}
+{\footnotesize\ttfamily \label{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110} 
+void Cleanup\+GUI (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00742\ \{}
+\DoxyCodeLine{00743\ \ \ \ \ printf(\textcolor{stringliteral}{"{}freeing\ drawables\ 1..."{}});}
+\DoxyCodeLine{00744\ \ \ \ \ \mbox{\hyperlink{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}{free\_drawable\_list}}(\mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}});}
+\DoxyCodeLine{00745\ \ \ \ \ printf(\textcolor{stringliteral}{"{}freeing\ drawables\ 2..."{}});}
+\DoxyCodeLine{00746\ \ \ \ \ \mbox{\hyperlink{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}{free\_drawable\_list}}(\mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}});}
+\DoxyCodeLine{00747\ \ \ \ \ printf(\textcolor{stringliteral}{"{}freeing\ drawables\ 3..."{}});}
+\DoxyCodeLine{00748\ \ \ \ \ \mbox{\hyperlink{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}{free\_drawable\_list}}(\mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}});}
+\DoxyCodeLine{00749\ \ \ \ \ printf(\textcolor{stringliteral}{"{}freeing\ drawables\ 4..."{}});}
+\DoxyCodeLine{00750\ \ \ \ \ \mbox{\hyperlink{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}{free\_drawable\_list}}(\mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}});}
+\DoxyCodeLine{00751\ \ \ \ \ printf(\textcolor{stringliteral}{"{}freeing\ drawables\ 5..."{}});}
+\DoxyCodeLine{00752\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a3aa032507669d9de42ad6390a8197c75}\index{gui.c@{gui.c}!clearBg@{clearBg}}
+\index{clearBg@{clearBg}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{clearBg()}{clearBg()}}
+{\footnotesize\ttfamily \label{gui_8c_a3aa032507669d9de42ad6390a8197c75} 
+void clear\+Bg (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00065\ \ \ \ \ ClearBackground(\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.backgroundColor);}
+\DoxyCodeLine{00066\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e}\index{gui.c@{gui.c}!containerGroupNavigate@{containerGroupNavigate}}
+\index{containerGroupNavigate@{containerGroupNavigate}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{containerGroupNavigate()}{containerGroupNavigate()}}
+{\footnotesize\ttfamily \label{gui_8c_aaada202a8c7d3f00fc08d7a662136c7e} 
+void container\+Group\+Navigate (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}}]{cg}{, }\item[{int}]{row\+Inc}{, }\item[{int}]{col\+Inc}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00195\ \ \ \ \ printf(\textcolor{stringliteral}{"{}NAV\ GRP:\ \%i,\ \%i\ inc:\ \%i,\ \%i\(\backslash\)n"{}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}},\ rowInc,\ colInc);}
+\DoxyCodeLine{00196\ \ \ \ \ \mbox{\hyperlink{struct_input_container}{InputContainer}}*\ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00197\ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00198\ \ \ \ \ printf(\textcolor{stringliteral}{"{}NAV\ CONT:\ \%i,\ \%i\(\backslash\)n"{}},\ ic-\/>selectedRow,\ ic-\/>selectedColumn);}
+\DoxyCodeLine{00199\ \ \ \ \ \textcolor{keywordtype}{int}\ newRow\ =\ ic-\/>selectedRow\ +\ rowInc;}
+\DoxyCodeLine{00200\ \ \ \ \ \textcolor{keywordtype}{int}\ newCol\ =\ ic-\/>selectedColumn\ +\ colInc;}
+\DoxyCodeLine{00201\ \ \ \ \ \textcolor{keywordflow}{if}(newRow\ >=\ ic-\/>rowCount)\{}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newcol\ >\ inputcontainer\ rowcount\(\backslash\)n"{}});}
+\DoxyCodeLine{00203\ }
+\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}\ <\ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}}\ -\/\ 1)\{}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}containergroup\ selectedrow\ \%i\ <\ rowcount\ \%i\(\backslash\)n"{}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}});}
+\DoxyCodeLine{00206\ }
+\DoxyCodeLine{00207\ \ \ \ \ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}++;}
+\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \ \ \ \ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>selectedRow\ =\ 0;}
+\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(ic-\/>selectedColumn\ >=\ \ ic-\/>columnCount[ic-\/>selectedRow])\{}
+\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>selectedColumn\ =\ ic-\/>columnCount[ic-\/>selectedRow]\ -\/\ 1;}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ }
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\(\backslash\)tcontrowinc\%i,\%i,\ ic\ selected:\ \%i,\ \%i\(\backslash\)n"{}},cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}},\ ic-\/>selectedRow,\ ic-\/>selectedColumn);}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00216\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00217\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(newRow\ <\ 0)\{}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newrow\ <\ 0\(\backslash\)n"{}});}
+\DoxyCodeLine{00219\ }
+\DoxyCodeLine{00220\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}\ >\ 0)\{}
+\DoxyCodeLine{00221\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}selectedrow\ >\ 0\(\backslash\)n"{}});}
+\DoxyCodeLine{00222\ }
+\DoxyCodeLine{00223\ \ \ \ \ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}-\/-\/;}
+\DoxyCodeLine{00224\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00225\ \ \ \ \ \ \ \ \ \ \ \ \ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>selectedRow\ =\ ic-\/>rowCount-\/1;}
+\DoxyCodeLine{00227\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\(\backslash\)tcontrowdec\%i,\%i,\ ic\ selected:\ \%i,\ \%i\(\backslash\)n"{}},cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}},\ ic-\/>selectedRow,\ ic-\/>selectedColumn);}
+\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00230\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00231\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newrow\ in\ range:\ \%i\(\backslash\)n"{}},\ newRow);}
+\DoxyCodeLine{00232\ }
+\DoxyCodeLine{00233\ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ ic-\/>selectedRow\ =\ newRow;}
+\DoxyCodeLine{00235\ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00236\ \ \ \ \ \}}
+\DoxyCodeLine{00237\ \ \ \ \ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00238\ \ \ \ \ \textcolor{keywordflow}{if}(newCol\ >=\ ic-\/>columnCount[ic-\/>selectedRow])\{}
+\DoxyCodeLine{00239\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newcol\ >\ inputconainer\ colCount\(\backslash\)n"{}});}
+\DoxyCodeLine{00240\ }
+\DoxyCodeLine{00241\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}\ <\ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}]\ -\/\ 1)\{}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}sectedcolum\ <\ containergroup\ colCount\(\backslash\)n"{}});}
+\DoxyCodeLine{00243\ }
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}++;}
+\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>selectedColumn\ =\ 0;}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\(\backslash\)tcontcolinc\%i,\%i,\ ic\ selected:\ \%i,\ \%i\(\backslash\)n"{}},cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}},\ ic-\/>selectedRow,\ ic-\/>selectedColumn);}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00251\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(newCol\ <\ 0)\{}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newcol\ <\ 0"{}});}
+\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}\ >\ 0)\{}
+\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}containergroup\ selectedcolumn\ >\ 0\(\backslash\)n"{}});}
+\DoxyCodeLine{00255\ }
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}-\/-\/;}
+\DoxyCodeLine{00257\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>selectedColumn\ =\ ic-\/>columnCount[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}]-\/1;}
+\DoxyCodeLine{00260\ \ \ \ \ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\(\backslash\)tcontcoldec\%i,\%i,\ ic\ selected:\ \%i,\ \%i\(\backslash\)n"{}},cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}},\ ic-\/>selectedRow,\ ic-\/>selectedColumn);}
+\DoxyCodeLine{00261\ }
+\DoxyCodeLine{00262\ \ \ \ \ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00264\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00265\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}newcol\ in\ range\(\backslash\)n"{}});}
+\DoxyCodeLine{00266\ }
+\DoxyCodeLine{00267\ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 0;}
+\DoxyCodeLine{00268\ \ \ \ \ \ \ \ \ ic-\/>selectedColumn\ =\ newCol;}
+\DoxyCodeLine{00269\ \ \ \ \ \ \ \ \ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn]-\/>selected\ =\ 1;}
+\DoxyCodeLine{00270\ }
+\DoxyCodeLine{00271\ \ \ \ \ \}}
+\DoxyCodeLine{00272\ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)tnew\ group\ coords:\ \%i,\ \%i\(\backslash\)n"{}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}},\ cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}});}
+\DoxyCodeLine{00273\ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)tnew\ container\ coords:\ \%i,\ \%i\(\backslash\)n"{}},\ newCol,\ newRow);}
+\DoxyCodeLine{00274\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}\index{gui.c@{gui.c}!create\_drawable\_list@{create\_drawable\_list}}
+\index{create\_drawable\_list@{create\_drawable\_list}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{create\_drawable\_list()}{create\_drawable\_list()}}
+{\footnotesize\ttfamily \label{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355} 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*} create\+\_\+drawable\+\_\+list (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00626\ \{}
+\DoxyCodeLine{00627\ \ \ \ \ \mbox{\hyperlink{struct_drawable_list}{DrawableList}}\ *drawableList\ =\ (\mbox{\hyperlink{struct_drawable_list}{DrawableList}}\ *)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_drawable_list}{DrawableList}}));}
+\DoxyCodeLine{00628\ \ \ \ \ drawableList-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}}\ =\ 0;}
+\DoxyCodeLine{00629\ \ \ \ \ drawableList-\/>\mbox{\hyperlink{struct_drawable_list_aea9ba17ddc2bb428e4656977cbb21525}{capacity}}\ =\ 32;}
+\DoxyCodeLine{00630\ \ \ \ \ drawableList-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}\ =\ (\mbox{\hyperlink{struct_drawable}{Drawable}}\ **)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_drawable}{Drawable}})\ *\ drawableList-\/>\mbox{\hyperlink{struct_drawable_list_aea9ba17ddc2bb428e4656977cbb21525}{capacity}});}
+\DoxyCodeLine{00631\ }
+\DoxyCodeLine{00632\ \ \ \ \ \textcolor{keywordflow}{return}\ drawableList;}
+\DoxyCodeLine{00633\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}.
+
+\Hypertarget{gui_8c_a4499de280e8aaf3f681afc9f392885bd}\index{gui.c@{gui.c}!createArrangerGui@{createArrangerGui}}
+\index{createArrangerGui@{createArrangerGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createArrangerGui()}{createArrangerGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a4499de280e8aaf3f681afc9f392885bd} 
+\mbox{\hyperlink{struct_arranger_gui}{Arranger\+Gui}} \texorpdfstring{$\ast$}{*} create\+Arranger\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00141\ \ \ \ \ \mbox{\hyperlink{struct_arranger_gui}{ArrangerGui}}\ *arrangerGui\ =\ (\mbox{\hyperlink{struct_arranger_gui}{ArrangerGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_arranger_gui}{ArrangerGui}}));}
+\DoxyCodeLine{00142\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_a65049543ad969859f136de78fc79d1a7}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{drawArrangerGui}};}
+\DoxyCodeLine{00143\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_aff958675a4af6ff630a33bb6ef1f2ff7}{x}}\ =\ x;}
+\DoxyCodeLine{00144\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_ae2efb03d936c8cfd5c6bc41b00f58b68}{y}}\ =\ y;}
+\DoxyCodeLine{00145\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_ad69e8250354d9b4329902d9ce64d7d80}{w}}\ =\ 20;}
+\DoxyCodeLine{00146\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_ade91c5d412409cae2e0b22307cf01355}{h}}\ =\ 20;}
+\DoxyCodeLine{00147\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_a0b26631d60c446590834350a3e8d66f7}{cellColour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.defaultCell;}
+\DoxyCodeLine{00148\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_a378ccbd5138c38229011b0126f1914dd}{arranger}}\ =\ arranger;}
+\DoxyCodeLine{00149\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_a52406abef45d507c6c92b69c6341aec7}{patternList}}\ =\ patternList;}
+\DoxyCodeLine{00150\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_a350d9f4a718af81195145ff85384f5fb}{grid\_padding}}\ =\ 4;}
+\DoxyCodeLine{00151\ \ \ \ \ arrangerGui-\/>\mbox{\hyperlink{struct_arranger_gui_ac2738b92c6e0247be4bcd68895f7c4fd}{border\_size}}\ =\ 3;}
+\DoxyCodeLine{00152\ \ \ \ \ \textcolor{keywordflow}{return}\ arrangerGui;}
+\DoxyCodeLine{00153\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}\index{gui.c@{gui.c}!createButtonGui@{createButtonGui}}
+\index{createButtonGui@{createButtonGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createButtonGui()}{createButtonGui()}}
+{\footnotesize\ttfamily \label{gui_8c_abeb506d57a7d8e99600f950ddcb757ba} 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*} create\+Button\+Gui (\begin{DoxyParamCaption}\item[{int}]{x}{, }\item[{int}]{y}{, }\item[{int}]{w}{, }\item[{int}]{h}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{button\+Text}{, }\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{callback}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00357\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00358\ \ \ \ \ \mbox{\hyperlink{struct_button_gui}{ButtonGui}}*\ btnGui\ =\ (\mbox{\hyperlink{struct_button_gui}{ButtonGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_button_gui}{ButtonGui}}));}
+\DoxyCodeLine{00359\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_ae06c1a0d7330a7a8315471867178d8bb}{drawButtonGui}};}
+\DoxyCodeLine{00360\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}}.\mbox{\hyperlink{struct_drawable_a8a4a190934c2e5c954a44d6b09bf6816}{onPress}}\ =\ callback;}
+\DoxyCodeLine{00361\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_aadf5da36b586d9c5fa53d6c1038a5acf}{x}}\ =\ x;}
+\DoxyCodeLine{00362\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a83c1c0c5f52e205391659e4b0aff3519}{y}}\ =\ y;}
+\DoxyCodeLine{00363\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a40858efb91fbf5e275874f7b56d876b1}{w}}\ =\ w;}
+\DoxyCodeLine{00364\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a5682ed4db003cde879160342d66367cf}{h}}\ =\ h;}
+\DoxyCodeLine{00365\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_afda690bf4904c09dbfe3345e802dd560}{buttonText}}\ =\ buttonText;}
+\DoxyCodeLine{00366\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a3091e1625eb373bd3d88d6056ec836a3}{backgroundColour}}\ =\ RED;}
+\DoxyCodeLine{00367\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a01789c002a7013a919eab6350fadb808}{selectedColour}}\ =\ BROWN;}
+\DoxyCodeLine{00368\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_ac56c162f945b6443fadc2b4cb0ed9856}{textColour}}\ =\ BLACK;}
+\DoxyCodeLine{00369\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a22e2d2e9b51bb27aac44d86beecfc93f}{selected}}\ =\ 0;}
+\DoxyCodeLine{00370\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a22554de1a99de5fda49773368d41c063}{parameter}}\ =\ param;}
+\DoxyCodeLine{00371\ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a3818caff5ea6ddb30f29b940c1ff3a1c}{applyCallback}}\ =\ \mbox{\hyperlink{gui_8c_a5a2b9b5ae6fa91aba47e72ae6014175b}{applyButtonCallback}};}
+\DoxyCodeLine{00372\ \ \ \ \ \textcolor{keywordflow}{return}\ btnGui;}
+\DoxyCodeLine{00373\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_ab839851b536d8c38aea4c7bdfadb52ef}\index{gui.c@{gui.c}!createContainerGroup@{createContainerGroup}}
+\index{createContainerGroup@{createContainerGroup}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createContainerGroup()}{createContainerGroup()}}
+{\footnotesize\ttfamily \label{gui_8c_ab839851b536d8c38aea4c7bdfadb52ef} 
+\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*} create\+Container\+Group (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00184\ \ \ \ \ \mbox{\hyperlink{struct_container_group}{ContainerGroup}}*\ cg\ =\ (\mbox{\hyperlink{struct_container_group}{ContainerGroup}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_container_group}{ContainerGroup}}));}
+\DoxyCodeLine{00185\ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a5256a458bca7e9f0be07203109d922b4}{rowCount}}\ =\ 0;}
+\DoxyCodeLine{00186\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8h_a0efda2ea586e2297272aebdcf39b2487}{MAX\_BUTTON\_CONTAINER\_ROWS}};\ i++)\{}
+\DoxyCodeLine{00187\ \ \ \ \ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a2c7e4804bf69a230b21abc44ce02653c}{columnCount}}[i]\ =\ 0;}
+\DoxyCodeLine{00188\ \ \ \ \ \}}
+\DoxyCodeLine{00189\ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}\ =\ 0;}
+\DoxyCodeLine{00190\ \ \ \ \ cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}\ =\ 0;}
+\DoxyCodeLine{00191\ \ \ \ \ \textcolor{keywordflow}{return}\ cg;}
+\DoxyCodeLine{00192\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a7202c79cce982475384f959a66788c05}\index{gui.c@{gui.c}!createEnvelopeGui@{createEnvelopeGui}}
+\index{createEnvelopeGui@{createEnvelopeGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createEnvelopeGui()}{createEnvelopeGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a7202c79cce982475384f959a66788c05} 
+\mbox{\hyperlink{struct_envelope_gui}{Envelope\+Gui}} \texorpdfstring{$\ast$}{*} create\+Envelope\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{, }\item[{int}]{x}{, }\item[{int}]{y}{, }\item[{int}]{w}{, }\item[{int}]{h}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00398\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00399\ \ \ \ \ \mbox{\hyperlink{struct_envelope_gui}{EnvelopeGui}}\ *envGui\ =\ (\mbox{\hyperlink{struct_envelope_gui}{EnvelopeGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_envelope_gui}{EnvelopeGui}}));}
+\DoxyCodeLine{00400\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_aaff2857b5721fb9c7ddad99516faf27e}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{drawEnvelopeGui}};}
+\DoxyCodeLine{00401\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}\ =\ env;}
+\DoxyCodeLine{00402\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ =\ x;}
+\DoxyCodeLine{00403\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}}\ =\ y;}
+\DoxyCodeLine{00404\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_aaba4c694f891d2fa727b6cacc2152044}{w}}\ =\ w;}
+\DoxyCodeLine{00405\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}}\ =\ h;}
+\DoxyCodeLine{00406\ \ \ \ \ envGui-\/>\mbox{\hyperlink{struct_envelope_gui_a9451fb55ec12f9575e63e6a463811cb8}{graphData}}\ =\ malloc(\textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int})\ *\ w);}
+\DoxyCodeLine{00407\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a13bfde1bc7897d76221f935badcb0aee}\index{gui.c@{gui.c}!createGraphGui@{createGraphGui}}
+\index{createGraphGui@{createGraphGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createGraphGui()}{createGraphGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a13bfde1bc7897d76221f935badcb0aee} 
+\mbox{\hyperlink{struct_graph_gui}{Graph\+Gui}} \texorpdfstring{$\ast$}{*} create\+Graph\+Gui (\begin{DoxyParamCaption}\item[{float \texorpdfstring{$\ast$}{*}}]{target}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{, }\item[{float}]{min}{, }\item[{float}]{max}{, }\item[{int}]{x}{, }\item[{int}]{y}{, }\item[{int}]{h}{, }\item[{int}]{size}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00120\ \ \ \ \ \mbox{\hyperlink{struct_graph_gui}{GraphGui}}\ *graphGui\ =\ (\mbox{\hyperlink{struct_graph_gui}{GraphGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_graph_gui}{GraphGui}}));}
+\DoxyCodeLine{00121\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_ad7ab3c7f66e7f412f55c2672ba461ed9}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_abdefbb55eb26879501c35858e836d6fe}{drawGraphGui}};}
+\DoxyCodeLine{00122\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_aec2a94c345efc3a61f91b540b14f1894}{target}}\ =\ target;}
+\DoxyCodeLine{00123\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a8658e7f2ff04f89a87493aca6c120dce}{name}}\ =\ name;}
+\DoxyCodeLine{00124\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a1251a72a5399c523c7dae44c66a4fa92}{index}}\ =\ 0;}
+\DoxyCodeLine{00125\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a0843f62462150ee2aa1883421933b9fd}{x}}\ =\ x;}
+\DoxyCodeLine{00126\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a311eb7381186bcdcadbaf748dd627f03}{y}}\ =\ y;}
+\DoxyCodeLine{00127\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a04802c6d28aaaea7b2ad543bba076cbb}{w}}\ =\ size;}
+\DoxyCodeLine{00128\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a08a5d8ae8450212c6f6dafa30b3ea2a9}{h}}\ =\ 20;}
+\DoxyCodeLine{00129\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a5365e42bfdace251f8aa9137ab429918}{padding}}\ =\ 1;}
+\DoxyCodeLine{00130\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_aa1edcf465fb8fc42e5e52e779316c1d8}{margin}}\ =\ 2;}
+\DoxyCodeLine{00131\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a75f00db9caf73b48a3cf1aaf8e537c2e}{min}}\ =\ min;}
+\DoxyCodeLine{00132\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a525dd95211247c7058e43d15939ca821}{max}}\ =\ max;}
+\DoxyCodeLine{00133\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a6b3628ef7ec452756971c4638c36f31f}{history\_size}}\ =\ size;}
+\DoxyCodeLine{00134\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a6b3628ef7ec452756971c4638c36f31f}{history\_size}};\ i++)\{}
+\DoxyCodeLine{00135\ \ \ \ \ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_adbef16dc4956f9f1d8c2bef485937497}{history}}[i]\ =\ 0;}
+\DoxyCodeLine{00136\ \ \ \ \ \}}
+\DoxyCodeLine{00137\ \ \ \ \ \textcolor{keywordflow}{return}\ graphGui;\ \textcolor{comment}{//\ Return\ the\ created\ GraphGui\ object}}
+\DoxyCodeLine{00138\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a641c6d85e39364ef9c80707ba454e150}\index{gui.c@{gui.c}!createInputContainer@{createInputContainer}}
+\index{createInputContainer@{createInputContainer}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createInputContainer()}{createInputContainer()}}
+{\footnotesize\ttfamily \label{gui_8c_a641c6d85e39364ef9c80707ba454e150} 
+\mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*} create\+Input\+Container (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00173\ \ \ \ \ \mbox{\hyperlink{struct_input_container}{InputContainer}}*\ btnCont\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_input_container}{InputContainer}}));}
+\DoxyCodeLine{00174\ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}}\ =\ 0;}
+\DoxyCodeLine{00175\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8h_a7fd29d83b679306d4c79625c81ea6ff2}{MAX\_BUTTON\_ROWS}};\ i++)\{}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[i]\ =\ 0;}
+\DoxyCodeLine{00177\ \ \ \ \ \}}
+\DoxyCodeLine{00178\ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a2b191db4f1154e20dc7a410fcd0d8664}{selectedRow}}\ =\ 0;}
+\DoxyCodeLine{00179\ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_aade95ee059ffde9b916d40cbd5aa7ab6}{selectedColumn}}\ =\ 0;}
+\DoxyCodeLine{00180\ \ \ \ \ \textcolor{keywordflow}{return}\ btnCont;}
+\DoxyCodeLine{00181\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}, \mbox{\hyperlink{containertest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_ae23001631fce9b55a2c6f18c2601ebea}\index{gui.c@{gui.c}!createInputsGui@{createInputsGui}}
+\index{createInputsGui@{createInputsGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createInputsGui()}{createInputsGui()}}
+{\footnotesize\ttfamily \label{gui_8c_ae23001631fce9b55a2c6f18c2601ebea} 
+\mbox{\hyperlink{struct_inputs_gui}{Inputs\+Gui}} \texorpdfstring{$\ast$}{*} create\+Inputs\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{input\+State}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00599\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00600\ \ \ \ \ \mbox{\hyperlink{struct_inputs_gui}{InputsGui}}*\ iGui\ =\ (\mbox{\hyperlink{struct_inputs_gui}{InputsGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_inputs_gui}{InputsGui}}));}
+\DoxyCodeLine{00601\ \ \ \ \ iGui-\/>\mbox{\hyperlink{struct_inputs_gui_ade8c600bb17ca7fabae3ec12e53997e3}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_a0aa123f466b0448c599c56233314e30e}{drawInputsGui}};}
+\DoxyCodeLine{00602\ \ \ \ \ iGui-\/>\mbox{\hyperlink{struct_inputs_gui_a93a19a6ca33f05d0c3617be5e66e3ba9}{x}}\ =\ x;}
+\DoxyCodeLine{00603\ \ \ \ \ iGui-\/>\mbox{\hyperlink{struct_inputs_gui_a78413e156cc5d7c10081edbe72612758}{y}}\ =\ y;}
+\DoxyCodeLine{00604\ \ \ \ \ iGui-\/>\mbox{\hyperlink{struct_inputs_gui_a37f2d6e5270ee7285ef354795d814131}{inputState}}\ =\ inputState;}
+\DoxyCodeLine{00605\ \ \ \ \ \textcolor{keywordflow}{return}\ iGui;}
+\DoxyCodeLine{00606\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}\index{gui.c@{gui.c}!createModMappingGroup@{createModMappingGroup}}
+\index{createModMappingGroup@{createModMappingGroup}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createModMappingGroup()}{createModMappingGroup()}}
+{\footnotesize\ttfamily \label{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1} 
+\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*} create\+Mod\+Mapping\+Group (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{mod}{, }\item[{int}]{scene}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00514\ \ \ \ \ \mbox{\hyperlink{struct_container_group}{ContainerGroup}}*\ cg\ =\ \mbox{\hyperlink{gui_8c_ab839851b536d8c38aea4c7bdfadb52ef}{createContainerGroup}}();}
+\DoxyCodeLine{00515\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ paramList-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}};\ i++)\{}
+\DoxyCodeLine{00516\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ conn\ =\ paramList-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[i]-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}};}
+\DoxyCodeLine{00517\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ connectionCount\ =\ 0;}
+\DoxyCodeLine{00518\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{while}(conn\ !=\ NULL)\{}
+\DoxyCodeLine{00519\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(conn-\/>\mbox{\hyperlink{struct_mod_connection_ac7db3fc546dd261f71910b413d1ff788}{source}}\ ==\ mod)\{}
+\DoxyCodeLine{00520\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_input_container}{InputContainer}}*\ ic\ =\ \mbox{\hyperlink{gui_8c_a641c6d85e39364ef9c80707ba454e150}{createInputContainer}}();}
+\DoxyCodeLine{00521\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_button_gui}{ButtonGui}}*\ amountBtn\ =\ \mbox{\hyperlink{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}{createButtonGui}}(x,\ y,\ 45,\ 30,\ conn-\/>\mbox{\hyperlink{struct_mod_connection_a17269b35545538d8300f1d0c98ce3785}{amount}}-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}},\ conn-\/>\mbox{\hyperlink{struct_mod_connection_a17269b35545538d8300f1d0c98ce3785}{amount}},\ \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{incParameterBaseValue}});}
+\DoxyCodeLine{00522\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\_drawable}}(\&amountBtn-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}},\ scene);}
+\DoxyCodeLine{00523\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_button_gui}{ButtonGui}}*\ typeBtn\ =\ \mbox{\hyperlink{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}{createButtonGui}}(x+47,\ y,\ 45,\ 30,\ conn-\/>\mbox{\hyperlink{struct_mod_connection_abd5998a42dcac24f02f37b411f33b83b}{type}}-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}},\ conn-\/>\mbox{\hyperlink{struct_mod_connection_a17269b35545538d8300f1d0c98ce3785}{amount}},\ \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{incParameterBaseValue}});}
+\DoxyCodeLine{00524\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\_drawable}}(\&typeBtn-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}},\ scene);}
+\DoxyCodeLine{00525\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{addButtonToContainer}}(amountBtn,\ ic,\ 0,\ 0);}
+\DoxyCodeLine{00526\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_ab5be728943c270dc0c90d077c247afd6}{addButtonToContainer}}(typeBtn,\ ic,\ 0,\ 1);}
+\DoxyCodeLine{00527\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_ad4662b0979b2eb9658a1781adef22f65}{addContainerToGroup}}(cg,\ ic,\ 0,\ 0);\ \ \ }
+\DoxyCodeLine{00528\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00529\ \ \ \ \ \ \ \ \ \ \ \ \ conn\ =\ conn-\/>\mbox{\hyperlink{struct_mod_connection_ab6ce9379cf0592a5d02eee68875a012a}{next}};}
+\DoxyCodeLine{00530\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00531\ \ \ \ \ \}}
+\DoxyCodeLine{00532\ }
+\DoxyCodeLine{00533\ \ \ \ \ \textcolor{keywordflow}{return}\ cg;}
+\DoxyCodeLine{00534\ \}}
+
+\end{DoxyCode}
+\Hypertarget{gui_8c_a00aba07315bd70ed960d1649912ec50f}\index{gui.c@{gui.c}!createSequencerGui@{createSequencerGui}}
+\index{createSequencerGui@{createSequencerGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createSequencerGui()}{createSequencerGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a00aba07315bd70ed960d1649912ec50f} 
+\mbox{\hyperlink{struct_sequencer_gui}{Sequencer\+Gui}} \texorpdfstring{$\ast$}{*} create\+Sequencer\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}}]{sequencer}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pl}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{selected\+Pattern}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{selected\+Note}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00100\ \{}
+\DoxyCodeLine{00101\ \ \ \ \ \mbox{\hyperlink{struct_sequencer_gui}{SequencerGui}}\ *seqGui\ =\ (\mbox{\hyperlink{struct_sequencer_gui}{SequencerGui}}\ *)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_sequencer_gui}{SequencerGui}}));}
+\DoxyCodeLine{00102\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a54a8a271af3f1973de444c7682d3d978}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{drawSequencerGui}};}
+\DoxyCodeLine{00103\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a3f2e72c4a8c35bcb2e9301b55ebda675}{sequencer}}\ =\ sequencer;}
+\DoxyCodeLine{00104\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_aceebeecdba2fbda3d6f03c4afccdaca5}{pattern\_list}}\ =\ pl;}
+\DoxyCodeLine{00105\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a10a180c0c6878722c45d1506f60bff7a}{x}}\ =\ x;}
+\DoxyCodeLine{00106\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a3a596f5d328ca6e3f9a91ac8aaf10cfe}{y}}\ =\ y;}
+\DoxyCodeLine{00107\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a53b8dca22ac01e0cfeecd69b9d1ff871}{pad\_w}}\ =\ 50;}
+\DoxyCodeLine{00108\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a3dcb4f33d14b44e33286b2b0010e4e15}{pad\_h}}\ =\ 50;}
+\DoxyCodeLine{00109\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a91fb373602ce3a17ffbbd153d5535a35}{pads\_per\_col}}\ =\ 4;}
+\DoxyCodeLine{00110\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a146c0c33d4eb398beba3246cb906c051}{padding}}\ =\ 10;}
+\DoxyCodeLine{00111\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_aafc08fdf886540e3cd80c99d95e7bc61}{border\_size}}\ =\ 3;}
+\DoxyCodeLine{00112\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a6262c359fb4fd607c8ed9955e5463353}{selected\_pattern\_index}}\ =\ selectedPattern;}
+\DoxyCodeLine{00113\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a1d54494236a587fb4dbfff313ea618e1}{selected\_note\_index}}\ =\ selectedNote;}
+\DoxyCodeLine{00114\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_adab1da0fa984f2d49583e566fe20e860}{outline\_colour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.outlineColour;}
+\DoxyCodeLine{00115\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a1094e57b57ffde2d687728531a481d00}{default\_fill\_colour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.defaultCell;}
+\DoxyCodeLine{00116\ \ \ \ \ seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a89125e008d50fa91a6c5f3dde3200cba}{playing\_fill\_colour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.highlightedCell;}
+\DoxyCodeLine{00117\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a91d77ebef83f7a63c7205277c59c706b}\index{gui.c@{gui.c}!createSongMinimapGui@{createSongMinimapGui}}
+\index{createSongMinimapGui@{createSongMinimapGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createSongMinimapGui()}{createSongMinimapGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a91d77ebef83f7a63c7205277c59c706b} 
+\mbox{\hyperlink{struct_song_minimap_gui}{Song\+Minimap\+Gui}} \texorpdfstring{$\ast$}{*} create\+Song\+Minimap\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{song\+Index}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00155\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00156\ \ \ \ \ \mbox{\hyperlink{struct_song_minimap_gui}{SongMinimapGui}}\ *minimapGui\ =\ (\mbox{\hyperlink{struct_song_minimap_gui}{SongMinimapGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_song_minimap_gui}{SongMinimapGui}}));}
+\DoxyCodeLine{00157\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a2b0e95e7125f1aee8bf9f4286afb116d}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_a761b65b28a906ccb965be14b97e16c44}{drawSongMinimapGui}};}
+\DoxyCodeLine{00158\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_ac2a0263fa7572e0bb54ec57df476e7d8}{arranger}}\ =\ arranger;}
+\DoxyCodeLine{00159\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a85a6e55014ecc87898eec982c82c2411}{songIndex}}\ =\ songIndex;}
+\DoxyCodeLine{00160\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a46a65743dd8ae7ea617d61f2a1298034}{x}}\ =\ x;}
+\DoxyCodeLine{00161\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a7304adb7d8cb56113d59b791c4c20779}{y}}\ =\ y;}
+\DoxyCodeLine{00162\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a45b2793daf58f522a31c7e147e956e2b}{w}}\ =\ 4;}
+\DoxyCodeLine{00163\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a97c19a16b8880bc4193ca865b3c4ee54}{h}}\ =\ 4;}
+\DoxyCodeLine{00164\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a0ebe1f07f77f74601c4c86cd463729ba}{padding}}\ =\ 1;}
+\DoxyCodeLine{00165\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_aa4c76256296a06338b35e363bee2a44b}{maxMapLength}}\ =\ (\mbox{\hyperlink{gui_8h_a27cddfd509d28b4b2b0b44c093fac090}{SCREEN\_H}}\ -\/\ 150)/(minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a97c19a16b8880bc4193ca865b3c4ee54}{h}}\ +\ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a0ebe1f07f77f74601c4c86cd463729ba}{padding}});}
+\DoxyCodeLine{00166\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_aa23deba9795b700f453fcac403fd26b0}{defaultCellColour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.defaultCell;}
+\DoxyCodeLine{00167\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a1a19adb176de8320c7f4f7a57876fb3f}{selectedCellColour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.reddish;}
+\DoxyCodeLine{00168\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_a2d64b45fee74b3274855791d258dcca0}{playingCellColour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.highlightedCell;}
+\DoxyCodeLine{00169\ \ \ \ \ minimapGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_af5dfdd0cccd960a6b3884ee86d29ac2a}{blankCellColour}}\ =\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.blankCell;}
+\DoxyCodeLine{00170\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a119e3ff72985270b391f42ee068b11b4}\index{gui.c@{gui.c}!createTransportGui@{createTransportGui}}
+\index{createTransportGui@{createTransportGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{createTransportGui()}{createTransportGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a119e3ff72985270b391f42ee068b11b4} 
+\mbox{\hyperlink{struct_transport_gui}{Transport\+Gui}} \texorpdfstring{$\ast$}{*} create\+Transport\+Gui (\begin{DoxyParamCaption}\item[{int \texorpdfstring{$\ast$}{*}}]{playing}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{x}{, }\item[{int}]{y}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00088\ \ \ \ \ \mbox{\hyperlink{struct_transport_gui}{TransportGui}}\ *tsGui\ =\ (\mbox{\hyperlink{struct_transport_gui}{TransportGui}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_transport_gui}{TransportGui}}));}
+\DoxyCodeLine{00089\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_a7468beef01266bd987fa553b069ba33b}{base}}.\mbox{\hyperlink{struct_drawable_a35868f2d66ac6e96f49fcf23b70cd928}{draw}}\ =\ \mbox{\hyperlink{gui_8c_a1321ec14b7f7c6aee7044efa24530cb6}{drawTransportGui}};}
+\DoxyCodeLine{00090\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_aa70893815bcb24f04293df44421b7299}{x}}\ =\ x;}
+\DoxyCodeLine{00091\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_ab3d298e216770321787615f51e2ca616}{y}}\ =\ y;}
+\DoxyCodeLine{00092\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_a6b4f8321f0a2597ff037aa6cde246a0f}{playing}}\ =\ playing;}
+\DoxyCodeLine{00093\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_a9fa1ad167e9dc71a422b5136c18e6e0a}{arranger}}\ =\ arranger;}
+\DoxyCodeLine{00094\ \ \ \ \ tsGui-\/>\mbox{\hyperlink{struct_transport_gui_a2f9446cbf0bb808603b07417990dee2f}{tempo}}\ =\ \&arranger-\/>\mbox{\hyperlink{struct_arranger_a0336394d075942924f0310d618955d70}{beats\_per\_minute}};}
+\DoxyCodeLine{00095\ \ \ \ \ \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\_drawable}}(\&tsGui-\/>\mbox{\hyperlink{struct_transport_gui_a7468beef01266bd987fa553b069ba33b}{base}},\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600afde1bb5ef04b28059e61df449501f1c0}{GLOBAL}});\ \textcolor{comment}{//\ Add\ TransportGui\ to\ globalDrawableList}}
+\DoxyCodeLine{00096\ \ \ \ \ \textcolor{keywordflow}{return}\ tsGui;}
+\DoxyCodeLine{00097\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a74519d48532a69e48242e4a40aab99e3}\index{gui.c@{gui.c}!drawArrangerGui@{drawArrangerGui}}
+\index{drawArrangerGui@{drawArrangerGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawArrangerGui()}{drawArrangerGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a74519d48532a69e48242e4a40aab99e3} 
+void draw\+Arranger\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00467\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00468\ \ \ \ \ \mbox{\hyperlink{struct_arranger_gui}{ArrangerGui}}\ *aGui\ =\ (\mbox{\hyperlink{struct_arranger_gui}{ArrangerGui}}*)self;}
+\DoxyCodeLine{00469\ \ \ \ \ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger\ =\ (\mbox{\hyperlink{struct_arranger}{Arranger}}*)aGui-\/>\mbox{\hyperlink{struct_arranger_gui_a378ccbd5138c38229011b0126f1914dd}{arranger}};}
+\DoxyCodeLine{00470\ \ \ \ \ \textcolor{keywordtype}{char}\ *cellText\ =\ malloc(\textcolor{keyword}{sizeof}(\textcolor{keywordtype}{char})\ *4);}
+\DoxyCodeLine{00471\ \ \ \ \ \textcolor{keywordtype}{int}\ cursorx,\ cursory;}
+\DoxyCodeLine{00472\ \ \ \ \ cursorx\ =\ aGui-\/>x\ +\ arranger-\/>selected\_x\ *\ (aGui-\/>w\ +\ aGui-\/>grid\_padding);}
+\DoxyCodeLine{00473\ \ \ \ \ cursory\ =\ aGui-\/>y\ +\ arranger-\/>selected\_y\ *\ (aGui-\/>h\ +\ aGui-\/>grid\_padding);}
+\DoxyCodeLine{00474\ }
+\DoxyCodeLine{00475\ \ \ \ \ DrawRectangle(cursorx\ -\/\ aGui-\/>border\_size,\ cursory\ -\/\ aGui-\/>border\_size,\ aGui-\/>w\ +\ (aGui-\/>border\_size\ *\ 2),aGui-\/>h\ +\ (aGui-\/>border\_size\ *\ 2),\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.outlineColour);}
+\DoxyCodeLine{00476\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}};\ i++)\{}
+\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ px\ =\ i\ \%\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}};}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ newy\ =\ aGui-\/>x\ +\ (i\ *\ aGui-\/>w)\ +\ (aGui-\/>grid\_padding\ *\ i);}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ j\ =\ 0;\ j\ <\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}};\ j++)\{}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ newx\ =\ aGui-\/>y\ +\ (j\ *\ aGui-\/>h)\ +\ (aGui-\/>grid\_padding\ *\ j);}
+\DoxyCodeLine{00481\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>song[j][i]\ >\ -\/1)\{}
+\DoxyCodeLine{00482\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sprintf(cellText,\ \textcolor{stringliteral}{"{}\%i\(\backslash\)0"{}},\ arranger-\/>song[j][i]);}
+\DoxyCodeLine{00483\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>playhead\_indices[j]\ ==\ px)\{}
+\DoxyCodeLine{00484\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ aGui-\/>w,\ aGui-\/>h,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.highlightedCell);}
+\DoxyCodeLine{00485\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00486\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ aGui-\/>w,\ aGui-\/>h,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.defaultCell);}
+\DoxyCodeLine{00487\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00488\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawText(cellText,\ newx\ -\/\ 5\ +\ aGui-\/>w\ /\ 2,\ newy\ -\/\ 5\ +\ aGui-\/>h\ /\ 2,\ \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}}.baseSize,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.secondaryFontColour);}
+\DoxyCodeLine{00489\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00490\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ aGui-\/>w,\ aGui-\/>h,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.blankCell);}
+\DoxyCodeLine{00491\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}-\/-\/"{}},\ newx\ -\/\ 5\ +\ aGui-\/>w\ /\ 2,\ newy\ -\/\ 5\ +\ aGui-\/>h\ /\ 2,\ \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}}.baseSize,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.secondaryFontColour);}
+\DoxyCodeLine{00492\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00493\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00494\ \ \ \ \ \}}
+\DoxyCodeLine{00495\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a4499de280e8aaf3f681afc9f392885bd}{create\+Arranger\+Gui()}}.
+
+\Hypertarget{gui_8c_ae06c1a0d7330a7a8315471867178d8bb}\index{gui.c@{gui.c}!drawButtonGui@{drawButtonGui}}
+\index{drawButtonGui@{drawButtonGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawButtonGui()}{drawButtonGui()}}
+{\footnotesize\ttfamily \label{gui_8c_ae06c1a0d7330a7a8315471867178d8bb} 
+void draw\+Button\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00375\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00376\ \ \ \ \ \mbox{\hyperlink{struct_button_gui}{ButtonGui}}*\ btnGui\ =\ (\mbox{\hyperlink{struct_button_gui}{ButtonGui}}*)self;}
+\DoxyCodeLine{00377\ \ \ \ \ \textcolor{keywordflow}{if}(btnGui-\/>\mbox{\hyperlink{struct_button_gui_a22e2d2e9b51bb27aac44d86beecfc93f}{selected}})\{}
+\DoxyCodeLine{00378\ \ \ \ \ \ \ \ \ DrawRectangle(btnGui-\/>\mbox{\hyperlink{struct_button_gui_aadf5da36b586d9c5fa53d6c1038a5acf}{x}}-\/2,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a83c1c0c5f52e205391659e4b0aff3519}{y}}-\/2,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a40858efb91fbf5e275874f7b56d876b1}{w}}+4,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a5682ed4db003cde879160342d66367cf}{h}}+4,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a01789c002a7013a919eab6350fadb808}{selectedColour}});}
+\DoxyCodeLine{00379\ \ \ \ \ \}}
+\DoxyCodeLine{00380\ \ \ \ \ DrawRectangle(btnGui-\/>\mbox{\hyperlink{struct_button_gui_aadf5da36b586d9c5fa53d6c1038a5acf}{x}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a83c1c0c5f52e205391659e4b0aff3519}{y}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a40858efb91fbf5e275874f7b56d876b1}{w}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a5682ed4db003cde879160342d66367cf}{h}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a3091e1625eb373bd3d88d6056ec836a3}{backgroundColour}});}
+\DoxyCodeLine{00381\ \ \ \ \ DrawText(btnGui-\/>\mbox{\hyperlink{struct_button_gui_afda690bf4904c09dbfe3345e802dd560}{buttonText}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_aadf5da36b586d9c5fa53d6c1038a5acf}{x}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a83c1c0c5f52e205391659e4b0aff3519}{y}}\ +\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a5682ed4db003cde879160342d66367cf}{h}}/2,\ 10,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_ac56c162f945b6443fadc2b4cb0ed9856}{textColour}});}
+\DoxyCodeLine{00382\ \ \ \ \ \textcolor{keywordtype}{char}\ valueStr[32];}
+\DoxyCodeLine{00383\ \ \ \ \ snprintf(valueStr,\ \textcolor{keyword}{sizeof}(valueStr),\ \textcolor{stringliteral}{"{}\%.2f"{}},\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a22554de1a99de5fda49773368d41c063}{parameter}}-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}});}
+\DoxyCodeLine{00384\ \ \ \ \ DrawText(valueStr,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_aadf5da36b586d9c5fa53d6c1038a5acf}{x}}\ +\ MeasureText(btnGui-\/>\mbox{\hyperlink{struct_button_gui_afda690bf4904c09dbfe3345e802dd560}{buttonText}},\ 10)\ +\ 5,\ }
+\DoxyCodeLine{00385\ \ \ \ \ \ \ \ \ \ \ \ \ \ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a83c1c0c5f52e205391659e4b0aff3519}{y}}\ +\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_a5682ed4db003cde879160342d66367cf}{h}}/2,\ 12,\ btnGui-\/>\mbox{\hyperlink{struct_button_gui_ac56c162f945b6443fadc2b4cb0ed9856}{textColour}});}
+\DoxyCodeLine{00386\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_abeb506d57a7d8e99600f950ddcb757ba}{create\+Button\+Gui()}}.
+
+\Hypertarget{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}\index{gui.c@{gui.c}!drawEnvelopeGui@{drawEnvelopeGui}}
+\index{drawEnvelopeGui@{drawEnvelopeGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawEnvelopeGui()}{drawEnvelopeGui()}}
+{\footnotesize\ttfamily \label{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358} 
+void draw\+Envelope\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00409\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00410\ \ \ \ \ \mbox{\hyperlink{struct_envelope_gui}{EnvelopeGui}}\ *eg\ =\ (\mbox{\hyperlink{struct_envelope_gui}{EnvelopeGui}}*)self;}
+\DoxyCodeLine{00411\ \ \ \ \ \textcolor{keywordtype}{int}\ stageIndex\ =\ 0;}
+\DoxyCodeLine{00412\ \ \ \ \ \textcolor{keywordtype}{float}\ totalDuration\ =\ 0.0f;}
+\DoxyCodeLine{00413\ \ \ \ \ \textcolor{keywordtype}{float}\ currentTime\ =\ 0.0f;}
+\DoxyCodeLine{00414\ \ \ \ \ \textcolor{keywordtype}{float}\ currentLevel\ =\ 0.0f;}
+\DoxyCodeLine{00415\ \ \ \ \ \textcolor{keywordtype}{float}\ previousLevel\ =\ 0.0f;}
+\DoxyCodeLine{00416\ \ \ \ \ DrawRectangle(eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}},\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}},\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_aaba4c694f891d2fa727b6cacc2152044}{w}},\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}},\ BLACK);}
+\DoxyCodeLine{00417\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ s\ =\ 0;\ s\ <\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}};\ s++)\{}
+\DoxyCodeLine{00418\ \ \ \ \ \ \ \ \ totalDuration\ +=\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[s].duration-\/>currentValue;}
+\DoxyCodeLine{00419\ \ \ \ \ \}}
+\DoxyCodeLine{00420\ \ \ \ \ \textcolor{keywordtype}{float}\ basicIncrement\ =\ totalDuration\ /\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_aaba4c694f891d2fa727b6cacc2152044}{w}};\ }
+\DoxyCodeLine{00421\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ w\ =\ 0;\ w\ <\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_aaba4c694f891d2fa727b6cacc2152044}{w}};\ w++)\{}
+\DoxyCodeLine{00422\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ if\ (!eg-\/>env-\/>stages[stageIndex].isSustain)\ \{}}
+\DoxyCodeLine{00423\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ float\ increment\ =\ calculateCurvedIncrement(}}
+\DoxyCodeLine{00424\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ \ \ \ \ currentLevel,\ }}
+\DoxyCodeLine{00425\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ \ \ \ \ eg-\/>env-\/>stages[stageIndex].targetLevel,}}
+\DoxyCodeLine{00426\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ \ \ \ \ basicIncrement,\ }}
+\DoxyCodeLine{00427\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ \ \ \ \ eg-\/>env-\/>stages[stageIndex].curvature-\/>currentValue}}
+\DoxyCodeLine{00428\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ );}}
+\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \ currentLevel\ +=\ increment;}}
+\DoxyCodeLine{00430\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ \}}}
+\DoxyCodeLine{00431\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ t\ =\ currentTime\ /\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[stageIndex].duration-\/>currentValue;}
+\DoxyCodeLine{00432\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ shapedT\ =\ \mbox{\hyperlink{modsystem_8c_a3b0d5a0a8a3e57e41fb80661435a5fe6}{applyCurve}}(t,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[stageIndex].curvature-\/>currentValue);}
+\DoxyCodeLine{00433\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00434\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ startLevel\ =\ (stageIndex\ >\ 0)\ ?\ }
+\DoxyCodeLine{00435\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[stageIndex-\/1].targetLevel\ :\ }
+\DoxyCodeLine{00436\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ 0.0f;}
+\DoxyCodeLine{00437\ \ \ \ \ \ \ \ \ currentLevel\ =\ startLevel\ +\ (eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[stageIndex].targetLevel\ -\/\ startLevel)\ *\ shapedT;}
+\DoxyCodeLine{00438\ \ \ \ \ \ \ \ \ DrawLineEx((Vector2)\{eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}}\ +\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}}\ -\/\ (previousLevel\ *\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}})\},(Vector2)\{\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w\ +\ 1,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}}\ +\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}}\ -\/\ (currentLevel\ *\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}})\},\ 2.0f,\ RED);}
+\DoxyCodeLine{00439\ \ \ \ \ \ \ \ \ \textcolor{comment}{//DrawRectangle(eg-\/>x\ +\ w,\ eg-\/>y\ +\ eg-\/>h\ -\/\ (currentLevel\ *\ eg-\/>h),\ 2,\ 2,\ RED);}}
+\DoxyCodeLine{00440\ }
+\DoxyCodeLine{00441\ \ \ \ \ \ \ \ \ currentTime\ +=\ basicIncrement;}
+\DoxyCodeLine{00442\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (currentTime\ >=\ 1.0f)\ \{}
+\DoxyCodeLine{00443\ \ \ \ \ \ \ \ \ \ \ \ \ currentTime\ =\ 0.0f;}
+\DoxyCodeLine{00444\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00445\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (stageIndex\ <\ eg-\/>env-\/>stageCount\ -\/\ 1)\ \{}
+\DoxyCodeLine{00446\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawLine(eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}},\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}}\ +\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}},\ GREEN);}
+\DoxyCodeLine{00447\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ stageIndex++;}
+\DoxyCodeLine{00448\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00449\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00450\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}})\{}
+\DoxyCodeLine{00451\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ currentInc\ =\ (\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_aaba4c694f891d2fa727b6cacc2152044}{w}}\ *\ (eg-\/>\mbox{\hyperlink{struct_envelope_gui_a2d30a3634e46bec87db1b11770eddb3d}{env}}-\/>\mbox{\hyperlink{struct_envelope_a167a930836009a9b3738740a035a6bd5}{totalElapsedTime}}\ /\ totalDuration));}
+\DoxyCodeLine{00452\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}((\textcolor{keywordtype}{int})(currentInc)\ ==\ w)\{}
+\DoxyCodeLine{00453\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawLine(eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}},\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4da96805f0b217980c06d3d9b226e4a5}{x}}\ +\ w,\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a4f50e4e2043bb9a70e8c6e13e8e5303d}{y}}\ +\ eg-\/>\mbox{\hyperlink{struct_envelope_gui_a8414d55e7c4d0813218da8cae4edc6b4}{h}},\ PURPLE);}
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00455\ }
+\DoxyCodeLine{00456\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00457\ \ \ \ \ \ \ \ \ previousLevel\ =\ currentLevel;}
+\DoxyCodeLine{00458\ \ \ \ \ \}}
+\DoxyCodeLine{00459\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a7202c79cce982475384f959a66788c05}{create\+Envelope\+Gui()}}.
+
+\Hypertarget{gui_8c_abdefbb55eb26879501c35858e836d6fe}\index{gui.c@{gui.c}!drawGraphGui@{drawGraphGui}}
+\index{drawGraphGui@{drawGraphGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawGraphGui()}{drawGraphGui()}}
+{\footnotesize\ttfamily \label{gui_8c_abdefbb55eb26879501c35858e836d6fe} 
+void draw\+Graph\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00503\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00504\ \ \ \ \ \mbox{\hyperlink{struct_graph_gui}{GraphGui}}\ *graphGui\ =\ (\mbox{\hyperlink{struct_graph_gui}{GraphGui}}*)self;}
+\DoxyCodeLine{00505\ \ \ \ \ DrawRectangle(graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a0843f62462150ee2aa1883421933b9fd}{x}}\ +\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_aa1edcf465fb8fc42e5e52e779316c1d8}{margin}},\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a311eb7381186bcdcadbaf748dd627f03}{y}}\ +\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_aa1edcf465fb8fc42e5e52e779316c1d8}{margin}},\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a04802c6d28aaaea7b2ad543bba076cbb}{w}},\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a08a5d8ae8450212c6f6dafa30b3ea2a9}{h}},(Color)\{(int)(*graphGui-\/>target*255),255,255,255\});}
+\DoxyCodeLine{00506\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ gi\ =\ 0;\ gi\ <\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a6b3628ef7ec452756971c4638c36f31f}{history\_size}};\ gi++)\{}
+\DoxyCodeLine{00507\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ offset\ =\ (int)((\textcolor{keywordtype}{float})graphGui-\/>\mbox{\hyperlink{struct_graph_gui_adbef16dc4956f9f1d8c2bef485937497}{history}}[gi]\ /\ (\textcolor{keywordtype}{float})graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a525dd95211247c7058e43d15939ca821}{max}});}
+\DoxyCodeLine{00508\ \ \ \ \ \ \ \ \ DrawRectangle(graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a0843f62462150ee2aa1883421933b9fd}{x}}\ +\ gi,\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a311eb7381186bcdcadbaf748dd627f03}{y}}\ +\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a5365e42bfdace251f8aa9137ab429918}{padding}}\ +\ offset,\ 1,\ 1,\ BLACK);}
+\DoxyCodeLine{00509\ \ \ \ \ \}}
+\DoxyCodeLine{00510\ \ \ \ \ DrawText(graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a8658e7f2ff04f89a87493aca6c120dce}{name}},\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a0843f62462150ee2aa1883421933b9fd}{x}},\ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a311eb7381186bcdcadbaf748dd627f03}{y}},\ \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}}.baseSize,\ RED);}
+\DoxyCodeLine{00511\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a13bfde1bc7897d76221f935badcb0aee}{create\+Graph\+Gui()}}.
+
+\Hypertarget{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}\index{gui.c@{gui.c}!DrawGUI@{DrawGUI}}
+\index{DrawGUI@{DrawGUI}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{DrawGUI()}{DrawGUI()}}
+{\footnotesize\ttfamily \label{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d} 
+void Draw\+GUI (\begin{DoxyParamCaption}\item[{int}]{current\+Scene}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00712\ \{}
+\DoxyCodeLine{00713\ \ \ \ \ \textcolor{keywordflow}{switch}(currentScene)\{}
+\DoxyCodeLine{00714\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a7809c6e3b073a0a5f71b9cce1173d3da}{SCENE\_ARRANGER}}:}
+\DoxyCodeLine{00715\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}}-\/>size;\ i++)}
+\DoxyCodeLine{00716\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00717\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}}-\/>drawables[i]-\/>draw(\mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}}-\/>drawables[i]);}
+\DoxyCodeLine{00718\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00719\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00720\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600aad3dc43cc2060376fe49f57d7991ebb7}{SCENE\_PATTERN}}:}
+\DoxyCodeLine{00721\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}}-\/>size;\ i++)}
+\DoxyCodeLine{00722\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00723\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}}-\/>drawables[i]-\/>draw(\mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}}-\/>drawables[i]);}
+\DoxyCodeLine{00724\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00725\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00726\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a92ed70c564c764454a1a8d0b7a03cdf6}{SCENE\_INSTRUMENT}}:}
+\DoxyCodeLine{00727\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}}-\/>size;\ i++)}
+\DoxyCodeLine{00728\ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00729\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}}-\/>drawables[i]-\/>draw(\mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}}-\/>drawables[i]);}
+\DoxyCodeLine{00730\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00731\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00732\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00733\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00734\ \ \ \ \ \}}
+\DoxyCodeLine{00735\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}}-\/>size;\ i++)}
+\DoxyCodeLine{00736\ \ \ \ \ \{}
+\DoxyCodeLine{00737\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}}-\/>drawables[i]-\/>draw(\mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}}-\/>drawables[i]);}
+\DoxyCodeLine{00738\ \ \ \ \ \}}
+\DoxyCodeLine{00739\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a0aa123f466b0448c599c56233314e30e}\index{gui.c@{gui.c}!drawInputsGui@{drawInputsGui}}
+\index{drawInputsGui@{drawInputsGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawInputsGui()}{drawInputsGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a0aa123f466b0448c599c56233314e30e} 
+void draw\+Inputs\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00608\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00609\ \ \ \ \ \mbox{\hyperlink{struct_inputs_gui}{InputsGui}}*\ iGui\ =\ (\mbox{\hyperlink{struct_inputs_gui}{InputsGui}}*)self;}
+\DoxyCodeLine{00610\ \ \ \ \ \mbox{\hyperlink{struct_input_state}{InputState}}*\ is\ =\ (\mbox{\hyperlink{struct_input_state}{InputState}}*)iGui-\/>\mbox{\hyperlink{struct_inputs_gui_a37f2d6e5270ee7285ef354795d814131}{inputState}};}
+\DoxyCodeLine{00611\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ab2d4377ac4240d64d9a161445ea80195}{KEY\_MAPPING\_COUNT}};\ i++)\{}
+\DoxyCodeLine{00612\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(is-\/>keys[i].isPressed)\{}
+\DoxyCodeLine{00613\ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(iGui-\/>x\ +\ i\ *\ 22,\ iGui-\/>y,\ 20,\ 20,\ GREEN);}
+\DoxyCodeLine{00614\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00615\ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(iGui-\/>x\ +\ i\ *\ 22,\ iGui-\/>y,\ 20,\ 20,\ RED);}
+\DoxyCodeLine{00616\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00617\ \ \ \ \ \ \ \ \ DrawText(KEY\_NAMES[i],\ iGui-\/>x\ +\ i\ *\ 22,\ iGui-\/>y,\ 10,\ BLACK);}
+\DoxyCodeLine{00618\ \ \ \ \ \}}
+\DoxyCodeLine{00619\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ is-\/>historyIndex;\ i\ >\ 0;\ i-\/-\/)\{}
+\DoxyCodeLine{00620\ \ \ \ \ \ \ \ \ DrawText(KEY\_NAMES[is-\/>inputHistory[i]],\ \mbox{\hyperlink{gui_8h_a9b6bc9242882d1e758e06ed751a2e8ec}{SCREEN\_W}}\ -\/\ 50,\ iGui-\/>y\ -\/\ i\ *\ 11,\ 10,\ GRAY);}
+\DoxyCodeLine{00621\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00622\ \ \ \ \ \}}
+\DoxyCodeLine{00623\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_ae23001631fce9b55a2c6f18c2601ebea}{create\+Inputs\+Gui()}}.
+
+\Hypertarget{gui_8c_a198301217a217c51435dd2b502ecbfda}\index{gui.c@{gui.c}!drawSequencerGui@{drawSequencerGui}}
+\index{drawSequencerGui@{drawSequencerGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawSequencerGui()}{drawSequencerGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a198301217a217c51435dd2b502ecbfda} 
+void draw\+Sequencer\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00536\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00537\ \ \ \ \ \mbox{\hyperlink{struct_sequencer_gui}{SequencerGui}}\ *seqGui\ =\ (\mbox{\hyperlink{struct_sequencer_gui}{SequencerGui}}\ *)self;}
+\DoxyCodeLine{00538\ \ \ \ \ \mbox{\hyperlink{struct_sequencer}{Sequencer}}\ *seq\ =\ (\mbox{\hyperlink{struct_sequencer}{Sequencer}}*)seqGui-\/>\mbox{\hyperlink{struct_sequencer_gui_a3f2e72c4a8c35bcb2e9301b55ebda675}{sequencer}};}
+\DoxyCodeLine{00539\ \ \ \ \ \mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *pl\ =\ (\mbox{\hyperlink{struct_pattern_list}{PatternList}}*)seqGui-\/>pattern\_list;}
+\DoxyCodeLine{00540\ \ \ \ \ \textcolor{keywordtype}{int}\ patternIndex\ =\ *seqGui-\/>selected\_pattern\_index;}
+\DoxyCodeLine{00541\ \ \ \ \ \textcolor{keywordtype}{int}\ currentNoteIndex\ =\ *seqGui-\/>selected\_note\_index;}
+\DoxyCodeLine{00542\ \ \ \ \ \textcolor{keywordtype}{int}\ currentlyPlaying\ =\ -\/1;}
+\DoxyCodeLine{00543\ }
+\DoxyCodeLine{00544\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}};\ i++)\{}
+\DoxyCodeLine{00545\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(seq-\/>pattern\_index[i]\ ==\ patternIndex)\{}
+\DoxyCodeLine{00546\ \ \ \ \ \ \ \ \ \ \ \ \ currentlyPlaying\ =\ i;}
+\DoxyCodeLine{00547\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00548\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00549\ \ \ \ \ \}}
+\DoxyCodeLine{00550\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ pl-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}};\ i++)}
+\DoxyCodeLine{00551\ \ \ \ \ \{}
+\DoxyCodeLine{00552\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ ix\ =\ (i\ \%\ seqGui-\/>pads\_per\_col)\ ;}
+\DoxyCodeLine{00553\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ j\ =\ (int)(i\ /\ seqGui-\/>pads\_per\_col);}
+\DoxyCodeLine{00554\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ *note\ =\ \mbox{\hyperlink{sequencer_8c_a0afd21c469d9d7f042d8f66be3666af5}{getStep}}(pl,\ patternIndex,\ i);}
+\DoxyCodeLine{00555\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00556\ }
+\DoxyCodeLine{00557\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00558\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(currentNoteIndex\ ==\ i)\{}
+\DoxyCodeLine{00559\ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle((seqGui-\/>x\ +\ seqGui-\/>padding\ *\ ix\ +\ (ix\ *\ (seqGui-\/>pad\_w)))\ -\/\ (seqGui-\/>border\_size),\ seqGui-\/>y\ +\ seqGui-\/>padding\ *\ j\ +\ ((seqGui-\/>pad\_h)\ *\ j)\ -\/\ (seqGui-\/>border\_size),\ seqGui-\/>pad\_w\ +\ seqGui-\/>border\_size*2,\ seqGui-\/>pad\_h\ +\ seqGui-\/>border\_size*2,\ seqGui-\/>outline\_colour);}
+\DoxyCodeLine{00560\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00561\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(currentlyPlaying\ >\ -\/1\ \&\&\ seq-\/>playhead\_index[currentlyPlaying]\ ==\ i)}
+\DoxyCodeLine{00562\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00563\ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(seqGui-\/>x\ +\ seqGui-\/>padding\ *\ ix\ +\ (ix\ *\ seqGui-\/>pad\_w),\ seqGui-\/>y\ +\ seqGui-\/>padding\ *\ j\ +\ ((seqGui-\/>pad\_h)\ *\ j),\ seqGui-\/>pad\_w,\ seqGui-\/>pad\_h,\ seqGui-\/>playing\_fill\_colour);}
+\DoxyCodeLine{00564\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00565\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{00566\ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00567\ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(seqGui-\/>x\ +\ seqGui-\/>padding\ *\ ix\ +\ (ix\ *\ seqGui-\/>pad\_w),\ seqGui-\/>y\ +\ seqGui-\/>padding\ *\ j\ +\ ((seqGui-\/>pad\_h\ )\ *\ j),\ seqGui-\/>pad\_w,\ seqGui-\/>pad\_h,\ seqGui-\/>default\_fill\_colour);}
+\DoxyCodeLine{00568\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00569\ \ \ \ \ \ \ \ \ Vector2\ textPosition\ =\ (Vector2)\{(float)(seqGui-\/>x\ +\ (ix\ *\ seqGui-\/>pad\_w)\ \ +\ (seqGui-\/>padding\ *\ ix)),(float)(seqGui-\/>y\ \ +\ seqGui-\/>padding\ \ *\ j\ +\ ((seqGui-\/>pad\_h)\ *\ j))\};}
+\DoxyCodeLine{00570\ \ \ \ \ \ \ \ \ DrawTextEx(\mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}},\ \mbox{\hyperlink{notes_8c_afad21e9a6450d7c453b77bf4918b4895}{getNoteString}}(note[0],\ note[1]),\ textPosition,\ \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}}.baseSize,\ 4,\ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.fontColour);}
+\DoxyCodeLine{00571\ \ \ \ \ \}}
+\DoxyCodeLine{00572\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a00aba07315bd70ed960d1649912ec50f}{create\+Sequencer\+Gui()}}.
+
+\Hypertarget{gui_8c_a761b65b28a906ccb965be14b97e16c44}\index{gui.c@{gui.c}!drawSongMinimapGui@{drawSongMinimapGui}}
+\index{drawSongMinimapGui@{drawSongMinimapGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawSongMinimapGui()}{drawSongMinimapGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a761b65b28a906ccb965be14b97e16c44} 
+void draw\+Song\+Minimap\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00574\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00575\ \ \ \ \ \mbox{\hyperlink{struct_song_minimap_gui}{SongMinimapGui}}\ *smGui\ =\ (\mbox{\hyperlink{struct_song_minimap_gui}{SongMinimapGui}}*)self;}
+\DoxyCodeLine{00576\ \ \ \ \ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger\ =\ (\mbox{\hyperlink{struct_arranger}{Arranger}}*)smGui-\/>\mbox{\hyperlink{struct_song_minimap_gui_ac2a0263fa7572e0bb54ec57df476e7d8}{arranger}};}
+\DoxyCodeLine{00577\ \ \ \ \ \textcolor{keywordtype}{int}\ startIndex\ =\ 0;}
+\DoxyCodeLine{00578\ \ \ \ \ \textcolor{comment}{//printf("{}coord\ \%d,\%d\(\backslash\)n"{},\ smGui-\/>songIndex[0],\ smGui-\/>songIndex[1]);}}
+\DoxyCodeLine{00579\ \ \ \ \ }
+\DoxyCodeLine{00580\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ startIndex;\ i\ <\ smGui-\/>maxMapLength;\ i++)\{}
+\DoxyCodeLine{00581\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ newy\ =\ smGui-\/>y\ +\ (i\ *\ smGui-\/>w)\ +\ (smGui-\/>padding\ *\ i);}
+\DoxyCodeLine{00582\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ j\ =\ 0;\ j\ <\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}};\ j++)\{}
+\DoxyCodeLine{00583\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ newx\ =\ smGui-\/>x\ +\ (j\ *\ smGui-\/>h)\ +\ (smGui-\/>padding\ *\ j);}
+\DoxyCodeLine{00584\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>song[j][i]\ >\ -\/1)\{}
+\DoxyCodeLine{00585\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(smGui-\/>songIndex[0]\ ==\ j\ \&\&\ smGui-\/>songIndex[1]\ ==\ i)\{}
+\DoxyCodeLine{00586\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ smGui-\/>w,\ smGui-\/>h,\ smGui-\/>selectedCellColour);}
+\DoxyCodeLine{00587\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(arranger-\/>playhead\_indices[j]\ ==\ i)\{}
+\DoxyCodeLine{00588\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ smGui-\/>w,\ smGui-\/>h,\ smGui-\/>playingCellColour);}
+\DoxyCodeLine{00589\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00590\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ smGui-\/>w,\ smGui-\/>h,\ smGui-\/>defaultCellColour);}
+\DoxyCodeLine{00591\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00592\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00593\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ DrawRectangle(newx,\ newy,\ smGui-\/>w,\ smGui-\/>h,\ smGui-\/>blankCellColour);}
+\DoxyCodeLine{00594\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00595\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00596\ \ \ \ \ \}}
+\DoxyCodeLine{00597\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a91d77ebef83f7a63c7205277c59c706b}{create\+Song\+Minimap\+Gui()}}.
+
+\Hypertarget{gui_8c_a1321ec14b7f7c6aee7044efa24530cb6}\index{gui.c@{gui.c}!drawTransportGui@{drawTransportGui}}
+\index{drawTransportGui@{drawTransportGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{drawTransportGui()}{drawTransportGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a1321ec14b7f7c6aee7044efa24530cb6} 
+void draw\+Transport\+Gui (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00462\ \ \ \ \ Vector2\ pos\ =\ (Vector2)\{600,10\};}
+\DoxyCodeLine{00463\ \ \ \ \ \mbox{\hyperlink{struct_transport_gui}{TransportGui}}\ *tg\ =(\mbox{\hyperlink{struct_transport_gui}{TransportGui}}*)self;}
+\DoxyCodeLine{00464\ \ \ \ \ DrawTextEx(\mbox{\hyperlink{gui_8c_a97a78143672d8fae461e1d937a210ccc}{symbolFont}},\ \textcolor{stringliteral}{"{}abcdefgh"{}},\ pos,\ \mbox{\hyperlink{gui_8c_a97a78143672d8fae461e1d937a210ccc}{symbolFont}}.baseSize,\ 2,\ RED);\ \textcolor{comment}{//\ Use\ characters\ 'A'\ to\ 'H'}}
+\DoxyCodeLine{00465\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a119e3ff72985270b391f42ee068b11b4}{create\+Transport\+Gui()}}.
+
+\Hypertarget{gui_8c_a60ccd132ee111e0f702871f83dfff8ab}\index{gui.c@{gui.c}!free\_drawable\_list@{free\_drawable\_list}}
+\index{free\_drawable\_list@{free\_drawable\_list}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{free\_drawable\_list()}{free\_drawable\_list()}}
+{\footnotesize\ttfamily \label{gui_8c_a60ccd132ee111e0f702871f83dfff8ab} 
+void free\+\_\+drawable\+\_\+list (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}} \texorpdfstring{$\ast$}{*}}]{list}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00636\ \{}
+\DoxyCodeLine{00637\ \ \ \ \ \textcolor{keywordflow}{if}(!list)\ \{}
+\DoxyCodeLine{00638\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}no\ list\(\backslash\)n"{}});}
+\DoxyCodeLine{00639\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00640\ \ \ \ \ \}}
+\DoxyCodeLine{00641\ \ \ \ \ free(list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}});}
+\DoxyCodeLine{00642\ \ \ \ \ free(list);}
+\DoxyCodeLine{00643\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI()}}.
+
+\Hypertarget{gui_8c_abf6d07dc1a195dbf25efa1839515533d}\index{gui.c@{gui.c}!getColorSchemeAsPointerArray@{getColorSchemeAsPointerArray}}
+\index{getColorSchemeAsPointerArray@{getColorSchemeAsPointerArray}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{getColorSchemeAsPointerArray()}{getColorSchemeAsPointerArray()}}
+{\footnotesize\ttfamily \label{gui_8c_abf6d07dc1a195dbf25efa1839515533d} 
+Color \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*} get\+Color\+Scheme\+As\+Pointer\+Array (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00045\ \ \ \ \ Color**\ colourScheme\ =\ malloc(\textcolor{keyword}{sizeof}(Color*)\ *\ 9);}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keywordflow}{if}\ (!colourScheme)\ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00047\ \ \ \ \ }
+\DoxyCodeLine{00048\ \ \ \ \ colourScheme[0]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.backgroundColor;}
+\DoxyCodeLine{00049\ \ \ \ \ colourScheme[1]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.fontColour;}
+\DoxyCodeLine{00050\ \ \ \ \ colourScheme[2]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.secondaryFontColour;}
+\DoxyCodeLine{00051\ \ \ \ \ colourScheme[3]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.outlineColour;}
+\DoxyCodeLine{00052\ \ \ \ \ colourScheme[4]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.defaultCell;}
+\DoxyCodeLine{00053\ \ \ \ \ colourScheme[5]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.highlightedCell;}
+\DoxyCodeLine{00054\ \ \ \ \ colourScheme[6]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.selectedCell;}
+\DoxyCodeLine{00055\ \ \ \ \ colourScheme[7]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.blankCell;}
+\DoxyCodeLine{00056\ \ \ \ \ colourScheme[8]\ =\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}.reddish;}
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordflow}{return}\ colourScheme;}
+\DoxyCodeLine{00058\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_af3999c6a0257b01027635b611b7e85cf}\index{gui.c@{gui.c}!getColourScheme@{getColourScheme}}
+\index{getColourScheme@{getColourScheme}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{getColourScheme()}{getColourScheme()}}
+{\footnotesize\ttfamily \label{gui_8c_af3999c6a0257b01027635b611b7e85cf} 
+\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*} get\+Colour\+Scheme (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordflow}{return}\ \&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}};}
+\DoxyCodeLine{00062\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a01e50e64cc29483a5a190ac56616efa6}\index{gui.c@{gui.c}!getSelectedInput@{getSelectedInput}}
+\index{getSelectedInput@{getSelectedInput}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{getSelectedInput()}{getSelectedInput()}}
+{\footnotesize\ttfamily \label{gui_8c_a01e50e64cc29483a5a190ac56616efa6} 
+\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*} get\+Selected\+Input (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_container_group}{Container\+Group}} \texorpdfstring{$\ast$}{*}}]{cg}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00393\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00394\ \ \ \ \ \mbox{\hyperlink{struct_input_container}{InputContainer}}*\ ic\ =\ (\mbox{\hyperlink{struct_input_container}{InputContainer}}*)cg-\/>\mbox{\hyperlink{struct_container_group_af79bcbf314ea4614b81c1ddc14bfc2cc}{containerRefs}}[cg-\/>\mbox{\hyperlink{struct_container_group_a69e7780a7649bbdede418220cc0266df}{selectedRow}}][cg-\/>\mbox{\hyperlink{struct_container_group_a54a17154e232988c90aecd0544cd2771}{selectedColumn}}];}
+\DoxyCodeLine{00395\ \ \ \ \ \textcolor{keywordflow}{return}\ ic-\/>buttonRefs[ic-\/>selectedRow][ic-\/>selectedColumn];}
+\DoxyCodeLine{00396\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_afeb2896482ae3affdf26cf42000668df}\index{gui.c@{gui.c}!initCustomFont@{initCustomFont}}
+\index{initCustomFont@{initCustomFont}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{initCustomFont()}{initCustomFont()}}
+{\footnotesize\ttfamily \label{gui_8c_afeb2896482ae3affdf26cf42000668df} 
+void init\+Custom\+Font (\begin{DoxyParamCaption}\item[{Font \texorpdfstring{$\ast$}{*}}]{f}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{path}{, }\item[{int}]{char\+Count}{, }\item[{int}]{width}{, }\item[{int}]{height}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00019\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00020\ \ \ \ \ *f\ =\ LoadFontEx(path,\ width,\ NULL,\ charCount);}
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordflow}{if}\ (f-\/>texture.id\ ==\ 0)\ \{}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}Failed\ to\ load\ font:\ \%s\(\backslash\)n"{}},\ path);}
+\DoxyCodeLine{00023\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}Successfully\ loaded\ font:\ \%s\(\backslash\)n"{}},\ path);}
+\DoxyCodeLine{00025\ \ \ \ \ \}}
+\DoxyCodeLine{00026\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}.
+
+\Hypertarget{gui_8c_a08ab297bb5e06114bc9cd94e9a6b8168}\index{gui.c@{gui.c}!initDefaultColourScheme@{initDefaultColourScheme}}
+\index{initDefaultColourScheme@{initDefaultColourScheme}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{initDefaultColourScheme()}{initDefaultColourScheme()}}
+{\footnotesize\ttfamily \label{gui_8c_a08ab297bb5e06114bc9cd94e9a6b8168} 
+void init\+Default\+Colour\+Scheme (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}}]{colour\+Scheme}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00029\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_a994e9f2a5b355207aa36d4cfde03f8b7}{backgroundColor}}\ =\ (Color)\{17,\ 7,\ 8,255\};}
+\DoxyCodeLine{00030\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_ae1fe680d05eeeb9f51e88f4ae25dd8ef}{fontColour}}\ =\ (Color)\{207,\ 212,\ 121,255\};}
+\DoxyCodeLine{00031\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_ad55d3ed883671a18077436bb84164577}{secondaryFontColour}}\ =\ (Color)\{112,\ 110,\ 65,255\};}
+\DoxyCodeLine{00032\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_ab04ecb7520517aada9be64b6a8678789}{outlineColour}}\ =\ (Color)\{82,\ 220,\ 159,\ 255\};}
+\DoxyCodeLine{00033\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_af14de2c3cc58007cb9eddac3905aad4a}{defaultCell}}\ =\ (Color)\{211,\ 246,\ 219,\ 255\};}
+\DoxyCodeLine{00034\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_a5e72b37a0b83418c181f8c45349499d2}{highlightedCell}}\ =\ (Color)\{236,\ 154,\ 144,\ 255\};}
+\DoxyCodeLine{00035\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_ad07820ffd84f03aac5068d82a35fa835}{selectedCell}}\ =\ (Color)\{170,\ 38,\ 49,\ 255\};}
+\DoxyCodeLine{00036\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_a182dca4215ecaa9ab7c6649b820f49ac}{blankCell}}\ =\ (Color)\{94,\ 23,\ 29,\ 255\};}
+\DoxyCodeLine{00037\ \ \ \ \ colourScheme-\/>\mbox{\hyperlink{struct_colour_scheme_a80d412b54e394dd2d4731e3b8cb1255e}{reddish}}\ =\ (Color)\{170,\ 38,\ 49,\ 255\};}
+\DoxyCodeLine{00038\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}.
+
+\Hypertarget{gui_8c_a353b956e85ae9dd28f160b4df55e2357}\index{gui.c@{gui.c}!InitGUI@{InitGUI}}
+\index{InitGUI@{InitGUI}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{InitGUI()}{InitGUI()}}
+{\footnotesize\ttfamily \label{gui_8c_a353b956e85ae9dd28f160b4df55e2357} 
+void Init\+GUI (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00069\ \{}
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ screenWidth\ =\ \mbox{\hyperlink{gui_8h_a9b6bc9242882d1e758e06ed751a2e8ec}{SCREEN\_W}};}
+\DoxyCodeLine{00071\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{int}\ screenHeight\ =\ \mbox{\hyperlink{gui_8h_a27cddfd509d28b4b2b0b44c093fac090}{SCREEN\_H}};}
+\DoxyCodeLine{00072\ }
+\DoxyCodeLine{00073\ \ \ \ \ \mbox{\hyperlink{gui_8c_a08ab297bb5e06114bc9cd94e9a6b8168}{initDefaultColourScheme}}(\&\mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}});}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \ \ \ \ \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}}\ =\ \mbox{\hyperlink{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}{create\_drawable\_list}}();}
+\DoxyCodeLine{00076\ \ \ \ \ \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}}\ =\ \mbox{\hyperlink{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}{create\_drawable\_list}}();}
+\DoxyCodeLine{00077\ \ \ \ \ \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}}\ =\ \mbox{\hyperlink{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}{create\_drawable\_list}}();}
+\DoxyCodeLine{00078\ \ \ \ \ \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}}\ =\ \mbox{\hyperlink{gui_8c_a38b56cf7073cb7a17dad24cbeae1e355}{create\_drawable\_list}}();\ \textcolor{comment}{//\ Initialize\ globalDrawableList}}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \ \ \ \ InitWindow(screenWidth,\ screenHeight,\ \textcolor{stringliteral}{"{}Raylib\ basic\ window"{}});}
+\DoxyCodeLine{00081\ \ \ \ \ \mbox{\hyperlink{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}{textFont}}\ =\ LoadFont(\textcolor{stringliteral}{"{}resources/fonts/setback.png"{}});}
+\DoxyCodeLine{00082\ \ \ \ \ \mbox{\hyperlink{gui_8c_afeb2896482ae3affdf26cf42000668df}{initCustomFont}}(\&\mbox{\hyperlink{gui_8c_a97a78143672d8fae461e1d937a210ccc}{symbolFont}},\ \textcolor{stringliteral}{"{}resources/fonts/iconzfin.png"{}},\ 8,\ 10,\ 12);}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ \ \ \ \ SetTargetFPS(60);}
+\DoxyCodeLine{00085\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{gui_8c_a6538023304921acb5100c681bfe6c9b2}\index{gui.c@{gui.c}!removeButtonFromContainer@{removeButtonFromContainer}}
+\index{removeButtonFromContainer@{removeButtonFromContainer}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{removeButtonFromContainer()}{removeButtonFromContainer()}}
+{\footnotesize\ttfamily \label{gui_8c_a6538023304921acb5100c681bfe6c9b2} 
+void remove\+Button\+From\+Container (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_button_gui}{Button\+Gui}} \texorpdfstring{$\ast$}{*}}]{btn\+Gui}{, }\item[{\mbox{\hyperlink{struct_input_container}{Input\+Container}} \texorpdfstring{$\ast$}{*}}]{btn\+Cont}{, }\item[{\mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600}{Scene}}}]{scene}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00309\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00310\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ row\ =\ 0;\ row\ <\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a92edf04f320b6292bc3b00f789e605cf}{rowCount}};\ row++)\ \{}
+\DoxyCodeLine{00311\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ col\ =\ 0;\ col\ <\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[row];\ col++)\ \{}
+\DoxyCodeLine{00312\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (btnCont-\/>\mbox{\hyperlink{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}{buttonRefs}}[row][col]\ ==\ btnGui)\ \{}
+\DoxyCodeLine{00313\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Shift\ remaining\ buttons\ left}}
+\DoxyCodeLine{00314\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ j\ =\ col;\ j\ <\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[row]\ -\/\ 1;\ j++)\ \{}
+\DoxyCodeLine{00315\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}{buttonRefs}}[row][j]\ =\ btnCont-\/>\mbox{\hyperlink{struct_input_container_a3b8549bebdc2662e2a73e7b9db1e73f1}{buttonRefs}}[row][j\ +\ 1];}
+\DoxyCodeLine{00316\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00317\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ btnCont-\/>\mbox{\hyperlink{struct_input_container_a146c90d98f78aebb1d4e53cfd2b4f4b0}{columnCount}}[row]-\/-\/;\ \textcolor{comment}{//\ This\ needs\ to\ happen\ after\ finding\ the\ button}}
+\DoxyCodeLine{00318\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{removeDrawable}}(\&btnGui-\/>\mbox{\hyperlink{struct_button_gui_a2695147ad1601de2bd96c6d1a66ea616}{base}},\ scene);}
+\DoxyCodeLine{00319\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00320\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00322\ \ \ \ \ \}}
+\DoxyCodeLine{00323\ \}}
+
+\end{DoxyCode}
+\Hypertarget{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}\index{gui.c@{gui.c}!removeDrawable@{removeDrawable}}
+\index{removeDrawable@{removeDrawable}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{removeDrawable()}{removeDrawable()}}
+{\footnotesize\ttfamily \label{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444} 
+void remove\+Drawable (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_drawable}{Drawable}} \texorpdfstring{$\ast$}{*}}]{drawable}{, }\item[{int}]{scene}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00645\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00646\ \ \ \ \ \mbox{\hyperlink{struct_drawable_list}{DrawableList}}\ *list;}
+\DoxyCodeLine{00647\ \ \ \ \ \textcolor{keywordflow}{switch}(scene)\{}
+\DoxyCodeLine{00648\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600afde1bb5ef04b28059e61df449501f1c0}{GLOBAL}}:}
+\DoxyCodeLine{00649\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}{globalDrawableList}};}
+\DoxyCodeLine{00650\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00651\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a7809c6e3b073a0a5f71b9cce1173d3da}{SCENE\_ARRANGER}}:}
+\DoxyCodeLine{00652\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_a1743116403c5411012c4c8a4911157ef}{arrangerScreenDrawableList}};}
+\DoxyCodeLine{00653\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00654\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600aad3dc43cc2060376fe49f57d7991ebb7}{SCENE\_PATTERN}}:}
+\DoxyCodeLine{00655\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}{patternScreenDrawableList}};}
+\DoxyCodeLine{00656\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00657\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a92ed70c564c764454a1a8d0b7a03cdf6}{SCENE\_INSTRUMENT}}:}
+\DoxyCodeLine{00658\ \ \ \ \ \ \ \ \ \ \ \ \ list\ =\ \mbox{\hyperlink{gui_8c_a5a2df28ed942cc16834e4e23775031b4}{instrumentScreenDrawableList}};}
+\DoxyCodeLine{00659\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00660\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00661\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00662\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00663\ \ \ \ \ \}}
+\DoxyCodeLine{00664\ }
+\DoxyCodeLine{00665\ \ \ \ \ \textcolor{keywordtype}{int}\ addressMatch\ =\ 0;}
+\DoxyCodeLine{00666\ \ \ \ \ \textcolor{keywordtype}{int}\ matchIndex\ =\ 0;}
+\DoxyCodeLine{00667\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ list-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}};\ i++)\ \{}
+\DoxyCodeLine{00668\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}[i]\ ==\ drawable)\ \{}
+\DoxyCodeLine{00669\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Shift\ remaining\ elements\ left}}
+\DoxyCodeLine{00670\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (;\ i\ <\ list-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}}\ -\/\ 1;\ i++)\ \{}
+\DoxyCodeLine{00671\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}[i]\ =\ list-\/>\mbox{\hyperlink{struct_drawable_list_ac0de84e8a303ae99cd327d43c8ac2753}{drawables}}[i\ +\ 1];}
+\DoxyCodeLine{00672\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00673\ \ \ \ \ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_drawable_list_aed2ece256c3e247df3023be43c4c9309}{size}}-\/-\/;}
+\DoxyCodeLine{00674\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00675\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00676\ \ \ \ \ \}}
+\DoxyCodeLine{00677\ \ \ \ \ printf(\textcolor{stringliteral}{"{}drawable\ DONE\(\backslash\)n"{}});}
+\DoxyCodeLine{00678\ }
+\DoxyCodeLine{00679\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a6538023304921acb5100c681bfe6c9b2}{remove\+Button\+From\+Container()}}.
+
+\Hypertarget{gui_8c_a6f1243508e3497f5e61399268001994c}\index{gui.c@{gui.c}!setColourScheme@{setColourScheme}}
+\index{setColourScheme@{setColourScheme}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{setColourScheme()}{setColourScheme()}}
+{\footnotesize\ttfamily \label{gui_8c_a6f1243508e3497f5e61399268001994c} 
+void set\+Colour\+Scheme (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}}]{colour\+Scheme}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00040\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00041\ \ \ \ \ \mbox{\hyperlink{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}{cs}}\ =\ *colourScheme;}
+\DoxyCodeLine{00042\ \}}
+
+\end{DoxyCode}
+\Hypertarget{gui_8c_a96fd7faef73a35061c5a4546ef45d271}\index{gui.c@{gui.c}!updateGraphGui@{updateGraphGui}}
+\index{updateGraphGui@{updateGraphGui}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{updateGraphGui()}{updateGraphGui()}}
+{\footnotesize\ttfamily \label{gui_8c_a96fd7faef73a35061c5a4546ef45d271} 
+void update\+Graph\+Gui (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_graph_gui}{Graph\+Gui}} \texorpdfstring{$\ast$}{*}}]{graph\+Gui}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00497\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00498\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_adbef16dc4956f9f1d8c2bef485937497}{history}}[graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a1251a72a5399c523c7dae44c66a4fa92}{index}}]\ =\ (int)(*graphGui-\/>\mbox{\hyperlink{struct_graph_gui_aec2a94c345efc3a61f91b540b14f1894}{target}}\ *\ (graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a08a5d8ae8450212c6f6dafa30b3ea2a9}{h}}\ -\/\ (graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a5365e42bfdace251f8aa9137ab429918}{padding}}*2)));\ \textcolor{comment}{//\ Cast\ float\ to\ int}}
+\DoxyCodeLine{00499\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a1251a72a5399c523c7dae44c66a4fa92}{index}}++;}
+\DoxyCodeLine{00500\ \ \ \ \ graphGui-\/>\mbox{\hyperlink{struct_graph_gui_a1251a72a5399c523c7dae44c66a4fa92}{index}}\ \%=\ \mbox{\hyperlink{gui_8h_a18f70209645a921fd16ad43346304f14}{MAX\_GRAPH\_HISTORY}}\ -\/\ 1;}
+\DoxyCodeLine{00501\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{gui_8c_a1743116403c5411012c4c8a4911157ef}\index{gui.c@{gui.c}!arrangerScreenDrawableList@{arrangerScreenDrawableList}}
+\index{arrangerScreenDrawableList@{arrangerScreenDrawableList}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{arrangerScreenDrawableList}{arrangerScreenDrawableList}}
+{\footnotesize\ttfamily \label{gui_8c_a1743116403c5411012c4c8a4911157ef} 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}}\texorpdfstring{$\ast$}{*} arranger\+Screen\+Drawable\+List}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\+\_\+drawable()}}, \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI()}}, \mbox{\hyperlink{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}{Draw\+GUI()}}, \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}, and \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{remove\+Drawable()}}.
+
+\Hypertarget{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4}\index{gui.c@{gui.c}!cs@{cs}}
+\index{cs@{cs}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{cs}{cs}}
+{\footnotesize\ttfamily \label{gui_8c_ad3d51ff8dc1f9c0c4c77492f0ae58ba4} 
+\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} cs}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a3aa032507669d9de42ad6390a8197c75}{clear\+Bg()}}, \mbox{\hyperlink{gui_8c_a4499de280e8aaf3f681afc9f392885bd}{create\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_a00aba07315bd70ed960d1649912ec50f}{create\+Sequencer\+Gui()}}, \mbox{\hyperlink{gui_8c_a91d77ebef83f7a63c7205277c59c706b}{create\+Song\+Minimap\+Gui()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}, \mbox{\hyperlink{gui_8c_abf6d07dc1a195dbf25efa1839515533d}{get\+Color\+Scheme\+As\+Pointer\+Array()}}, \mbox{\hyperlink{gui_8c_af3999c6a0257b01027635b611b7e85cf}{get\+Colour\+Scheme()}}, \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}, and \mbox{\hyperlink{gui_8c_a6f1243508e3497f5e61399268001994c}{set\+Colour\+Scheme()}}.
+
+\Hypertarget{gui_8c_abf27f0debfd1f474c653375a35b6a3a2}\index{gui.c@{gui.c}!globalDrawableList@{globalDrawableList}}
+\index{globalDrawableList@{globalDrawableList}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{globalDrawableList}{globalDrawableList}}
+{\footnotesize\ttfamily \label{gui_8c_abf27f0debfd1f474c653375a35b6a3a2} 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}}\texorpdfstring{$\ast$}{*} global\+Drawable\+List}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\+\_\+drawable()}}, \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI()}}, \mbox{\hyperlink{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}{Draw\+GUI()}}, \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}, and \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{remove\+Drawable()}}.
+
+\Hypertarget{gui_8c_a5a2df28ed942cc16834e4e23775031b4}\index{gui.c@{gui.c}!instrumentScreenDrawableList@{instrumentScreenDrawableList}}
+\index{instrumentScreenDrawableList@{instrumentScreenDrawableList}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{instrumentScreenDrawableList}{instrumentScreenDrawableList}}
+{\footnotesize\ttfamily \label{gui_8c_a5a2df28ed942cc16834e4e23775031b4} 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}}\texorpdfstring{$\ast$}{*} instrument\+Screen\+Drawable\+List}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\+\_\+drawable()}}, \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI()}}, \mbox{\hyperlink{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}{Draw\+GUI()}}, \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}, and \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{remove\+Drawable()}}.
+
+\Hypertarget{gui_8c_ad3fa4e303017155aea9b07c326f4b65f}\index{gui.c@{gui.c}!patternScreenDrawableList@{patternScreenDrawableList}}
+\index{patternScreenDrawableList@{patternScreenDrawableList}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{patternScreenDrawableList}{patternScreenDrawableList}}
+{\footnotesize\ttfamily \label{gui_8c_ad3fa4e303017155aea9b07c326f4b65f} 
+\mbox{\hyperlink{struct_drawable_list}{Drawable\+List}}\texorpdfstring{$\ast$}{*} pattern\+Screen\+Drawable\+List}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a3524a54f1546777ce3a8148c65b426d3}{add\+\_\+drawable()}}, \mbox{\hyperlink{gui_8c_a241d3a2b95f74d9bfbef1c858fbb3110}{Cleanup\+GUI()}}, \mbox{\hyperlink{gui_8c_a1ba7c2d258b2d0fb6588d01563c1103d}{Draw\+GUI()}}, \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}, and \mbox{\hyperlink{gui_8c_aeb0edaa7697c1b1885f9dd2a6fc63444}{remove\+Drawable()}}.
+
+\Hypertarget{gui_8c_a97a78143672d8fae461e1d937a210ccc}\index{gui.c@{gui.c}!symbolFont@{symbolFont}}
+\index{symbolFont@{symbolFont}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{symbolFont}{symbolFont}}
+{\footnotesize\ttfamily \label{gui_8c_a97a78143672d8fae461e1d937a210ccc} 
+Font symbol\+Font}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a1321ec14b7f7c6aee7044efa24530cb6}{draw\+Transport\+Gui()}}, and \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}.
+
+\Hypertarget{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8}\index{gui.c@{gui.c}!textFont@{textFont}}
+\index{textFont@{textFont}!gui.c@{gui.c}}
+\doxysubsubsection{\texorpdfstring{textFont}{textFont}}
+{\footnotesize\ttfamily \label{gui_8c_a0d1169de4cbc5ff692b49c0c9011caa8} 
+Font text\+Font}
+
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_abdefbb55eb26879501c35858e836d6fe}{draw\+Graph\+Gui()}}, \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}, and \mbox{\hyperlink{gui_8c_a353b956e85ae9dd28f160b4df55e2357}{Init\+GUI()}}.
+

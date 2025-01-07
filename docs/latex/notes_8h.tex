@@ -1,0 +1,227 @@
+\doxysection{notes.\+h File Reference}
+\hypertarget{notes_8h}{}\label{notes_8h}\index{notes.h@{notes.h}}
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{notes_8h_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\+\_\+\+OCTAVES}}~9
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ce}{Note}} \{ \newline
+\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}} = -\/1
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}{C}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2eea8143c83e1062e3f19d6a52246094}{Db}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea77a6b11f9898c052926f1d49765861e8}{D}}
+, \newline
+\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceae82cfa6702b54ebe9e646dda0beb1eee}{Eb}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab199e021998d49b1f09338d8b9b18ecb}{E}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf382a63cc3d6491bf26b59e66f46826d}{F}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab3d9558b363c9b7c67b4211f3b6982fa}{Gb}}
+, \newline
+\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2fe993340f6abb2234e543cd427df70b}{G}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab2a3401c6363e4639223bcceafe3fc5a}{Ab}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea42a4ade1acd55a49164099104990e09f}{A}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceacc8b13e897cc2f6b7e4ff4b98de74541}{Bb}}
+, \newline
+\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68}{B}}
+, \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\+\_\+\+COUNT}}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{notes_8h_afad21e9a6450d7c453b77bf4918b4895}{get\+Note\+String}} (int note, int octave)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const char \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{notes_8h_af3f594b85e8db539a2bbe93816c7639f}{note\+Names}} \mbox{[}\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\+\_\+\+COUNT}}\mbox{]}
+\item 
+const float \mbox{\hyperlink{notes_8h_a2f3e853735e635788f45f7794217c678}{note\+Frequencies}} \mbox{[}\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\+\_\+\+COUNT}}\mbox{]}\mbox{[}\mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\+\_\+\+OCTAVES}}\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{notes_8h_ad3899a03b8d6044e41977f9a59bb6a39}\index{notes.h@{notes.h}!MAX\_OCTAVES@{MAX\_OCTAVES}}
+\index{MAX\_OCTAVES@{MAX\_OCTAVES}!notes.h@{notes.h}}
+\doxysubsubsection{\texorpdfstring{MAX\_OCTAVES}{MAX\_OCTAVES}}
+{\footnotesize\ttfamily \label{notes_8h_ad3899a03b8d6044e41977f9a59bb6a39} 
+\#define MAX\+\_\+\+OCTAVES~9}
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ce}\index{notes.h@{notes.h}!Note@{Note}}
+\index{Note@{Note}!notes.h@{notes.h}}
+\doxysubsubsection{\texorpdfstring{Note}{Note}}
+{\footnotesize\ttfamily \label{notes_8h_a133274d390ac226cb82aa9d32b98d6ce} 
+enum \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ce}{Note}}}
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{OFF@{OFF}!notes.h@{notes.h}}\index{notes.h@{notes.h}!OFF@{OFF}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75} 
+OFF&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{C@{C}!notes.h@{notes.h}}\index{notes.h@{notes.h}!C@{C}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c} 
+C&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Db@{Db}!notes.h@{notes.h}}\index{notes.h@{notes.h}!Db@{Db}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2eea8143c83e1062e3f19d6a52246094}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2eea8143c83e1062e3f19d6a52246094} 
+Db&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{D@{D}!notes.h@{notes.h}}\index{notes.h@{notes.h}!D@{D}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea77a6b11f9898c052926f1d49765861e8}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea77a6b11f9898c052926f1d49765861e8} 
+D&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Eb@{Eb}!notes.h@{notes.h}}\index{notes.h@{notes.h}!Eb@{Eb}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceae82cfa6702b54ebe9e646dda0beb1eee}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceae82cfa6702b54ebe9e646dda0beb1eee} 
+Eb&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{E@{E}!notes.h@{notes.h}}\index{notes.h@{notes.h}!E@{E}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab199e021998d49b1f09338d8b9b18ecb}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab199e021998d49b1f09338d8b9b18ecb} 
+E&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{F@{F}!notes.h@{notes.h}}\index{notes.h@{notes.h}!F@{F}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf382a63cc3d6491bf26b59e66f46826d}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf382a63cc3d6491bf26b59e66f46826d} 
+F&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Gb@{Gb}!notes.h@{notes.h}}\index{notes.h@{notes.h}!Gb@{Gb}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab3d9558b363c9b7c67b4211f3b6982fa}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab3d9558b363c9b7c67b4211f3b6982fa} 
+Gb&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{G@{G}!notes.h@{notes.h}}\index{notes.h@{notes.h}!G@{G}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2fe993340f6abb2234e543cd427df70b}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2fe993340f6abb2234e543cd427df70b} 
+G&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Ab@{Ab}!notes.h@{notes.h}}\index{notes.h@{notes.h}!Ab@{Ab}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab2a3401c6363e4639223bcceafe3fc5a}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab2a3401c6363e4639223bcceafe3fc5a} 
+Ab&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{A@{A}!notes.h@{notes.h}}\index{notes.h@{notes.h}!A@{A}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea42a4ade1acd55a49164099104990e09f}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea42a4ade1acd55a49164099104990e09f} 
+A&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{Bb@{Bb}!notes.h@{notes.h}}\index{notes.h@{notes.h}!Bb@{Bb}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceacc8b13e897cc2f6b7e4ff4b98de74541}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceacc8b13e897cc2f6b7e4ff4b98de74541} 
+Bb&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{B@{B}!notes.h@{notes.h}}\index{notes.h@{notes.h}!B@{B}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68} 
+B&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{NOTE\_COUNT@{NOTE\_COUNT}!notes.h@{notes.h}}\index{notes.h@{notes.h}!NOTE\_COUNT@{NOTE\_COUNT}}}\Hypertarget{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}\label{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862} 
+NOTE\+\_\+\+COUNT&\\
+\hline
+
+\end{DoxyEnumFields}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00008\ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00009\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}}\ =\ -\/1,}
+\DoxyCodeLine{00010\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}{C}},}
+\DoxyCodeLine{00011\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2eea8143c83e1062e3f19d6a52246094}{Db}},}
+\DoxyCodeLine{00012\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea77a6b11f9898c052926f1d49765861e8}{D}},}
+\DoxyCodeLine{00013\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceae82cfa6702b54ebe9e646dda0beb1eee}{Eb}},}
+\DoxyCodeLine{00014\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab199e021998d49b1f09338d8b9b18ecb}{E}},}
+\DoxyCodeLine{00015\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf382a63cc3d6491bf26b59e66f46826d}{F}},}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab3d9558b363c9b7c67b4211f3b6982fa}{Gb}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2fe993340f6abb2234e543cd427df70b}{G}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab2a3401c6363e4639223bcceafe3fc5a}{Ab}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea42a4ade1acd55a49164099104990e09f}{A}},}
+\DoxyCodeLine{00020\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceacc8b13e897cc2f6b7e4ff4b98de74541}{Bb}},}
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68}{B}},}
+\DoxyCodeLine{00022\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}}}
+\DoxyCodeLine{00023\ \}\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ce}{Note}};}
+
+\end{DoxyCode}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{notes_8h_afad21e9a6450d7c453b77bf4918b4895}\index{notes.h@{notes.h}!getNoteString@{getNoteString}}
+\index{getNoteString@{getNoteString}!notes.h@{notes.h}}
+\doxysubsubsection{\texorpdfstring{getNoteString()}{getNoteString()}}
+{\footnotesize\ttfamily \label{notes_8h_afad21e9a6450d7c453b77bf4918b4895} 
+char \texorpdfstring{$\ast$}{*} get\+Note\+String (\begin{DoxyParamCaption}\item[{int}]{note}{, }\item[{int}]{octave}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordflow}{if}\ (note\ <\ 0\ ||\ note\ >=\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}}\ ||\ octave\ <\ 0\ ||\ octave\ >=\ \mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\_OCTAVES}})\ \{}
+\DoxyCodeLine{00039\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00040\ \ \ \ \ \}}
+\DoxyCodeLine{00041\ }
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{char}\ res[5];}
+\DoxyCodeLine{00043\ \ \ \ \ res[0]\ =\ \textcolor{charliteral}{'\(\backslash\)0'};}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ \ \ \ \ strcat(res,\ \mbox{\hyperlink{notes_8c_af3f594b85e8db539a2bbe93816c7639f}{noteNames}}[note]);}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keywordtype}{char}\ octaveString[3];}
+\DoxyCodeLine{00047\ \ \ \ \ sprintf(octaveString,\ \textcolor{stringliteral}{"{}\%d"{}},\ octave);}
+\DoxyCodeLine{00048\ \ \ \ \ strcat(res,\ octaveString);}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00051\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}.
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{notes_8h_a2f3e853735e635788f45f7794217c678}\index{notes.h@{notes.h}!noteFrequencies@{noteFrequencies}}
+\index{noteFrequencies@{noteFrequencies}!notes.h@{notes.h}}
+\doxysubsubsection{\texorpdfstring{noteFrequencies}{noteFrequencies}}
+{\footnotesize\ttfamily \label{notes_8h_a2f3e853735e635788f45f7794217c678} 
+const float note\+Frequencies\mbox{[}\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\+\_\+\+COUNT}}\mbox{]}\mbox{[}\mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\+\_\+\+OCTAVES}}\mbox{]}\hspace{0.3cm}{\ttfamily [extern]}}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00023\ \ \ \ \ \{16.35,\ 32.70,\ 65.41,\ 130.81,\ 261.63,\ 523.25,\ 1046.50,\ 2093.00,\ 4186.01\},\ \textcolor{comment}{//\ C}}
+\DoxyCodeLine{00024\ \ \ \ \ \{17.32,\ 34.65,\ 69.30,\ 138.59,\ 277.18,\ 554.37,\ 1108.73,\ 2217.46,\ 4434.92\},\ \textcolor{comment}{//\ Db}}
+\DoxyCodeLine{00025\ \ \ \ \ \{18.35,\ 36.71,\ 73.42,\ 146.83,\ 293.66,\ 587.33,\ 1174.66,\ 2349.32,\ 4698.64\},\ \textcolor{comment}{//\ D}}
+\DoxyCodeLine{00026\ \ \ \ \ \{19.45,\ 38.89,\ 77.78,\ 155.56,\ 311.13,\ 622.25,\ 1244.51,\ 2489.02,\ 4978.03\},\ \textcolor{comment}{//\ Eb}}
+\DoxyCodeLine{00027\ \ \ \ \ \{20.60,\ 41.20,\ 82.41,\ 164.81,\ 329.63,\ 659.26,\ 1318.51,\ 2637.02,\ 0.0\},\ \ \ \ \ \textcolor{comment}{//\ E}}
+\DoxyCodeLine{00028\ \ \ \ \ \{21.83,\ 43.65,\ 87.31,\ 174.61,\ 349.23,\ 698.46,\ 1396.91,\ 2793.83,\ 0.0\},\ \ \ \ \ \textcolor{comment}{//\ F}}
+\DoxyCodeLine{00029\ \ \ \ \ \{23.12,\ 46.25,\ 92.50,\ 185.00,\ 369.99,\ 739.99,\ 1479.98,\ 2959.96,\ 0.0\},\ \ \ \ \ \textcolor{comment}{//\ Gb}}
+\DoxyCodeLine{00030\ \ \ \ \ \{24.50,\ 49.00,\ 98.00,\ 196.00,\ 392.00,\ 783.99,\ 1567.98,\ 3135.96,\ 0.0\},\ \ \ \ \ \textcolor{comment}{//\ G}}
+\DoxyCodeLine{00031\ \ \ \ \ \{25.96,\ 51.91,\ 103.83,\ 207.65,\ 415.30,\ 830.61,\ 1661.22,\ 3322.44,\ 0.0\},\ \ \ \ \textcolor{comment}{//\ Ab}}
+\DoxyCodeLine{00032\ \ \ \ \ \{27.50,\ 55.00,\ 110.00,\ 220.00,\ 440.00,\ 880.00,\ 1760.00,\ 3520.00,\ 0.0\},\ \ \ \ \textcolor{comment}{//\ A}}
+\DoxyCodeLine{00033\ \ \ \ \ \{29.14,\ 58.27,\ 116.54,\ 233.08,\ 466.16,\ 932.33,\ 1864.66,\ 3729.31,\ 0.0\},\ \ \ \ \textcolor{comment}{//\ Bb}}
+\DoxyCodeLine{00034\ \ \ \ \ \{30.87,\ 61.74,\ 123.47,\ 246.94,\ 493.88,\ 987.77,\ 1975.53,\ 3951.07,\ 0.0\}\ \ \ \ \ \textcolor{comment}{//\ B}}
+\DoxyCodeLine{00035\ \};}
+
+\end{DoxyCode}
+\Hypertarget{notes_8h_af3f594b85e8db539a2bbe93816c7639f}\index{notes.h@{notes.h}!noteNames@{noteNames}}
+\index{noteNames@{noteNames}!notes.h@{notes.h}}
+\doxysubsubsection{\texorpdfstring{noteNames}{noteNames}}
+{\footnotesize\ttfamily \label{notes_8h_af3f594b85e8db539a2bbe93816c7639f} 
+const char\texorpdfstring{$\ast$}{*} note\+Names\mbox{[}\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\+\_\+\+COUNT}}\mbox{]}\hspace{0.3cm}{\ttfamily [extern]}}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00004\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00005\ \ \ \ \ \textcolor{stringliteral}{"{}C"{}},}
+\DoxyCodeLine{00006\ \ \ \ \ \textcolor{stringliteral}{"{}Db"{}},}
+\DoxyCodeLine{00007\ \ \ \ \ \textcolor{stringliteral}{"{}D"{}},}
+\DoxyCodeLine{00008\ \ \ \ \ \textcolor{stringliteral}{"{}Eb"{}},}
+\DoxyCodeLine{00009\ \ \ \ \ \textcolor{stringliteral}{"{}E"{}},}
+\DoxyCodeLine{00010\ \ \ \ \ \textcolor{stringliteral}{"{}F"{}},}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{stringliteral}{"{}Gb"{}},}
+\DoxyCodeLine{00012\ \ \ \ \ \textcolor{stringliteral}{"{}G"{}},}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{stringliteral}{"{}Ab"{}},}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{stringliteral}{"{}A"{}},}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{stringliteral}{"{}Bb"{}},}
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{stringliteral}{"{}B"{}}}
+\DoxyCodeLine{00017\ \};}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{notes_8c_afad21e9a6450d7c453b77bf4918b4895}{get\+Note\+String()}}.
+

@@ -1,0 +1,85 @@
+\doxysection{Application\+State Struct Reference}
+\hypertarget{struct_application_state}{}\label{struct_application_state}\index{ApplicationState@{ApplicationState}}
+
+
+{\ttfamily \#include $<$appstate.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{struct_application_state_a4ca381835896ce104297bee850b31fbb}{current\+Pattern}}
+\item 
+int \mbox{\hyperlink{struct_application_state_a003eb40b05a29adb904d464cc2719434}{selected\+Pattern}}
+\item 
+int \mbox{\hyperlink{struct_application_state_a3c5d6208a6fab2278e6844ad8ce8023a}{selected\+Step}}
+\item 
+int \mbox{\hyperlink{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc}{selected\+Arranger\+Cell}} \mbox{[}2\mbox{]}
+\item 
+\mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600}{Scene}} \mbox{\hyperlink{struct_application_state_a3b09129de8fd114726ab802bd6288610}{current\+Scene}}
+\item 
+\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_application_state_a4e86c63d39e094bd9429233f38cd8d75}{input\+State}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_application_state_a4ca381835896ce104297bee850b31fbb}\index{ApplicationState@{ApplicationState}!currentPattern@{currentPattern}}
+\index{currentPattern@{currentPattern}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{currentPattern}{currentPattern}}
+{\footnotesize\ttfamily \label{struct_application_state_a4ca381835896ce104297bee850b31fbb} 
+int Application\+State\+::current\+Pattern}
+
+\Hypertarget{struct_application_state_a3b09129de8fd114726ab802bd6288610}\index{ApplicationState@{ApplicationState}!currentScene@{currentScene}}
+\index{currentScene@{currentScene}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{currentScene}{currentScene}}
+{\footnotesize\ttfamily \label{struct_application_state_a3b09129de8fd114726ab802bd6288610} 
+\mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600}{Scene}} Application\+State\+::current\+Scene}
+
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, \mbox{\hyperlink{appstate_8c_a36ae5924bd7be086ce1718ffa3f8b3a7}{decrement\+Scene()}}, \mbox{\hyperlink{appstate_8c_ab6e3f762b027ac5d4a427c81cbcc3929}{increment\+Scene()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{struct_application_state_a4e86c63d39e094bd9429233f38cd8d75}\index{ApplicationState@{ApplicationState}!inputState@{inputState}}
+\index{inputState@{inputState}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{inputState}{inputState}}
+{\footnotesize\ttfamily \label{struct_application_state_a4e86c63d39e094bd9429233f38cd8d75} 
+\mbox{\hyperlink{struct_input_state}{Input\+State}}\texorpdfstring{$\ast$}{*} Application\+State\+::input\+State}
+
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc}\index{ApplicationState@{ApplicationState}!selectedArrangerCell@{selectedArrangerCell}}
+\index{selectedArrangerCell@{selectedArrangerCell}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{selectedArrangerCell}{selectedArrangerCell}}
+{\footnotesize\ttfamily \label{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc} 
+int Application\+State\+::selected\+Arranger\+Cell\mbox{[}2\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{struct_application_state_a003eb40b05a29adb904d464cc2719434}\index{ApplicationState@{ApplicationState}!selectedPattern@{selectedPattern}}
+\index{selectedPattern@{selectedPattern}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{selectedPattern}{selectedPattern}}
+{\footnotesize\ttfamily \label{struct_application_state_a003eb40b05a29adb904d464cc2719434} 
+int Application\+State\+::selected\+Pattern}
+
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, \mbox{\hyperlink{appstate_8c_ab6e3f762b027ac5d4a427c81cbcc3929}{increment\+Scene()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{struct_application_state_a3c5d6208a6fab2278e6844ad8ce8023a}\index{ApplicationState@{ApplicationState}!selectedStep@{selectedStep}}
+\index{selectedStep@{selectedStep}!ApplicationState@{ApplicationState}}
+\doxysubsubsection{\texorpdfstring{selectedStep}{selectedStep}}
+{\footnotesize\ttfamily \label{struct_application_state_a3c5d6208a6fab2278e6844ad8ce8023a} 
+int Application\+State\+::selected\+Step}
+
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{appstate_8h}{appstate.\+h}}\end{DoxyCompactItemize}

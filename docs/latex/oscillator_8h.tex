@@ -1,0 +1,188 @@
+\doxysection{oscillator.\+h File Reference}
+\hypertarget{oscillator_8h}{}\label{oscillator_8h}\index{oscillator.h@{oscillator.h}}
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_oscillator}{Oscillator}}
+\item 
+struct \mbox{\hyperlink{struct_operator}{Operator}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{oscillator_8h_a4b76a0c2859cfd819a343a780070ee2b}{SAMPLE\+\_\+\+RATE}}~(44100)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{oscillator_8h_a7be07feaa3258a8c433788f95f8b3e0c}{sawtooth\+\_\+wave}} (float phase)
+\item 
+float \mbox{\hyperlink{oscillator_8h_a70041d7c6c3a6964143f97fd5324e975}{sine\+\_\+wave}} (float phase, float mod)
+\item 
+float \mbox{\hyperlink{oscillator_8h_aa292c6d5c52887711ea0ee83838e7701}{square\+\_\+wave}} (float phase)
+\item 
+float \mbox{\hyperlink{oscillator_8h_ac1368ed4d35076bee625057bffb29ebe}{band\+\_\+limited\+\_\+sawtooth}} (float phase, float increment)
+\item 
+float \mbox{\hyperlink{oscillator_8h_a300bedb14faf5c88617c85de88430770}{band\+\_\+limited\+\_\+square}} (float phase, float increment)
+\item 
+float \mbox{\hyperlink{oscillator_8h_af4692411f4a52a978b132919f64eb1e8}{sine\+\_\+fm}} (\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*}ops\mbox{[}4\mbox{]}, float frequency)
+\item 
+float \mbox{\hyperlink{oscillator_8h_ac1070ef9ffb81db3e486526c78a9a05a}{sine\+\_\+op}} (\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*}op, float frequency, float mod)
+\item 
+\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{oscillator_8h_aaf5dcf36e939a9994375bd83133edd97}{create\+Operator}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, float ratio)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{oscillator_8h_a4b76a0c2859cfd819a343a780070ee2b}\index{oscillator.h@{oscillator.h}!SAMPLE\_RATE@{SAMPLE\_RATE}}
+\index{SAMPLE\_RATE@{SAMPLE\_RATE}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{SAMPLE\_RATE}{SAMPLE\_RATE}}
+{\footnotesize\ttfamily \label{oscillator_8h_a4b76a0c2859cfd819a343a780070ee2b} 
+\#define SAMPLE\+\_\+\+RATE~(44100)}
+
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}, and \mbox{\hyperlink{oscillator_8c_ac1070ef9ffb81db3e486526c78a9a05a}{sine\+\_\+op()}}.
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{oscillator_8h_ac1368ed4d35076bee625057bffb29ebe}\index{oscillator.h@{oscillator.h}!band\_limited\_sawtooth@{band\_limited\_sawtooth}}
+\index{band\_limited\_sawtooth@{band\_limited\_sawtooth}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{band\_limited\_sawtooth()}{band\_limited\_sawtooth()}}
+{\footnotesize\ttfamily \label{oscillator_8h_ac1368ed4d35076bee625057bffb29ebe} 
+float band\+\_\+limited\+\_\+sawtooth (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00052\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 2.0f\ *\ phase\ -\/\ 1.0f;}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordflow}{if}\ (phase\ <\ increment)\ \{}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ value\ -\/=\ blep[(int)(phase\ /\ increment\ *\ \mbox{\hyperlink{oscillator_8c_a484e2e47fa3f133bfd32d9dc86a7ce16}{BLEP\_SIZE}})];}
+\DoxyCodeLine{00056\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (phase\ >\ 1.0f\ -\/\ increment)\ \{}
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ value\ +=\ blep[(int)((phase\ -\/\ 1.0f)\ /\ increment\ *\ \mbox{\hyperlink{oscillator_8c_a484e2e47fa3f133bfd32d9dc86a7ce16}{BLEP\_SIZE}})];}
+\DoxyCodeLine{00058\ \ \ \ \ \}}
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordflow}{return}\ value;}
+\DoxyCodeLine{00060\ \}}
+
+\end{DoxyCode}
+\Hypertarget{oscillator_8h_a300bedb14faf5c88617c85de88430770}\index{oscillator.h@{oscillator.h}!band\_limited\_square@{band\_limited\_square}}
+\index{band\_limited\_square@{band\_limited\_square}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{band\_limited\_square()}{band\_limited\_square()}}
+{\footnotesize\ttfamily \label{oscillator_8h_a300bedb14faf5c88617c85de88430770} 
+float band\+\_\+limited\+\_\+square (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ phase\ <\ 0.5f\ ?\ 1.0f\ :\ -\/1.0f;}
+\DoxyCodeLine{00064\ \ \ \ \ \textcolor{keywordflow}{if}\ (phase\ <\ increment)\ \{}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ value\ -\/=\ blep[(int)(phase\ /\ increment\ *\ \mbox{\hyperlink{oscillator_8c_a484e2e47fa3f133bfd32d9dc86a7ce16}{BLEP\_SIZE}})];}
+\DoxyCodeLine{00066\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (phase\ >\ 1.0f\ -\/\ increment)\ \{}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ value\ +=\ blep[(int)((phase\ -\/\ 1.0f)\ /\ increment\ *\ \mbox{\hyperlink{oscillator_8c_a484e2e47fa3f133bfd32d9dc86a7ce16}{BLEP\_SIZE}})];}
+\DoxyCodeLine{00068\ \ \ \ \ \}}
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordflow}{return}\ value;}
+\DoxyCodeLine{00070\ \}}
+
+\end{DoxyCode}
+\Hypertarget{oscillator_8h_aaf5dcf36e939a9994375bd83133edd97}\index{oscillator.h@{oscillator.h}!createOperator@{createOperator}}
+\index{createOperator@{createOperator}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{createOperator()}{createOperator()}}
+{\footnotesize\ttfamily \label{oscillator_8h_aaf5dcf36e939a9994375bd83133edd97} 
+\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*} create\+Operator (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{float}]{ratio}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00073\ \ \ \ \ \mbox{\hyperlink{struct_operator}{Operator}}*\ op\ =\ (\mbox{\hyperlink{struct_operator}{Operator}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_operator}{Operator}}));}
+\DoxyCodeLine{00074\ \ \ \ \ op-\/>\mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}}\ =\ 0.0f;}
+\DoxyCodeLine{00075\ \ \ \ \ op-\/>\mbox{\hyperlink{struct_operator_ab7607800179e3bf38b145d146874c39a}{ratio}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}ratio"{}},\ ratio,\ 0.25f,\ 30.0f);}
+\DoxyCodeLine{00076\ \ \ \ \ op-\/>\mbox{\hyperlink{struct_operator_a3cf93a0cf4c712ca4694e5129277b9f8}{level}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}level"{}},\ .5f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00077\ \ \ \ \ \textcolor{keywordflow}{return}\ op;}
+\DoxyCodeLine{00078\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{oscillator_8h_a7be07feaa3258a8c433788f95f8b3e0c}\index{oscillator.h@{oscillator.h}!sawtooth\_wave@{sawtooth\_wave}}
+\index{sawtooth\_wave@{sawtooth\_wave}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{sawtooth\_wave()}{sawtooth\_wave()}}
+{\footnotesize\ttfamily \label{oscillator_8h_a7be07feaa3258a8c433788f95f8b3e0c} 
+float sawtooth\+\_\+wave (\begin{DoxyParamCaption}\item[{float}]{phase}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keywordflow}{return}\ 2.0f\ *\ phase\ -\/\ 1.0f;}
+\DoxyCodeLine{00024\ \}}
+
+\end{DoxyCode}
+\Hypertarget{oscillator_8h_af4692411f4a52a978b132919f64eb1e8}\index{oscillator.h@{oscillator.h}!sine\_fm@{sine\_fm}}
+\index{sine\_fm@{sine\_fm}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{sine\_fm()}{sine\_fm()}}
+{\footnotesize\ttfamily \label{oscillator_8h_af4692411f4a52a978b132919f64eb1e8} 
+float sine\+\_\+fm (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*}}]{ops}{\mbox{[}4\mbox{]}, }\item[{float}]{frequency}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{float}\ dubpi\ =\ 2.0f\ *\ M\_PI;}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00033\ \ \ \ \ }
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{float}\ a\ =\ \mbox{\hyperlink{oscillator_8c_ac1070ef9ffb81db3e486526c78a9a05a}{sine\_op}}(ops[2],\ frequency,\ 0.0f);}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{float}\ b\ =\ \mbox{\hyperlink{oscillator_8c_ac1070ef9ffb81db3e486526c78a9a05a}{sine\_op}}(ops[1],\ frequency,\ a);}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordtype}{float}\ c\ =\ \mbox{\hyperlink{oscillator_8c_ac1070ef9ffb81db3e486526c78a9a05a}{sine\_op}}(ops[0],\ frequency,\ b);}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordflow}{return}\ c;}
+\DoxyCodeLine{00039\ \}}
+
+\end{DoxyCode}
+\Hypertarget{oscillator_8h_ac1070ef9ffb81db3e486526c78a9a05a}\index{oscillator.h@{oscillator.h}!sine\_op@{sine\_op}}
+\index{sine\_op@{sine\_op}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{sine\_op()}{sine\_op()}}
+{\footnotesize\ttfamily \label{oscillator_8h_ac1070ef9ffb81db3e486526c78a9a05a} 
+float sine\+\_\+op (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*}}]{op}{, }\item[{float}]{frequency}{, }\item[{float}]{mod}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{float}\ phase\_inc\ =\ (frequency\ *\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(op-\/>\mbox{\hyperlink{struct_operator_ab7607800179e3bf38b145d146874c39a}{ratio}}))\ /\ \mbox{\hyperlink{oscillator_8h_a4b76a0c2859cfd819a343a780070ee2b}{SAMPLE\_RATE}};}
+\DoxyCodeLine{00043\ \ \ \ \ op-\/>\mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}}\ =\ fmodf(op-\/>\mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}}\ +\ phase\_inc,\ 1.0f);}
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{keywordtype}{float}\ a\ =\ sinf(2\ *\ M\_PI\ *\ (op-\/>\mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}}\ +\ mod));}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordflow}{return}\ a\ *\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(op-\/>\mbox{\hyperlink{struct_operator_a3cf93a0cf4c712ca4694e5129277b9f8}{level}});}
+\DoxyCodeLine{00046\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{oscillator_8c_af4692411f4a52a978b132919f64eb1e8}{sine\+\_\+fm()}}.
+
+\Hypertarget{oscillator_8h_a70041d7c6c3a6964143f97fd5324e975}\index{oscillator.h@{oscillator.h}!sine\_wave@{sine\_wave}}
+\index{sine\_wave@{sine\_wave}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{sine\_wave()}{sine\_wave()}}
+{\footnotesize\ttfamily \label{oscillator_8h_a70041d7c6c3a6964143f97fd5324e975} 
+float sine\+\_\+wave (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{mod}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordflow}{return}\ sinf(2.0f\ *\ M\_PI\ *\ (phase\ +\ mod));}
+\DoxyCodeLine{00028\ \}}
+
+\end{DoxyCode}
+\Hypertarget{oscillator_8h_aa292c6d5c52887711ea0ee83838e7701}\index{oscillator.h@{oscillator.h}!square\_wave@{square\_wave}}
+\index{square\_wave@{square\_wave}!oscillator.h@{oscillator.h}}
+\doxysubsubsection{\texorpdfstring{square\_wave()}{square\_wave()}}
+{\footnotesize\ttfamily \label{oscillator_8h_aa292c6d5c52887711ea0ee83838e7701} 
+float square\+\_\+wave (\begin{DoxyParamCaption}\item[{float}]{phase}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{keywordflow}{return}\ phase\ <\ 0.5f\ ?\ 1.0f\ :\ -\/1.0f;}
+\DoxyCodeLine{00050\ \}}
+
+\end{DoxyCode}

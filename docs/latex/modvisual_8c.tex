@@ -1,0 +1,191 @@
+\doxysection{modvisual.\+c File Reference}
+\hypertarget{modvisual_8c}{}\label{modvisual_8c}\index{modvisual.c@{modvisual.c}}
+{\ttfamily \#include "{}raylib.\+h"{}}\newline
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_signal_history}{Signal\+History}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{modvisual_8c_a2cd109632a6dcccaa80b43561b1ab700}{SCREEN\+\_\+\+WIDTH}}~800
+\item 
+\#define \mbox{\hyperlink{modvisual_8c_a6974d08a74da681b3957b2fead2608b8}{SCREEN\+\_\+\+HEIGHT}}~600
+\item 
+\#define \mbox{\hyperlink{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}{HISTORY\+\_\+\+SIZE}}~400
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{update\+History}} (\mbox{\hyperlink{struct_signal_history}{Signal\+History}} \texorpdfstring{$\ast$}{*}history, float value)
+\item 
+void \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{draw\+Signal}} (\mbox{\hyperlink{struct_signal_history}{Signal\+History}} \texorpdfstring{$\ast$}{*}history, int y\+Offset, float height, Color color)
+\item 
+int \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}\index{modvisual.c@{modvisual.c}!HISTORY\_SIZE@{HISTORY\_SIZE}}
+\index{HISTORY\_SIZE@{HISTORY\_SIZE}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{HISTORY\_SIZE}{HISTORY\_SIZE}}
+{\footnotesize\ttfamily \label{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf} 
+\#define HISTORY\+\_\+\+SIZE~400}
+
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{draw\+Signal()}}, and \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{update\+History()}}.
+
+\Hypertarget{modvisual_8c_a6974d08a74da681b3957b2fead2608b8}\index{modvisual.c@{modvisual.c}!SCREEN\_HEIGHT@{SCREEN\_HEIGHT}}
+\index{SCREEN\_HEIGHT@{SCREEN\_HEIGHT}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{SCREEN\_HEIGHT}{SCREEN\_HEIGHT}}
+{\footnotesize\ttfamily \label{modvisual_8c_a6974d08a74da681b3957b2fead2608b8} 
+\#define SCREEN\+\_\+\+HEIGHT~600}
+
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modvisual_8c_a2cd109632a6dcccaa80b43561b1ab700}\index{modvisual.c@{modvisual.c}!SCREEN\_WIDTH@{SCREEN\_WIDTH}}
+\index{SCREEN\_WIDTH@{SCREEN\_WIDTH}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{SCREEN\_WIDTH}{SCREEN\_WIDTH}}
+{\footnotesize\ttfamily \label{modvisual_8c_a2cd109632a6dcccaa80b43561b1ab700} 
+\#define SCREEN\+\_\+\+WIDTH~800}
+
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}\index{modvisual.c@{modvisual.c}!drawSignal@{drawSignal}}
+\index{drawSignal@{drawSignal}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{drawSignal()}{drawSignal()}}
+{\footnotesize\ttfamily \label{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64} 
+void draw\+Signal (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_signal_history}{Signal\+History}} \texorpdfstring{$\ast$}{*}}]{history}{, }\item[{int}]{y\+Offset}{, }\item[{float}]{height}{, }\item[{Color}]{color}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}{HISTORY\_SIZE}}\ -\/\ 1;\ i++)\ \{}
+\DoxyCodeLine{00020\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ idx1\ =\ (history-\/>\mbox{\hyperlink{struct_signal_history_af06919a9e869d9d23c3bd7d0f5afb2be}{current}}\ +\ i)\ \%\ \mbox{\hyperlink{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}{HISTORY\_SIZE}};}
+\DoxyCodeLine{00021\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ idx2\ =\ (history-\/>\mbox{\hyperlink{struct_signal_history_af06919a9e869d9d23c3bd7d0f5afb2be}{current}}\ +\ i\ +\ 1)\ \%\ \mbox{\hyperlink{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}{HISTORY\_SIZE}};}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ DrawLine(}
+\DoxyCodeLine{00024\ \ \ \ \ \ \ \ \ \ \ \ \ i,\ \ yOffset\ +\ height\ -\/\ (history-\/>\mbox{\hyperlink{struct_signal_history_a6b55cb266a068b8a53bf46f68285bf2d}{values}}[idx1]\ *\ height),}
+\DoxyCodeLine{00025\ \ \ \ \ \ \ \ \ \ \ \ \ i\ +\ 1,\ yOffset\ +\ height\ -\/\ (history-\/>\mbox{\hyperlink{struct_signal_history_a6b55cb266a068b8a53bf46f68285bf2d}{values}}[idx2]\ *\ height),}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ \ \ \ \ \ \ color}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \ \ );}
+\DoxyCodeLine{00028\ \ \ \ \ \}}
+\DoxyCodeLine{00029\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}\index{modvisual.c@{modvisual.c}!main@{main}}
+\index{main@{main}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily \label{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4} 
+int main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00031\ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00032\ \ \ \ \ InitWindow(\mbox{\hyperlink{modvisual_8c_a2cd109632a6dcccaa80b43561b1ab700}{SCREEN\_WIDTH}},\ \mbox{\hyperlink{modvisual_8c_a6974d08a74da681b3957b2fead2608b8}{SCREEN\_HEIGHT}},\ \textcolor{stringliteral}{"{}LFO\ Visualization"{}});}
+\DoxyCodeLine{00033\ \ \ \ \ SetTargetFPS(60);}
+\DoxyCodeLine{00034\ \ \ \ \ }
+\DoxyCodeLine{00035\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a63609f8767ff2964a90169b169fb16cf}{initModSystem}}();}
+\DoxyCodeLine{00036\ \ \ \ \ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ modList\ =\ \mbox{\hyperlink{modsystem_8c_a778b05a9d05212afde1619a75f32e5df}{createModList}}();}
+\DoxyCodeLine{00037\ \ \ \ \ }
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{comment}{//\ Create\ LFOs}}
+\DoxyCodeLine{00039\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ bassLFO\ =\ \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{createLFO}}(modList,\ 0,\ 0.12f,\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1a3a0c3655be9cb901072ca03af4be4a90}{LS\_SIN}});}
+\DoxyCodeLine{00040\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ midLFO\ =\ \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{createLFO}}(modList,\ 1,\ 0.35f,\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1a3a0c3655be9cb901072ca03af4be4a90}{LS\_SIN}});}
+\DoxyCodeLine{00041\ \ \ \ \ \mbox{\hyperlink{struct_random}{Random}}*\ fastLFO\ =\ \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{createRandom}}(modList,\ 2,\ .1f,\ \mbox{\hyperlink{modsystem_8h_a800a52a5329c6ee641d2346daa5bd559acfefbf4e8d0b7d734a6318f19c8f20b3}{RT\_SNH}});}
+\DoxyCodeLine{00042\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ ultraLFO\ =\ \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{createLFO}}(modList,\ 3,\ 4.0f,\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1a3a0c3655be9cb901072ca03af4be4a90}{LS\_SIN}});}
+\DoxyCodeLine{00043\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ adsrEnv\ =\ \mbox{\hyperlink{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}{createADSR}}(modList,\ 0.5f,\ 1.2f,\ 1.5f,\ 1.1f);}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00045\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ volume\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(\textcolor{stringliteral}{"{}vol"{}},\ 1.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{comment}{//\ Setup\ modulation\ routing}}
+\DoxyCodeLine{00047\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(\&bassLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}},\ midLFO-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}},\ 0.3f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a18ad7ed73e198e6c471d6d73a85d55a5}{MO\_ADD}});}
+\DoxyCodeLine{00048\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(\&midLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}},\ fastLFO-\/>\mbox{\hyperlink{struct_random_ad0a2003ab2f82ebfcfd9b1d941f9ae51}{rate}},\ 0.5f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a18ad7ed73e198e6c471d6d73a85d55a5}{MO\_ADD}});}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{comment}{//addModulation(\&fastLFO-\/>base,\ ultraLFO-\/>rate,\ 0.52f,\ MOD\_MUL);}}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{comment}{//addModulation(\&ultraLFO-\/>base,\ fastLFO-\/>rate,\ 1.71f,\ MOD\_ADD);}}
+\DoxyCodeLine{00051\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(\&ultraLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}},\ adsrEnv-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ .5f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}});}
+\DoxyCodeLine{00052\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(\&adsrEnv-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}},\ volume,\ 1.0f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}});}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \ \ \ \ adsrEnv-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}}\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \ \ \mbox{\hyperlink{struct_signal_history}{SignalHistory}}\ histories[6]\ =\ \{0\};}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{keywordflow}{while}\ (!WindowShouldClose())\ \{}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ deltaTime\ =\ GetFrameTime();}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{processModulations}}(modList,\ deltaTime);}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Update\ histories\ with\ proper\ Parameter\ access}}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[0],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(bassLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}));}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[1],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(midLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}));}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[2],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(fastLFO-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}));}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[3],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(ultraLFO-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}));}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[4],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(adsrEnv-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}));}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}{updateHistory}}(\&histories[5],\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(volume));}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ BeginDrawing();}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ ClearBackground(BLACK);}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Draw\ oscilloscope-\/style\ visualizations}}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[0],\ 50,\ 30.0f,\ RED);\ \ \ \ \ \textcolor{comment}{//\ Bass\ LFO}}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[1],\ 100,\ 30.0f,\ GREEN);\ \ \ \textcolor{comment}{//\ Mid\ LFO}}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[2],\ 150,\ 30.0f,\ BLUE);\ \ \ \ \textcolor{comment}{//\ Fast\ LFO}}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[3],\ 200,\ 30.0f,\ YELLOW);\ \ \textcolor{comment}{//\ Ultra\ LFO}}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[4],\ 250,\ 30.0f,\ PINK);\ }
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modvisual_8c_aab7f1a9f0ccb0a81767614c6cbb00c64}{drawSignal}}(\&histories[5],\ 300,\ 30.0f,\ BROWN);\ }
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Draw\ labels\ and\ modulation\ info}}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}Bass\ LFO\ (0.1\ Hz)"{}},\ 10,\ 40,\ 20,\ RED);}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}Mid\ LFO\ (0.5\ Hz\ +\ Bass\ mod)"{}},\ 10,\ 90,\ 20,\ GREEN);}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}Fast\ Square\ (2.0\ Hz\ +\ Mid/Ultra\ mod)"{}},\ 10,\ 140,\ 20,\ BLUE);}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}Ultra\ LFO\ (4.0\ Hz\ +\ Fast\ mod)"{}},\ 10,\ 190,\ 20,\ YELLOW);}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ DrawText(\textcolor{stringliteral}{"{}ADSR"{}},\ 10,\ 240,\ 20,\ PINK);}
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00090\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Update\ rate\ display}}
+\DoxyCodeLine{00091\ \ \ \ \ \ \ \ \ DrawText(TextFormat(\textcolor{stringliteral}{"{}Bass\ Rate:\ \%.2f"{}},\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(bassLFO-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}})),\ 600,\ 40,\ 20,\ RED);}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ DrawText(TextFormat(\textcolor{stringliteral}{"{}Mid\ Rate:\ \%.2f"{}},\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(midLFO-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}})),\ 600,\ 90,\ 20,\ GREEN);}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ DrawText(TextFormat(\textcolor{stringliteral}{"{}Fast\ Rate:\ \%.2f"{}},\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(fastLFO-\/>\mbox{\hyperlink{struct_random_ad0a2003ab2f82ebfcfd9b1d941f9ae51}{rate}})),\ 600,\ 140,\ 20,\ BLUE);}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ DrawText(TextFormat(\textcolor{stringliteral}{"{}Ultra\ Rate:\ \%.2f"{}},\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(ultraLFO-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}})),\ 600,\ 190,\ 20,\ YELLOW);}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ DrawText(TextFormat(\textcolor{stringliteral}{"{}Env\ Level:\ \%.2f"{}},\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(adsrEnv-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}})),\ 600,\ 240,\ 20,\ PINK);}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ EndDrawing();}
+\DoxyCodeLine{00098\ \ \ \ \ \}}
+\DoxyCodeLine{00099\ }
+\DoxyCodeLine{00100\ \ \ \ \ \textcolor{comment}{//\ Cleanup}}
+\DoxyCodeLine{00101\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanupModSystem}}(modList);}
+\DoxyCodeLine{00102\ \ \ \ \ CloseWindow();}
+\DoxyCodeLine{00103\ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00104\ \}}
+
+\end{DoxyCode}
+\Hypertarget{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6}\index{modvisual.c@{modvisual.c}!updateHistory@{updateHistory}}
+\index{updateHistory@{updateHistory}!modvisual.c@{modvisual.c}}
+\doxysubsubsection{\texorpdfstring{updateHistory()}{updateHistory()}}
+{\footnotesize\ttfamily \label{modvisual_8c_a1ba345d7cf40d61c06176488956af7c6} 
+void update\+History (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_signal_history}{Signal\+History}} \texorpdfstring{$\ast$}{*}}]{history}{, }\item[{float}]{value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00013\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00014\ \ \ \ \ history-\/>\mbox{\hyperlink{struct_signal_history_a6b55cb266a068b8a53bf46f68285bf2d}{values}}[history-\/>\mbox{\hyperlink{struct_signal_history_af06919a9e869d9d23c3bd7d0f5afb2be}{current}}]\ =\ value;}
+\DoxyCodeLine{00015\ \ \ \ \ history-\/>\mbox{\hyperlink{struct_signal_history_af06919a9e869d9d23c3bd7d0f5afb2be}{current}}\ =\ (history-\/>\mbox{\hyperlink{struct_signal_history_af06919a9e869d9d23c3bd7d0f5afb2be}{current}}\ +\ 1)\ \%\ \mbox{\hyperlink{modvisual_8c_a43034bdd0ae7c6267b05ff35ae97cddf}{HISTORY\_SIZE}};}
+\DoxyCodeLine{00016\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+

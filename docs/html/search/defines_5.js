@@ -1,0 +1,28 @@
+var searchData=
+[
+  ['magic_5fheader_0',['MAGIC_HEADER',['../io_8h.html#a68854f4d68528882dcf1f279d7deeaab',1,'io.h']]],
+  ['max_5fbutton_5fcols_1',['MAX_BUTTON_COLS',['../gui_8h.html#aaae604ef4d9eadb9bfcd7b444aa3420f',1,'gui.h']]],
+  ['max_5fbutton_5fcontainer_5fcols_2',['MAX_BUTTON_CONTAINER_COLS',['../gui_8h.html#a39bedb6a99963992eae24fc2cb769697',1,'gui.h']]],
+  ['max_5fbutton_5fcontainer_5frows_3',['MAX_BUTTON_CONTAINER_ROWS',['../gui_8h.html#a0efda2ea586e2297272aebdcf39b2487',1,'gui.h']]],
+  ['max_5fbutton_5frows_4',['MAX_BUTTON_ROWS',['../gui_8h.html#a7fd29d83b679306d4c79625c81ea6ff2',1,'gui.h']]],
+  ['max_5fconnections_5',['MAX_CONNECTIONS',['../modsystem_8h.html#a053b7859476cc9867ec62c49e68d3fa1',1,'modsystem.h']]],
+  ['max_5fcontainer_5fchildren_6',['MAX_CONTAINER_CHILDREN',['../containertest_8c.html#a5510ae9259a4d330f037e9cb1acb1af0',1,'containertest.c']]],
+  ['max_5fcontainers_7',['MAX_CONTAINERS',['../containertest_8c.html#a1df6bed0df9e62b289b7b11cb5928623',1,'containertest.c']]],
+  ['max_5fenvelope_5fstages_8',['MAX_ENVELOPE_STAGES',['../modsystem_8h.html#a5b0b60c31353bfab8ba47528ed8069c0',1,'modsystem.h']]],
+  ['max_5fenvelopes_9',['MAX_ENVELOPES',['../voice_8h.html#a901d487f4a4ff00e7051b681250b0022',1,'voice.h']]],
+  ['max_5fgraph_5fhistory_10',['MAX_GRAPH_HISTORY',['../gui_8h.html#a18f70209645a921fd16ad43346304f14',1,'gui.h']]],
+  ['max_5fic_5fsize_11',['MAX_IC_SIZE',['../containertest_8c.html#a79d644c2a8240f4825b61bf7c11164ae',1,'containertest.c']]],
+  ['max_5finput_5fhistory_12',['MAX_INPUT_HISTORY',['../input_8h.html#a2588701f7ee6e55fe8db9c918d2af43b',1,'input.h']]],
+  ['max_5finstruments_13',['MAX_INSTRUMENTS',['../main_8c.html#a15b12bc8e78d7628fed07a351204903c',1,'main.c']]],
+  ['max_5flfos_14',['MAX_LFOS',['../voice_8h.html#a77f0620a22d5655033e75b01e7bac62d',1,'voice.h']]],
+  ['max_5fmods_15',['MAX_MODS',['../modsystem_8h.html#abfbabc76e421665ab021770fa3c60cb4',1,'modsystem.h']]],
+  ['max_5foctaves_16',['MAX_OCTAVES',['../notes_8c.html#ad3899a03b8d6044e41977f9a59bb6a39',1,'MAX_OCTAVES:&#160;notes.c'],['../notes_8h.html#ad3899a03b8d6044e41977f9a59bb6a39',1,'MAX_OCTAVES:&#160;notes.h']]],
+  ['max_5fparams_17',['MAX_PARAMS',['../modsystem_8h.html#a885a6481fc6d474d0be18bc0facf648d',1,'modsystem.h']]],
+  ['max_5fpatterns_18',['MAX_PATTERNS',['../sequencer_8h.html#a24c48ef77929deff9e40e141a891dbb8',1,'sequencer.h']]],
+  ['max_5fsequence_5flength_19',['MAX_SEQUENCE_LENGTH',['../sequencer_8h.html#a66fe023e5877900f2ff54bdf746430cb',1,'sequencer.h']]],
+  ['max_5fsequencer_5fchannels_20',['MAX_SEQUENCER_CHANNELS',['../settings_8h.html#a65e1535f1c96d54c9a70c045b70b2c2d',1,'settings.h']]],
+  ['max_5fsong_5flength_21',['MAX_SONG_LENGTH',['../sequencer_8h.html#a627cd946d4513d59e667d0a5e4b45e2f',1,'sequencer.h']]],
+  ['max_5fvoices_22',['MAX_VOICES',['../main_8c.html#aca618e8fa76e4f9eaf21bef1d1ddccd5',1,'main.c']]],
+  ['max_5fvoices_5fper_5fchannel_23',['MAX_VOICES_PER_CHANNEL',['../voice_8h.html#a44a241a0de87be69f511d69a94f95178',1,'voice.h']]],
+  ['max_5fvolume_24',['MAX_VOLUME',['../main_8c.html#a7ed6a6db7ec466a04b820f3de267708a',1,'main.c']]]
+];

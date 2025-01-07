@@ -1,0 +1,83 @@
+\doxysection{settings.\+h File Reference}
+\hypertarget{settings_8h}{}\label{settings_8h}\index{settings.h@{settings.h}}
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_settings}{Settings}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{settings_8h_ae1a6cb4c653fe8722f4d98784b9b6cff}{PA\+\_\+\+SR}}~44100;
+\item 
+\#define \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS}}~16
+\item 
+\#define \mbox{\hyperlink{settings_8h_ad83d4350a228df3283d86eb05d84813a}{SETTINGS\+\_\+\+PATH}}~"{}settings.\+dat"{}
+\item 
+\#define \mbox{\hyperlink{settings_8h_af02e92641a95dfda254ae46f46e7c72f}{SONG\+\_\+\+FOLDER\+\_\+\+PATH}}~"{}songs/"{}
+\item 
+\#define \mbox{\hyperlink{settings_8h_ae3491a2ea8a35329ee6bf4681dcfa488}{SAMPLE\+\_\+\+FOLDER\+\_\+\+PATH}}~"{}samples/"{}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8h_a57e3e1d0f13fb573e864dae203b17c27}{create\+Settings}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}\index{settings.h@{settings.h}!MAX\_SEQUENCER\_CHANNELS@{MAX\_SEQUENCER\_CHANNELS}}
+\index{MAX\_SEQUENCER\_CHANNELS@{MAX\_SEQUENCER\_CHANNELS}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{MAX\_SEQUENCER\_CHANNELS}{MAX\_SEQUENCER\_CHANNELS}}
+{\footnotesize\ttfamily \label{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d} 
+\#define MAX\+\_\+\+SEQUENCER\+\_\+\+CHANNELS~16}
+
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}{add\+Channel()}}, \mbox{\hyperlink{voice_8c_abbc53a9b72a0325ae209cc677d06dbc8}{create\+Voice\+Manager()}}, \mbox{\hyperlink{gui_8c_a74519d48532a69e48242e4a40aab99e3}{draw\+Arranger\+Gui()}}, \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}, \mbox{\hyperlink{gui_8c_a761b65b28a906ccb965be14b97e16c44}{draw\+Song\+Minimap\+Gui()}}, \mbox{\hyperlink{voice_8c_ad5693b655ab868f32807784b02b0c19e}{init\+Voice\+Pool()}}, \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State()}}, and \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State()}}.
+
+\Hypertarget{settings_8h_ae1a6cb4c653fe8722f4d98784b9b6cff}\index{settings.h@{settings.h}!PA\_SR@{PA\_SR}}
+\index{PA\_SR@{PA\_SR}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{PA\_SR}{PA\_SR}}
+{\footnotesize\ttfamily \label{settings_8h_ae1a6cb4c653fe8722f4d98784b9b6cff} 
+\#define PA\+\_\+\+SR~44100;}
+
+\Hypertarget{settings_8h_ae3491a2ea8a35329ee6bf4681dcfa488}\index{settings.h@{settings.h}!SAMPLE\_FOLDER\_PATH@{SAMPLE\_FOLDER\_PATH}}
+\index{SAMPLE\_FOLDER\_PATH@{SAMPLE\_FOLDER\_PATH}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{SAMPLE\_FOLDER\_PATH}{SAMPLE\_FOLDER\_PATH}}
+{\footnotesize\ttfamily \label{settings_8h_ae3491a2ea8a35329ee6bf4681dcfa488} 
+\#define SAMPLE\+\_\+\+FOLDER\+\_\+\+PATH~"{}samples/"{}}
+
+\Hypertarget{settings_8h_ad83d4350a228df3283d86eb05d84813a}\index{settings.h@{settings.h}!SETTINGS\_PATH@{SETTINGS\_PATH}}
+\index{SETTINGS\_PATH@{SETTINGS\_PATH}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{SETTINGS\_PATH}{SETTINGS\_PATH}}
+{\footnotesize\ttfamily \label{settings_8h_ad83d4350a228df3283d86eb05d84813a} 
+\#define SETTINGS\+\_\+\+PATH~"{}settings.\+dat"{}}
+
+\Hypertarget{settings_8h_af02e92641a95dfda254ae46f46e7c72f}\index{settings.h@{settings.h}!SONG\_FOLDER\_PATH@{SONG\_FOLDER\_PATH}}
+\index{SONG\_FOLDER\_PATH@{SONG\_FOLDER\_PATH}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{SONG\_FOLDER\_PATH}{SONG\_FOLDER\_PATH}}
+{\footnotesize\ttfamily \label{settings_8h_af02e92641a95dfda254ae46f46e7c72f} 
+\#define SONG\+\_\+\+FOLDER\+\_\+\+PATH~"{}songs/"{}}
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{settings_8h_a57e3e1d0f13fb573e864dae203b17c27}\index{settings.h@{settings.h}!createSettings@{createSettings}}
+\index{createSettings@{createSettings}!settings.h@{settings.h}}
+\doxysubsubsection{\texorpdfstring{createSettings()}{createSettings()}}
+{\footnotesize\ttfamily \label{settings_8h_a57e3e1d0f13fb573e864dae203b17c27} 
+\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*} create\+Settings (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00003\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00004\ \ \ \ \ \mbox{\hyperlink{struct_settings}{Settings}}*\ settings\ =\ (\mbox{\hyperlink{struct_settings}{Settings}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_settings}{Settings}}));}
+\DoxyCodeLine{00005\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ MAX\_SEQ\_CHAN;\ i++)\{}
+\DoxyCodeLine{00006\ \ \ \ \ \ \ \ \ settings-\/>defaultInstrumentTypes[i]\ =\ 2;}
+\DoxyCodeLine{00007\ \ \ \ \ \}}
+\DoxyCodeLine{00008\ \ \ \ \ settings-\/>\mbox{\hyperlink{struct_settings_a5fb6aa95e3dbd5256584d7e71d027040}{defaultSequenceLength}}\ =\ 16;}
+\DoxyCodeLine{00009\ \ \ \ \ settings-\/>defaultSequencerChannels\ =\ 4;}
+\DoxyCodeLine{00010\ \}}
+
+\end{DoxyCode}

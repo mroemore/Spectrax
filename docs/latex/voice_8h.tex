@@ -1,0 +1,292 @@
+\doxysection{voice.\+h File Reference}
+\hypertarget{voice_8h}{}\label{voice_8h}\index{voice.h@{voice.h}}
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include "{}oscillator.\+h"{}}\newline
+{\ttfamily \#include "{}sample.\+h"{}}\newline
+{\ttfamily \#include "{}notes.\+h"{}}\newline
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+{\ttfamily \#include "{}blit\+\_\+synth.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_voice}{Voice}}
+\item 
+struct \mbox{\hyperlink{struct_voice_manager}{Voice\+Manager}}
+\item 
+struct \mbox{\hyperlink{struct_instrument}{Instrument}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{voice_8h_a44a241a0de87be69f511d69a94f95178}{MAX\+\_\+\+VOICES\+\_\+\+PER\+\_\+\+CHANNEL}}~6
+\item 
+\#define \mbox{\hyperlink{voice_8h_a77f0620a22d5655033e75b01e7bac62d}{MAX\+\_\+\+LFOS}}~8
+\item 
+\#define \mbox{\hyperlink{voice_8h_a901d487f4a4ff00e7051b681250b0022}{MAX\+\_\+\+ENVELOPES}}~8
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}} \{ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa197c30a4e5e48c2a374bbee64eb7f96c}{VOICE\+\_\+\+TYPE\+\_\+\+OSCILLATOR}}
+, \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205}{VOICE\+\_\+\+TYPE\+\_\+\+SAMPLE}}
+, \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187}{VOICE\+\_\+\+TYPE\+\_\+\+FM}}
+, \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7}{VOICE\+\_\+\+TYPE\+\_\+\+BLEP}}
+ \}
+\item 
+enum \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69}{Instrument\+Type}} \{ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a01fa12aa1874ff4303fb22b56aafcc5d}{IT\+\_\+\+OSCILLATOR}}
+, \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a1bd60db021caf7c530dbe8ec01acfa26}{IT\+\_\+\+SAMPLE}}
+, \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69af0d2c4b095a4ae93c5575218f096e131}{IT\+\_\+\+FM}}
+, \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69afb332bd1b07d67c388c0ff465ddf4b36}{IT\+\_\+\+BLEP}}
+ \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_voice_manager}{Voice\+Manager}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{voice_8h_abbc53a9b72a0325ae209cc677d06dbc8}{create\+Voice\+Manager}} ()
+\item 
+void \mbox{\hyperlink{voice_8h_ad5693b655ab868f32807784b02b0c19e}{init\+Voice\+Pool}} (\mbox{\hyperlink{struct_voice_manager}{Voice\+Manager}} \texorpdfstring{$\ast$}{*}vm, int seq\+Channel, int voice\+Count, \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}} vt)
+\item 
+void \mbox{\hyperlink{voice_8h_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice}} (\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}voice, \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}} voice\+Type, \mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}sample)
+\item 
+void \mbox{\hyperlink{voice_8h_a20194ca21a6ac5b4f5d655779774c429}{initialize\+\_\+voice\+\_\+sample}} (\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}voice, \mbox{\hyperlink{struct_sample}{Sample}} sample, int voice\+\_\+id, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List)
+\item 
+void \mbox{\hyperlink{voice_8h_a55b537cf91d37e775b3fb7bb267882c0}{initialize\+\_\+voice\+\_\+blep}} (\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}voice, int voice\+\_\+id, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List)
+\item 
+void \mbox{\hyperlink{voice_8h_adc13c643066be852d8093826594376ce}{initialize\+\_\+voice\+\_\+fm}} (\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}voice, int voice\+\_\+id, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List)
+\item 
+void \mbox{\hyperlink{voice_8h_ab23c06818e96353f7291be2c6bea255c}{init\+\_\+instrument}} (\mbox{\hyperlink{struct_instrument}{Instrument}} \texorpdfstring{$\ast$}{*}instrument, \mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}sample)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{voice_8h_a901d487f4a4ff00e7051b681250b0022}\index{voice.h@{voice.h}!MAX\_ENVELOPES@{MAX\_ENVELOPES}}
+\index{MAX\_ENVELOPES@{MAX\_ENVELOPES}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{MAX\_ENVELOPES}{MAX\_ENVELOPES}}
+{\footnotesize\ttfamily \label{voice_8h_a901d487f4a4ff00e7051b681250b0022} 
+\#define MAX\+\_\+\+ENVELOPES~8}
+
+\Hypertarget{voice_8h_a77f0620a22d5655033e75b01e7bac62d}\index{voice.h@{voice.h}!MAX\_LFOS@{MAX\_LFOS}}
+\index{MAX\_LFOS@{MAX\_LFOS}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{MAX\_LFOS}{MAX\_LFOS}}
+{\footnotesize\ttfamily \label{voice_8h_a77f0620a22d5655033e75b01e7bac62d} 
+\#define MAX\+\_\+\+LFOS~8}
+
+\Hypertarget{voice_8h_a44a241a0de87be69f511d69a94f95178}\index{voice.h@{voice.h}!MAX\_VOICES\_PER\_CHANNEL@{MAX\_VOICES\_PER\_CHANNEL}}
+\index{MAX\_VOICES\_PER\_CHANNEL@{MAX\_VOICES\_PER\_CHANNEL}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{MAX\_VOICES\_PER\_CHANNEL}{MAX\_VOICES\_PER\_CHANNEL}}
+{\footnotesize\ttfamily \label{voice_8h_a44a241a0de87be69f511d69a94f95178} 
+\#define MAX\+\_\+\+VOICES\+\_\+\+PER\+\_\+\+CHANNEL~6}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_ad5693b655ab868f32807784b02b0c19e}{init\+Voice\+Pool()}}.
+
+
+
+\doxysubsection{Enumeration Type Documentation}
+\Hypertarget{voice_8h_a78a53e954df1d387bae9b3680287ec69}\index{voice.h@{voice.h}!InstrumentType@{InstrumentType}}
+\index{InstrumentType@{InstrumentType}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{InstrumentType}{InstrumentType}}
+{\footnotesize\ttfamily \label{voice_8h_a78a53e954df1d387bae9b3680287ec69} 
+enum \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69}{Instrument\+Type}}}
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{IT\_OSCILLATOR@{IT\_OSCILLATOR}!voice.h@{voice.h}}\index{voice.h@{voice.h}!IT\_OSCILLATOR@{IT\_OSCILLATOR}}}\Hypertarget{voice_8h_a78a53e954df1d387bae9b3680287ec69a01fa12aa1874ff4303fb22b56aafcc5d}\label{voice_8h_a78a53e954df1d387bae9b3680287ec69a01fa12aa1874ff4303fb22b56aafcc5d} 
+IT\+\_\+\+OSCILLATOR&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{IT\_SAMPLE@{IT\_SAMPLE}!voice.h@{voice.h}}\index{voice.h@{voice.h}!IT\_SAMPLE@{IT\_SAMPLE}}}\Hypertarget{voice_8h_a78a53e954df1d387bae9b3680287ec69a1bd60db021caf7c530dbe8ec01acfa26}\label{voice_8h_a78a53e954df1d387bae9b3680287ec69a1bd60db021caf7c530dbe8ec01acfa26} 
+IT\+\_\+\+SAMPLE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{IT\_FM@{IT\_FM}!voice.h@{voice.h}}\index{voice.h@{voice.h}!IT\_FM@{IT\_FM}}}\Hypertarget{voice_8h_a78a53e954df1d387bae9b3680287ec69af0d2c4b095a4ae93c5575218f096e131}\label{voice_8h_a78a53e954df1d387bae9b3680287ec69af0d2c4b095a4ae93c5575218f096e131} 
+IT\+\_\+\+FM&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{IT\_BLEP@{IT\_BLEP}!voice.h@{voice.h}}\index{voice.h@{voice.h}!IT\_BLEP@{IT\_BLEP}}}\Hypertarget{voice_8h_a78a53e954df1d387bae9b3680287ec69afb332bd1b07d67c388c0ff465ddf4b36}\label{voice_8h_a78a53e954df1d387bae9b3680287ec69afb332bd1b07d67c388c0ff465ddf4b36} 
+IT\+\_\+\+BLEP&\\
+\hline
+
+\end{DoxyEnumFields}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a01fa12aa1874ff4303fb22b56aafcc5d}{IT\_OSCILLATOR}},}
+\DoxyCodeLine{00025\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a1bd60db021caf7c530dbe8ec01acfa26}{IT\_SAMPLE}},}
+\DoxyCodeLine{00026\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69af0d2c4b095a4ae93c5575218f096e131}{IT\_FM}},}
+\DoxyCodeLine{00027\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69afb332bd1b07d67c388c0ff465ddf4b36}{IT\_BLEP}}}
+\DoxyCodeLine{00028\ \}\ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69}{InstrumentType}};}
+
+\end{DoxyCode}
+\Hypertarget{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}\index{voice.h@{voice.h}!VoiceType@{VoiceType}}
+\index{VoiceType@{VoiceType}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{VoiceType}{VoiceType}}
+{\footnotesize\ttfamily \label{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a} 
+enum \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}}}
+
+\begin{DoxyEnumFields}[2]{Enumerator}
+\raisebox{\heightof{T}}[0pt][0pt]{\index{VOICE\_TYPE\_OSCILLATOR@{VOICE\_TYPE\_OSCILLATOR}!voice.h@{voice.h}}\index{voice.h@{voice.h}!VOICE\_TYPE\_OSCILLATOR@{VOICE\_TYPE\_OSCILLATOR}}}\Hypertarget{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa197c30a4e5e48c2a374bbee64eb7f96c}\label{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa197c30a4e5e48c2a374bbee64eb7f96c} 
+VOICE\+\_\+\+TYPE\+\_\+\+OSCILLATOR&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{VOICE\_TYPE\_SAMPLE@{VOICE\_TYPE\_SAMPLE}!voice.h@{voice.h}}\index{voice.h@{voice.h}!VOICE\_TYPE\_SAMPLE@{VOICE\_TYPE\_SAMPLE}}}\Hypertarget{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205}\label{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205} 
+VOICE\+\_\+\+TYPE\+\_\+\+SAMPLE&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{VOICE\_TYPE\_FM@{VOICE\_TYPE\_FM}!voice.h@{voice.h}}\index{voice.h@{voice.h}!VOICE\_TYPE\_FM@{VOICE\_TYPE\_FM}}}\Hypertarget{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187}\label{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187} 
+VOICE\+\_\+\+TYPE\+\_\+\+FM&\\
+\hline
+
+\raisebox{\heightof{T}}[0pt][0pt]{\index{VOICE\_TYPE\_BLEP@{VOICE\_TYPE\_BLEP}!voice.h@{voice.h}}\index{voice.h@{voice.h}!VOICE\_TYPE\_BLEP@{VOICE\_TYPE\_BLEP}}}\Hypertarget{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7}\label{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7} 
+VOICE\+\_\+\+TYPE\+\_\+\+BLEP&\\
+\hline
+
+\end{DoxyEnumFields}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00015\ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa197c30a4e5e48c2a374bbee64eb7f96c}{VOICE\_TYPE\_OSCILLATOR}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205}{VOICE\_TYPE\_SAMPLE}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187}{VOICE\_TYPE\_FM}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7}{VOICE\_TYPE\_BLEP}}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \}\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{VoiceType}};}
+
+\end{DoxyCode}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{voice_8h_abbc53a9b72a0325ae209cc677d06dbc8}\index{voice.h@{voice.h}!createVoiceManager@{createVoiceManager}}
+\index{createVoiceManager@{createVoiceManager}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{createVoiceManager()}{createVoiceManager()}}
+{\footnotesize\ttfamily \label{voice_8h_abbc53a9b72a0325ae209cc677d06dbc8} 
+\mbox{\hyperlink{struct_voice_manager}{Voice\+Manager}} \texorpdfstring{$\ast$}{*} create\+Voice\+Manager (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00009\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00010\ \ \ \ \ \mbox{\hyperlink{struct_voice_manager}{VoiceManager}}*\ vm\ =\ (\mbox{\hyperlink{struct_voice_manager}{VoiceManager}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_voice_manager}{VoiceManager}}));}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}};\ i++)\{}
+\DoxyCodeLine{00012\ \ \ \ \ \ \ \ \ vm-\/>\mbox{\hyperlink{struct_voice_manager_aef89bd9c23d06db259fa6ecdeca6f786}{voiceCount}}[i]\ =\ 0;}
+\DoxyCodeLine{00013\ \ \ \ \ \}}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keywordflow}{return}\ vm;}
+\DoxyCodeLine{00015\ \}}
+
+\end{DoxyCode}
+\Hypertarget{voice_8h_ab23c06818e96353f7291be2c6bea255c}\index{voice.h@{voice.h}!init\_instrument@{init\_instrument}}
+\index{init\_instrument@{init\_instrument}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{init\_instrument()}{init\_instrument()}}
+{\footnotesize\ttfamily \label{voice_8h_ab23c06818e96353f7291be2c6bea255c} 
+void init\+\_\+instrument (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_instrument}{Instrument}} \texorpdfstring{$\ast$}{*}}]{instrument}{, }\item[{\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}}]{sample}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00124\ \ \ \ \ instrument\ =\ (\mbox{\hyperlink{struct_instrument}{Instrument}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_instrument}{Instrument}}));}
+\DoxyCodeLine{00125\ \ \ \ \ instrument-\/>\mbox{\hyperlink{struct_instrument_afc5876bc89d689a557cee9b7ef3c0e6e}{sample}}\ =\ sample;}
+\DoxyCodeLine{00126\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{voice_8h_a1df6d04e0e20e2a924c5e56feccd818e}\index{voice.h@{voice.h}!initialize\_voice@{initialize\_voice}}
+\index{initialize\_voice@{initialize\_voice}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_voice()}{initialize\_voice()}}
+{\footnotesize\ttfamily \label{voice_8h_a1df6d04e0e20e2a924c5e56feccd818e} 
+void initialize\+\_\+voice (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}}]{voice}{, }\item[{\mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}}}]{voice\+Type}{, }\item[{\mbox{\hyperlink{struct_sample}{Sample}} \texorpdfstring{$\ast$}{*}}]{sample}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00028\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a5344c0f8c7afb5b43a459ea7b4f4fcb7}{left\_phase}}\ =\ 0.0f;}
+\DoxyCodeLine{00029\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a6d5d20ced3b32c7acdc8b2469c2307bd}{right\_phase}}\ =\ 0.0f;}
+\DoxyCodeLine{00030\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a80e25d7e7b35425ae77e2476db183e52}{note}}[0]\ =\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}};}
+\DoxyCodeLine{00031\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a80e25d7e7b35425ae77e2476db183e52}{note}}[1]\ =\ 0;}
+\DoxyCodeLine{00032\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}}\ =\ \mbox{\hyperlink{modsystem_8c_ab1377b7b24fa8b1ad33b8c6adfefb02d}{createParamList}}();}
+\DoxyCodeLine{00033\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}}\ =\ \mbox{\hyperlink{modsystem_8c_a778b05a9d05212afde1619a75f32e5df}{createModList}}();}
+\DoxyCodeLine{00034\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a23efb4fdc3167340b6e493817176b34e}{frequency}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \textcolor{stringliteral}{"{}frequency"{}},\ 440.0f,\ 0.001f,\ 20000.0f);}
+\DoxyCodeLine{00035\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a00362f21ed0f6e093c3676d6091c3e60}{samples\_elapsed}}\ =\ 0;}
+\DoxyCodeLine{00036\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a89a30f4ca48ac0892e0280469c109eed}{instrument\_index}}\ =\ 0;}
+\DoxyCodeLine{00037\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a2bae25f587209cd9bdaa347e4f023760}{active}}\ =\ 0;}
+\DoxyCodeLine{00038\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}{volume}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \textcolor{stringliteral}{"{}volume"{}},\ 1.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00039\ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5}{type}}\ =\ voiceType;}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{keywordflow}{switch}(voice-\/>\mbox{\hyperlink{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5}{type}})\{}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7}{VOICE\_TYPE\_BLEP}}:}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\_count}}\ =\ 2;}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[0]\ =\ \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{createAD}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ voice-\/>\mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}},\ .25f,\ .25f,\ \textcolor{stringliteral}{"{}AD1"{}});}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[1]\ =\ \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{createAD}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ voice-\/>\mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}},\ .25f,\ .25f,\ \textcolor{stringliteral}{"{}AD2"{}});}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \&voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[0]-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}},\ voice-\/>\mbox{\hyperlink{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}{volume}},\ 1.0f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}});}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \&voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[1]-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}},\ voice-\/>\mbox{\hyperlink{struct_voice_a23efb4fdc3167340b6e493817176b34e}{frequency}},\ 400.5f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a18ad7ed73e198e6c471d6d73a85d55a5}{MO\_ADD}});}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00049\ }
+\DoxyCodeLine{00050\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205}{VOICE\_TYPE\_SAMPLE}}:}
+\DoxyCodeLine{00051\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_aec4195239899da41faab6855f72ff3b0}{sample}}\ =\ *sample;}
+\DoxyCodeLine{00052\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\_count}}\ =\ 1;}
+\DoxyCodeLine{00053\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835}{sample\_position}}\ =\ 0.0f;\ \textcolor{comment}{//\ Initialize\ sample\ position}}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[0]\ =\ \mbox{\hyperlink{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}{createADSR}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ voice-\/>\mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}},\ 0.5f,\ 1.2f,\ 1.5f,\ 1.1f,\ \textcolor{stringliteral}{"{}ADSR1"{}});}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187}{VOICE\_TYPE\_FM}}:}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[0]\ =\ \mbox{\hyperlink{oscillator_8c_aaf5dcf36e939a9994375bd83133edd97}{createOperator}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ 1.0f);}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[1]\ =\ \mbox{\hyperlink{oscillator_8c_aaf5dcf36e939a9994375bd83133edd97}{createOperator}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ 2.0f);}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[2]\ =\ \mbox{\hyperlink{oscillator_8c_aaf5dcf36e939a9994375bd83133edd97}{createOperator}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ 4.0f);}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[3]\ =\ \mbox{\hyperlink{oscillator_8c_aaf5dcf36e939a9994375bd83133edd97}{createOperator}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ 3.0f);}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835}{sample\_position}}\ =\ 0.0f;\ \textcolor{comment}{//\ Initialize\ sample\ position}}
+\DoxyCodeLine{00063\ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\_count}}\ =\ 4;}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ voice-\/>\mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\_count}};\ i++)\{}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[i]\ =\ \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{createAD}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ voice-\/>\mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}},\ 0.05f,\ 1.2f,\ \textcolor{stringliteral}{"{}ADSR1"{}});}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \&voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[i]-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}},\ voice-\/>\mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}.\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[i]-\/>\mbox{\hyperlink{struct_operator_a3cf93a0cf4c712ca4694e5129277b9f8}{level}},\ 1.0f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}});}
+\DoxyCodeLine{00067\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00068\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{addModulation}}(voice-\/>\mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}},\ \&voice-\/>\mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[0]-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}},\ voice-\/>\mbox{\hyperlink{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}{volume}},\ 1.0f,\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}});}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00072\ \ \ \ \ \}}
+\DoxyCodeLine{00073\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_ad5693b655ab868f32807784b02b0c19e}{init\+Voice\+Pool()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{voice_8h_a55b537cf91d37e775b3fb7bb267882c0}\index{voice.h@{voice.h}!initialize\_voice\_blep@{initialize\_voice\_blep}}
+\index{initialize\_voice\_blep@{initialize\_voice\_blep}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_voice\_blep()}{initialize\_voice\_blep()}}
+{\footnotesize\ttfamily \label{voice_8h_a55b537cf91d37e775b3fb7bb267882c0} 
+void initialize\+\_\+voice\+\_\+blep (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}}]{voice}{, }\item[{int}]{voice\+\_\+id}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{}\end{DoxyParamCaption})}
+
+\Hypertarget{voice_8h_adc13c643066be852d8093826594376ce}\index{voice.h@{voice.h}!initialize\_voice\_fm@{initialize\_voice\_fm}}
+\index{initialize\_voice\_fm@{initialize\_voice\_fm}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_voice\_fm()}{initialize\_voice\_fm()}}
+{\footnotesize\ttfamily \label{voice_8h_adc13c643066be852d8093826594376ce} 
+void initialize\+\_\+voice\+\_\+fm (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}}]{voice}{, }\item[{int}]{voice\+\_\+id}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{}\end{DoxyParamCaption})}
+
+\Hypertarget{voice_8h_a20194ca21a6ac5b4f5d655779774c429}\index{voice.h@{voice.h}!initialize\_voice\_sample@{initialize\_voice\_sample}}
+\index{initialize\_voice\_sample@{initialize\_voice\_sample}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{initialize\_voice\_sample()}{initialize\_voice\_sample()}}
+{\footnotesize\ttfamily \label{voice_8h_a20194ca21a6ac5b4f5d655779774c429} 
+void initialize\+\_\+voice\+\_\+sample (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_voice}{Voice}} \texorpdfstring{$\ast$}{*}}]{voice}{, }\item[{\mbox{\hyperlink{struct_sample}{Sample}}}]{sample}{, }\item[{int}]{voice\+\_\+id}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{}\end{DoxyParamCaption})}
+
+\Hypertarget{voice_8h_ad5693b655ab868f32807784b02b0c19e}\index{voice.h@{voice.h}!initVoicePool@{initVoicePool}}
+\index{initVoicePool@{initVoicePool}!voice.h@{voice.h}}
+\doxysubsubsection{\texorpdfstring{initVoicePool()}{initVoicePool()}}
+{\footnotesize\ttfamily \label{voice_8h_ad5693b655ab868f32807784b02b0c19e} 
+void init\+Voice\+Pool (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_voice_manager}{Voice\+Manager}} \texorpdfstring{$\ast$}{*}}]{vm}{, }\item[{int}]{seq\+Channel}{, }\item[{int}]{voice\+Count}{, }\item[{\mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}}}]{vt}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00017\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordflow}{if}(seqChannel\ >=\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ -\/\ 1\ ||\ seqChannel\ <\ 0)\ seqChannel\ \%=\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ -\/\ 1;}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordflow}{if}(voiceCount\ >=\ \mbox{\hyperlink{voice_8h_a44a241a0de87be69f511d69a94f95178}{MAX\_VOICES\_PER\_CHANNEL}})\ voiceCount\ =\ \mbox{\hyperlink{voice_8h_a44a241a0de87be69f511d69a94f95178}{MAX\_VOICES\_PER\_CHANNEL}};}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ voiceCount;\ i++)\{}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\_voice}}(vm-\/>\mbox{\hyperlink{struct_voice_manager_a846c20e27724b1d6d72f512961034f50}{voicePools}}[seqChannel][i],\ vt,\ NULL);}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ vm-\/>\mbox{\hyperlink{struct_voice_manager_aef89bd9c23d06db259fa6ecdeca6f786}{voiceCount}}[seqChannel]++;}
+\DoxyCodeLine{00024\ \ \ \ \ \}}
+\DoxyCodeLine{00025\ \}}
+
+\end{DoxyCode}

@@ -1,0 +1,33 @@
+\doxysection{distortion.\+c File Reference}
+\hypertarget{distortion_8c}{}\label{distortion_8c}\index{distortion.c@{distortion.c}}
+{\ttfamily \#include "{}distortion.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{distortion_8c_a430d6f0f8574ae5815733f3ae35091a0}{fold}} (float sample, float amp\+Factor, float fold\+Attenuation)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{distortion_8c_a430d6f0f8574ae5815733f3ae35091a0}\index{distortion.c@{distortion.c}!fold@{fold}}
+\index{fold@{fold}!distortion.c@{distortion.c}}
+\doxysubsubsection{\texorpdfstring{fold()}{fold()}}
+{\footnotesize\ttfamily \label{distortion_8c_a430d6f0f8574ae5815733f3ae35091a0} 
+float fold (\begin{DoxyParamCaption}\item[{float}]{sample}{, }\item[{float}]{amp\+Factor}{, }\item[{float}]{fold\+Attenuation}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00003\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00004\ \ \ \ \ \textcolor{keywordtype}{float}\ overflow,\ ampsamp\ =\ sample\ *\ ampFactor;}
+\DoxyCodeLine{00005\ \ \ \ \ \textcolor{keywordflow}{if}(ampsamp\ >\ 1.0f)\{}
+\DoxyCodeLine{00006\ \ \ \ \ \ \ \ \ overflow\ =\ ampsamp\ -\/\ 1.0f;}
+\DoxyCodeLine{00007\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 1.0f\ -\/\ overflow\ *\ foldAttenuation;}
+\DoxyCodeLine{00008\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}(ampsamp\ <\ -\/1.0f)\{}
+\DoxyCodeLine{00009\ \ \ \ \ \ \ \ \ overflow\ =\ ampsamp\ +\ 1.0f;}
+\DoxyCodeLine{00010\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ -\/1.0f\ +\ overflow\ *\ foldAttenuation;}
+\DoxyCodeLine{00011\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00012\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ ampsamp;}
+\DoxyCodeLine{00013\ \ \ \ \ \}}
+\DoxyCodeLine{00014\ \}}
+
+\end{DoxyCode}

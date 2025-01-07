@@ -1,0 +1,238 @@
+\doxysection{Voice Struct Reference}
+\hypertarget{struct_voice}{}\label{struct_voice}\index{Voice@{Voice}}
+
+
+{\ttfamily \#include $<$voice.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{struct_voice_a5344c0f8c7afb5b43a459ea7b4f4fcb7}{left\+\_\+phase}}
+\item 
+float \mbox{\hyperlink{struct_voice_a6d5d20ced3b32c7acdc8b2469c2307bd}{right\+\_\+phase}}
+\item 
+int \mbox{\hyperlink{struct_voice_a00362f21ed0f6e093c3676d6091c3e60}{samples\+\_\+elapsed}}
+\item 
+int \mbox{\hyperlink{struct_voice_a2bae25f587209cd9bdaa347e4f023760}{active}}
+\item 
+\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{param\+List}}
+\item 
+\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{mod\+List}}
+\item 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}{volume}}
+\item 
+int \mbox{\hyperlink{struct_voice_a89a30f4ca48ac0892e0280469c109eed}{instrument\+\_\+index}}
+\item 
+\mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}} \mbox{\hyperlink{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5}{type}}
+\item 
+\begin{tabbing}
+xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=xx\=\kill
+union \{\\
+\>\mbox{\hyperlink{struct_oscillator}{Oscillator}} \mbox{\hyperlink{struct_voice_a3518d5c3996e7c1669d009d0ad06f47f}{oscillator}}\\
+\>\mbox{\hyperlink{struct_sample}{Sample}} \mbox{\hyperlink{struct_voice_aec4195239899da41faab6855f72ff3b0}{sample}}\\
+\>\mbox{\hyperlink{struct_operator}{Operator}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}} \mbox{[}4\mbox{]}\\
+\} \mbox{\hyperlink{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}{source}}\\
+
+\end{tabbing}\item 
+float \mbox{\hyperlink{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835}{sample\+\_\+position}}
+\item 
+int \mbox{\hyperlink{struct_voice_a80e25d7e7b35425ae77e2476db183e52}{note}} \mbox{[}2\mbox{]}
+\item 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a23efb4fdc3167340b6e493817176b34e}{frequency}}
+\item 
+int \mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\+\_\+count}}
+\item 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}} \mbox{[}4\mbox{]}
+\item 
+\mbox{\hyperlink{struct_l_f_o}{LFO}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_voice_a762671c46b79b727fd772d8fb380f493}{lfo}} \mbox{[}2\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_voice_a2bae25f587209cd9bdaa347e4f023760}\index{Voice@{Voice}!active@{active}}
+\index{active@{active}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{active}{active}}
+{\footnotesize\ttfamily \label{struct_voice_a2bae25f587209cd9bdaa347e4f023760} 
+int Voice\+::active}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a399749dca6d795322de6a9b159c9558a}\index{Voice@{Voice}!env\_count@{env\_count}}
+\index{env\_count@{env\_count}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{env\_count}{env\_count}}
+{\footnotesize\ttfamily \label{struct_voice_a399749dca6d795322de6a9b159c9558a} 
+int Voice\+::env\+\_\+count}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a397189b385767896fce920a8e145a417}\index{Voice@{Voice}!envelope@{envelope}}
+\index{envelope@{envelope}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{envelope}{envelope}}
+{\footnotesize\ttfamily \label{struct_voice_a397189b385767896fce920a8e145a417} 
+\mbox{\hyperlink{struct_envelope}{Envelope}}\texorpdfstring{$\ast$}{*} Voice\+::envelope\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{struct_voice_a23efb4fdc3167340b6e493817176b34e}\index{Voice@{Voice}!frequency@{frequency}}
+\index{frequency@{frequency}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{frequency}{frequency}}
+{\footnotesize\ttfamily \label{struct_voice_a23efb4fdc3167340b6e493817176b34e} 
+\mbox{\hyperlink{struct_parameter}{Parameter}}\texorpdfstring{$\ast$}{*} Voice\+::frequency}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a89a30f4ca48ac0892e0280469c109eed}\index{Voice@{Voice}!instrument\_index@{instrument\_index}}
+\index{instrument\_index@{instrument\_index}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{instrument\_index}{instrument\_index}}
+{\footnotesize\ttfamily \label{struct_voice_a89a30f4ca48ac0892e0280469c109eed} 
+int Voice\+::instrument\+\_\+index}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a5344c0f8c7afb5b43a459ea7b4f4fcb7}\index{Voice@{Voice}!left\_phase@{left\_phase}}
+\index{left\_phase@{left\_phase}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{left\_phase}{left\_phase}}
+{\footnotesize\ttfamily \label{struct_voice_a5344c0f8c7afb5b43a459ea7b4f4fcb7} 
+float Voice\+::left\+\_\+phase}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a762671c46b79b727fd772d8fb380f493}\index{Voice@{Voice}!lfo@{lfo}}
+\index{lfo@{lfo}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{lfo}{lfo}}
+{\footnotesize\ttfamily \label{struct_voice_a762671c46b79b727fd772d8fb380f493} 
+\mbox{\hyperlink{struct_l_f_o}{LFO}}\texorpdfstring{$\ast$}{*} Voice\+::lfo\mbox{[}2\mbox{]}}
+
+\Hypertarget{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}\index{Voice@{Voice}!modList@{modList}}
+\index{modList@{modList}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{modList}{modList}}
+{\footnotesize\ttfamily \label{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e} 
+\mbox{\hyperlink{struct_mod_list}{Mod\+List}}\texorpdfstring{$\ast$}{*} Voice\+::mod\+List}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a80e25d7e7b35425ae77e2476db183e52}\index{Voice@{Voice}!note@{note}}
+\index{note@{note}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{note}{note}}
+{\footnotesize\ttfamily \label{struct_voice_a80e25d7e7b35425ae77e2476db183e52} 
+int Voice\+::note\mbox{[}2\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a80aead0564cd15faf2ca4b6122694f40}\index{Voice@{Voice}!operators@{operators}}
+\index{operators@{operators}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{operators}{operators}}
+{\footnotesize\ttfamily \label{struct_voice_a80aead0564cd15faf2ca4b6122694f40} 
+\mbox{\hyperlink{struct_operator}{Operator}}\texorpdfstring{$\ast$}{*} Voice\+::operators\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a3518d5c3996e7c1669d009d0ad06f47f}\index{Voice@{Voice}!oscillator@{oscillator}}
+\index{oscillator@{oscillator}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{oscillator}{oscillator}}
+{\footnotesize\ttfamily \label{struct_voice_a3518d5c3996e7c1669d009d0ad06f47f} 
+\mbox{\hyperlink{struct_oscillator}{Oscillator}} Voice\+::oscillator}
+
+\Hypertarget{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}\index{Voice@{Voice}!paramList@{paramList}}
+\index{paramList@{paramList}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{paramList}{paramList}}
+{\footnotesize\ttfamily \label{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b} 
+\mbox{\hyperlink{struct_param_list}{Param\+List}}\texorpdfstring{$\ast$}{*} Voice\+::param\+List}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a6d5d20ced3b32c7acdc8b2469c2307bd}\index{Voice@{Voice}!right\_phase@{right\_phase}}
+\index{right\_phase@{right\_phase}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{right\_phase}{right\_phase}}
+{\footnotesize\ttfamily \label{struct_voice_a6d5d20ced3b32c7acdc8b2469c2307bd} 
+float Voice\+::right\+\_\+phase}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_aec4195239899da41faab6855f72ff3b0}\index{Voice@{Voice}!sample@{sample}}
+\index{sample@{sample}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{sample}{sample}}
+{\footnotesize\ttfamily \label{struct_voice_aec4195239899da41faab6855f72ff3b0} 
+\mbox{\hyperlink{struct_sample}{Sample}} Voice\+::sample}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835}\index{Voice@{Voice}!sample\_position@{sample\_position}}
+\index{sample\_position@{sample\_position}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{sample\_position}{sample\_position}}
+{\footnotesize\ttfamily \label{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835} 
+float Voice\+::sample\+\_\+position}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a00362f21ed0f6e093c3676d6091c3e60}\index{Voice@{Voice}!samples\_elapsed@{samples\_elapsed}}
+\index{samples\_elapsed@{samples\_elapsed}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{samples\_elapsed}{samples\_elapsed}}
+{\footnotesize\ttfamily \label{struct_voice_a00362f21ed0f6e093c3676d6091c3e60} 
+int Voice\+::samples\+\_\+elapsed}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_aa86d2645dd2c73eb04022aa046ade17a}\index{Voice@{Voice}!source@{source}}
+\index{source@{source}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{[union]}{[union]}}
+{\footnotesize\ttfamily \label{struct_voice_aa86d2645dd2c73eb04022aa046ade17a} 
+union  \{ ... \}  Voice\+::source}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5}\index{Voice@{Voice}!type@{type}}
+\index{type@{type}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{type}{type}}
+{\footnotesize\ttfamily \label{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5} 
+\mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{Voice\+Type}} Voice\+::type}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}\index{Voice@{Voice}!volume@{volume}}
+\index{volume@{volume}!Voice@{Voice}}
+\doxysubsubsection{\texorpdfstring{volume}{volume}}
+{\footnotesize\ttfamily \label{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0} 
+\mbox{\hyperlink{struct_parameter}{Parameter}}\texorpdfstring{$\ast$}{*} Voice\+::volume}
+
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{voice_8h}{voice.\+h}}\end{DoxyCompactItemize}

@@ -1,0 +1,146 @@
+\doxysection{input.\+c File Reference}
+\hypertarget{input_8c}{}\label{input_8c}\index{input.c@{input.c}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include "{}input.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{input_8c_a59b0e3fae5d4a30b96317c31598aeabb}{create\+Input\+State}} (\mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0}{Input\+Device\+Type}} type)
+\item 
+void \mbox{\hyperlink{input_8c_aa935f40452058e5dd16aaf4725e82711}{update\+Input\+State}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}state)
+\item 
+void \mbox{\hyperlink{input_8c_a5423f97f409509d7f37b7fc791d486a6}{add\+To\+History}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}state, \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}} key\+Code)
+\item 
+bool \mbox{\hyperlink{input_8c_ade2700cdca20c67ab026fc03ab76a1da}{is\+Key\+Held}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}state, \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}} key\+Code)
+\item 
+bool \mbox{\hyperlink{input_8c_ad4e1087d35c668f45ee48dfdd482b2f8}{is\+Key\+Just\+Pressed}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}state, \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}} key\+Code)
+\item 
+int \mbox{\hyperlink{input_8c_a130a8449e01fb02b5368d190a7a5e232}{get\+Mapped\+Key\+Code}} (\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}state, \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}} key)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{input_8c_a5423f97f409509d7f37b7fc791d486a6}\index{input.c@{input.c}!addToHistory@{addToHistory}}
+\index{addToHistory@{addToHistory}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{addToHistory()}{addToHistory()}}
+{\footnotesize\ttfamily \label{input_8c_a5423f97f409509d7f37b7fc791d486a6} 
+void add\+To\+History (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{state}{, }\item[{\mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}}}]{key\+Code}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00034\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_a65d906421168a8e77705b37dfe62d1c9}{inputHistory}}[state-\/>\mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}}]\ =\ keyCode;}
+\DoxyCodeLine{00035\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}}++;}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordflow}{if}(state-\/>\mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}}\ >\ \mbox{\hyperlink{input_8h_a2588701f7ee6e55fe8db9c918d2af43b}{MAX\_INPUT\_HISTORY}})\{}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}}\ =\ 0;}
+\DoxyCodeLine{00038\ \ \ \ \ \}}
+\DoxyCodeLine{00039\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{input_8c_ad4e1087d35c668f45ee48dfdd482b2f8}{is\+Key\+Just\+Pressed()}}.
+
+\Hypertarget{input_8c_a59b0e3fae5d4a30b96317c31598aeabb}\index{input.c@{input.c}!createInputState@{createInputState}}
+\index{createInputState@{createInputState}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{createInputState()}{createInputState()}}
+{\footnotesize\ttfamily \label{input_8c_a59b0e3fae5d4a30b96317c31598aeabb} 
+\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*} create\+Input\+State (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0}{Input\+Device\+Type}}}]{type}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00005\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00006\ \ \ \ \ \mbox{\hyperlink{struct_input_state}{InputState}}*\ state\ =\ (\mbox{\hyperlink{struct_input_state}{InputState}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_input_state}{InputState}}));}
+\DoxyCodeLine{00007\ \ \ \ \ \textcolor{keywordflow}{if}(!state)\ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00008\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_a0558cb339ee5c7ea939a54bba40e2992}{deviceType}}\ =\ type;}
+\DoxyCodeLine{00009\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_aa15f6eee939e3ce909ab3a7ac959da18}{currentMap}}\ =\ (type\ ==\ \mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0ad930e7f402c859a3e4fdc518e76e68a8}{INPUT\_TYPE\_KEYBOARD}})\ ?\ KEYBOARD\_MAP\ :\ GAMEPAD\_MAP;}
+\DoxyCodeLine{00010\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_a65d906421168a8e77705b37dfe62d1c9}{inputHistory}}\ =\ (\textcolor{keywordtype}{int}*)malloc(\mbox{\hyperlink{input_8h_a2588701f7ee6e55fe8db9c918d2af43b}{MAX\_INPUT\_HISTORY}}\ *\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}));}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordflow}{if}\ (!state-\/>\mbox{\hyperlink{struct_input_state_a65d906421168a8e77705b37dfe62d1c9}{inputHistory}})\ \{}
+\DoxyCodeLine{00012\ \ \ \ \ \ \ \ \ free(state);}
+\DoxyCodeLine{00013\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00014\ \ \ \ \ \}}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{input_8h_a2588701f7ee6e55fe8db9c918d2af43b}{MAX\_INPUT\_HISTORY}};\ i++)\{}
+\DoxyCodeLine{00016\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_a65d906421168a8e77705b37dfe62d1c9}{inputHistory}}[i]\ =\ 0;}
+\DoxyCodeLine{00017\ \ \ \ \ \}}
+\DoxyCodeLine{00018\ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_ae28ac7958c1d8fba14ea7955dba8d8b1}{historyIndex}}\ =\ 0;}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ab2d4377ac4240d64d9a161445ea80195}{KEY\_MAPPING\_COUNT}};\ i++)\{}
+\DoxyCodeLine{00020\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[i].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}}\ =\ 0;}
+\DoxyCodeLine{00021\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[i].\mbox{\hyperlink{struct_key_state_ae1a1c97efbbbad85b4545303be70ed9b}{wasPressed}}\ =\ 0;}
+\DoxyCodeLine{00022\ \ \ \ \ \}}
+\DoxyCodeLine{00023\ \ \ \ \ \textcolor{keywordflow}{return}\ state;}
+\DoxyCodeLine{00024\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{appstate_8c_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{input_8c_a130a8449e01fb02b5368d190a7a5e232}\index{input.c@{input.c}!getMappedKeyCode@{getMappedKeyCode}}
+\index{getMappedKeyCode@{getMappedKeyCode}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{getMappedKeyCode()}{getMappedKeyCode()}}
+{\footnotesize\ttfamily \label{input_8c_a130a8449e01fb02b5368d190a7a5e232} 
+int get\+Mapped\+Key\+Code (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{state}{, }\item[{\mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}}}]{key}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00050\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordflow}{return}\ state-\/>\mbox{\hyperlink{struct_input_state_aa15f6eee939e3ce909ab3a7ac959da18}{currentMap}}[key];}
+\DoxyCodeLine{00052\ \}}
+
+\end{DoxyCode}
+\Hypertarget{input_8c_ade2700cdca20c67ab026fc03ab76a1da}\index{input.c@{input.c}!isKeyHeld@{isKeyHeld}}
+\index{isKeyHeld@{isKeyHeld}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{isKeyHeld()}{isKeyHeld()}}
+{\footnotesize\ttfamily \label{input_8c_ade2700cdca20c67ab026fc03ab76a1da} 
+bool is\+Key\+Held (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{state}{, }\item[{\mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}}}]{key\+Code}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordflow}{return}\ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[keyCode].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}};}
+\DoxyCodeLine{00043\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{input_8c_ad4e1087d35c668f45ee48dfdd482b2f8}\index{input.c@{input.c}!isKeyJustPressed@{isKeyJustPressed}}
+\index{isKeyJustPressed@{isKeyJustPressed}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{isKeyJustPressed()}{isKeyJustPressed()}}
+{\footnotesize\ttfamily \label{input_8c_ad4e1087d35c668f45ee48dfdd482b2f8} 
+bool is\+Key\+Just\+Pressed (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{state}{, }\item[{\mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6}{Key\+Mapping}}}]{key\+Code}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keywordflow}{if}(state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[keyCode].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}}\ \&\&\ !state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[keyCode].\mbox{\hyperlink{struct_key_state_ae1a1c97efbbbad85b4545303be70ed9b}{wasPressed}})\ \mbox{\hyperlink{input_8c_a5423f97f409509d7f37b7fc791d486a6}{addToHistory}}(state,\ keyCode);}
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keywordflow}{return}\ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[keyCode].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}}\ \&\&\ !state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[keyCode].\mbox{\hyperlink{struct_key_state_ae1a1c97efbbbad85b4545303be70ed9b}{wasPressed}};}
+\DoxyCodeLine{00048\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{input_8c_aa935f40452058e5dd16aaf4725e82711}\index{input.c@{input.c}!updateInputState@{updateInputState}}
+\index{updateInputState@{updateInputState}!input.c@{input.c}}
+\doxysubsubsection{\texorpdfstring{updateInputState()}{updateInputState()}}
+{\footnotesize\ttfamily \label{input_8c_aa935f40452058e5dd16aaf4725e82711} 
+void update\+Input\+State (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_input_state}{Input\+State}} \texorpdfstring{$\ast$}{*}}]{state}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{input_8h_ae42d8504cdbc363516ac663fec1333a6ab2d4377ac4240d64d9a161445ea80195}{KEY\_MAPPING\_COUNT}};\ i++)\ \{}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[i].\mbox{\hyperlink{struct_key_state_ae1a1c97efbbbad85b4545303be70ed9b}{wasPressed}}\ =\ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[i].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}};}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \ \ state-\/>\mbox{\hyperlink{struct_input_state_aa2b23c726ed07c6ab193f3562f068591}{keys}}[i].\mbox{\hyperlink{struct_key_state_a2cb1a8cab6a0443c00478ae398d52a1c}{isPressed}}\ =\ IsKeyDown(state-\/>\mbox{\hyperlink{struct_input_state_aa15f6eee939e3ce909ab3a7ac959da18}{currentMap}}[i]);}
+\DoxyCodeLine{00030\ \ \ \ \ \}}
+\DoxyCodeLine{00031\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+

@@ -1,0 +1,63 @@
+\doxysection{modtest.\+c File Reference}
+\hypertarget{modtest_8c}{}\label{modtest_8c}\index{modtest.c@{modtest.c}}
+{\ttfamily \#include $<$assert.\+h$>$}\newline
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{modtest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{modtest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}\index{modtest.c@{modtest.c}!main@{main}}
+\index{main@{main}!modtest.c@{modtest.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily \label{modtest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4} 
+int main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00004\ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00005\ \ \ \ \ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ mods\ =\ (\mbox{\hyperlink{struct_mod_list}{ModList}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_mod_list}{ModList}}));}
+\DoxyCodeLine{00006\ \ \ \ \ mods-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}\ =\ 0;}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \ \ \ \ \mbox{\hyperlink{struct_mod}{Mod}}*\ lfo1\ =\ createMod(0);}
+\DoxyCodeLine{00009\ \ \ \ \ \mbox{\hyperlink{struct_mod}{Mod}}*\ lfo2\ =\ createMod(1);}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \ \ \ \ addDestination(lfo1,\ lfo2);\ \textcolor{comment}{//\ lfo1\ modulates\ lfo2}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \ \ \ \ addMod(mods,\ lfo1);}
+\DoxyCodeLine{00014\ \ \ \ \ addMod(mods,\ lfo2);}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \ \ \ \ \textcolor{comment}{//\ Check\ that\ the\ mods\ are\ added\ correctly}}
+\DoxyCodeLine{00017\ \ \ \ \ assert(mods-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}\ ==\ 2);}
+\DoxyCodeLine{00018\ \ \ \ \ assert(mods-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[0]\ ==\ lfo1);}
+\DoxyCodeLine{00019\ \ \ \ \ assert(mods-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[1]\ ==\ lfo2);}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{comment}{//\ Check\ that\ the\ destination\ is\ set\ correctly}}
+\DoxyCodeLine{00022\ \ \ \ \ assert(lfo1-\/>destinations\ ==\ lfo2);}
+\DoxyCodeLine{00023\ \ \ \ \ assert(lfo2-\/>destinations\ ==\ NULL);}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ \ \ \ \ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ sortedMods\ =\ topologicalSort(mods);}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{comment}{//\ Check\ that\ the\ topological\ sort\ produces\ the\ correct\ order}}
+\DoxyCodeLine{00028\ \ \ \ \ assert(sortedMods-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}\ ==\ 2);}
+\DoxyCodeLine{00029\ \ \ \ \ assert(sortedMods-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[0]\ ==\ lfo1);}
+\DoxyCodeLine{00030\ \ \ \ \ assert(sortedMods-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[1]\ ==\ lfo2);}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{comment}{//\ Calculate\ outputs\ in\ the\ correct\ order}}
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ sortedMods-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}};\ i++)\ \{}
+\DoxyCodeLine{00034\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Call\ the\ generate\ function\ for\ each\ modulator}}
+\DoxyCodeLine{00035\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ sortedMods-\/>mods[i]-\/>base-\/>generate(sortedMods-\/>mods[i]);}}
+\DoxyCodeLine{00036\ \ \ \ \ \}}
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e}{freeModList}}(sortedMods);}
+\DoxyCodeLine{00039\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e}{freeModList}}(mods);}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \ \ \ \ printf(\textcolor{stringliteral}{"{}All\ tests\ passed.\(\backslash\)n"{}});}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \ \ \ \ \textcolor{keywordflow}{return}\ 0;}
+\DoxyCodeLine{00044\ \}}
+
+\end{DoxyCode}

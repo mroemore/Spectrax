@@ -1,0 +1,425 @@
+\doxysection{io.\+c File Reference}
+\hypertarget{io_8c}{}\label{io_8c}\index{io.c@{io.c}}
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include "{}io.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} \mbox{\hyperlink{io_8c_a0ee74bbd7a1d323b8c4533cfee28587b}{save\+Settings}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}settings)
+\begin{DoxyCompactList}\small\item\em Saves application settings to a binary file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} \mbox{\hyperlink{io_8c_a34b69ab24373985afad6a73ba8ec5f9e}{load\+Settings}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}settings)
+\begin{DoxyCompactList}\small\item\em Loads application settings from a binary file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} \mbox{\hyperlink{io_8c_a22a0fa54facdb8d991e45e222db52ead}{save\+Colour\+Scheme}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}colour\+Scheme)
+\begin{DoxyCompactList}\small\item\em Saves a colour scheme to a binary file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} \mbox{\hyperlink{io_8c_a415efc3af04aa636ce892a89ce50d30b}{load\+Colour\+Scheme}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}colour\+Scheme)
+\begin{DoxyCompactList}\small\item\em Loads a colour scheme from a binary file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} \mbox{\hyperlink{io_8c_ad73e7d721b9560a5463ee1a7ce2918f6}{load\+Colour\+Scheme\+Txt}} (const char \texorpdfstring{$\ast$}{*}filename, Color \texorpdfstring{$\ast$}{*}colour\+Array\mbox{[}$\,$\mbox{]}, int array\+Size)
+\begin{DoxyCompactList}\small\item\em Loads a colour scheme from a text file format. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result}} \mbox{\hyperlink{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}{save\+Sequencer\+State}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}patterns)
+\begin{DoxyCompactList}\small\item\em Loads the complete sequencer state from a binary file. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result}} \mbox{\hyperlink{io_8c_aaad57709f4a1703fda3356ae6163bb29}{load\+Sequencer\+State}} (const char \texorpdfstring{$\ast$}{*}filename, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}patterns)
+\begin{DoxyCompactList}\small\item\em Loads the complete sequencer state from a binary file. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{io_8c_a415efc3af04aa636ce892a89ce50d30b}\index{io.c@{io.c}!loadColourScheme@{loadColourScheme}}
+\index{loadColourScheme@{loadColourScheme}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{loadColourScheme()}{loadColourScheme()}}
+{\footnotesize\ttfamily \label{io_8c_a415efc3af04aa636ce892a89ce50d30b} 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} load\+Colour\+Scheme (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}}]{colour\+Scheme}{}\end{DoxyParamCaption})}
+
+
+
+Loads a colour scheme from a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to the colour scheme file to load \\
+\hline
+{\em colour\+Scheme} & Pointer to \doxylink{struct_colour_scheme}{Colour\+Scheme} structure to populate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result} indicating success (FILE\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item FILE\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be opened
+\item FILE\+\_\+\+ERROR\+\_\+\+FORMAT if file has invalid magic number
+\item FILE\+\_\+\+ERROR\+\_\+\+READ if reading colour scheme data fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00048\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{00049\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}};}
+\DoxyCodeLine{00050\ \ \ \ \ }
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordtype}{char}\ magic[4];}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(magic,\ 1,\ 4,\ file)\ !=\ 4\ ||\ memcmp(magic,\ \textcolor{stringliteral}{"{}CSC1"{}},\ 4)\ !=\ 0)\ \{}
+\DoxyCodeLine{00053\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a59413acd484f9fd5940fa48bb912bd2d}{FILE\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00055\ \ \ \ \ \}}
+\DoxyCodeLine{00056\ \ \ \ \ }
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(colourScheme,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_colour_scheme}{ColourScheme}}),\ 1,\ file)\ !=\ 1)\ \{}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02ac542004ab939b96377b0b1ccd48946b7}{FILE\_ERROR\_READ}};}
+\DoxyCodeLine{00060\ \ \ \ \ \}}
+\DoxyCodeLine{00061\ \ \ \ \ }
+\DoxyCodeLine{00062\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}};}
+\DoxyCodeLine{00064\ \}}
+
+\end{DoxyCode}
+\Hypertarget{io_8c_ad73e7d721b9560a5463ee1a7ce2918f6}\index{io.c@{io.c}!loadColourSchemeTxt@{loadColourSchemeTxt}}
+\index{loadColourSchemeTxt@{loadColourSchemeTxt}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{loadColourSchemeTxt()}{loadColourSchemeTxt()}}
+{\footnotesize\ttfamily \label{io_8c_ad73e7d721b9560a5463ee1a7ce2918f6} 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} load\+Colour\+Scheme\+Txt (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{Color \texorpdfstring{$\ast$}{*}}]{colour\+Array}{\mbox{[}$\,$\mbox{]}, }\item[{int}]{array\+Size}{}\end{DoxyParamCaption})}
+
+
+
+Loads a colour scheme from a text file format. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to the text-\/based colour scheme file \\
+\hline
+{\em colour\+Scheme} & Pointer to \doxylink{struct_colour_scheme}{Colour\+Scheme} structure to populate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result} indicating success (FILE\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item FILE\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be opened
+\item FILE\+\_\+\+ERROR\+\_\+\+FORMAT if file format is invalid
+\item FILE\+\_\+\+ERROR\+\_\+\+READ if reading colour data fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00067\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}};}
+\DoxyCodeLine{00069\ \ \ \ \ }
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keywordtype}{char}\ line[32];}
+\DoxyCodeLine{00071\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ arraySize;\ i++)\ \{}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!fgets(line,\ \textcolor{keyword}{sizeof}(line),\ file))\ \{}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02ac542004ab939b96377b0b1ccd48946b7}{FILE\_ERROR\_READ}};}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ r,\ g,\ b;}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (sscanf(line,\ \textcolor{stringliteral}{"{}\%d,\%d,\%d"{}},\ \&r,\ \&g,\ \&b)\ !=\ 3\ ||}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ r\ <\ 0\ ||\ r\ >\ 255\ ||\ g\ <\ 0\ ||\ g\ >\ 255\ ||\ b\ <\ 0\ ||\ b\ >\ 255)\ \{}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a59413acd484f9fd5940fa48bb912bd2d}{FILE\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ colourArray[i]-\/>r\ =\ r;}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ colourArray[i]-\/>g\ =\ g;}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ colourArray[i]-\/>b\ =\ b;}
+\DoxyCodeLine{00087\ \ \ \ \ \}}
+\DoxyCodeLine{00088\ \ \ \ \ }
+\DoxyCodeLine{00089\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00090\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}};}
+\DoxyCodeLine{00091\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{io_8c_aaad57709f4a1703fda3356ae6163bb29}\index{io.c@{io.c}!loadSequencerState@{loadSequencerState}}
+\index{loadSequencerState@{loadSequencerState}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{loadSequencerState()}{loadSequencerState()}}
+{\footnotesize\ttfamily \label{io_8c_aaad57709f4a1703fda3356ae6163bb29} 
+\mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result}} load\+Sequencer\+State (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{patterns}{}\end{DoxyParamCaption})}
+
+
+
+Loads the complete sequencer state from a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to the sequencer state file to load \\
+\hline
+{\em arranger} & Pointer to \doxylink{struct_arranger}{Arranger} structure to populate with playhead, channel and song data \\
+\hline
+{\em patterns} & Pointer to \doxylink{struct_pattern_list}{Pattern\+List} structure to populate with pattern data \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result} indicating success (SEQ\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item SEQ\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be opened
+\item SEQ\+\_\+\+ERROR\+\_\+\+FORMAT if file format or section headers are invalid 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00147\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{00148\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a54276461b1aaf5c8921fba7112025d85}{SEQ\_ERROR\_OPEN}};}
+\DoxyCodeLine{00149\ }
+\DoxyCodeLine{00150\ \ \ \ \ \textcolor{keywordflow}{if}\ (!readAndVerifyChunkHeader(file,\ \mbox{\hyperlink{io_8h_a68854f4d68528882dcf1f279d7deeaab}{MAGIC\_HEADER}}))\ \{}
+\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76ad37d6bc5b16ac9c67797472255d72bde}{SEQ\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00153\ \ \ \ \ \}}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \ \ \ \ \textcolor{keywordflow}{if}\ (!readAndVerifyChunkHeader(file,\ \mbox{\hyperlink{io_8h_a6fcfc5452c7fd3fd85f22ec59c4cbd3e}{PATTERN\_SECTION}}))\ \{}
+\DoxyCodeLine{00156\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00157\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76ad37d6bc5b16ac9c67797472255d72bde}{SEQ\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00158\ \ \ \ \ \}}
+\DoxyCodeLine{00159\ }
+\DoxyCodeLine{00160\ \ \ \ \ \textcolor{comment}{//\ Read\ patterns}}
+\DoxyCodeLine{00161\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(\&patterns-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1)\ \{}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a6cc293a8aea8980e6569442b4722f1cd}{SEQ\_ERROR\_READ}};}
+\DoxyCodeLine{00164\ \ \ \ \ \}}
+\DoxyCodeLine{00165\ }
+\DoxyCodeLine{00166\ \ \ \ \ \textcolor{keywordflow}{if}\ (patterns-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}\ >\ \mbox{\hyperlink{sequencer_8h_a24c48ef77929deff9e40e141a891dbb8}{MAX\_PATTERNS}})\ \{}
+\DoxyCodeLine{00167\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00168\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76ad37d6bc5b16ac9c67797472255d72bde}{SEQ\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00169\ \ \ \ \ \}}
+\DoxyCodeLine{00170\ }
+\DoxyCodeLine{00171\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ patterns-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}};\ i++)\ \{}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_pattern}{Pattern}}*\ p\ =\ \&patterns-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[i];}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(\&p-\/>\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \ \ \ \ fread(p-\/>\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\_SEQUENCE\_LENGTH}}\ *\ \mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}},\ file)\ }
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ !=\ \mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\_SEQUENCE\_LENGTH}}\ *\ \mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}})\ \{}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a6cc293a8aea8980e6569442b4722f1cd}{SEQ\_ERROR\_READ}};}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00179\ \ \ \ \ \}}
+\DoxyCodeLine{00180\ }
+\DoxyCodeLine{00181\ \ \ \ \ \textcolor{comment}{//\ Read\ arranger\ section}}
+\DoxyCodeLine{00182\ \ \ \ \ \textcolor{keywordflow}{if}\ (!readAndVerifyChunkHeader(file,\ \mbox{\hyperlink{io_8h_a7f525d635db74e4440c0cbb4053a6e8d}{ARRANGER\_SECTION}}))\ \{}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76ad37d6bc5b16ac9c67797472255d72bde}{SEQ\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00185\ \ \ \ \ \}}
+\DoxyCodeLine{00186\ }
+\DoxyCodeLine{00187\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}},\ file)\ !=\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ ||}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>activeChannels,\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00189\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00190\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a0336394d075942924f0310d618955d70}{beats\_per\_minute}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00193\ \ \ \ \ \ \ \ \ fread(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file)\ !=\ 1\ ||}
+\DoxyCodeLine{00194\ \ \ \ \ \ \ \ \ fread(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ *\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}},\ file)\ }
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ !=\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ *\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}})\ \{}
+\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a6cc293a8aea8980e6569442b4722f1cd}{SEQ\_ERROR\_READ}};}
+\DoxyCodeLine{00198\ \ \ \ \ \}}
+\DoxyCodeLine{00199\ }
+\DoxyCodeLine{00200\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00201\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a274edc266d695198fd8dd759797639c7}{SEQ\_OK}};}
+\DoxyCodeLine{00202\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{io_8c_a34b69ab24373985afad6a73ba8ec5f9e}\index{io.c@{io.c}!loadSettings@{loadSettings}}
+\index{loadSettings@{loadSettings}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{loadSettings()}{loadSettings()}}
+{\footnotesize\ttfamily \label{io_8c_a34b69ab24373985afad6a73ba8ec5f9e} 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} load\+Settings (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}}]{settings}{}\end{DoxyParamCaption})}
+
+
+
+Loads application settings from a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to the settings file to load \\
+\hline
+{\em settings} & Pointer to \doxylink{struct_settings}{Settings} structure to populate \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result} indicating success (FILE\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item FILE\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be opened
+\item FILE\+\_\+\+ERROR\+\_\+\+FORMAT if file has invalid magic number
+\item FILE\+\_\+\+ERROR\+\_\+\+READ if reading settings data fails 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00016\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00017\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}rb"{}});}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}};}
+\DoxyCodeLine{00019\ \ \ \ \ }
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordtype}{char}\ magic[4];}
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(magic,\ 1,\ 4,\ file)\ !=\ 4\ ||\ memcmp(magic,\ \textcolor{stringliteral}{"{}SET1"{}},\ 4)\ !=\ 0)\ \{}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a59413acd484f9fd5940fa48bb912bd2d}{FILE\_ERROR\_FORMAT}};}
+\DoxyCodeLine{00024\ \ \ \ \ \}}
+\DoxyCodeLine{00025\ \ \ \ \ }
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordflow}{if}\ (fread(settings,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_settings}{Settings}}),\ 1,\ file)\ !=\ 1)\ \{}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02ac542004ab939b96377b0b1ccd48946b7}{FILE\_ERROR\_READ}};}
+\DoxyCodeLine{00029\ \ \ \ \ \}}
+\DoxyCodeLine{00030\ \ \ \ \ }
+\DoxyCodeLine{00031\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}};}
+\DoxyCodeLine{00033\ \}}
+
+\end{DoxyCode}
+\Hypertarget{io_8c_a22a0fa54facdb8d991e45e222db52ead}\index{io.c@{io.c}!saveColourScheme@{saveColourScheme}}
+\index{saveColourScheme@{saveColourScheme}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{saveColourScheme()}{saveColourScheme()}}
+{\footnotesize\ttfamily \label{io_8c_a22a0fa54facdb8d991e45e222db52ead} 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} save\+Colour\+Scheme (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_colour_scheme}{Colour\+Scheme}} \texorpdfstring{$\ast$}{*}}]{colour\+Scheme}{}\end{DoxyParamCaption})}
+
+
+
+Saves a colour scheme to a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to save the colour scheme file \\
+\hline
+{\em colour\+Scheme} & Pointer to \doxylink{struct_colour_scheme}{Colour\+Scheme} structure to save \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result} indicating success (FILE\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item FILE\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be created/opened for writing 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00035\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00036\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}wb"{}});}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}};}
+\DoxyCodeLine{00038\ \ \ \ \ }
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ magic[]\ =\ \textcolor{stringliteral}{"{}CSC1"{}};}
+\DoxyCodeLine{00040\ \ \ \ \ fwrite(magic,\ 1,\ 4,\ file);}
+\DoxyCodeLine{00041\ \ \ \ \ fwrite(colourScheme,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_colour_scheme}{ColourScheme}}),\ 1,\ file);}
+\DoxyCodeLine{00042\ \ \ \ \ }
+\DoxyCodeLine{00043\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}};}
+\DoxyCodeLine{00045\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25}\index{io.c@{io.c}!saveSequencerState@{saveSequencerState}}
+\index{saveSequencerState@{saveSequencerState}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{saveSequencerState()}{saveSequencerState()}}
+{\footnotesize\ttfamily \label{io_8c_a18b2dfb386b19c9b8a56ed880d3a7f25} 
+\mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result}} save\+Sequencer\+State (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{patterns}{}\end{DoxyParamCaption})}
+
+
+
+Loads the complete sequencer state from a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to the sequencer state file to load \\
+\hline
+{\em arranger} & Pointer to \doxylink{struct_arranger}{Arranger} structure to populate with playhead, channel and song data \\
+\hline
+{\em patterns} & Pointer to \doxylink{struct_pattern_list}{Pattern\+List} structure to populate with pattern data \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76}{Sequencer\+File\+Result} indicating success (SEQ\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item SEQ\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be opened
+\item SEQ\+\_\+\+ERROR\+\_\+\+FORMAT if file format or section headers are invalid 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00102\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00103\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}wb"{}});}
+\DoxyCodeLine{00104\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a54276461b1aaf5c8921fba7112025d85}{SEQ\_ERROR\_OPEN}};}
+\DoxyCodeLine{00105\ }
+\DoxyCodeLine{00106\ \ \ \ \ \textcolor{comment}{//\ Write\ file\ header}}
+\DoxyCodeLine{00107\ \ \ \ \ \textcolor{keywordflow}{if}\ (!writeChunkHeader(file,\ \mbox{\hyperlink{io_8h_a68854f4d68528882dcf1f279d7deeaab}{MAGIC\_HEADER}}))\ \{}
+\DoxyCodeLine{00108\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00109\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76af2e32ae73ca0c27ed47708cdf3227f33}{SEQ\_ERROR\_WRITE}};}
+\DoxyCodeLine{00110\ \ \ \ \ \}}
+\DoxyCodeLine{00111\ }
+\DoxyCodeLine{00112\ \ \ \ \ \textcolor{comment}{//\ Write\ patterns\ section}}
+\DoxyCodeLine{00113\ \ \ \ \ \textcolor{keywordflow}{if}\ (!writeChunkHeader(file,\ \mbox{\hyperlink{io_8h_a6fcfc5452c7fd3fd85f22ec59c4cbd3e}{PATTERN\_SECTION}}))\ \{}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00115\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76af2e32ae73ca0c27ed47708cdf3227f33}{SEQ\_ERROR\_WRITE}};}
+\DoxyCodeLine{00116\ \ \ \ \ \}}
+\DoxyCodeLine{00117\ }
+\DoxyCodeLine{00118\ \ \ \ \ \textcolor{comment}{//\ Write\ pattern\ count\ and\ patterns}}
+\DoxyCodeLine{00119\ \ \ \ \ fwrite(\&patterns-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00120\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ patterns-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}};\ i++)\ \{}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_pattern}{Pattern}}*\ p\ =\ \&patterns-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[i];}
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ fwrite(\&p-\/>\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00123\ \ \ \ \ \ \ \ \ fwrite(p-\/>\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{sequencer_8h_a66fe023e5877900f2ff54bdf746430cb}{MAX\_SEQUENCE\_LENGTH}}\ *\ \mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}},\ file);}
+\DoxyCodeLine{00124\ \ \ \ \ \}}
+\DoxyCodeLine{00125\ }
+\DoxyCodeLine{00126\ \ \ \ \ \textcolor{comment}{//\ Write\ arranger\ section}}
+\DoxyCodeLine{00127\ \ \ \ \ \textcolor{keywordflow}{if}\ (!writeChunkHeader(file,\ \mbox{\hyperlink{io_8h_a7f525d635db74e4440c0cbb4053a6e8d}{ARRANGER\_SECTION}}))\ \{}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00129\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76af2e32ae73ca0c27ed47708cdf3227f33}{SEQ\_ERROR\_WRITE}};}
+\DoxyCodeLine{00130\ \ \ \ \ \}}
+\DoxyCodeLine{00131\ }
+\DoxyCodeLine{00132\ \ \ \ \ \textcolor{comment}{//\ Write\ complete\ arranger\ struct}}
+\DoxyCodeLine{00133\ \ \ \ \ fwrite(arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}},\ file);}
+\DoxyCodeLine{00134\ \ \ \ \ fwrite(\&arranger-\/>activeChannels,\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00135\ \ \ \ \ fwrite(\&arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00136\ \ \ \ \ fwrite(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00137\ \ \ \ \ fwrite(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00138\ \ \ \ \ fwrite(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a0336394d075942924f0310d618955d70}{beats\_per\_minute}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00139\ \ \ \ \ fwrite(\&arranger-\/>\mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ 1,\ file);}
+\DoxyCodeLine{00140\ \ \ \ \ fwrite(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}},\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}),\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ *\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}},\ file);}
+\DoxyCodeLine{00141\ }
+\DoxyCodeLine{00142\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00143\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_aeebbb27ca2f86add1e5bb4cb9f799b76a274edc266d695198fd8dd759797639c7}{SEQ\_OK}};}
+\DoxyCodeLine{00144\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{io_8c_a0ee74bbd7a1d323b8c4533cfee28587b}\index{io.c@{io.c}!saveSettings@{saveSettings}}
+\index{saveSettings@{saveSettings}!io.c@{io.c}}
+\doxysubsubsection{\texorpdfstring{saveSettings()}{saveSettings()}}
+{\footnotesize\ttfamily \label{io_8c_a0ee74bbd7a1d323b8c4533cfee28587b} 
+\mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result}} save\+Settings (\begin{DoxyParamCaption}\item[{const char \texorpdfstring{$\ast$}{*}}]{filename}{, }\item[{\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}}]{settings}{}\end{DoxyParamCaption})}
+
+
+
+Saves application settings to a binary file. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em filename} & Path to save the settings file \\
+\hline
+{\em settings} & Pointer to \doxylink{struct_settings}{Settings} structure to save \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+\doxylink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02}{File\+Result} indicating success (FILE\+\_\+\+OK) or specific error codes\+:
+\begin{DoxyItemize}
+\item FILE\+\_\+\+ERROR\+\_\+\+OPEN if file cannot be created/opened for writing 
+\end{DoxyItemize}
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00004\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00005\ \ \ \ \ FILE*\ file\ =\ fopen(filename,\ \textcolor{stringliteral}{"{}wb"{}});}
+\DoxyCodeLine{00006\ \ \ \ \ \textcolor{keywordflow}{if}\ (!file)\ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02a7ddb4c741a1e9ec5a6f81c19a82533ff}{FILE\_ERROR\_OPEN}};}
+\DoxyCodeLine{00007\ \ \ \ \ }
+\DoxyCodeLine{00008\ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}\ magic[]\ =\ \textcolor{stringliteral}{"{}SET1"{}};}
+\DoxyCodeLine{00009\ \ \ \ \ fwrite(magic,\ 1,\ 4,\ file);}
+\DoxyCodeLine{00010\ \ \ \ \ fwrite(settings,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_settings}{Settings}}),\ 1,\ file);}
+\DoxyCodeLine{00011\ \ \ \ \ }
+\DoxyCodeLine{00012\ \ \ \ \ fclose(file);}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{io_8h_a20f28dd2422b72c67a3b48aeb5486c02acc5440fbbcea7fbd0094369d27686b16}{FILE\_OK}};}
+\DoxyCodeLine{00014\ \}}
+
+\end{DoxyCode}

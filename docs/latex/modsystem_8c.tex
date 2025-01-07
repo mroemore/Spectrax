@@ -1,0 +1,1195 @@
+\doxysection{modsystem.\+c File Reference}
+\hypertarget{modsystem_8c}{}\label{modsystem_8c}\index{modsystem.c@{modsystem.c}}
+{\ttfamily \#include "{}modsystem.\+h"{}}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include $<$stdbool.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{modsystem_8c_a63609f8767ff2964a90169b169fb16cf}{init\+Mod\+System}} ()
+\item 
+\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_a778b05a9d05212afde1619a75f32e5df}{create\+Mod\+List}} ()
+\item 
+\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_ab1377b7b24fa8b1ad33b8c6adfefb02d}{create\+Param\+List}} ()
+\item 
+void \mbox{\hyperlink{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c}{add\+To\+Mod\+List}} (\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}list, \mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}mod)
+\item 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, const char \texorpdfstring{$\ast$}{*}name, float initial\+Value, float min\+Value, float max\+Value)
+\item 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}{create\+Parameter\+Ex}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, const char \texorpdfstring{$\ast$}{*}name, float initial\+Value, float min\+Value, float max\+Value, float fine\+Increment, float coarse\+Increment)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a9449a0ae84cb0028b906ad95f79cefbb}{add\+To\+Param\+List}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}list, \mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{set\+Parameter\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param, float value)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{set\+Parameter\+Base\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param, float value)
+\item 
+float \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{get\+Parameter\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param)
+\item 
+int \mbox{\hyperlink{modsystem_8c_a95f112fe9095a9e86b4e4f7f1a853467}{get\+Parameter\+Value\+As\+Int}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param)
+\item 
+\mbox{\hyperlink{struct_mod_connection}{Mod\+Connection}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_aa6ef49094a94273ff2f003f083718cef}{create\+Connection}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}source, float amount, \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7}{Modulation\+Operation}} type)
+\item 
+bool \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{add\+Modulation}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}source, \mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}destination, float amount, \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7}{Modulation\+Operation}} type)
+\item 
+\mbox{\hyperlink{struct_random}{Random}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{create\+Random}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, int index, float rate, \mbox{\hyperlink{modsystem_8h_a800a52a5329c6ee641d2346daa5bd559}{Random\+Type}} type, char \texorpdfstring{$\ast$}{*}name)
+\item 
+\mbox{\hyperlink{struct_l_f_o}{LFO}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, int index, float rate, int shape, char \texorpdfstring{$\ast$}{*}name)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}{generate\+Sine}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}{generate\+Square}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}{generate\+Ramp}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}{generate\+Random}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generate\+Drunk}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod}} (\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}mod, float delta\+Time)
+\item 
+float \mbox{\hyperlink{modsystem_8c_a3b0d5a0a8a3e57e41fb80661435a5fe6}{apply\+Curve}} (float x, float curvature)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a6f55c00b5a39d1f017cfa7f0b959bc9a}{trigger\+Envelope}} (\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope}} (void \texorpdfstring{$\ast$}{*}self)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a9625035fdaec67dc95709fd10dacffe4}{modify\+Parameter\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}parameter, float relative\+Value)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ad5a4bc1aa689ba445b4739c742113f3b}{modify\+Parameter\+Base\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}parameter, float relative\+Value)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{inc\+Parameter\+Base\+Value}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}parameter, float relative\+Value)
+\item 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, int index, float sample\+Rate, char \texorpdfstring{$\ast$}{*}name)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{add\+Envelope\+Stage}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env, bool is\+Rising, float duration, float target\+Level, float initial\+Curvature, char \texorpdfstring{$\ast$}{*}name)
+\item 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}{create\+ADSR}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, float a, float d, float s, float r, char \texorpdfstring{$\ast$}{*}name)
+\item 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{create\+AD}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, float a, float d, char \texorpdfstring{$\ast$}{*}name)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}param\+List, \mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}mod\+List, float delta\+Time)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{free\+Parameter}} (\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}param)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe}{free\+Mod}} (\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}mod)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e}{free\+Mod\+List}} (\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}list)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ad5706068ec5ba654e717dc7f5eb89b83}{free\+Param\+List}} (\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}list)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ace696d3e349c3effa06637ac85498ebe}{free\+LFO}} (\mbox{\hyperlink{struct_l_f_o}{LFO}} \texorpdfstring{$\ast$}{*}lfo)
+\item 
+void \mbox{\hyperlink{modsystem_8c_acb407d358b361df4a845f7ea2c9b6fbe}{free\+Random}} (\mbox{\hyperlink{struct_random}{Random}} \texorpdfstring{$\ast$}{*}rnd)
+\item 
+void \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{free\+Envelope}} (\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env)
+\item 
+void \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanup\+Mod\+System}} (\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}list)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{modsystem_8c_a051c4414fe9e69badca72dc837686a67}\index{modsystem.c@{modsystem.c}!addEnvelopeStage@{addEnvelopeStage}}
+\index{addEnvelopeStage@{addEnvelopeStage}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{addEnvelopeStage()}{addEnvelopeStage()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a051c4414fe9e69badca72dc837686a67} 
+void add\+Envelope\+Stage (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{, }\item[{bool}]{is\+Rising}{, }\item[{float}]{duration}{, }\item[{float}]{target\+Level}{, }\item[{float}]{initial\+Curvature}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00392\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00393\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}add\ env\ stage"{});}}
+\DoxyCodeLine{00394\ \ \ \ \ \textcolor{keywordflow}{if}\ (env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}}\ >=\ \mbox{\hyperlink{modsystem_8h_a5b0b60c31353bfab8ba47528ed8069c0}{MAX\_ENVELOPE\_STAGES}})\ \{}
+\DoxyCodeLine{00395\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00396\ \ \ \ \ \}}
+\DoxyCodeLine{00397\ \ \ \ \ }
+\DoxyCodeLine{00398\ \ \ \ \ \textcolor{keywordtype}{char}\ nameBuf[32];}
+\DoxyCodeLine{00399\ \ \ \ \ \textcolor{keywordtype}{int}\ idx\ =\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}};}
+\DoxyCodeLine{00400\ \ \ \ \ }
+\DoxyCodeLine{00401\ \ \ \ \ \mbox{\hyperlink{struct_envelope_stage}{EnvelopeStage}}*\ stage\ =\ \&env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[idx];}
+\DoxyCodeLine{00402\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_aff0f8dc3129a675cb7cd25b43b47df8d}{isRising}}\ =\ isRising;}
+\DoxyCodeLine{00403\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a2c4442a38e86900b8e6af491405801c3}{isSustain}}\ =\ (duration\ <=\ 0.0f);}
+\DoxyCodeLine{00404\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a9d20adb69b7e3bc24048be59fbb4145f}{name}}\ =\ name;}
+\DoxyCodeLine{00405\ \ \ \ \ }
+\DoxyCodeLine{00406\ \ \ \ \ sprintf(nameBuf,\ \textcolor{stringliteral}{"{}env\%d\_dur\%d"{}},\ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_ae50a458f5f057aa2c49e016237db7919}{index}},\ idx);}
+\DoxyCodeLine{00407\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a3401b4c84056eb9ab55425d3622923d0}{duration}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ nameBuf,\ duration,\ 0.001f,\ 10.0f);}
+\DoxyCodeLine{00408\ \ \ \ \ }
+\DoxyCodeLine{00409\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_ad471e9ceef3c62ae08df5252e251dbbc}{targetLevel}}\ =\ targetLevel;}
+\DoxyCodeLine{00410\ \ \ \ \ }
+\DoxyCodeLine{00411\ \ \ \ \ sprintf(nameBuf,\ \textcolor{stringliteral}{"{}env\%d\_curve\%d"{}},\ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_ae50a458f5f057aa2c49e016237db7919}{index}},\ idx);}
+\DoxyCodeLine{00412\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a9a9207431301cb2e2466729be5499b3c}{curvature}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ nameBuf,\ initialCurvature,\ -\/1.0f,\ 1.0f);}
+\DoxyCodeLine{00413\ \ \ \ \ }
+\DoxyCodeLine{00414\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}}++;}
+\DoxyCodeLine{00415\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{create\+AD()}}, and \mbox{\hyperlink{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}{create\+ADSR()}}.
+
+\Hypertarget{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}\index{modsystem.c@{modsystem.c}!addModulation@{addModulation}}
+\index{addModulation@{addModulation}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{addModulation()}{addModulation()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e} 
+bool add\+Modulation (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{source}{, }\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{destination}{, }\item[{float}]{amount}{, }\item[{\mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7}{Modulation\+Operation}}}]{type}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00112\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00113\ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ conn\ =\ \mbox{\hyperlink{modsystem_8c_aa6ef49094a94273ff2f003f083718cef}{createConnection}}(paramList,\ source,\ amount,\ type);}
+\DoxyCodeLine{00114\ \ \ \ \ \textcolor{keywordflow}{if}\ (!conn)\ \textcolor{keywordflow}{return}\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00115\ \ \ \ \ \textcolor{keywordflow}{if}\ (destination-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}\ ==\ NULL)\ \{}
+\DoxyCodeLine{00116\ \ \ \ \ \ \ \ \ destination-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}\ =\ conn;}
+\DoxyCodeLine{00117\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Add\ to\ front\ of\ list}}
+\DoxyCodeLine{00119\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_ab6ce9379cf0592a5d02eee68875a012a}{next}}\ =\ destination-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}};}
+\DoxyCodeLine{00120\ \ \ \ \ \ \ \ \ destination-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}-\/>\mbox{\hyperlink{struct_mod_connection_a5a7bfcff0e91a1eadaff536b90b5badd}{previous}}\ =\ conn;}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ destination-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}\ =\ conn;}
+\DoxyCodeLine{00122\ \ \ \ \ \}}
+\DoxyCodeLine{00123\ \ \ \ \ destination-\/>\mbox{\hyperlink{struct_parameter_a98bc4baa8a19cc31bbf68ae58c14d1e4}{modulator\_count}}++;}
+\DoxyCodeLine{00124\ }
+\DoxyCodeLine{00125\ \ \ \ \ \textcolor{keywordflow}{return}\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00126\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c}\index{modsystem.c@{modsystem.c}!addToModList@{addToModList}}
+\index{addToModList@{addToModList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{addToModList()}{addToModList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c} 
+void add\+To\+Mod\+List (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{list}{, }\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{mod}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}add\ mod"{});}}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordflow}{if}\ (list-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}\ <\ \mbox{\hyperlink{modsystem_8h_abfbabc76e421665ab021770fa3c60cb4}{MAX\_MODS}})\ \{}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[list-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}++]\ =\ mod;}
+\DoxyCodeLine{00034\ \ \ \ \ \}}
+\DoxyCodeLine{00035\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO()}}, and \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{create\+Random()}}.
+
+\Hypertarget{modsystem_8c_a9449a0ae84cb0028b906ad95f79cefbb}\index{modsystem.c@{modsystem.c}!addToParamList@{addToParamList}}
+\index{addToParamList@{addToParamList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{addToParamList()}{addToParamList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a9449a0ae84cb0028b906ad95f79cefbb} 
+void add\+To\+Param\+List (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{list}{, }\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00065\ \ \ \ \ \textcolor{keywordflow}{if}\ (list-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}}\ <\ \mbox{\hyperlink{modsystem_8h_a885a6481fc6d474d0be18bc0facf648d}{MAX\_PARAMS}})\ \{}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ list-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[list-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}}++]\ =\ param;}
+\DoxyCodeLine{00067\ \ \ \ \ \}}
+\DoxyCodeLine{00068\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{create\+Parameter()}}.
+
+\Hypertarget{modsystem_8c_a3b0d5a0a8a3e57e41fb80661435a5fe6}\index{modsystem.c@{modsystem.c}!applyCurve@{applyCurve}}
+\index{applyCurve@{applyCurve}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{applyCurve()}{applyCurve()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a3b0d5a0a8a3e57e41fb80661435a5fe6} 
+float apply\+Curve (\begin{DoxyParamCaption}\item[{float}]{x}{, }\item[{float}]{curvature}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00272\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00273\ \ \ \ \ \textcolor{comment}{//\ Ensure\ inputs\ are\ in\ valid\ ranges}}
+\DoxyCodeLine{00274\ \ \ \ \ x\ =\ fmaxf(0.0f,\ fminf(1.0f,\ x));}
+\DoxyCodeLine{00275\ \ \ \ \ curvature\ =\ fmaxf(0.0f,\ fminf(1.0f,\ curvature));}
+\DoxyCodeLine{00276\ \ \ \ \ }
+\DoxyCodeLine{00277\ \ \ \ \ \textcolor{keywordflow}{if}\ (fabsf(curvature\ -\/\ 0.5f)\ <\ 0.001f)\ \{}
+\DoxyCodeLine{00278\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ x;\ \textcolor{comment}{//\ Linear\ interpolation}}
+\DoxyCodeLine{00279\ \ \ \ \ \}}
+\DoxyCodeLine{00280\ \ \ \ \ }
+\DoxyCodeLine{00281\ \ \ \ \ \textcolor{comment}{//\ Convert\ curvature\ from\ [0,1]\ to\ [-\/4,4]\ for\ more\ pronounced\ effect}}
+\DoxyCodeLine{00282\ \ \ \ \ \textcolor{keywordtype}{float}\ curve\_amount\ =\ (curvature\ -\/\ 0.5f)\ *\ 8.0f;}
+\DoxyCodeLine{00283\ \ \ \ \ }
+\DoxyCodeLine{00284\ \ \ \ \ \textcolor{comment}{//\ Apply\ exponential\ curve}}
+\DoxyCodeLine{00285\ \ \ \ \ \textcolor{keywordflow}{if}\ (curve\_amount\ >\ 0)\ \{}
+\DoxyCodeLine{00286\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ powf(x,\ 1.0f\ +\ curve\_amount);}
+\DoxyCodeLine{00287\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00288\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 1.0f\ -\/\ powf(1.0f\ -\/\ x,\ 1.0f\ -\/\ curve\_amount);}
+\DoxyCodeLine{00289\ \ \ \ \ \}}
+\DoxyCodeLine{00290\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui()}}, and \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}.
+
+\Hypertarget{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}\index{modsystem.c@{modsystem.c}!cleanupModSystem@{cleanupModSystem}}
+\index{cleanupModSystem@{cleanupModSystem}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{cleanupModSystem()}{cleanupModSystem()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef} 
+void cleanup\+Mod\+System (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{list}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00584\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00585\ \ \ \ \ \textcolor{keywordflow}{if}\ (!list)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00586\ \ \ \ \ }
+\DoxyCodeLine{00587\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ list-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}};\ i++)\ \{}
+\DoxyCodeLine{00588\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod}{Mod}}*\ mod\ =\ list-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[i];}
+\DoxyCodeLine{00589\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!mod)\ \textcolor{keywordflow}{continue};}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \ \ \ \ \ \ \ \ \textcolor{comment}{//\ Free\ mod-\/specific\ resources}}
+\DoxyCodeLine{00592\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{switch}\ (mod-\/>\mbox{\hyperlink{struct_mod_a13e6bb046c03d805b9e928c28538ba77}{type}})\ \{}
+\DoxyCodeLine{00593\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda0b923406b5ee7db9564d274febad240d}{MT\_LFO}}:}
+\DoxyCodeLine{00594\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ace696d3e349c3effa06637ac85498ebe}{freeLFO}}((\mbox{\hyperlink{struct_l_f_o}{LFO}}*)mod);}
+\DoxyCodeLine{00595\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00596\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda2d0aeea20df1569c76fc07ed19b9b8c4}{MT\_RND}}:}
+\DoxyCodeLine{00597\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_acb407d358b361df4a845f7ea2c9b6fbe}{freeRandom}}((\mbox{\hyperlink{struct_random}{Random}}*)mod);}
+\DoxyCodeLine{00598\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00599\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eedab8fe4e7f8ccd61429bb719175dbf2c29}{MT\_ENV}}:}
+\DoxyCodeLine{00600\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{freeEnvelope}}((\mbox{\hyperlink{struct_envelope}{Envelope}}*)mod);}
+\DoxyCodeLine{00601\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00602\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00603\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe}{freeMod}}(mod);}
+\DoxyCodeLine{00604\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00605\ \ \ \ \ \}}
+\DoxyCodeLine{00606\ \ \ \ \ free(list);}
+\DoxyCodeLine{00607\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}\index{modsystem.c@{modsystem.c}!createAD@{createAD}}
+\index{createAD@{createAD}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createAD()}{createAD()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ab6166ed98639b952b0ae7368fad32635} 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} create\+AD (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{float}]{a}{, }\item[{float}]{d}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00429\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00430\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ env\ =\ \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{createEnvelope}}(paramList,\ modList,\ 4,\ 44100,\ name);}
+\DoxyCodeLine{00431\ }
+\DoxyCodeLine{00432\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{true},\ \ a,\ 1.0f,\ 0.95f,\ \textcolor{stringliteral}{"{}A"{}});\ \ \textcolor{comment}{//\ Attack}}
+\DoxyCodeLine{00433\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{false},\ d,\ 0.0f,\ 0.1f,\ \textcolor{stringliteral}{"{}D"{}});\ \ \textcolor{comment}{//\ Decay}}
+\DoxyCodeLine{00434\ }
+\DoxyCodeLine{00435\ \ \ \ \ \textcolor{keywordflow}{return}\ env;}
+\DoxyCodeLine{00436\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}\index{modsystem.c@{modsystem.c}!createADSR@{createADSR}}
+\index{createADSR@{createADSR}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createADSR()}{createADSR()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51} 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} create\+ADSR (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{float}]{a}{, }\item[{float}]{d}{, }\item[{float}]{s}{, }\item[{float}]{r}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00417\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00418\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}create\ adsr"{});}}
+\DoxyCodeLine{00419\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ env\ =\ \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{createEnvelope}}(paramList,\ modList,\ 4,\ 44100,\ name);}
+\DoxyCodeLine{00420\ }
+\DoxyCodeLine{00421\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{true},\ \ a,\ 1.0f,\ 0.75f,\ \textcolor{stringliteral}{"{}A"{}});\ \ \textcolor{comment}{//\ Attack}}
+\DoxyCodeLine{00422\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{false},\ d,\ 0.7f,\ 0.75f,\ \textcolor{stringliteral}{"{}D"{}});\ \ \textcolor{comment}{//\ Decay}}
+\DoxyCodeLine{00423\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{true},\ \ s,\ 0.7f,\ 0.5f,\ \textcolor{stringliteral}{"{}S"{}});\ \ \textcolor{comment}{//\ Sustain}}
+\DoxyCodeLine{00424\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{addEnvelopeStage}}(paramList,\ env,\ \textcolor{keyword}{false},\ r,\ 0.0f,\ 0.75f,\ \textcolor{stringliteral}{"{}R"{}});\ \ \textcolor{comment}{//\ Release}}
+\DoxyCodeLine{00425\ }
+\DoxyCodeLine{00426\ \ \ \ \ \textcolor{keywordflow}{return}\ env;}
+\DoxyCodeLine{00427\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_aa6ef49094a94273ff2f003f083718cef}\index{modsystem.c@{modsystem.c}!createConnection@{createConnection}}
+\index{createConnection@{createConnection}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createConnection()}{createConnection()}}
+{\footnotesize\ttfamily \label{modsystem_8c_aa6ef49094a94273ff2f003f083718cef} 
+\mbox{\hyperlink{struct_mod_connection}{Mod\+Connection}} \texorpdfstring{$\ast$}{*} create\+Connection (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{source}{, }\item[{float}]{amount}{, }\item[{\mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7}{Modulation\+Operation}}}]{type}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00098\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00099\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}create\ con"{});}}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00101\ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ conn\ =\ (\mbox{\hyperlink{struct_mod_connection}{ModConnection}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_mod_connection}{ModConnection}}));}
+\DoxyCodeLine{00102\ \ \ \ \ \textcolor{keywordflow}{if}\ (conn)\ \{}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_ac7db3fc546dd261f71910b413d1ff788}{source}}\ =\ source;}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_a17269b35545538d8300f1d0c98ce3785}{amount}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}mod\ amount"{}},\ 1.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_abd5998a42dcac24f02f37b411f33b83b}{type}}\ =\ \mbox{\hyperlink{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}{createParameterEx}}(paramList,\ \textcolor{stringliteral}{"{}mod\ operation"{}},\ (\textcolor{keywordtype}{float})type,\ 0.0f,\ (\textcolor{keywordtype}{float})\mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda6f3bdc8f1574aef87feee3cc60538691}{MT\_COUNT}},\ 1.0f,\ 10.0f);\ \ \textcolor{comment}{//\ Set\ modulation\ type}}
+\DoxyCodeLine{00106\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_ab6ce9379cf0592a5d02eee68875a012a}{next}}\ =\ NULL;}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ conn-\/>\mbox{\hyperlink{struct_mod_connection_a5a7bfcff0e91a1eadaff536b90b5badd}{previous}}\ =\ NULL;}
+\DoxyCodeLine{00108\ \ \ \ \ \}}
+\DoxyCodeLine{00109\ \ \ \ \ \textcolor{keywordflow}{return}\ conn;}
+\DoxyCodeLine{00110\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a32bc6af9bcca7d00a871502ed1d29b1e}{add\+Modulation()}}.
+
+\Hypertarget{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}\index{modsystem.c@{modsystem.c}!createEnvelope@{createEnvelope}}
+\index{createEnvelope@{createEnvelope}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createEnvelope()}{createEnvelope()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd} 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} create\+Envelope (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{int}]{index}{, }\item[{float}]{sample\+Rate}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00360\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00361\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}create\ env"{});}}
+\DoxyCodeLine{00362\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ env\ =\ (\mbox{\hyperlink{struct_envelope}{Envelope}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_envelope}{Envelope}}));}
+\DoxyCodeLine{00363\ \ \ \ \ }
+\DoxyCodeLine{00364\ \ \ \ \ \textcolor{comment}{//\ Initialize\ base\ mod}}
+\DoxyCodeLine{00365\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_afa730e8d46762c1698194ba9965983e7}{name}}\ =\ name;}
+\DoxyCodeLine{00366\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_ae50a458f5f057aa2c49e016237db7919}{index}}\ =\ index;}
+\DoxyCodeLine{00367\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a13e6bb046c03d805b9e928c28538ba77}{type}}\ =\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eedab8fe4e7f8ccd61429bb719175dbf2c29}{MT\_ENV}};}
+\DoxyCodeLine{00368\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}env\ output"{}},\ 0.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00369\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generateEnvelope}};}
+\DoxyCodeLine{00370\ \ \ \ \ \textcolor{comment}{//env-\/>base.destinations\ =\ NULL;}}
+\DoxyCodeLine{00371\ \ \ \ \ \textcolor{comment}{//env-\/>base.dependencies\ =\ NULL;}}
+\DoxyCodeLine{00372\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_ac293970ca99db7e527a93c57569dfbe9}{dependency\_count}}\ =\ 0;}
+\DoxyCodeLine{00373\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a76f3e060468285d9737e5cf253892082}{processed}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00374\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a949a151a5b04e7b3264b9f40a45608f6}{visiting}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00375\ \ \ \ \ }
+\DoxyCodeLine{00376\ \ \ \ \ \textcolor{comment}{//\ Initialize\ envelope\ properties}}
+\DoxyCodeLine{00377\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a12f3e1c310dd40577bef3196bf764c07}{sampleRate}}\ =\ sampleRate;}
+\DoxyCodeLine{00378\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}}\ =\ 0.0f;}
+\DoxyCodeLine{00379\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}\ =\ 0;}
+\DoxyCodeLine{00380\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}}\ =\ 0;}
+\DoxyCodeLine{00381\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{currentTime}}\ =\ 0.0f;}
+\DoxyCodeLine{00382\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a167a930836009a9b3738740a035a6bd5}{totalElapsedTime}}\ =\ 0.0f;}
+\DoxyCodeLine{00383\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00384\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a6ef71c9322650e8f3b3358ab9103db20}{isSustaining}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00385\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}{loop}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00386\ \ \ \ \ }
+\DoxyCodeLine{00387\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c}{addToModList}}(modList,\ \&env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}});}
+\DoxyCodeLine{00388\ }
+\DoxyCodeLine{00389\ \ \ \ \ \textcolor{keywordflow}{return}\ env;}
+\DoxyCodeLine{00390\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab6166ed98639b952b0ae7368fad32635}{create\+AD()}}, and \mbox{\hyperlink{modsystem_8c_a0c6d2006bbdb2ef1ac8f1f3efb10dd51}{create\+ADSR()}}.
+
+\Hypertarget{modsystem_8c_accc7088487272e90dae2db4687845401}\index{modsystem.c@{modsystem.c}!createLFO@{createLFO}}
+\index{createLFO@{createLFO}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createLFO()}{createLFO()}}
+{\footnotesize\ttfamily \label{modsystem_8c_accc7088487272e90dae2db4687845401} 
+\mbox{\hyperlink{struct_l_f_o}{LFO}} \texorpdfstring{$\ast$}{*} create\+LFO (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{int}]{index}{, }\item[{float}]{rate}{, }\item[{int}]{shape}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00155\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}Create\ LFO"{});}}
+\DoxyCodeLine{00156\ }
+\DoxyCodeLine{00157\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ lfo\ =\ (\mbox{\hyperlink{struct_l_f_o}{LFO}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_l_f_o}{LFO}}));}
+\DoxyCodeLine{00158\ \ \ \ \ memset(lfo,\ 0,\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_l_f_o}{LFO}}));}
+\DoxyCodeLine{00159\ \ \ \ \ }
+\DoxyCodeLine{00160\ \ \ \ \ \textcolor{comment}{//\ Initialize\ base\ Mod}}
+\DoxyCodeLine{00161\ \ \ \ \ \textcolor{comment}{//lfo-\/>base.dependencies\ =\ NULL;}}
+\DoxyCodeLine{00162\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_afa730e8d46762c1698194ba9965983e7}{name}}\ =\ name;}
+\DoxyCodeLine{00163\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_ac293970ca99db7e527a93c57569dfbe9}{dependency\_count}}\ =\ 0;}
+\DoxyCodeLine{00164\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a76f3e060468285d9737e5cf253892082}{processed}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00165\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a949a151a5b04e7b3264b9f40a45608f6}{visiting}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00166\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_ae50a458f5f057aa2c49e016237db7919}{index}}\ =\ index;}
+\DoxyCodeLine{00167\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a13e6bb046c03d805b9e928c28538ba77}{type}}\ =\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda0b923406b5ee7db9564d274febad240d}{MT\_LFO}};}
+\DoxyCodeLine{00168\ \ \ \ \ \textcolor{comment}{//lfo-\/>base.destinations\ =\ NULL;}}
+\DoxyCodeLine{00169\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\textcolor{stringliteral}{"{}LFO\ output"{}},\ 0.0f,\ -\/1.0f,\ 1.0f);}
+\DoxyCodeLine{00170\ \ \ \ \ \textcolor{keywordflow}{switch}(shape)\{}
+\DoxyCodeLine{00171\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1a3a0c3655be9cb901072ca03af4be4a90}{LS\_SIN}}:}
+\DoxyCodeLine{00172\ \ \ \ \ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}{generateSine}};}
+\DoxyCodeLine{00173\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1aab263b24f190c032cbef18c0becd36b2}{LS\_SQU}}:}
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}{generateSquare}};}
+\DoxyCodeLine{00176\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00177\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_a9236fcb6d2d45310aad251b0278fadf1a66919907a909d2fc22cf4c1372aa8687}{LS\_RMP}}:}
+\DoxyCodeLine{00178\ \ \ \ \ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}{generateRamp}};}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00180\ \ \ \ \ \}}
+\DoxyCodeLine{00181\ \ \ \ \ }
+\DoxyCodeLine{00182\ \ \ \ \ \textcolor{comment}{//\ Initialize\ LFO-\/specific\ parameters}}
+\DoxyCodeLine{00183\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}LFO\ rate"{}},\ rate,\ 0.1f,\ 100.0f);}
+\DoxyCodeLine{00184\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}LFO\ phase"{}},\ 0.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00185\ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_a729ec4c0994ef55465adb00dd2596dbb}{shape}}\ =\ shape;}
+\DoxyCodeLine{00186\ }
+\DoxyCodeLine{00187\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c}{addToModList}}(modList,\ \&lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}});}
+\DoxyCodeLine{00188\ }
+\DoxyCodeLine{00189\ \ \ \ \ \textcolor{keywordflow}{return}\ lfo;}
+\DoxyCodeLine{00190\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_a778b05a9d05212afde1619a75f32e5df}\index{modsystem.c@{modsystem.c}!createModList@{createModList}}
+\index{createModList@{createModList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createModList()}{createModList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a778b05a9d05212afde1619a75f32e5df} 
+\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*} create\+Mod\+List (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00016\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ list\ =\ (\mbox{\hyperlink{struct_mod_list}{ModList}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_mod_list}{ModList}}));}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordflow}{if}\ (!list)\ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00019\ \ \ \ \ list-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}}\ =\ 0;}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordflow}{return}\ list;}
+\DoxyCodeLine{00021\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}\index{modsystem.c@{modsystem.c}!createParameter@{createParameter}}
+\index{createParameter@{createParameter}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createParameter()}{createParameter()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5} 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} create\+Parameter (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{, }\item[{float}]{initial\+Value}{, }\item[{float}]{min\+Value}{, }\item[{float}]{max\+Value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}create\ param"{});}}
+\DoxyCodeLine{00039\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ param\ =\ (\mbox{\hyperlink{struct_parameter}{Parameter}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_parameter}{Parameter}}));}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordflow}{if}\ (param)\ \{}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}}\ =\ strdup(name);}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462}{minValue}}\ =\ minValue;}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a2f1ec0f677642dccb3ea71f745322291}{maxValue}}\ =\ maxValue;}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}}\ =\ \_clampValue(initialValue,\ minValue,\ maxValue);}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}}\ =\ param-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}};}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36}{fineIncrement}}\ =\ 0.01f;}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938}{coarseIncrement}}\ =\ 0.10f;}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}\ =\ NULL;}
+\DoxyCodeLine{00049\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a98bc4baa8a19cc31bbf68ae58c14d1e4}{modulator\_count}}\ =\ 0;}
+\DoxyCodeLine{00050\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{onChange}}\ =\ NULL;}
+\DoxyCodeLine{00051\ \ \ \ \ \}}
+\DoxyCodeLine{00052\ \ \ \ \ }
+\DoxyCodeLine{00053\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a9449a0ae84cb0028b906ad95f79cefbb}{addToParamList}}(paramList,\ param);}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordflow}{return}\ param;}
+\DoxyCodeLine{00055\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{add\+Envelope\+Stage()}}, \mbox{\hyperlink{modsystem_8c_aa6ef49094a94273ff2f003f083718cef}{create\+Connection()}}, \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO()}}, \mbox{\hyperlink{oscillator_8c_aaf5dcf36e939a9994375bd83133edd97}{create\+Operator()}}, \mbox{\hyperlink{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}{create\+Parameter\+Ex()}}, \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{create\+Random()}}, \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec}\index{modsystem.c@{modsystem.c}!createParameterEx@{createParameterEx}}
+\index{createParameterEx@{createParameterEx}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createParameterEx()}{createParameterEx()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a20d649467e4d49ff0a666054b326c3ec} 
+\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*} create\+Parameter\+Ex (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{const char \texorpdfstring{$\ast$}{*}}]{name}{, }\item[{float}]{initial\+Value}{, }\item[{float}]{min\+Value}{, }\item[{float}]{max\+Value}{, }\item[{float}]{fine\+Increment}{, }\item[{float}]{coarse\+Increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00058\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ p\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ name,\ initialValue,\ minValue,\ maxValue);}
+\DoxyCodeLine{00059\ \ \ \ \ p-\/>\mbox{\hyperlink{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938}{coarseIncrement}}\ =\ coarseIncrement;}
+\DoxyCodeLine{00060\ \ \ \ \ p-\/>\mbox{\hyperlink{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36}{fineIncrement}}\ =\ fineIncrement;}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordflow}{return}\ p;}
+\DoxyCodeLine{00062\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_aa6ef49094a94273ff2f003f083718cef}{create\+Connection()}}.
+
+\Hypertarget{modsystem_8c_ab1377b7b24fa8b1ad33b8c6adfefb02d}\index{modsystem.c@{modsystem.c}!createParamList@{createParamList}}
+\index{createParamList@{createParamList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createParamList()}{createParamList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ab1377b7b24fa8b1ad33b8c6adfefb02d} 
+\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*} create\+Param\+List (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \mbox{\hyperlink{struct_param_list}{ParamList}}*\ list\ =\ (\mbox{\hyperlink{struct_param_list}{ParamList}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_param_list}{ParamList}}));}
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{keywordflow}{if}\ (!list)\ \textcolor{keywordflow}{return}\ NULL;}
+\DoxyCodeLine{00026\ \ \ \ \ list-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}}\ =\ 0;}
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordflow}{return}\ list;}
+\DoxyCodeLine{00028\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}.
+
+\Hypertarget{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}\index{modsystem.c@{modsystem.c}!createRandom@{createRandom}}
+\index{createRandom@{createRandom}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{createRandom()}{createRandom()}}
+{\footnotesize\ttfamily \label{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5} 
+\mbox{\hyperlink{struct_random}{Random}} \texorpdfstring{$\ast$}{*} create\+Random (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{int}]{index}{, }\item[{float}]{rate}{, }\item[{\mbox{\hyperlink{modsystem_8h_a800a52a5329c6ee641d2346daa5bd559}{Random\+Type}}}]{type}{, }\item[{char \texorpdfstring{$\ast$}{*}}]{name}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00128\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00129\ \ \ \ \ \mbox{\hyperlink{struct_random}{Random}}*\ rnd\ =\ (\mbox{\hyperlink{struct_random}{Random}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_random}{Random}}));}
+\DoxyCodeLine{00130\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_afa730e8d46762c1698194ba9965983e7}{name}}\ =\ name;}
+\DoxyCodeLine{00131\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_ae50a458f5f057aa2c49e016237db7919}{index}}\ =\ index;}
+\DoxyCodeLine{00132\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a13e6bb046c03d805b9e928c28538ba77}{type}}\ =\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda2d0aeea20df1569c76fc07ed19b9b8c4}{MT\_RND}};}
+\DoxyCodeLine{00133\ \ \ \ \ \textcolor{comment}{//rnd-\/>base.destinations\ =\ NULL;}}
+\DoxyCodeLine{00134\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a4c2ace52714dac81fbe6bdbc8331ae24}{lastPhase}}\ =\ 0.0f;}
+\DoxyCodeLine{00135\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}}\ =\ 0.0f;}
+\DoxyCodeLine{00136\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}RNG\ output"{}},\ 0.0f,\ -\/1.0f,\ 1.0f);}
+\DoxyCodeLine{00137\ \ \ \ \ \textcolor{keywordflow}{switch}(type)\{}
+\DoxyCodeLine{00138\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_a800a52a5329c6ee641d2346daa5bd559acfefbf4e8d0b7d734a6318f19c8f20b3}{RT\_SNH}}:}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}{generateRandom}};}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_a800a52a5329c6ee641d2346daa5bd559a96915054593de2771411bc91be036e9c}{RT\_DRK}}:}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}\ =\ \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generateDrunk}};}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00144\ \ \ \ \ \}}
+\DoxyCodeLine{00145\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_ad0a2003ab2f82ebfcfd9b1d941f9ae51}{rate}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}RNG\ rate"{}},\ rate,\ 0.1f,\ 100.0f);}
+\DoxyCodeLine{00146\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}}\ =\ \mbox{\hyperlink{modsystem_8c_ae58a280ae561dfcae56ccf2d031147c5}{createParameter}}(paramList,\ \textcolor{stringliteral}{"{}RNG\ phase"{}},\ 0.0f,\ 0.0f,\ 1.0f);}
+\DoxyCodeLine{00147\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a1f48e64e8fb61207c32aa6a6e0a9c9ee}{shape}}\ =\ type;}
+\DoxyCodeLine{00148\ \ \ \ \ }
+\DoxyCodeLine{00149\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a93e9c0132cceffe65d9b83ea6980af6c}{addToModList}}(modList,\ \&rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}});}
+\DoxyCodeLine{00150\ }
+\DoxyCodeLine{00151\ \ \ \ \ \textcolor{keywordflow}{return}\ rnd;}
+\DoxyCodeLine{00152\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}\index{modsystem.c@{modsystem.c}!freeEnvelope@{freeEnvelope}}
+\index{freeEnvelope@{freeEnvelope}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeEnvelope()}{freeEnvelope()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df} 
+void free\+Envelope (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00571\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00572\ \ \ \ \ \textcolor{keywordflow}{if}\ (!env)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00573\ \ \ \ \ }
+\DoxyCodeLine{00574\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}});}
+\DoxyCodeLine{00575\ \ \ \ \ }
+\DoxyCodeLine{00576\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}};\ i++)\ \{}
+\DoxyCodeLine{00577\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[i].duration);}
+\DoxyCodeLine{00578\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[i].curvature);}
+\DoxyCodeLine{00579\ \ \ \ \ \}}
+\DoxyCodeLine{00580\ \ \ \ \ }
+\DoxyCodeLine{00581\ \ \ \ \ free(env);}
+\DoxyCodeLine{00582\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanup\+Mod\+System()}}.
+
+\Hypertarget{modsystem_8c_ace696d3e349c3effa06637ac85498ebe}\index{modsystem.c@{modsystem.c}!freeLFO@{freeLFO}}
+\index{freeLFO@{freeLFO}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeLFO()}{freeLFO()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ace696d3e349c3effa06637ac85498ebe} 
+void free\+LFO (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_l_f_o}{LFO}} \texorpdfstring{$\ast$}{*}}]{lfo}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00541\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00542\ \ \ \ \ \textcolor{keywordflow}{if}\ (!lfo)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00543\ \ \ \ \ }
+\DoxyCodeLine{00544\ \ \ \ \ \textcolor{comment}{//\ Free\ parameters\ in\ specific\ order}}
+\DoxyCodeLine{00545\ \ \ \ \ \textcolor{keywordflow}{if}\ (lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}})\ \{}
+\DoxyCodeLine{00546\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}});}
+\DoxyCodeLine{00547\ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}}\ =\ NULL;}
+\DoxyCodeLine{00548\ \ \ \ \ \}}
+\DoxyCodeLine{00549\ \ \ \ \ \textcolor{keywordflow}{if}\ (lfo-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}})\ \{}
+\DoxyCodeLine{00550\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}});}
+\DoxyCodeLine{00551\ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}}\ =\ NULL;}
+\DoxyCodeLine{00552\ \ \ \ \ \}}
+\DoxyCodeLine{00553\ \ \ \ \ \textcolor{keywordflow}{if}\ (lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}})\ \{}
+\DoxyCodeLine{00554\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}});}
+\DoxyCodeLine{00555\ \ \ \ \ \ \ \ \ lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}\ =\ NULL;}
+\DoxyCodeLine{00556\ \ \ \ \ \}}
+\DoxyCodeLine{00557\ \ \ \ \ }
+\DoxyCodeLine{00558\ \ \ \ \ free(lfo);}
+\DoxyCodeLine{00559\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanup\+Mod\+System()}}.
+
+\Hypertarget{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe}\index{modsystem.c@{modsystem.c}!freeMod@{freeMod}}
+\index{freeMod@{freeMod}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeMod()}{freeMod()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe} 
+void free\+Mod (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{mod}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00506\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00507\ \ \ \ \ \textcolor{keywordflow}{if}\ (!mod)\ \{}
+\DoxyCodeLine{00508\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00509\ \ \ \ \ \}}
+\DoxyCodeLine{00510\ \ \ \ \ }
+\DoxyCodeLine{00511\ \ \ \ \ \textcolor{keywordflow}{if}\ (mod-\/>\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}})\ \{}
+\DoxyCodeLine{00512\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(mod-\/>\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}});}
+\DoxyCodeLine{00513\ \ \ \ \ \ \ \ \ mod-\/>\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}\ =\ NULL;}
+\DoxyCodeLine{00514\ \ \ \ \ \}}
+\DoxyCodeLine{00515\ \ \ \ \ }
+\DoxyCodeLine{00516\ \ \ \ \ free(mod);}
+\DoxyCodeLine{00517\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanup\+Mod\+System()}}, and \mbox{\hyperlink{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e}{free\+Mod\+List()}}.
+
+\Hypertarget{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e}\index{modsystem.c@{modsystem.c}!freeModList@{freeModList}}
+\index{freeModList@{freeModList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeModList()}{freeModList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ad314d57b2790a8d735c3932e66a98d1e} 
+void free\+Mod\+List (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{list}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00519\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00520\ \ \ \ \ \textcolor{keywordflow}{if}\ (!list)\ \{}
+\DoxyCodeLine{00521\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00522\ \ \ \ \ \}}
+\DoxyCodeLine{00523\ }
+\DoxyCodeLine{00524\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ list-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}};\ i++)\ \{}
+\DoxyCodeLine{00525\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe}{freeMod}}(list-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[i]);}
+\DoxyCodeLine{00526\ \ \ \ \ \}}
+\DoxyCodeLine{00527\ \ \ \ \ free(list);}
+\DoxyCodeLine{00528\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modtest_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}\index{modsystem.c@{modsystem.c}!freeParameter@{freeParameter}}
+\index{freeParameter@{freeParameter}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeParameter()}{freeParameter()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d} 
+void free\+Parameter (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00484\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00485\ \ \ \ \ \textcolor{keywordflow}{if}\ (!param)\ \{}
+\DoxyCodeLine{00486\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00487\ \ \ \ \ \}}
+\DoxyCodeLine{00488\ }
+\DoxyCodeLine{00489\ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ current\ =\ param-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}};}
+\DoxyCodeLine{00490\ \ \ \ \ \textcolor{keywordflow}{while}\ (current\ !=\ NULL)\ \{}
+\DoxyCodeLine{00491\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ next\ =\ current-\/>\mbox{\hyperlink{struct_mod_connection_ab6ce9379cf0592a5d02eee68875a012a}{next}};}
+\DoxyCodeLine{00492\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (current)\ \{}
+\DoxyCodeLine{00493\ \ \ \ \ \ \ \ \ \ \ \ \ free(current);}
+\DoxyCodeLine{00494\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00495\ \ \ \ \ \ \ \ \ current\ =\ next;}
+\DoxyCodeLine{00496\ \ \ \ \ \}}
+\DoxyCodeLine{00497\ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}}\ =\ NULL;\ }
+\DoxyCodeLine{00498\ }
+\DoxyCodeLine{00499\ \ \ \ \ \textcolor{keywordflow}{if}\ (param-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}})\ \{}
+\DoxyCodeLine{00500\ \ \ \ \ \ \ \ \ free(param-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}});}
+\DoxyCodeLine{00501\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_aecf156f221b4bcd9c5516ba61cbdda22}{name}}\ =\ NULL;}
+\DoxyCodeLine{00502\ \ \ \ \ \}}
+\DoxyCodeLine{00503\ \ \ \ \ free(param);}
+\DoxyCodeLine{00504\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{free\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_ace696d3e349c3effa06637ac85498ebe}{free\+LFO()}}, \mbox{\hyperlink{modsystem_8c_a27b801d8141f97b4cee029e010cffbbe}{free\+Mod()}}, \mbox{\hyperlink{modsystem_8c_ad5706068ec5ba654e717dc7f5eb89b83}{free\+Param\+List()}}, and \mbox{\hyperlink{modsystem_8c_acb407d358b361df4a845f7ea2c9b6fbe}{free\+Random()}}.
+
+\Hypertarget{modsystem_8c_ad5706068ec5ba654e717dc7f5eb89b83}\index{modsystem.c@{modsystem.c}!freeParamList@{freeParamList}}
+\index{freeParamList@{freeParamList}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeParamList()}{freeParamList()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ad5706068ec5ba654e717dc7f5eb89b83} 
+void free\+Param\+List (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{list}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00530\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00531\ \ \ \ \ \textcolor{keywordflow}{if}\ (!list)\ \{}
+\DoxyCodeLine{00532\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00533\ \ \ \ \ \}}
+\DoxyCodeLine{00534\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ list-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}};\ i++)\ \{}
+\DoxyCodeLine{00535\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(list-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[i]);}
+\DoxyCodeLine{00536\ \ \ \ \ \}}
+\DoxyCodeLine{00537\ \ \ \ \ free(list);}
+\DoxyCodeLine{00538\ \}}
+
+\end{DoxyCode}
+\Hypertarget{modsystem_8c_acb407d358b361df4a845f7ea2c9b6fbe}\index{modsystem.c@{modsystem.c}!freeRandom@{freeRandom}}
+\index{freeRandom@{freeRandom}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{freeRandom()}{freeRandom()}}
+{\footnotesize\ttfamily \label{modsystem_8c_acb407d358b361df4a845f7ea2c9b6fbe} 
+void free\+Random (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_random}{Random}} \texorpdfstring{$\ast$}{*}}]{rnd}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00561\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00562\ \ \ \ \ \textcolor{keywordflow}{if}\ (!rnd)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00563\ \ \ \ \ }
+\DoxyCodeLine{00564\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}});}
+\DoxyCodeLine{00565\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(rnd-\/>\mbox{\hyperlink{struct_random_ad0a2003ab2f82ebfcfd9b1d941f9ae51}{rate}});}
+\DoxyCodeLine{00566\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a4e82a7905c33f7bc6ca9f615147db15d}{freeParameter}}(rnd-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}});}
+\DoxyCodeLine{00567\ \ \ \ \ }
+\DoxyCodeLine{00568\ \ \ \ \ free(rnd);}
+\DoxyCodeLine{00569\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a35ade6dd036523025bcc6f1fb30dbcef}{cleanup\+Mod\+System()}}.
+
+\Hypertarget{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}\index{modsystem.c@{modsystem.c}!generateDrunk@{generateDrunk}}
+\index{generateDrunk@{generateDrunk}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateDrunk()}{generateDrunk()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe} 
+void generate\+Drunk (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00227\ \ \ \ \ \mbox{\hyperlink{struct_random}{Random}}*\ rnd\ =\ (\mbox{\hyperlink{struct_random}{Random}}*)self;}
+\DoxyCodeLine{00228\ \ \ \ \ \textcolor{keywordtype}{float}\ phase\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}});}
+\DoxyCodeLine{00229\ \ \ \ \ }
+\DoxyCodeLine{00230\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}}\ =\ ((float)rand()\ /\ (float)RAND\_MAX)\ *\ 2.0f\ \ -\/\ 1.0f;\ \ }
+\DoxyCodeLine{00231\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}}\ *=\ 0.5f\ *\ ((float)rand()\ /\ (float)RAND\_MAX);}
+\DoxyCodeLine{00232\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a4c2ace52714dac81fbe6bdbc8331ae24}{lastPhase}}\ =\ phase;}
+\DoxyCodeLine{00233\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}}\ +\ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}});}
+\DoxyCodeLine{00234\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}}-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}}\ +\ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}});}
+\DoxyCodeLine{00235\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{create\+Random()}}.
+
+\Hypertarget{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}\index{modsystem.c@{modsystem.c}!generateEnvelope@{generateEnvelope}}
+\index{generateEnvelope@{generateEnvelope}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateEnvelope()}{generateEnvelope()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5} 
+void generate\+Envelope (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00298\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00299\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ env\ =\ (\mbox{\hyperlink{struct_envelope}{Envelope}}*)self;}
+\DoxyCodeLine{00300\ \ \ \ \ \textcolor{keywordflow}{if}\ (!env\ ||\ !env-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}}\ ||\ env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}\ >=\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}})\ \{}
+\DoxyCodeLine{00301\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00302\ \ \ \ \ \}}
+\DoxyCodeLine{00303\ \ \ \ \ }
+\DoxyCodeLine{00304\ \ \ \ \ \mbox{\hyperlink{struct_envelope_stage}{EnvelopeStage}}*\ stage\ =\ \&env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}];}
+\DoxyCodeLine{00305\ \ \ \ \ \textcolor{keywordflow}{if}\ (!stage-\/>\mbox{\hyperlink{struct_envelope_stage_a3401b4c84056eb9ab55425d3622923d0}{duration}}\ ||\ !stage-\/>\mbox{\hyperlink{struct_envelope_stage_a9a9207431301cb2e2466729be5499b3c}{curvature}})\ \{}
+\DoxyCodeLine{00306\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00307\ \ \ \ \ \}}
+\DoxyCodeLine{00308\ }
+\DoxyCodeLine{00309\ \ \ \ \ \textcolor{keywordtype}{float}\ dt\ =\ 1.0f\ /\ env-\/>\mbox{\hyperlink{struct_envelope_a12f3e1c310dd40577bef3196bf764c07}{sampleRate}};}
+\DoxyCodeLine{00310\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{currentTime}}\ +=\ dt;}
+\DoxyCodeLine{00311\ \ \ \ \ }
+\DoxyCodeLine{00312\ \ \ \ \ \textcolor{keywordtype}{float}\ t\ =\ env-\/>\mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{currentTime}}\ /\ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a3401b4c84056eb9ab55425d3622923d0}{duration}}-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}};}
+\DoxyCodeLine{00313\ \ \ \ \ \textcolor{keywordtype}{float}\ shapedT\ =\ \mbox{\hyperlink{modsystem_8c_a3b0d5a0a8a3e57e41fb80661435a5fe6}{applyCurve}}(t,\ stage-\/>\mbox{\hyperlink{struct_envelope_stage_a9a9207431301cb2e2466729be5499b3c}{curvature}}-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}});}
+\DoxyCodeLine{00314\ \ \ \ \ }
+\DoxyCodeLine{00315\ \ \ \ \ \textcolor{keywordtype}{float}\ startLevel\ =\ (env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}\ >\ 0)\ ?\ }
+\DoxyCodeLine{00316\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}-\/1].targetLevel\ :\ }
+\DoxyCodeLine{00317\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ 0.0f;}
+\DoxyCodeLine{00318\ \ \ \ \ }
+\DoxyCodeLine{00319\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}}\ =\ startLevel\ +\ (stage-\/>\mbox{\hyperlink{struct_envelope_stage_ad471e9ceef3c62ae08df5252e251dbbc}{targetLevel}}\ -\/\ startLevel)\ *\ shapedT;}
+\DoxyCodeLine{00320\ \ \ \ \ \textcolor{keywordflow}{if}\ (t\ >=\ 1.0f)\ \{}
+\DoxyCodeLine{00321\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}stage\ \%i\ complete\(\backslash\)n"{},\ env-\/>currentStageIndex);}}
+\DoxyCodeLine{00322\ }
+\DoxyCodeLine{00323\ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{currentTime}}\ =\ 0.0f;}
+\DoxyCodeLine{00324\ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}}\ =\ stage-\/>\mbox{\hyperlink{struct_envelope_stage_ad471e9ceef3c62ae08df5252e251dbbc}{targetLevel}};}
+\DoxyCodeLine{00325\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (++env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}\ >=\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}})\ \{}
+\DoxyCodeLine{00326\ \ \ \ \ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}}\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00327\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}TRIGGER\ OFF!!!!!!\(\backslash\)n"{});}}
+\DoxyCodeLine{00328\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00329\ \ \ \ \ \}}
+\DoxyCodeLine{00330\ }
+\DoxyCodeLine{00331\ \ \ \ \ \textcolor{comment}{//\ Important:\ Update\ output\ parameter}}
+\DoxyCodeLine{00332\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}});}
+\DoxyCodeLine{00333\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(env-\/>\mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}});}
+\DoxyCodeLine{00334\ }
+\DoxyCodeLine{00335\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}.
+
+\Hypertarget{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}\index{modsystem.c@{modsystem.c}!generateRamp@{generateRamp}}
+\index{generateRamp@{generateRamp}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateRamp()}{generateRamp()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3} 
+void generate\+Ramp (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00207\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ lfo\ =\ (\mbox{\hyperlink{struct_l_f_o}{LFO}}*)self;}
+\DoxyCodeLine{00208\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ (\mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}})\ -\/\ 1.0f)\ *\ 2.0f;}
+\DoxyCodeLine{00209\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00210\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00211\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO()}}.
+
+\Hypertarget{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}\index{modsystem.c@{modsystem.c}!generateRandom@{generateRandom}}
+\index{generateRandom@{generateRandom}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateRandom()}{generateRandom()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86} 
+void generate\+Random (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00214\ \ \ \ \ \mbox{\hyperlink{struct_random}{Random}}*\ rnd\ =\ (\mbox{\hyperlink{struct_random}{Random}}*)self;}
+\DoxyCodeLine{00215\ \ \ \ \ \textcolor{keywordtype}{float}\ phase\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}});}
+\DoxyCodeLine{00216\ \ \ \ \ }
+\DoxyCodeLine{00217\ \ \ \ \ \textcolor{keywordflow}{if}\ (phase\ <\ rnd-\/>lastPhase)\ \{}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}}\ =\ ((float)rand()\ /\ (float)RAND\_MAX)\ *\ 2.0f\ -\/\ 1.0f;}
+\DoxyCodeLine{00219\ \ \ \ \ \}}
+\DoxyCodeLine{00220\ \ \ \ \ }
+\DoxyCodeLine{00221\ \ \ \ \ rnd-\/>\mbox{\hyperlink{struct_random_a4c2ace52714dac81fbe6bdbc8331ae24}{lastPhase}}\ =\ phase;}
+\DoxyCodeLine{00222\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}});}
+\DoxyCodeLine{00223\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(rnd-\/>\mbox{\hyperlink{struct_random_a996071f3c11cfb9e39c58100a62aaed1}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ rnd-\/>\mbox{\hyperlink{struct_random_ad775273a6092009085c09461faca8bc3}{lastRandom}});}
+\DoxyCodeLine{00224\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_adb7f1fdf3127f40ed5a98374c2ab2cf5}{create\+Random()}}.
+
+\Hypertarget{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}\index{modsystem.c@{modsystem.c}!generateSine@{generateSine}}
+\index{generateSine@{generateSine}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateSine()}{generateSine()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea} 
+void generate\+Sine (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00192\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00193\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ lfo\ =\ (\mbox{\hyperlink{struct_l_f_o}{LFO}}*)self;}
+\DoxyCodeLine{00194\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ sinf(\mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}})\ *\ 2.0f\ *\ M\_PI);}
+\DoxyCodeLine{00195\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00196\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00197\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO()}}.
+
+\Hypertarget{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}\index{modsystem.c@{modsystem.c}!generateSquare@{generateSquare}}
+\index{generateSquare@{generateSquare}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{generateSquare()}{generateSquare()}}
+{\footnotesize\ttfamily \label{modsystem_8c_affcb4aa7ab108576ebc16167bb558707} 
+void generate\+Square (\begin{DoxyParamCaption}\item[{void \texorpdfstring{$\ast$}{*}}]{self}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00200\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ lfo\ =\ (\mbox{\hyperlink{struct_l_f_o}{LFO}}*)self;}
+\DoxyCodeLine{00201\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}})\ <\ 0.5f\ ?\ 1.0f\ :\ -\/1.0f;}
+\DoxyCodeLine{00202\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00203\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_afd7a1843686f85a862076acdf5778e33}{base}}.\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}},\ value);}
+\DoxyCodeLine{00204\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_accc7088487272e90dae2db4687845401}{create\+LFO()}}.
+
+\Hypertarget{modsystem_8c_ac62813203b68a6436121b111ef1c8598}\index{modsystem.c@{modsystem.c}!getParameterValue@{getParameterValue}}
+\index{getParameterValue@{getParameterValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{getParameterValue()}{getParameterValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ac62813203b68a6436121b111ef1c8598} 
+float get\+Parameter\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00089\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}get\ param"{});}}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \ \ \textcolor{keywordflow}{return}\ param-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}};}
+\DoxyCodeLine{00092\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generate\+Drunk()}}, \mbox{\hyperlink{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}{generate\+Ramp()}}, \mbox{\hyperlink{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}{generate\+Random()}}, \mbox{\hyperlink{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}{generate\+Sine()}}, \mbox{\hyperlink{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}{generate\+Square()}}, \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, \mbox{\hyperlink{modsystem_8c_a9625035fdaec67dc95709fd10dacffe4}{modify\+Parameter\+Value()}}, \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}, \mbox{\hyperlink{oscillator_8c_ac1070ef9ffb81db3e486526c78a9a05a}{sine\+\_\+op()}}, and \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod()}}.
+
+\Hypertarget{modsystem_8c_a95f112fe9095a9e86b4e4f7f1a853467}\index{modsystem.c@{modsystem.c}!getParameterValueAsInt@{getParameterValueAsInt}}
+\index{getParameterValueAsInt@{getParameterValueAsInt}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{getParameterValueAsInt()}{getParameterValueAsInt()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a95f112fe9095a9e86b4e4f7f1a853467} 
+int get\+Parameter\+Value\+As\+Int (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00095\ \ \ \ \ \textcolor{keywordflow}{return}\ (\textcolor{keywordtype}{int})round(param-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}});}
+\DoxyCodeLine{00096\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}.
+
+\Hypertarget{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}\index{modsystem.c@{modsystem.c}!incParameterBaseValue@{incParameterBaseValue}}
+\index{incParameterBaseValue@{incParameterBaseValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{incParameterBaseValue()}{incParameterBaseValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde} 
+void inc\+Parameter\+Base\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{parameter}{, }\item[{float}]{relative\+Value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00347\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00348\ \ \ \ \ \textcolor{keywordtype}{float}\ currentValue\ =\ parameter-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}};}
+\DoxyCodeLine{00349\ \ \ \ \ \textcolor{keywordtype}{float}\ sign\ =\ 1.0f;}
+\DoxyCodeLine{00350\ \ \ \ \ \textcolor{keywordflow}{if}(\ relativeValue\ <\ 0.0f)\{}
+\DoxyCodeLine{00351\ \ \ \ \ \ \ \ \ sign\ =\ -\/1.0f;}
+\DoxyCodeLine{00352\ \ \ \ \ \}}
+\DoxyCodeLine{00353\ \ \ \ \ \textcolor{keywordflow}{if}(abs(relativeValue)\ >\ 1)\{}
+\DoxyCodeLine{00354\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(parameter,\ currentValue\ +\ parameter-\/>\mbox{\hyperlink{struct_parameter_a6269325e78ad0fb511d48acf8d9f7938}{coarseIncrement}}\ *\ sign);}
+\DoxyCodeLine{00355\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00356\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(parameter,\ currentValue\ +\ parameter-\/>\mbox{\hyperlink{struct_parameter_a22ab0d8fcb9f779fb09ffcc80cb7df36}{fineIncrement}}\ *\ sign);}
+\DoxyCodeLine{00357\ \ \ \ \ \}}
+\DoxyCodeLine{00358\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a39c3ab0d953ea4c4fb3f0469749b9ff1}{create\+Mod\+Mapping\+Group()}}.
+
+\Hypertarget{modsystem_8c_a63609f8767ff2964a90169b169fb16cf}\index{modsystem.c@{modsystem.c}!initModSystem@{initModSystem}}
+\index{initModSystem@{initModSystem}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{initModSystem()}{initModSystem()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a63609f8767ff2964a90169b169fb16cf} 
+void init\+Mod\+System (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00012\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{comment}{//paramList\ =\ createParamList();}}
+\DoxyCodeLine{00014\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, and \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{modsystem_8c_ad5a4bc1aa689ba445b4739c742113f3b}\index{modsystem.c@{modsystem.c}!modifyParameterBaseValue@{modifyParameterBaseValue}}
+\index{modifyParameterBaseValue@{modifyParameterBaseValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{modifyParameterBaseValue()}{modifyParameterBaseValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ad5a4bc1aa689ba445b4739c742113f3b} 
+void modify\+Parameter\+Base\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{parameter}{, }\item[{float}]{relative\+Value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00342\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00343\ \ \ \ \ \textcolor{keywordtype}{float}\ currentValue\ =\ parameter-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}};}
+\DoxyCodeLine{00344\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(parameter,\ currentValue\ +\ relativeValue);}
+\DoxyCodeLine{00345\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{modsystem_8c_a9625035fdaec67dc95709fd10dacffe4}\index{modsystem.c@{modsystem.c}!modifyParameterValue@{modifyParameterValue}}
+\index{modifyParameterValue@{modifyParameterValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{modifyParameterValue()}{modifyParameterValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a9625035fdaec67dc95709fd10dacffe4} 
+void modify\+Parameter\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{parameter}{, }\item[{float}]{relative\+Value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00337\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00338\ \ \ \ \ \textcolor{keywordtype}{float}\ currentValue\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(parameter);}
+\DoxyCodeLine{00339\ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(parameter,\ currentValue\ +\ relativeValue);}
+\DoxyCodeLine{00340\ \}}
+
+\end{DoxyCode}
+\Hypertarget{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}\index{modsystem.c@{modsystem.c}!processModulations@{processModulations}}
+\index{processModulations@{processModulations}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{processModulations()}{processModulations()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d} 
+void process\+Modulations (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_param_list}{Param\+List}} \texorpdfstring{$\ast$}{*}}]{param\+List}{, }\item[{\mbox{\hyperlink{struct_mod_list}{Mod\+List}} \texorpdfstring{$\ast$}{*}}]{mod\+List}{, }\item[{float}]{delta\+Time}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00438\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00439\ \ \ \ \ \textcolor{keywordflow}{if}\ (!modList)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00440\ \ \ \ \ \textcolor{keywordflow}{if}\ (!paramList)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00441\ }
+\DoxyCodeLine{00442\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ modList-\/>\mbox{\hyperlink{struct_mod_list_ae659d9ec102964418d3c865cfa7936f5}{count}};\ i++)\ \{}
+\DoxyCodeLine{00443\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod}{Mod}}*\ mod\ =\ modList-\/>\mbox{\hyperlink{struct_mod_list_ae070c080bc769d11669af45531cbfd50}{mods}}[i];}
+\DoxyCodeLine{00444\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{updateMod}}(mod,\ deltaTime);}
+\DoxyCodeLine{00445\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (!mod-\/>\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}})\ \textcolor{keywordflow}{continue};}
+\DoxyCodeLine{00446\ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00447\ \ \ \ \ \ \ \ \ mod-\/>\mbox{\hyperlink{struct_mod_a7bb4d17d2cb447b9fe774d5473c1a791}{generate}}(mod);}
+\DoxyCodeLine{00448\ \ \ \ \ \}}
+\DoxyCodeLine{00449\ \ \ \ \ }
+\DoxyCodeLine{00450\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ paramList-\/>\mbox{\hyperlink{struct_param_list_af768c73b8989eb6718b37766a4a6a86c}{count}};\ i++)\{}
+\DoxyCodeLine{00451\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ conn\ =\ paramList-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[i]-\/>\mbox{\hyperlink{struct_parameter_a8a9fc1e42457707b648cf3ff378614b2}{modulators}};}
+\DoxyCodeLine{00452\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ finalValue\ =\ paramList-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[i]-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}};}
+\DoxyCodeLine{00453\ }
+\DoxyCodeLine{00454\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{while}\ (conn\ !=\ NULL)\ \{}
+\DoxyCodeLine{00455\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ modValue\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(conn-\/>\mbox{\hyperlink{struct_mod_connection_ac7db3fc546dd261f71910b413d1ff788}{source}}-\/>\mbox{\hyperlink{struct_mod_a7da1006ec55f2545de2d187e2bba19f2}{output}});}
+\DoxyCodeLine{00456\ }
+\DoxyCodeLine{00457\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{switch}(\mbox{\hyperlink{modsystem_8c_a95f112fe9095a9e86b4e4f7f1a853467}{getParameterValueAsInt}}(conn-\/>\mbox{\hyperlink{struct_mod_connection_abd5998a42dcac24f02f37b411f33b83b}{type}}))\ \{}
+\DoxyCodeLine{00458\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a18ad7ed73e198e6c471d6d73a85d55a5}{MO\_ADD}}:}
+\DoxyCodeLine{00459\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ finalValue\ +=\ modValue;}
+\DoxyCodeLine{00460\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00461\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7ad3326b7fbc339821497513dd77b6874f}{MO\_MUL}}:}
+\DoxyCodeLine{00462\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ finalValue\ *=\ modValue;}
+\DoxyCodeLine{00463\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00464\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a269bc9ae389313846f140696ff6312c2}{MO\_SUB}}:}
+\DoxyCodeLine{00465\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ finalValue\ -\/=\ modValue;}
+\DoxyCodeLine{00466\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00467\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aff1e9fe2de5dff6b3f9b8d1cb85c93f7a755969e5d4dcf06deeb286e7f4da9e8a}{MO\_DIV}}:}
+\DoxyCodeLine{00468\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (modValue\ !=\ 0.0f)\ \{}
+\DoxyCodeLine{00469\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ finalValue\ /=\ modValue;}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00472\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00473\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00474\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00475\ \ \ \ \ \ \ \ \ \ \ \ \ }
+\DoxyCodeLine{00476\ }
+\DoxyCodeLine{00477\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_mod_connection}{ModConnection}}*\ next\ =\ conn-\/>\mbox{\hyperlink{struct_mod_connection_ab6ce9379cf0592a5d02eee68875a012a}{next}};}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ \ \ \ \ \ \ conn\ =\ next;}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(paramList-\/>\mbox{\hyperlink{struct_param_list_a4799875933231f558425174800a648d3}{params}}[i],\ finalValue);}
+\DoxyCodeLine{00481\ \ \ \ \ \}}
+\DoxyCodeLine{00482\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}\index{modsystem.c@{modsystem.c}!setParameterBaseValue@{setParameterBaseValue}}
+\index{setParameterBaseValue@{setParameterBaseValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{setParameterBaseValue()}{setParameterBaseValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1} 
+void set\+Parameter\+Base\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{, }\item[{float}]{value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00080\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}set\ param"{});}}
+\DoxyCodeLine{00081\ \ \ \ \ \textcolor{keywordtype}{float}\ clamped\ =\ \_clampValue(value,\ param-\/>\mbox{\hyperlink{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462}{minValue}},\ param-\/>\mbox{\hyperlink{struct_parameter_a2f1ec0f677642dccb3ea71f745322291}{maxValue}});}
+\DoxyCodeLine{00082\ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a422a4cc2fa5fc90fa98ccbdf26395b0c}{baseValue}}\ =\ clamped;}
+\DoxyCodeLine{00083\ \ \ \ \ \textcolor{keywordflow}{if}\ (param-\/>\mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{onChange}})\ \{}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{onChange}}(param,\ clamped);}
+\DoxyCodeLine{00085\ \ \ \ \ \}}
+\DoxyCodeLine{00086\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generate\+Drunk()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}{generate\+Ramp()}}, \mbox{\hyperlink{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}{generate\+Random()}}, \mbox{\hyperlink{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}{generate\+Sine()}}, \mbox{\hyperlink{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}{generate\+Square()}}, \mbox{\hyperlink{modsystem_8c_a1fcd2f53d44c3627ad436204f5657bde}{inc\+Parameter\+Base\+Value()}}, \mbox{\hyperlink{modsystem_8c_ad5a4bc1aa689ba445b4739c742113f3b}{modify\+Parameter\+Base\+Value()}}, and \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod()}}.
+
+\Hypertarget{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}\index{modsystem.c@{modsystem.c}!setParameterValue@{setParameterValue}}
+\index{setParameterValue@{setParameterValue}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{setParameterValue()}{setParameterValue()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7} 
+void set\+Parameter\+Value (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_parameter}{Parameter}} \texorpdfstring{$\ast$}{*}}]{param}{, }\item[{float}]{value}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00071\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}set\ param"{});}}
+\DoxyCodeLine{00072\ \ \ \ \ \textcolor{keywordtype}{float}\ clamped\ =\ \_clampValue(value,\ param-\/>\mbox{\hyperlink{struct_parameter_a38cafbf5f1ebfe59c2b5ff6cfaeb8462}{minValue}},\ param-\/>\mbox{\hyperlink{struct_parameter_a2f1ec0f677642dccb3ea71f745322291}{maxValue}});}
+\DoxyCodeLine{00073\ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_af13c2db3e8015c1bfebb65ea05c9c1af}{currentValue}}\ =\ clamped;}
+\DoxyCodeLine{00074\ \ \ \ \ \textcolor{keywordflow}{if}\ (param-\/>\mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{onChange}})\ \{}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_parameter_a9b98311083edc4746cc6bfcf5888ad7d}{onChange}}(param,\ clamped);}
+\DoxyCodeLine{00076\ \ \ \ \ \}}
+\DoxyCodeLine{00077\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a3cd68ac38a14425b8f359d803f114abe}{generate\+Drunk()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a86f4dfdae40b63273216ba815843d5b3}{generate\+Ramp()}}, \mbox{\hyperlink{modsystem_8c_a4fc288e4d17b6c63c46ea775a5bf9f86}{generate\+Random()}}, \mbox{\hyperlink{modsystem_8c_a5ebd8d2ce9441b8f4745ae07175a31ea}{generate\+Sine()}}, \mbox{\hyperlink{modsystem_8c_affcb4aa7ab108576ebc16167bb558707}{generate\+Square()}}, \mbox{\hyperlink{modsystem_8c_a9625035fdaec67dc95709fd10dacffe4}{modify\+Parameter\+Value()}}, \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}, and \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod()}}.
+
+\Hypertarget{modsystem_8c_a6f55c00b5a39d1f017cfa7f0b959bc9a}\index{modsystem.c@{modsystem.c}!triggerEnvelope@{triggerEnvelope}}
+\index{triggerEnvelope@{triggerEnvelope}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{triggerEnvelope()}{triggerEnvelope()}}
+{\footnotesize\ttfamily \label{modsystem_8c_a6f55c00b5a39d1f017cfa7f0b959bc9a} 
+void trigger\+Envelope (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00292\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00293\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}triggering\ env"{});}}
+\DoxyCodeLine{00294\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{currentStageIndex}}\ =\ 0;}
+\DoxyCodeLine{00295\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}}\ =\ \textcolor{keyword}{true};}
+\DoxyCodeLine{00296\ \}}
+
+\end{DoxyCode}
+\Hypertarget{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}\index{modsystem.c@{modsystem.c}!updateMod@{updateMod}}
+\index{updateMod@{updateMod}!modsystem.c@{modsystem.c}}
+\doxysubsubsection{\texorpdfstring{updateMod()}{updateMod()}}
+{\footnotesize\ttfamily \label{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2} 
+void update\+Mod (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod}{Mod}} \texorpdfstring{$\ast$}{*}}]{mod}{, }\item[{float}]{delta\+Time}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00237\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00238\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}update\ mod"{});}}
+\DoxyCodeLine{00239\ \ \ \ \ \textcolor{keywordflow}{if}\ (mod\ ==\ NULL)\ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00240\ \ \ \ \ }
+\DoxyCodeLine{00241\ \ \ \ \ \textcolor{keywordflow}{switch}(mod-\/>\mbox{\hyperlink{struct_mod_a13e6bb046c03d805b9e928c28538ba77}{type}})\{}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eedab8fe4e7f8ccd61429bb719175dbf2c29}{MT\_ENV}}:}
+\DoxyCodeLine{00243\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ env\ =\ (\mbox{\hyperlink{struct_envelope}{Envelope}}*)mod;}
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (env-\/>\mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{isTriggered}})\ \{}
+\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{currentTime}}\ +=\ deltaTime;}
+\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda0b923406b5ee7db9564d274febad240d}{MT\_LFO}}:}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}*\ lfo\ =\ (\mbox{\hyperlink{struct_l_f_o}{LFO}}*)mod;}
+\DoxyCodeLine{00250\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ l\_phase\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}});}
+\DoxyCodeLine{00251\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ l\_rate\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a0fc3bdfb7604dc1d3e5509aac1b03f3f}{rate}});}
+\DoxyCodeLine{00252\ \ \ \ \ \ \ \ \ \ \ \ \ l\_phase\ +=\ l\_rate\ *\ deltaTime;}
+\DoxyCodeLine{00253\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (l\_phase\ >=\ 1.0f)\ l\_phase\ -\/=\ 1.0f;}
+\DoxyCodeLine{00254\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}},\ l\_phase);}
+\DoxyCodeLine{00255\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(lfo-\/>\mbox{\hyperlink{struct_l_f_o_a8eb72979116417446e72f1ca44485ce4}{phase}},\ l\_phase);}
+\DoxyCodeLine{00256\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00257\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{modsystem_8h_aa711c7be5b142535583a1841942a8eeda2d0aeea20df1569c76fc07ed19b9b8c4}{MT\_RND}}:}
+\DoxyCodeLine{00258\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_random}{Random}}*\ rand\ =\ (\mbox{\hyperlink{struct_random}{Random}}*)mod;}
+\DoxyCodeLine{00259\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ r\_phase\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(rand-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}});}
+\DoxyCodeLine{00260\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{float}\ r\_rate\ =\ \mbox{\hyperlink{modsystem_8c_ac62813203b68a6436121b111ef1c8598}{getParameterValue}}(rand-\/>\mbox{\hyperlink{struct_random_ad0a2003ab2f82ebfcfd9b1d941f9ae51}{rate}});}
+\DoxyCodeLine{00261\ \ \ \ \ \ \ \ \ \ \ \ \ r\_phase\ +=\ r\_rate\ *\ deltaTime;}
+\DoxyCodeLine{00262\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (r\_phase\ >=\ 1.0f)\ r\_phase\ -\/=\ 1.0f;}
+\DoxyCodeLine{00263\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_ae7082e4c9264de76faa9e2820ca879b1}{setParameterBaseValue}}(rand-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}},\ r\_phase);}
+\DoxyCodeLine{00264\ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{modsystem_8c_a6d57fd098177279e9bd96c8f47369fb7}{setParameterValue}}(rand-\/>\mbox{\hyperlink{struct_random_a704bdf21aeb126e60006f08e8c67b637}{phase}},\ r\_phase);}
+\DoxyCodeLine{00265\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{default}:}
+\DoxyCodeLine{00266\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00267\ \ \ \ \ \}}
+\DoxyCodeLine{00268\ \ \ \ \ \textcolor{comment}{//DEBUG\_LOG("{}update\ mod\ DONE"{});}}
+\DoxyCodeLine{00269\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ae8dd6931f3fab85d46359293c90f716d}{process\+Modulations()}}.
+

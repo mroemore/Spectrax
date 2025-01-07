@@ -1,0 +1,73 @@
+\doxysection{appstate.\+h File Reference}
+\hypertarget{appstate_8h}{}\label{appstate_8h}\index{appstate.h@{appstate.h}}
+{\ttfamily \#include "{}gui.\+h"{}}\newline
+{\ttfamily \#include "{}input.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{struct_application_state}{Application\+State}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{appstate_8h_a0edeaa8a08dcf6277aea3cd212432b70}{init\+Application\+State}} ()
+\item 
+\mbox{\hyperlink{struct_application_state}{Application\+State}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{appstate_8h_a1734f034e7ff1626a10f26eaae3f3a55}{create\+Application\+State}} ()
+\item 
+void \mbox{\hyperlink{appstate_8h_a9f4a06e10011add1ed3a2c4480fb4356}{increment\+Scene}} ()
+\item 
+void \mbox{\hyperlink{appstate_8h_ae6ab4d9196fea920019af29bd809ffa1}{decrement\+Scene}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{appstate_8h_a1734f034e7ff1626a10f26eaae3f3a55}\index{appstate.h@{appstate.h}!createApplicationState@{createApplicationState}}
+\index{createApplicationState@{createApplicationState}!appstate.h@{appstate.h}}
+\doxysubsubsection{\texorpdfstring{createApplicationState()}{createApplicationState()}}
+{\footnotesize\ttfamily \label{appstate_8h_a1734f034e7ff1626a10f26eaae3f3a55} 
+\mbox{\hyperlink{struct_application_state}{Application\+State}} \texorpdfstring{$\ast$}{*} create\+Application\+State (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00006\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00007\ \ \ \ \ \mbox{\hyperlink{struct_application_state}{ApplicationState}}*\ as\ =\ (\mbox{\hyperlink{struct_application_state}{ApplicationState}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_application_state}{ApplicationState}}));}
+\DoxyCodeLine{00008\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_a003eb40b05a29adb904d464cc2719434}{selectedPattern}}\ =\ -\/1;}
+\DoxyCodeLine{00009\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc}{selectedArrangerCell}}[0]\ =\ 0;}
+\DoxyCodeLine{00010\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_af16feae5e83be9dd9ca5152241ecabdc}{selectedArrangerCell}}[1]\ =\ 0;}
+\DoxyCodeLine{00011\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_a3c5d6208a6fab2278e6844ad8ce8023a}{selectedStep}}\ =\ 0;}
+\DoxyCodeLine{00012\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_a3b09129de8fd114726ab802bd6288610}{currentScene}}\ =\ \mbox{\hyperlink{gui_8h_acf721625ddb3197a5be044f6d5600600a7809c6e3b073a0a5f71b9cce1173d3da}{SCENE\_ARRANGER}};}
+\DoxyCodeLine{00013\ \ \ \ \ as-\/>\mbox{\hyperlink{struct_application_state_a4e86c63d39e094bd9429233f38cd8d75}{inputState}}\ =\ \mbox{\hyperlink{input_8c_a59b0e3fae5d4a30b96317c31598aeabb}{createInputState}}(\mbox{\hyperlink{input_8h_ac9348deae9297ebe302759b9171a75d0ad930e7f402c859a3e4fdc518e76e68a8}{INPUT\_TYPE\_KEYBOARD}});}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keywordflow}{return}\ as;}
+\DoxyCodeLine{00015\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{appstate_8h_ae6ab4d9196fea920019af29bd809ffa1}\index{appstate.h@{appstate.h}!decrementScene@{decrementScene}}
+\index{decrementScene@{decrementScene}!appstate.h@{appstate.h}}
+\doxysubsubsection{\texorpdfstring{decrementScene()}{decrementScene()}}
+{\footnotesize\ttfamily \label{appstate_8h_ae6ab4d9196fea920019af29bd809ffa1} 
+void decrement\+Scene (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{appstate_8h_a9f4a06e10011add1ed3a2c4480fb4356}\index{appstate.h@{appstate.h}!incrementScene@{incrementScene}}
+\index{incrementScene@{incrementScene}!appstate.h@{appstate.h}}
+\doxysubsubsection{\texorpdfstring{incrementScene()}{incrementScene()}}
+{\footnotesize\ttfamily \label{appstate_8h_a9f4a06e10011add1ed3a2c4480fb4356} 
+void increment\+Scene (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{appstate_8h_a0edeaa8a08dcf6277aea3cd212432b70}\index{appstate.h@{appstate.h}!initApplicationState@{initApplicationState}}
+\index{initApplicationState@{initApplicationState}!appstate.h@{appstate.h}}
+\doxysubsubsection{\texorpdfstring{initApplicationState()}{initApplicationState()}}
+{\footnotesize\ttfamily \label{appstate_8h_a0edeaa8a08dcf6277aea3cd212432b70} 
+void init\+Application\+State (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+

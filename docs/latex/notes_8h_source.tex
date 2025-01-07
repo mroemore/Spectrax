@@ -1,0 +1,41 @@
+\doxysection{notes.\+h}
+\hypertarget{notes_8h_source}{}\label{notes_8h_source}\mbox{\hyperlink{notes_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ NOTES\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ NOTES\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <string.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <stdio.h>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00009\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}}\ =\ -\/1,}
+\DoxyCodeLine{00010\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}{C}},}
+\DoxyCodeLine{00011\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2eea8143c83e1062e3f19d6a52246094}{Db}},}
+\DoxyCodeLine{00012\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea77a6b11f9898c052926f1d49765861e8}{D}},}
+\DoxyCodeLine{00013\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceae82cfa6702b54ebe9e646dda0beb1eee}{Eb}},}
+\DoxyCodeLine{00014\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab199e021998d49b1f09338d8b9b18ecb}{E}},}
+\DoxyCodeLine{00015\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf382a63cc3d6491bf26b59e66f46826d}{F}},}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab3d9558b363c9b7c67b4211f3b6982fa}{Gb}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea2fe993340f6abb2234e543cd427df70b}{G}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceab2a3401c6363e4639223bcceafe3fc5a}{Ab}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea42a4ade1acd55a49164099104990e09f}{A}},}
+\DoxyCodeLine{00020\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceacc8b13e897cc2f6b7e4ff4b98de74541}{Bb}},}
+\DoxyCodeLine{00021\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68}{B}},}
+\DoxyCodeLine{00022\ \ \ \ \ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}}}
+\DoxyCodeLine{00023\ \}\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ce}{Note}};}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \textcolor{keyword}{extern}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{char}*\ \mbox{\hyperlink{notes_8c_af3f594b85e8db539a2bbe93816c7639f}{noteNames}}[\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}}];}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\#define\ MAX\_OCTAVES\ 9}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ \textcolor{comment}{//\ 2D\ array\ to\ store\ note\ frequencies}}
+\DoxyCodeLine{00032\ \textcolor{keyword}{extern}\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{notes_8c_a2f3e853735e635788f45f7794217c678}{noteFrequencies}}[\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}}][\mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\_OCTAVES}}];}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \textcolor{keywordtype}{char}*\ \mbox{\hyperlink{notes_8h_afad21e9a6450d7c453b77bf4918b4895}{getNoteString}}(\textcolor{keywordtype}{int}\ note,\ \textcolor{keywordtype}{int}\ octave);}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

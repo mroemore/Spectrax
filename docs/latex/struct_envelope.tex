@@ -1,0 +1,202 @@
+\doxysection{Envelope Struct Reference}
+\hypertarget{struct_envelope}{}\label{struct_envelope}\index{Envelope@{Envelope}}
+
+
+{\ttfamily \#include $<$envelope.\+h$>$}
+
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stage\+Index}}
+\item 
+int \mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stage\+Count}}
+\item 
+int \mbox{\hyperlink{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}{running}}
+\item 
+int \mbox{\hyperlink{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}{loop}}
+\item 
+int \mbox{\hyperlink{struct_envelope_a44383cfe11cae0a97253ad6633e94f25}{voice\+\_\+id}}
+\item 
+float \mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{current\+Level}}
+\item 
+\mbox{\hyperlink{struct_env_stage}{Env\+Stage}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}
+\item 
+\mbox{\hyperlink{struct_mod}{Mod}} \mbox{\hyperlink{struct_envelope_aedc02f24487815c3583099e33bf26fce}{base}}
+\item 
+\mbox{\hyperlink{struct_envelope_stage}{Envelope\+Stage}} \mbox{\hyperlink{struct_envelope_adf6d4af3bc69797f1d8f190ed7340b6a}{stages}} \mbox{[}\mbox{\hyperlink{modsystem_8h_a5b0b60c31353bfab8ba47528ed8069c0}{MAX\+\_\+\+ENVELOPE\+\_\+\+STAGES}}\mbox{]}
+\item 
+int \mbox{\hyperlink{struct_envelope_a7772a6251891e283ef6900fedcad3a40}{current\+Stage\+Index}}
+\item 
+float \mbox{\hyperlink{struct_envelope_a12f3e1c310dd40577bef3196bf764c07}{sample\+Rate}}
+\item 
+float \mbox{\hyperlink{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}{current\+Time}}
+\item 
+float \mbox{\hyperlink{struct_envelope_a167a930836009a9b3738740a035a6bd5}{total\+Elapsed\+Time}}
+\item 
+bool \mbox{\hyperlink{struct_envelope_a2f00d7735c2708db664fa298781e95a3}{is\+Triggered}}
+\item 
+bool \mbox{\hyperlink{struct_envelope_a6ef71c9322650e8f3b3358ab9103db20}{is\+Sustaining}}
+\item 
+bool \mbox{\hyperlink{struct_envelope_af0503bf25b4468a9af440b6efb1136ee}{loop}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_envelope_aedc02f24487815c3583099e33bf26fce}\index{Envelope@{Envelope}!base@{base}}
+\index{base@{base}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{base}{base}}
+{\footnotesize\ttfamily \label{struct_envelope_aedc02f24487815c3583099e33bf26fce} 
+\mbox{\hyperlink{struct_mod}{Mod}} Envelope\+::base}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{add\+Envelope\+Stage()}}, \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{free\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{voice_8c_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\+\_\+voice()}}, and \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}.
+
+\Hypertarget{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}\index{Envelope@{Envelope}!currentLevel@{currentLevel}}
+\index{currentLevel@{currentLevel}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{currentLevel}{currentLevel}}
+{\footnotesize\ttfamily \label{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5} 
+float Envelope\+::current\+Level}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, and \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope()}}.
+
+\Hypertarget{struct_envelope_a7772a6251891e283ef6900fedcad3a40}\index{Envelope@{Envelope}!currentStageIndex@{currentStageIndex}}
+\index{currentStageIndex@{currentStageIndex}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{currentStageIndex}{currentStageIndex}}
+{\footnotesize\ttfamily \label{struct_envelope_a7772a6251891e283ef6900fedcad3a40} 
+int Envelope\+::current\+Stage\+Index}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, and \mbox{\hyperlink{modsystem_8c_a6f55c00b5a39d1f017cfa7f0b959bc9a}{trigger\+Envelope()}}.
+
+\Hypertarget{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69}\index{Envelope@{Envelope}!currentTime@{currentTime}}
+\index{currentTime@{currentTime}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{currentTime}{currentTime}}
+{\footnotesize\ttfamily \label{struct_envelope_a09c61ef18da6e5d7dd12761de6f9ef69} 
+float Envelope\+::current\+Time}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, and \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod()}}.
+
+\Hypertarget{struct_envelope_a6ef71c9322650e8f3b3358ab9103db20}\index{Envelope@{Envelope}!isSustaining@{isSustaining}}
+\index{isSustaining@{isSustaining}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{isSustaining}{isSustaining}}
+{\footnotesize\ttfamily \label{struct_envelope_a6ef71c9322650e8f3b3358ab9103db20} 
+bool Envelope\+::is\+Sustaining}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}.
+
+\Hypertarget{struct_envelope_a2f00d7735c2708db664fa298781e95a3}\index{Envelope@{Envelope}!isTriggered@{isTriggered}}
+\index{isTriggered@{isTriggered}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{isTriggered}{isTriggered}}
+{\footnotesize\ttfamily \label{struct_envelope_a2f00d7735c2708db664fa298781e95a3} 
+bool Envelope\+::is\+Triggered}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{modvisual_8c_ae66f6b31b5ad750f1fe042a706a4e3d4}{main()}}, \mbox{\hyperlink{modsystem_8c_a6f55c00b5a39d1f017cfa7f0b959bc9a}{trigger\+Envelope()}}, and \mbox{\hyperlink{modsystem_8c_aee0016be693153cf49f6f3ec736e83b2}{update\+Mod()}}.
+
+\Hypertarget{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}\index{Envelope@{Envelope}!loop@{loop}}
+\index{loop@{loop}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb} 
+int Envelope\+::loop}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}, and \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env()}}.
+
+\Hypertarget{struct_envelope_af0503bf25b4468a9af440b6efb1136ee}\index{Envelope@{Envelope}!loop@{loop}}
+\index{loop@{loop}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{loop}{loop}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{struct_envelope_af0503bf25b4468a9af440b6efb1136ee} 
+bool Envelope\+::loop}
+
+\Hypertarget{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}\index{Envelope@{Envelope}!running@{running}}
+\index{running@{running}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{running}{running}}
+{\footnotesize\ttfamily \label{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50} 
+int Envelope\+::running}
+
+
+
+Referenced by \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}, \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope()}}, and \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env()}}.
+
+\Hypertarget{struct_envelope_a12f3e1c310dd40577bef3196bf764c07}\index{Envelope@{Envelope}!sampleRate@{sampleRate}}
+\index{sampleRate@{sampleRate}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{sampleRate}{sampleRate}}
+{\footnotesize\ttfamily \label{struct_envelope_a12f3e1c310dd40577bef3196bf764c07} 
+float Envelope\+::sample\+Rate}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, and \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}.
+
+\Hypertarget{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}\index{Envelope@{Envelope}!stageCount@{stageCount}}
+\index{stageCount@{stageCount}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{stageCount}{stageCount}}
+{\footnotesize\ttfamily \label{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c} 
+int Envelope\+::stage\+Count}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{add\+Envelope\+Stage()}}, \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}, \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui()}}, \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{free\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope()}}, and \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env()}}.
+
+\Hypertarget{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}\index{Envelope@{Envelope}!stageIndex@{stageIndex}}
+\index{stageIndex@{stageIndex}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{stageIndex}{stageIndex}}
+{\footnotesize\ttfamily \label{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c} 
+int Envelope\+::stage\+Index}
+
+
+
+Referenced by \mbox{\hyperlink{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210}{apply\+Modulation()}}, \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}, \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope()}}, and \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env()}}.
+
+\Hypertarget{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}\index{Envelope@{Envelope}!stages@{stages}}
+\index{stages@{stages}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{stages}{stages}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914} 
+\mbox{\hyperlink{struct_env_stage}{Env\+Stage}}\texorpdfstring{$\ast$}{*} Envelope\+::stages}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_a051c4414fe9e69badca72dc837686a67}{add\+Envelope\+Stage()}}, \mbox{\hyperlink{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210}{apply\+Modulation()}}, \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}, \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui()}}, \mbox{\hyperlink{modsystem_8c_ad3c4e0e5512d705bc1425184aab7f1df}{free\+Envelope()}}, \mbox{\hyperlink{modsystem_8c_a1175458ddafdcbb6e97b330141b774d5}{generate\+Envelope()}}, \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}, \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope()}}, and \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env()}}.
+
+\Hypertarget{struct_envelope_adf6d4af3bc69797f1d8f190ed7340b6a}\index{Envelope@{Envelope}!stages@{stages}}
+\index{stages@{stages}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{stages}{stages}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{struct_envelope_adf6d4af3bc69797f1d8f190ed7340b6a} 
+\mbox{\hyperlink{struct_envelope_stage}{Envelope\+Stage}} Envelope\+::stages\mbox{[}\mbox{\hyperlink{modsystem_8h_a5b0b60c31353bfab8ba47528ed8069c0}{MAX\+\_\+\+ENVELOPE\+\_\+\+STAGES}}\mbox{]}}
+
+\Hypertarget{struct_envelope_a167a930836009a9b3738740a035a6bd5}\index{Envelope@{Envelope}!totalElapsedTime@{totalElapsedTime}}
+\index{totalElapsedTime@{totalElapsedTime}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{totalElapsedTime}{totalElapsedTime}}
+{\footnotesize\ttfamily \label{struct_envelope_a167a930836009a9b3738740a035a6bd5} 
+float Envelope\+::total\+Elapsed\+Time}
+
+
+
+Referenced by \mbox{\hyperlink{modsystem_8c_ab3848c4aa108779df444e3faaea7f3bd}{create\+Envelope()}}, and \mbox{\hyperlink{gui_8c_aecf611aa3b579a5ebf74c6177dbd6358}{draw\+Envelope\+Gui()}}.
+
+\Hypertarget{struct_envelope_a44383cfe11cae0a97253ad6633e94f25}\index{Envelope@{Envelope}!voice\_id@{voice\_id}}
+\index{voice\_id@{voice\_id}!Envelope@{Envelope}}
+\doxysubsubsection{\texorpdfstring{voice\_id}{voice\_id}}
+{\footnotesize\ttfamily \label{struct_envelope_a44383cfe11cae0a97253ad6633e94f25} 
+int Envelope\+::voice\+\_\+id}
+
+
+
+Referenced by \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}.
+
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{envelope_8h}{envelope.\+h}}\item 
+\mbox{\hyperlink{modsystem_8h}{modsystem.\+h}}\end{DoxyCompactItemize}

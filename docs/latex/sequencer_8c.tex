@@ -1,0 +1,760 @@
+\doxysection{sequencer.\+c File Reference}
+\hypertarget{sequencer_8c}{}\label{sequencer_8c}\index{sequencer.c@{sequencer.c}}
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include "{}sequencer.\+h"{}}\newline
+{\ttfamily \#include "{}notes.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_af2e1440977d13b4ca82c0c98ff205969}{create\+Pattern\+List}} ()
+\begin{DoxyCompactList}\small\item\em Creates a new \doxylink{struct_pattern_list}{Pattern\+List}. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}{create\+Arranger}} (\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}settings)
+\item 
+void \mbox{\hyperlink{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}{add\+Channel}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int channel\+Index)
+\begin{DoxyCompactList}\small\item\em Adds a new channel to the \doxylink{struct_arranger}{Arranger} at the specified index. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_aecf022a168a1749dd1483bc6db72545e}{remove\+Channel}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int channel\+Index)
+\begin{DoxyCompactList}\small\item\em Removes a channel from the \doxylink{struct_arranger}{Arranger} at the specified index. \end{DoxyCompactList}\item 
+\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_ad21cc03af22456f81cfe2f25330f6597}{create\+Sequencer}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger)
+\begin{DoxyCompactList}\small\item\em Creates a new \doxylink{struct_sequencer}{Sequencer} based on the current state of the \doxylink{struct_arranger}{Arranger}. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sequencer_8c_ab31e48e63eb4db5e422226a317bf2ab0}{add\+Blank\+Pattern}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List)
+\item 
+int \mbox{\hyperlink{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe}{add\+Pattern}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Size, int notes\mbox{[}$\,$\mbox{]}\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]})
+\begin{DoxyCompactList}\small\item\em Adds a new pattern to the \doxylink{struct_pattern_list}{Pattern\+List}. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_ac6c1ecde8b7aa3cecf904f973c543dcd}{add\+Pattern\+To\+Arranger}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int pattern\+Id, int sequencer\+\_\+id, int row)
+\begin{DoxyCompactList}\small\item\em Adds a blank pattern to the \doxylink{struct_pattern_list}{Pattern\+List}. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f}{add\+Blank\+If\+Empty}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int sequencer\+Id, int row)
+\begin{DoxyCompactList}\small\item\em Adds a blank pattern to the \doxylink{struct_arranger}{Arranger} if the specified location is empty. \end{DoxyCompactList}\item 
+int \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_a0afd21c469d9d7f042d8f66be3666af5}{get\+Step}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int note\+Index)
+\begin{DoxyCompactList}\small\item\em Retrieves a step (note) from a pattern. \end{DoxyCompactList}\item 
+int \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_a376879b96448fd667f0667be5902acee}{get\+Current\+Step}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int note\+Index)
+\begin{DoxyCompactList}\small\item\em Retrieves the current step (note) from a pattern. \end{DoxyCompactList}\item 
+int \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}{select\+Arranger\+Cell}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int check\+Blank\+Pattern, int relativex, int relativey, int \texorpdfstring{$\ast$}{*}selected\+Arranger\+Cell)
+\begin{DoxyCompactList}\small\item\em Selects a cell in the \doxylink{struct_arranger}{Arranger} and updates the selected coordinates. \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{sequencer_8c_a1be243fd566f52694dd1006b217039db}{select\+Step}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int selected\+Step)
+\begin{DoxyCompactList}\small\item\em Selects a step in a pattern and ensures it is within bounds. \end{DoxyCompactList}\item 
+int \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_aa9717313b1c987f80a5d1af3ca0f6091}{edit\+Current\+Note}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int note\+Index, int note\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]})
+\begin{DoxyCompactList}\small\item\em Edits the current note in a pattern. \end{DoxyCompactList}\item 
+int \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{sequencer_8c_a94e8680068cf71eea6e206d7b2e90071}{edit\+Current\+Note\+Relative}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int note\+Index, int note\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]})
+\begin{DoxyCompactList}\small\item\em Edits the current note in a pattern with relative changes. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}{increment\+Sequencer}} (\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}sequencer, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger)
+\begin{DoxyCompactList}\small\item\em Advances the sequencer to the next step for all active channels. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_a1a15c27d8aa1f8c6fab8fb732b928f99}{edit\+Step}} (\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, int pattern\+Index, int note\+Index, int note\mbox{[}\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\+\_\+\+INFO\+\_\+\+SIZE}}\mbox{]})
+\begin{DoxyCompactList}\small\item\em Edits a step in a pattern. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_a3b7c9ddc992bf12a0abfaa50aa296a59}{stop\+Playing}} (\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger)
+\begin{DoxyCompactList}\small\item\em Stops playback in the \doxylink{struct_arranger}{Arranger}. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}{start\+Playing}} (\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}sequencer, \mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}pattern\+List, \mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}arranger, int play\+Mode)
+\begin{DoxyCompactList}\small\item\em Starts playback in the \doxylink{struct_sequencer}{Sequencer} and \doxylink{struct_arranger}{Arranger} from the current cursor position, resetting all pattern playback posiitons. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f}\index{sequencer.c@{sequencer.c}!addBlankIfEmpty@{addBlankIfEmpty}}
+\index{addBlankIfEmpty@{addBlankIfEmpty}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{addBlankIfEmpty()}{addBlankIfEmpty()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f} 
+void add\+Blank\+If\+Empty (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{sequencer\+Id}{, }\item[{int}]{row}{}\end{DoxyParamCaption})}
+
+
+
+Adds a blank pattern to the \doxylink{struct_arranger}{Arranger} if the specified location is empty. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+{\em sequencer\+Id} & Channel index. \\
+\hline
+{\em row} & Row index. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00107\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00108\ \ \ \ \ \textcolor{keywordtype}{int}\ patternID\ =\ \mbox{\hyperlink{sequencer_8c_ab31e48e63eb4db5e422226a317bf2ab0}{addBlankPattern}}(patternList);}
+\DoxyCodeLine{00109\ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[sequencerId][row]\ ==\ -\/1)\{}
+\DoxyCodeLine{00110\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{sequencer_8c_ac6c1ecde8b7aa3cecf904f973c543dcd}{addPatternToArranger}}(arranger,\ patternID,\ sequencerId,\ row);}
+\DoxyCodeLine{00111\ \ \ \ \ \}}
+\DoxyCodeLine{00112\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_ab31e48e63eb4db5e422226a317bf2ab0}\index{sequencer.c@{sequencer.c}!addBlankPattern@{addBlankPattern}}
+\index{addBlankPattern@{addBlankPattern}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{addBlankPattern()}{addBlankPattern()}}
+{\footnotesize\ttfamily \label{sequencer_8c_ab31e48e63eb4db5e422226a317bf2ab0} 
+int add\+Blank\+Pattern (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00083\ \ \ \ \ \textcolor{keywordflow}{return}\ \mbox{\hyperlink{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe}{addPattern}}(patternList,\ 16,\ (\textcolor{keywordtype}{int}[][\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}])}
+\DoxyCodeLine{00084\ \ \ \ \ \{}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\},\ \{\mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}},\ 0\}}
+\DoxyCodeLine{00089\ \ \ \ \ \});}
+\DoxyCodeLine{00090\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f}{add\+Blank\+If\+Empty()}}.
+
+\Hypertarget{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960}\index{sequencer.c@{sequencer.c}!addChannel@{addChannel}}
+\index{addChannel@{addChannel}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{addChannel()}{addChannel()}}
+{\footnotesize\ttfamily \label{sequencer_8c_abd4490dc259a4ba9d955dc06110d3960} 
+void add\+Channel (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{channel\+Index}{}\end{DoxyParamCaption})}
+
+
+
+Adds a new channel to the \doxylink{struct_arranger}{Arranger} at the specified index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+{\em channel\+Index} & Index at which to add the new channel. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00036\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}\ <\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ \&\&\ channelIndex\ >=\ 0)\{}
+\DoxyCodeLine{00038\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(channelIndex\ \ <\ arranger-\/>enabledChannels)\{\ \textcolor{comment}{//copy\ all\ subsequent\ channels\ to\ the\ right}}
+\DoxyCodeLine{00039\ \ \ \ \ \ \ \ \ \ \ \ \ memmove(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[channelIndex\ +\ 1],\ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[channelIndex],\ (\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}\ -\/\ channelIndex)\ *\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}}\ *\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}));}
+\DoxyCodeLine{00040\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a3d10d319666aaae81604b3a81d0110d7}{voiceTypes}}[channelIndex]\ =\ 0;}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}};\ i++)\{\ \textcolor{comment}{//init\ with\ empty\ pattern\ refs}}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[channelIndex][i]\ =\ -\/1;}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}++;}
+\DoxyCodeLine{00047\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\ ERROR:\ max\ sequencer\ channels\ (\%i)\ reached,\ can't\ insert\ at\ \%i.\(\backslash\)n"{}},\ \mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}},\ channelIndex);}
+\DoxyCodeLine{00049\ \ \ \ \ \}}
+\DoxyCodeLine{00050\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe}\index{sequencer.c@{sequencer.c}!addPattern@{addPattern}}
+\index{addPattern@{addPattern}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{addPattern()}{addPattern()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a23d6e49cf900698cd515b99b9672b9fe} 
+int add\+Pattern (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Size}{, }\item[{int}]{notes}{\mbox{[}$\,$\mbox{]}\mbox{[}\+NOTE\+\_\+\+INFO\+\_\+\+SIZE\mbox{]}}\end{DoxyParamCaption})}
+
+
+
+Adds a new pattern to the \doxylink{struct_pattern_list}{Pattern\+List}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Size} & Size of the pattern. \\
+\hline
+{\em notes} & Array of notes to add to the pattern. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The index of the newly added pattern. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00092\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00093\ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternList-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}].\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}}\ =\ patternSize;}
+\DoxyCodeLine{00094\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ patternSize;\ i++)\{}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ j\ =\ 0;\ j\ <\ \mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}};\ j++)\{}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternList-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[i][j]\ =\ notes[i][j];}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00098\ \ \ \ \ \}}
+\DoxyCodeLine{00099\ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}++;}
+\DoxyCodeLine{00100\ \ \ \ \ \textcolor{keywordflow}{return}\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}\ -\/\ 1;}
+\DoxyCodeLine{00101\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_ab31e48e63eb4db5e422226a317bf2ab0}{add\+Blank\+Pattern()}}.
+
+\Hypertarget{sequencer_8c_ac6c1ecde8b7aa3cecf904f973c543dcd}\index{sequencer.c@{sequencer.c}!addPatternToArranger@{addPatternToArranger}}
+\index{addPatternToArranger@{addPatternToArranger}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{addPatternToArranger()}{addPatternToArranger()}}
+{\footnotesize\ttfamily \label{sequencer_8c_ac6c1ecde8b7aa3cecf904f973c543dcd} 
+void add\+Pattern\+To\+Arranger (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{pattern\+Id}{, }\item[{int}]{sequencer\+\_\+id}{, }\item[{int}]{column}{}\end{DoxyParamCaption})}
+
+
+
+Adds a blank pattern to the \doxylink{struct_pattern_list}{Pattern\+List}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The index of the newly added pattern. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00104\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[sequencer\_id][row]\ =\ patternId;}
+\DoxyCodeLine{00105\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{sequencer_8c_a4423d5dd366ccb9aa18b2b284d504b0f}{add\+Blank\+If\+Empty()}}.
+
+\Hypertarget{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225}\index{sequencer.c@{sequencer.c}!createArranger@{createArranger}}
+\index{createArranger@{createArranger}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{createArranger()}{createArranger()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a8eb6b21c2af83dc0a1416e499221a225} 
+\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*} create\+Arranger (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*}}]{settings}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00014\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00015\ \ \ \ \ \mbox{\hyperlink{struct_arranger}{Arranger}}\ *arranger\ =\ (\mbox{\hyperlink{struct_arranger}{Arranger}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_arranger}{Arranger}}));}
+\DoxyCodeLine{00016\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}}\ =\ 0;}
+\DoxyCodeLine{00017\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}}\ =\ 0;}
+\DoxyCodeLine{00018\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}}\ =\ 1;}
+\DoxyCodeLine{00019\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}\ =\ settings-\/>\mbox{\hyperlink{struct_settings_a5e4aa7296b57ba18b3cfd5e02080e6e3}{enabledChannels}};}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}}\ =\ 1;}
+\DoxyCodeLine{00022\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};\ i++)\{}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[i]\ =\ 0;}
+\DoxyCodeLine{00024\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a3d10d319666aaae81604b3a81d0110d7}{voiceTypes}}[i]\ =\ settings-\/>\mbox{\hyperlink{struct_settings_a7cee67f14c2a871efbbbad34cb922b0a}{voiceTypes}}[i];}
+\DoxyCodeLine{00025\ \ \ \ \ \}}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}};\ i++)\{}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ j\ =\ 0;\ j\ <\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};\ j++)\{}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[j][i]\ =\ -\/1;}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00031\ \ \ \ \ \}}
+\DoxyCodeLine{00032\ \ \ \ \ }
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordflow}{return}\ arranger;}
+\DoxyCodeLine{00034\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_af2e1440977d13b4ca82c0c98ff205969}\index{sequencer.c@{sequencer.c}!createPatternList@{createPatternList}}
+\index{createPatternList@{createPatternList}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{createPatternList()}{createPatternList()}}
+{\footnotesize\ttfamily \label{sequencer_8c_af2e1440977d13b4ca82c0c98ff205969} 
+\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*} create\+Pattern\+List (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new \doxylink{struct_pattern_list}{Pattern\+List}. 
+
+\begin{DoxyReturn}{Returns}
+A pointer to the newly created \doxylink{struct_pattern_list}{Pattern\+List}. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00008\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00009\ \ \ \ \ \mbox{\hyperlink{struct_pattern_list}{PatternList}}\ *\ patternList\ =\ (\mbox{\hyperlink{struct_pattern_list}{PatternList}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_pattern_list}{PatternList}}));}
+\DoxyCodeLine{00010\ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a788587d623616169d43705c72aeb0fb4}{pattern\_count}}\ =\ 0;}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordflow}{return}\ patternList;}
+\DoxyCodeLine{00012\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_ad21cc03af22456f81cfe2f25330f6597}\index{sequencer.c@{sequencer.c}!createSequencer@{createSequencer}}
+\index{createSequencer@{createSequencer}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{createSequencer()}{createSequencer()}}
+{\footnotesize\ttfamily \label{sequencer_8c_ad21cc03af22456f81cfe2f25330f6597} 
+\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*} create\+Sequencer (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{}\end{DoxyParamCaption})}
+
+
+
+Creates a new \doxylink{struct_sequencer}{Sequencer} based on the current state of the \doxylink{struct_arranger}{Arranger}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A pointer to the newly created \doxylink{struct_sequencer}{Sequencer}. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00066\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00067\ \ \ \ \ \mbox{\hyperlink{struct_sequencer}{Sequencer}}*\ sequencer\ =\ (\mbox{\hyperlink{struct_sequencer}{Sequencer}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_sequencer}{Sequencer}}));}
+\DoxyCodeLine{00068\ \ \ \ \ }
+\DoxyCodeLine{00069\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};\ i++)\{}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[i]\ =\ 0;}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_ac291f3ea0e99fc2592d8ca7253478fef}{selected\_index}}[i]\ =\ 0;}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[i][0];}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ ==\ -\/1)\{}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[i]\ =\ 0;}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[i]\ =\ 1;}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00078\ \ \ \ \ \}}
+\DoxyCodeLine{00079\ \ \ \ \ \textcolor{keywordflow}{return}\ sequencer;}
+\DoxyCodeLine{00080\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_aa9717313b1c987f80a5d1af3ca0f6091}\index{sequencer.c@{sequencer.c}!editCurrentNote@{editCurrentNote}}
+\index{editCurrentNote@{editCurrentNote}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{editCurrentNote()}{editCurrentNote()}}
+{\footnotesize\ttfamily \label{sequencer_8c_aa9717313b1c987f80a5d1af3ca0f6091} 
+int \texorpdfstring{$\ast$}{*} edit\+Current\+Note (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{note\+Index}{, }\item[{int}]{note}{\mbox{[}\+NOTE\+\_\+\+INFO\+\_\+\+SIZE\mbox{]}}\end{DoxyParamCaption})}
+
+
+
+Edits the current note in a pattern. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em note\+Index} & Index of the note to edit. \\
+\hline
+{\em note} & New note data. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the edited note data. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00160\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00161\ \ \ \ \ \textcolor{keywordflow}{if}(patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][0]\ ==\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaac132f2982b98bcaa3445e535a03ff75}{OFF}})\{}
+\DoxyCodeLine{00162\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][0]\ =\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}{C}};}
+\DoxyCodeLine{00163\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][1]\ =\ 3;\ \ \ }
+\DoxyCodeLine{00164\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00165\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][0]\ =\ note[0];}
+\DoxyCodeLine{00166\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][1]\ =\ note[1];}
+\DoxyCodeLine{00167\ \ \ \ \ \}}
+\DoxyCodeLine{00168\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_a94e8680068cf71eea6e206d7b2e90071}\index{sequencer.c@{sequencer.c}!editCurrentNoteRelative@{editCurrentNoteRelative}}
+\index{editCurrentNoteRelative@{editCurrentNoteRelative}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{editCurrentNoteRelative()}{editCurrentNoteRelative()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a94e8680068cf71eea6e206d7b2e90071} 
+int \texorpdfstring{$\ast$}{*} edit\+Current\+Note\+Relative (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{note\+Index}{, }\item[{int}]{note}{\mbox{[}\+NOTE\+\_\+\+INFO\+\_\+\+SIZE\mbox{]}}\end{DoxyParamCaption})}
+
+
+
+Edits the current note in a pattern with relative changes. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em note\+Index} & Index of the note to edit. \\
+\hline
+{\em note} & Relative changes to the note data. \mbox{[}1,0\mbox{]} would increase note chromatically, \mbox{[}0,1\mbox{]} would increase octave. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the edited note data. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00170\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00171\ \ \ \ \ }
+\DoxyCodeLine{00172\ \ \ \ \ \textcolor{keywordtype}{int}\ newNote[\mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}}]\ =\ }
+\DoxyCodeLine{00173\ \ \ \ \ \{}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][0]\ +\ note[0],\ }
+\DoxyCodeLine{00175\ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][1]\ +\ note[1]}
+\DoxyCodeLine{00176\ \ \ \ \ \};}
+\DoxyCodeLine{00177\ }
+\DoxyCodeLine{00178\ \ \ \ \ \textcolor{keywordflow}{if}(newNote[0]\ <\ 0)\{}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ newNote[0]\ =\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea3f2a77ecd272aa6d6b5902faa5e5fc68}{B}};}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ newNote[1]-\/-\/;}
+\DoxyCodeLine{00181\ \ \ \ \ \}}
+\DoxyCodeLine{00182\ \ \ \ \ \textcolor{keywordflow}{if}(newNote[0]\ >=\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6ceaf99e7bcfc8afd2e388f369d4160c4862}{NOTE\_COUNT}})\{}
+\DoxyCodeLine{00183\ \ \ \ \ \ \ \ \ newNote[0]\ =\ \mbox{\hyperlink{notes_8h_a133274d390ac226cb82aa9d32b98d6cea739ce3f516592d245d16fd8a3893472c}{C}};}
+\DoxyCodeLine{00184\ \ \ \ \ \ \ \ \ newNote[1]++;}
+\DoxyCodeLine{00185\ \ \ \ \ \}}
+\DoxyCodeLine{00186\ }
+\DoxyCodeLine{00187\ \ \ \ \ \textcolor{keywordflow}{if}(newNote[1]\ >\ \mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\_OCTAVES}}\ -\/\ 1)\{}
+\DoxyCodeLine{00188\ \ \ \ \ \ \ \ \ newNote[1]\ =\ \mbox{\hyperlink{notes_8c_ad3899a03b8d6044e41977f9a59bb6a39}{MAX\_OCTAVES}}\ -\/\ 1;}
+\DoxyCodeLine{00189\ \ \ \ \ \}}
+\DoxyCodeLine{00190\ \ \ \ \ \textcolor{keywordflow}{if}(newNote[1]\ <\ 0)\{}
+\DoxyCodeLine{00191\ \ \ \ \ \ \ \ \ newNote[1]\ =\ 0;}
+\DoxyCodeLine{00192\ \ \ \ \ \}}
+\DoxyCodeLine{00193\ }
+\DoxyCodeLine{00194\ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][0]\ =\ newNote[0];}
+\DoxyCodeLine{00195\ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex][1]\ =\ newNote[1];}
+\DoxyCodeLine{00196\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_a1a15c27d8aa1f8c6fab8fb732b928f99}\index{sequencer.c@{sequencer.c}!editStep@{editStep}}
+\index{editStep@{editStep}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{editStep()}{editStep()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a1a15c27d8aa1f8c6fab8fb732b928f99} 
+void edit\+Step (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{note\+Index}{, }\item[{int}]{note}{\mbox{[}\+NOTE\+\_\+\+INFO\+\_\+\+SIZE\mbox{]}}\end{DoxyParamCaption})}
+
+
+
+Edits a step in a pattern. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em note\+Index} & Index of the note to edit. \\
+\hline
+{\em note} & New note data. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00226\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{\ \textcolor{comment}{//TO-\/DO:\ error\ checking}}
+\DoxyCodeLine{00227\ \ \ \ \ \textcolor{keywordflow}{if}\ (noteIndex\ >=\ 0\ \&\&\ noteIndex\ <\ patternList-\/>patterns[patternIndex].pattern\_size)\ \{}
+\DoxyCodeLine{00228\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ j\ =\ 0;\ j\ <\ \mbox{\hyperlink{sequencer_8h_a8cfca07173aab56156922599c1099e4c}{NOTE\_INFO\_SIZE}};\ j++)\ \{}
+\DoxyCodeLine{00229\ \ \ \ \ \ \ \ \ \ \ \ \ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[patternIndex][j]\ =\ note[j];}
+\DoxyCodeLine{00230\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00231\ \ \ \ \ \}}
+\DoxyCodeLine{00232\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_a376879b96448fd667f0667be5902acee}\index{sequencer.c@{sequencer.c}!getCurrentStep@{getCurrentStep}}
+\index{getCurrentStep@{getCurrentStep}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{getCurrentStep()}{getCurrentStep()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a376879b96448fd667f0667be5902acee} 
+int \texorpdfstring{$\ast$}{*} get\+Current\+Step (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{note\+Index}{}\end{DoxyParamCaption})}
+
+
+
+Retrieves the current step (note) from a pattern. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em note\+Index} & Index of the note. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the note data. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00118\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00119\ \ \ \ \ \textcolor{keywordflow}{return}\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex];}
+\DoxyCodeLine{00120\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_a0afd21c469d9d7f042d8f66be3666af5}\index{sequencer.c@{sequencer.c}!getStep@{getStep}}
+\index{getStep@{getStep}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{getStep()}{getStep()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a0afd21c469d9d7f042d8f66be3666af5} 
+int \texorpdfstring{$\ast$}{*} get\+Step (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{note\+Index}{}\end{DoxyParamCaption})}
+
+
+
+Retrieves a step (note) from a pattern. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em note\+Index} & Index of the note. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the note data. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00114\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00115\ \ \ \ \ \textcolor{keywordflow}{return}\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_abdfbab70e231de4bb69bc715923ddd00}{notes}}[noteIndex];}
+\DoxyCodeLine{00116\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{gui_8c_a198301217a217c51435dd2b502ecbfda}{draw\+Sequencer\+Gui()}}.
+
+\Hypertarget{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425}\index{sequencer.c@{sequencer.c}!incrementSequencer@{incrementSequencer}}
+\index{incrementSequencer@{incrementSequencer}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{incrementSequencer()}{incrementSequencer()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a36df01b35d893a8f8bb49a5e1ad4c425} 
+void increment\+Sequencer (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}}]{sequencer}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{}\end{DoxyParamCaption})}
+
+
+
+Advances the sequencer to the next step for all active channels. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sequencer} & Pointer to the \doxylink{struct_sequencer}{Sequencer}. \\
+\hline
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{\ \textcolor{comment}{//TO-\/DO:\ add\ pattern\ mode\ func}}
+\DoxyCodeLine{00199\ \ \ \ \ \textcolor{comment}{//printf("{}s:\%i\ p:\ \%i\ inc.\ "{},\ sequencer-\/>sequencer\_id,\ sequencer-\/>pattern\_index);}}
+\DoxyCodeLine{00200\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};\ i++)\{}
+\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ patternSize\ =\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]].\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}};}
+\DoxyCodeLine{00202\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(sequencer-\/>\mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[i]\ +\ 1\ >\ patternSize\ -\/\ 1)\{}
+\DoxyCodeLine{00203\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}\(\backslash\)n\(\backslash\)tEOP.\ "{});}}
+\DoxyCodeLine{00204\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ nextRowIndex\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[i]\ +\ 1;}
+\DoxyCodeLine{00205\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[i][nextRowIndex]\ >\ -\/1)\{}
+\DoxyCodeLine{00206\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}\(\backslash\)n\(\backslash\)t\(\backslash\)tPattern\ Switch.\ \(\backslash\)n"{});}}
+\DoxyCodeLine{00207\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[i]++;}
+\DoxyCodeLine{00208\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[i][nextRowIndex];}
+\DoxyCodeLine{00209\ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00210\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>\mbox{\hyperlink{struct_arranger_a19ad50f2330623205940d8842cd74525}{loop}})\{}
+\DoxyCodeLine{00211\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}\(\backslash\)n\(\backslash\)t\(\backslash\)tLoop.\ \(\backslash\)n"{});}}
+\DoxyCodeLine{00212\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[i]\ =\ 0;}
+\DoxyCodeLine{00213\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00214\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{comment}{//printf("{}\(\backslash\)n\(\backslash\)t\(\backslash\)tEnd.\ \(\backslash\)n"{});}}
+\DoxyCodeLine{00215\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[i]\ =\ 0;}
+\DoxyCodeLine{00216\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00217\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00218\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00219\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ >\ -\/1)\{}
+\DoxyCodeLine{00220\ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[i]\ =\ (sequencer-\/>\mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[i]\ +\ 1)\ \%\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]].\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}};}
+\DoxyCodeLine{00221\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00222\ \ \ \ \ \}}
+\DoxyCodeLine{00223\ \ \ \ \ }
+\DoxyCodeLine{00224\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_aecf022a168a1749dd1483bc6db72545e}\index{sequencer.c@{sequencer.c}!removeChannel@{removeChannel}}
+\index{removeChannel@{removeChannel}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{removeChannel()}{removeChannel()}}
+{\footnotesize\ttfamily \label{sequencer_8c_aecf022a168a1749dd1483bc6db72545e} 
+void remove\+Channel (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{channel\+Index}{}\end{DoxyParamCaption})}
+
+
+
+Removes a channel from the \doxylink{struct_arranger}{Arranger} at the specified index. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+{\em channel\+Index} & Index of the channel to remove. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00052\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{comment}{//\ Check\ if\ the\ channel\ index\ is\ valid}}
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keywordflow}{if}\ (channelIndex\ <\ 0\ ||\ channelIndex\ >=\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}})\ \{}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ printf(\textcolor{stringliteral}{"{}\(\backslash\)t\ ERROR:\ invalid\ channel\ index\ \%d\ (enabled\ channels:\ \%d).\(\backslash\)n"{}},\ channelIndex,\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}});}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00057\ \ \ \ \ \}}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \ \ \ \ \textcolor{comment}{//\ Shift\ channels\ to\ the\ left\ if\ necessary}}
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{keywordflow}{if}\ (channelIndex\ <\ arranger-\/>enabledChannels\ -\/\ 1)\ \{}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ memmove(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[channelIndex],\ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[channelIndex\ +\ 1],\ (arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}\ -\/\ channelIndex\ -\/\ 1)\ *\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}}\ *\ \textcolor{keyword}{sizeof}(\textcolor{keywordtype}{int}));}
+\DoxyCodeLine{00062\ \ \ \ \ \}}
+\DoxyCodeLine{00063\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}-\/-\/;}
+\DoxyCodeLine{00064\ \}}
+
+\end{DoxyCode}
+\Hypertarget{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4}\index{sequencer.c@{sequencer.c}!selectArrangerCell@{selectArrangerCell}}
+\index{selectArrangerCell@{selectArrangerCell}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{selectArrangerCell()}{selectArrangerCell()}}
+{\footnotesize\ttfamily \label{sequencer_8c_aff1910ede8d818b37af321ecccd09ca4} 
+int \texorpdfstring{$\ast$}{*} select\+Arranger\+Cell (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{check\+Blank\+Pattern}{, }\item[{int}]{relativex}{, }\item[{int}]{relativey}{, }\item[{int \texorpdfstring{$\ast$}{*}}]{selected\+Arranger\+Cell}{}\end{DoxyParamCaption})}
+
+
+
+Selects a cell in the \doxylink{struct_arranger}{Arranger} and updates the selected coordinates. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+{\em check\+Blank\+Pattern} & Whether to check for blank patterns. \\
+\hline
+{\em relativex} & Relative x-\/coordinate offset. \\
+\hline
+{\em relativey} & Relative y-\/coordinate offset. \\
+\hline
+{\em selected\+Arranger\+Cell} & Array to store the selected coordinates. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Pointer to the selected coordinates. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00123\ \ \ \ \ \textcolor{keywordtype}{int}\ newx,\ newy;}
+\DoxyCodeLine{00124\ \ \ \ \ newx\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}}\ +\ relativex;}
+\DoxyCodeLine{00125\ \ \ \ \ newy\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}}\ +\ relativey;}
+\DoxyCodeLine{00126\ \ \ \ \ \textcolor{keywordflow}{if}(newx\ >\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}\ -\/\ 1)\{}
+\DoxyCodeLine{00127\ \ \ \ \ \ \ \ \ newx\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}}\ -\/\ 1;}
+\DoxyCodeLine{00128\ \ \ \ \ \}}
+\DoxyCodeLine{00129\ \ \ \ \ \textcolor{keywordflow}{if}(newx\ <\ 0)\{}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ newx\ =\ 0;}
+\DoxyCodeLine{00131\ \ \ \ \ \}}
+\DoxyCodeLine{00132\ \ \ \ \ \textcolor{keywordflow}{if}(newy\ >\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}}\ -\/\ 1)\{}
+\DoxyCodeLine{00133\ \ \ \ \ \ \ \ \ newy\ =\ \mbox{\hyperlink{sequencer_8h_a627cd946d4513d59e667d0a5e4b45e2f}{MAX\_SONG\_LENGTH}}\ -\/\ 1;}
+\DoxyCodeLine{00134\ \ \ \ \ \}}
+\DoxyCodeLine{00135\ \ \ \ \ \textcolor{keywordflow}{if}(newy\ <\ 0)\{}
+\DoxyCodeLine{00136\ \ \ \ \ \ \ \ \ newy\ =\ 0;}
+\DoxyCodeLine{00137\ \ \ \ \ \}}
+\DoxyCodeLine{00138\ \ \ \ \ \textcolor{keywordflow}{if}(arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[newx][newy]\ !=\ -\/1\ ||\ !checkBlankPattern)\{}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}}\ =\ newx;}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}}\ =\ newy;}
+\DoxyCodeLine{00141\ \ \ \ \ \}}
+\DoxyCodeLine{00142\ \ \ \ \ selectedArrangerCell[0]\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}};}
+\DoxyCodeLine{00143\ \ \ \ \ selectedArrangerCell[1]\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a33afc304f8aa2050cc9c91f91bacd245}{selected\_y}};}
+\DoxyCodeLine{00144\ \ \ \ \ \textcolor{comment}{//printf("{}SELECTED:\ \%i,\%i\(\backslash\)n"{},\ selectedArrangerCell[0],\ selectedArrangerCell[1]);}}
+\DoxyCodeLine{00145\ \ \ \ \ \textcolor{keywordflow}{return}\ selectedArrangerCell;}
+\DoxyCodeLine{00146\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_a1be243fd566f52694dd1006b217039db}\index{sequencer.c@{sequencer.c}!selectStep@{selectStep}}
+\index{selectStep@{selectStep}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{selectStep()}{selectStep()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a1be243fd566f52694dd1006b217039db} 
+int select\+Step (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{int}]{pattern\+Index}{, }\item[{int}]{selected\+Step}{}\end{DoxyParamCaption})}
+
+
+
+Selects a step in a pattern and ensures it is within bounds. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em pattern\+Index} & Index of the pattern. \\
+\hline
+{\em selected\+Step} & Index of the step to select. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The selected step index. 
+\end{DoxyReturn}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00148\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00149\ \ \ \ \ \textcolor{keywordtype}{int}\ sequenceLength\ =\ patternList-\/>\mbox{\hyperlink{struct_pattern_list_a4e9655c782697f46f31bee1cc27ad739}{patterns}}[patternIndex].\mbox{\hyperlink{struct_pattern_a2393e340b61feda3b21292fc19205768}{pattern\_size}};}
+\DoxyCodeLine{00150\ \ \ \ \ \textcolor{keywordflow}{if}(selectedStep\ >=\ sequenceLength)\{}
+\DoxyCodeLine{00151\ \ \ \ \ \ \ \ \ selectedStep\ =\ sequenceLength\ -\/\ 1;}
+\DoxyCodeLine{00152\ \ \ \ \ \}}
+\DoxyCodeLine{00153\ \ \ \ \ \textcolor{keywordflow}{if}(selectedStep\ <\ 0)\{}
+\DoxyCodeLine{00154\ \ \ \ \ \ \ \ \ selectedStep\ =\ 0;}
+\DoxyCodeLine{00155\ \ \ \ \ \}}
+\DoxyCodeLine{00156\ }
+\DoxyCodeLine{00157\ \ \ \ \ \textcolor{keywordflow}{return}\ selectedStep;}
+\DoxyCodeLine{00158\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f}\index{sequencer.c@{sequencer.c}!startPlaying@{startPlaying}}
+\index{startPlaying@{startPlaying}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{startPlaying()}{startPlaying()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a126eba9a0bbfff09da99c0751ba4942f} 
+void start\+Playing (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_sequencer}{Sequencer}} \texorpdfstring{$\ast$}{*}}]{sequencer}{, }\item[{\mbox{\hyperlink{struct_pattern_list}{Pattern\+List}} \texorpdfstring{$\ast$}{*}}]{pattern\+List}{, }\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{, }\item[{int}]{play\+Mode}{}\end{DoxyParamCaption})}
+
+
+
+Starts playback in the \doxylink{struct_sequencer}{Sequencer} and \doxylink{struct_arranger}{Arranger} from the current cursor position, resetting all pattern playback posiitons. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em sequencer} & Pointer to the \doxylink{struct_sequencer}{Sequencer}. \\
+\hline
+{\em pattern\+List} & Pointer to the \doxylink{struct_pattern_list}{Pattern\+List}. \\
+\hline
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+{\em play\+Mode} & Playback mode. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00238\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00239\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}}\ =\ 1;}
+\DoxyCodeLine{00240\ \ \ \ \ \textcolor{keywordtype}{int}\ playRow\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_abcbf69e6e9acfc6f6771703b328830f9}{selected\_x}};}
+\DoxyCodeLine{00241\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ arranger-\/>\mbox{\hyperlink{struct_arranger_a1e7fd20039479f7def0b55692699f098}{enabledChannels}};\ i++)\{}
+\DoxyCodeLine{00242\ \ \ \ \ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a9ce765c632d4688ed2324a82e476d629}{playhead\_indices}}[i]\ =\ playRow;}
+\DoxyCodeLine{00243\ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a5497f14887bc8629be9cc1c975be103c}{playhead\_index}}[i]\ =\ 0;}
+\DoxyCodeLine{00244\ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ =\ arranger-\/>\mbox{\hyperlink{struct_arranger_a3401a65a609f1e2075bf9e4377da5feb}{song}}[i][playRow];}
+\DoxyCodeLine{00245\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(sequencer-\/>\mbox{\hyperlink{struct_sequencer_a3b573a882019a11a0cb344702adca340}{pattern\_index}}[i]\ ==\ -\/1)\{}
+\DoxyCodeLine{00246\ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[i]\ =\ 0;}
+\DoxyCodeLine{00247\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00248\ \ \ \ \ \ \ \ \ \ \ \ \ sequencer-\/>\mbox{\hyperlink{struct_sequencer_a0d3ab0c7694ae331fac069e21a47c5f5}{running}}[i]\ =\ 1;}
+\DoxyCodeLine{00249\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00250\ \ \ \ \ \}}
+\DoxyCodeLine{00251\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+
+\Hypertarget{sequencer_8c_a3b7c9ddc992bf12a0abfaa50aa296a59}\index{sequencer.c@{sequencer.c}!stopPlaying@{stopPlaying}}
+\index{stopPlaying@{stopPlaying}!sequencer.c@{sequencer.c}}
+\doxysubsubsection{\texorpdfstring{stopPlaying()}{stopPlaying()}}
+{\footnotesize\ttfamily \label{sequencer_8c_a3b7c9ddc992bf12a0abfaa50aa296a59} 
+void stop\+Playing (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_arranger}{Arranger}} \texorpdfstring{$\ast$}{*}}]{arranger}{}\end{DoxyParamCaption})}
+
+
+
+Stops playback in the \doxylink{struct_arranger}{Arranger}. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em arranger} & Pointer to the \doxylink{struct_arranger}{Arranger}. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00234\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00235\ \ \ \ \ arranger-\/>\mbox{\hyperlink{struct_arranger_a0c99c06fd9d8281fab1012abb27ab6c3}{playing}}\ =\ 0;}
+\DoxyCodeLine{00236\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{main_8c_a840291bc02cba5474a4cb46a9b9566fe}{main()}}.
+

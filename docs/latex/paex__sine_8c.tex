@@ -1,0 +1,128 @@
+\doxysection{paex\+\_\+sine.\+c File Reference}
+\hypertarget{paex__sine_8c}{}\label{paex__sine_8c}\index{paex\_sine.c@{paex\_sine.c}}
+
+
+Play a sine wave for several seconds.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include "{}portaudio.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structpa_test_data}{pa\+Test\+Data}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{paex__sine_8c_a40d4ce5dac355662b3ee76bc605f1430}\label{paex__sine_8c_a40d4ce5dac355662b3ee76bc605f1430} 
+\#define {\bfseries NUM\+\_\+\+SECONDS}~(5)
+\item 
+\Hypertarget{paex__sine_8c_a4b76a0c2859cfd819a343a780070ee2b}\label{paex__sine_8c_a4b76a0c2859cfd819a343a780070ee2b} 
+\#define {\bfseries SAMPLE\+\_\+\+RATE}~(44100)
+\item 
+\Hypertarget{paex__sine_8c_af4f62216aa14e0407faa6631e9ec4c62}\label{paex__sine_8c_af4f62216aa14e0407faa6631e9ec4c62} 
+\#define {\bfseries FRAMES\+\_\+\+PER\+\_\+\+BUFFER}~(64)
+\item 
+\Hypertarget{paex__sine_8c_ae71449b1cc6e6250b91f539153a7a0d3}\label{paex__sine_8c_ae71449b1cc6e6250b91f539153a7a0d3} 
+\#define {\bfseries M\+\_\+\+PI}~(3.\+14159265)
+\item 
+\Hypertarget{paex__sine_8c_a032503e76d6f69bc67e99e909c8125da}\label{paex__sine_8c_a032503e76d6f69bc67e99e909c8125da} 
+\#define {\bfseries TABLE\+\_\+\+SIZE}~(200)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{paex__sine_8c_a840291bc02cba5474a4cb46a9b9566fe}{main}} (void)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Play a sine wave for several seconds. 
+
+\begin{DoxyAuthor}{Author}
+Ross Bencina \href{mailto:rossb@audiomulch.com}{\texttt{ rossb@audiomulch.\+com}} 
+
+Phil Burk \href{mailto:philburk@softsynth.com}{\texttt{ philburk@softsynth.\+com}} 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{paex__sine_8c_a840291bc02cba5474a4cb46a9b9566fe}\index{paex\_sine.c@{paex\_sine.c}!main@{main}}
+\index{main@{main}!paex\_sine.c@{paex\_sine.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily \label{paex__sine_8c_a840291bc02cba5474a4cb46a9b9566fe} 
+int main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00109\ \{}
+\DoxyCodeLine{00110\ \ \ \ \ PaStreamParameters\ outputParameters;}
+\DoxyCodeLine{00111\ \ \ \ \ PaStream\ *stream;}
+\DoxyCodeLine{00112\ \ \ \ \ PaError\ err;}
+\DoxyCodeLine{00113\ \ \ \ \ \mbox{\hyperlink{structpa_test_data}{paTestData}}\ data;}
+\DoxyCodeLine{00114\ \ \ \ \ \textcolor{keywordtype}{int}\ i;}
+\DoxyCodeLine{00115\ }
+\DoxyCodeLine{00116\ \ \ \ \ printf(\textcolor{stringliteral}{"{}PortAudio\ Test:\ output\ sine\ wave.\ SR\ =\ \%d,\ BufSize\ =\ \%d\(\backslash\)n"{}},\ SAMPLE\_RATE,\ FRAMES\_PER\_BUFFER);}
+\DoxyCodeLine{00117\ }
+\DoxyCodeLine{00118\ \ \ \ \ \textcolor{comment}{/*\ initialise\ sinusoidal\ wavetable\ */}}
+\DoxyCodeLine{00119\ \ \ \ \ \textcolor{keywordflow}{for}(\ i=0;\ i<TABLE\_SIZE;\ i++\ )}
+\DoxyCodeLine{00120\ \ \ \ \ \{}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ data.sine[i]\ =\ (float)\ sin(\ ((\textcolor{keywordtype}{double})i/(\textcolor{keywordtype}{double})TABLE\_SIZE)\ *\ M\_PI\ *\ 2.\ );}
+\DoxyCodeLine{00122\ \ \ \ \ \}}
+\DoxyCodeLine{00123\ \ \ \ \ data.left\_phase\ =\ data.right\_phase\ =\ 0;}
+\DoxyCodeLine{00124\ }
+\DoxyCodeLine{00125\ \ \ \ \ err\ =\ Pa\_Initialize();}
+\DoxyCodeLine{00126\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ \ \ \ \ outputParameters.device\ =\ Pa\_GetDefaultOutputDevice();\ \textcolor{comment}{/*\ default\ output\ device\ */}}
+\DoxyCodeLine{00129\ \ \ \ \ \textcolor{keywordflow}{if}\ (outputParameters.device\ ==\ paNoDevice)\ \{}
+\DoxyCodeLine{00130\ \ \ \ \ \ \ \ \ fprintf(stderr,\textcolor{stringliteral}{"{}Error:\ No\ default\ output\ device.\(\backslash\)n"{}});}
+\DoxyCodeLine{00131\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00132\ \ \ \ \ \}}
+\DoxyCodeLine{00133\ \ \ \ \ outputParameters.channelCount\ =\ 2;\ \ \ \ \ \ \ \textcolor{comment}{/*\ stereo\ output\ */}}
+\DoxyCodeLine{00134\ \ \ \ \ outputParameters.sampleFormat\ =\ paFloat32;\ \textcolor{comment}{/*\ 32\ bit\ floating\ point\ output\ */}}
+\DoxyCodeLine{00135\ \ \ \ \ outputParameters.suggestedLatency\ =\ Pa\_GetDeviceInfo(\ outputParameters.device\ )-\/>defaultLowOutputLatency;}
+\DoxyCodeLine{00136\ \ \ \ \ outputParameters.hostApiSpecificStreamInfo\ =\ NULL;}
+\DoxyCodeLine{00137\ }
+\DoxyCodeLine{00138\ \ \ \ \ err\ =\ Pa\_OpenStream(}
+\DoxyCodeLine{00139\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&stream,}
+\DoxyCodeLine{00140\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ NULL,\ \textcolor{comment}{/*\ no\ input\ */}}
+\DoxyCodeLine{00141\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&outputParameters,}
+\DoxyCodeLine{00142\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SAMPLE\_RATE,}
+\DoxyCodeLine{00143\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ FRAMES\_PER\_BUFFER,}
+\DoxyCodeLine{00144\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ paClipOff,\ \ \ \ \ \ \textcolor{comment}{/*\ we\ won't\ output\ out\ of\ range\ samples\ so\ don't\ bother\ clipping\ them\ */}}
+\DoxyCodeLine{00145\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ patestCallback,}
+\DoxyCodeLine{00146\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&data\ );}
+\DoxyCodeLine{00147\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00148\ }
+\DoxyCodeLine{00149\ \ \ \ \ sprintf(\ data.message,\ \textcolor{stringliteral}{"{}No\ Message"{}}\ );}
+\DoxyCodeLine{00150\ \ \ \ \ err\ =\ Pa\_SetStreamFinishedCallback(\ stream,\ \&StreamFinished\ );}
+\DoxyCodeLine{00151\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00152\ }
+\DoxyCodeLine{00153\ \ \ \ \ err\ =\ Pa\_StartStream(\ stream\ );}
+\DoxyCodeLine{00154\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00155\ }
+\DoxyCodeLine{00156\ \ \ \ \ printf(\textcolor{stringliteral}{"{}Play\ for\ \%d\ seconds.\(\backslash\)n"{}},\ NUM\_SECONDS\ );}
+\DoxyCodeLine{00157\ \ \ \ \ Pa\_Sleep(\ NUM\_SECONDS\ *\ 1000\ );}
+\DoxyCodeLine{00158\ }
+\DoxyCodeLine{00159\ \ \ \ \ err\ =\ Pa\_StopStream(\ stream\ );}
+\DoxyCodeLine{00160\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00161\ }
+\DoxyCodeLine{00162\ \ \ \ \ err\ =\ Pa\_CloseStream(\ stream\ );}
+\DoxyCodeLine{00163\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00164\ }
+\DoxyCodeLine{00165\ \ \ \ \ Pa\_Terminate();}
+\DoxyCodeLine{00166\ \ \ \ \ printf(\textcolor{stringliteral}{"{}Test\ finished.\(\backslash\)n"{}});}
+\DoxyCodeLine{00167\ }
+\DoxyCodeLine{00168\ \ \ \ \ \textcolor{keywordflow}{return}\ err;}
+\DoxyCodeLine{00169\ error:}
+\DoxyCodeLine{00170\ \ \ \ \ Pa\_Terminate();}
+\DoxyCodeLine{00171\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}An\ error\ occurred\ while\ using\ the\ portaudio\ stream\(\backslash\)n"{}}\ );}
+\DoxyCodeLine{00172\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}Error\ number:\ \%d\(\backslash\)n"{}},\ err\ );}
+\DoxyCodeLine{00173\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}Error\ message:\ \%s\(\backslash\)n"{}},\ Pa\_GetErrorText(\ err\ )\ );}
+\DoxyCodeLine{00174\ \ \ \ \ \textcolor{keywordflow}{return}\ err;}
+\DoxyCodeLine{00175\ \}}
+
+\end{DoxyCode}

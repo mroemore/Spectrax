@@ -1,0 +1,197 @@
+\doxysection{envelope.\+c File Reference}
+\hypertarget{envelope_8c}{}\label{envelope_8c}\index{envelope.c@{envelope.c}}
+{\ttfamily \#include "{}envelope.\+h"{}}\newline
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD}} (float attack\+\_\+sec, float decay\+\_\+sec, int voice\+\_\+id)
+\item 
+\mbox{\hyperlink{struct_env_stage}{Env\+Stage}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{envelope_8c_a8facfef1873dccca86b90f19994623ea}{init\+Env\+Stage}} (float duration, float curve, int direction)
+\item 
+\mbox{\hyperlink{struct_mod_map}{Mod\+Map}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{envelope_8c_a1786664b791103372e642505858255d0}{init\+Mod\+Map}} (float \texorpdfstring{$\ast$}{*}target, float min, float max, float attenuation, int mod\+Type)
+\item 
+void \mbox{\hyperlink{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210}{apply\+Modulation}} (\mbox{\hyperlink{struct_mod_map}{Mod\+Map}} \texorpdfstring{$\ast$}{*}param, \mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env)
+\item 
+void \mbox{\hyperlink{envelope_8c_a894798cd11760b4835eb6dc4f5257879}{tick\+Env}} (\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env)
+\item 
+void \mbox{\hyperlink{envelope_8c_a3533dde36809a95970adc92b589e5709}{reset\+Envelope}} (\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}env)
+\item 
+float \mbox{\hyperlink{envelope_8c_ac435b115d046e461aa6d95000724941b}{apply\+\_\+envelope}} (float current, float total, float curve)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{envelope_8c_ac435b115d046e461aa6d95000724941b}\index{envelope.c@{envelope.c}!apply\_envelope@{apply\_envelope}}
+\index{apply\_envelope@{apply\_envelope}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{apply\_envelope()}{apply\_envelope()}}
+{\footnotesize\ttfamily \label{envelope_8c_ac435b115d046e461aa6d95000724941b} 
+float apply\+\_\+envelope (\begin{DoxyParamCaption}\item[{float}]{current}{, }\item[{float}]{total}{, }\item[{float}]{curve}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00098\ \{}
+\DoxyCodeLine{00099\ \ \ \ \ \textcolor{keywordflow}{if}\ (curve\ ==\ 1.0f)}
+\DoxyCodeLine{00100\ \ \ \ \ \{}
+\DoxyCodeLine{00101\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ current\ /\ total;\ \textcolor{comment}{//\ Linear}}
+\DoxyCodeLine{00102\ \ \ \ \ \}}
+\DoxyCodeLine{00103\ \ \ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (curve\ >\ 1.0f)}
+\DoxyCodeLine{00104\ \ \ \ \ \{}
+\DoxyCodeLine{00105\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ powf(current\ /\ total,\ curve);\ \textcolor{comment}{//\ Exponential}}
+\DoxyCodeLine{00106\ \ \ \ \ \}}
+\DoxyCodeLine{00107\ \ \ \ \ \textcolor{keywordflow}{else}}
+\DoxyCodeLine{00108\ \ \ \ \ \{}
+\DoxyCodeLine{00109\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ 1.0f\ -\/\ powf(1.0f\ -\/\ current\ /\ total,\ 1.0f\ /\ curve);\ \textcolor{comment}{//\ Logarithmic}}
+\DoxyCodeLine{00110\ \ \ \ \ \}}
+\DoxyCodeLine{00111\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210}{apply\+Modulation()}}.
+
+\Hypertarget{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210}\index{envelope.c@{envelope.c}!applyModulation@{applyModulation}}
+\index{applyModulation@{applyModulation}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{applyModulation()}{applyModulation()}}
+{\footnotesize\ttfamily \label{envelope_8c_a793b1f67dbd0dbadcdad49e820aca210} 
+void apply\+Modulation (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_mod_map}{Mod\+Map}} \texorpdfstring{$\ast$}{*}}]{param}{, }\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{keywordtype}{float}\ envLevel\ =\ \mbox{\hyperlink{envelope_8c_ac435b115d046e461aa6d95000724941b}{apply\_envelope}}((\textcolor{keywordtype}{float})env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}].\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}},\ (\textcolor{keywordtype}{float})env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}].\mbox{\hyperlink{struct_env_stage_aa53ea5f734eb54803d2c565dfa57e3fa}{duration\_in\_samples}},\ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}].\mbox{\hyperlink{struct_env_stage_afa6c9138cd45a4ed2e1e25c735923f31}{curve}});}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordflow}{if}(envLevel\ <\ 0.1f)\{\ \textcolor{comment}{//TO-\/DO\ fix\ this\ hacky\ shit}}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ envLevel\ =\ 0.0f;}
+\DoxyCodeLine{00047\ \ \ \ \ \}}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keywordflow}{if}(env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}].\mbox{\hyperlink{struct_env_stage_a6e722d66ec5f33fa7c05cfbf5ea97320}{direction}}\ <\ 0)\{}
+\DoxyCodeLine{00049\ \ \ \ \ \ \ \ \ envLevel\ =\ 1.0f\ -\/\ envLevel;}
+\DoxyCodeLine{00050\ \ \ \ \ \}}
+\DoxyCodeLine{00051\ }
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{comment}{//envLevel\ *=\ param-\/>attenuation;}}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keywordflow}{switch}(param-\/>\mbox{\hyperlink{struct_mod_map_a3dc9f4596defa70d3f5566e33601f829}{modType}})\{}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950acfcf145f2788bf340ff3f3098bc54909}{ADD}}:}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}}\ =\ *param-\/>\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}}\ +\ envLevel;}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00057\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a12b733d4941495e86811fe6ceeeff9da}{SUB}}:}
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}}\ =\ *param-\/>\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}}\ -\/\ envLevel;}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00060\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a086ab1f2f4dac104b6826ebe0eaba8fd}{MUL}}:}
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}}\ =\ *param-\/>\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}}\ *\ envLevel;}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00063\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{case}\ \mbox{\hyperlink{envelope_8h_a95dd147ee168d2d32d6d5792a57db950a8565f0d60c3ba6d468661c49d86e9744}{DIV}}:}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ \ \ \ \ \ param-\/>\mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}}\ =\ *param-\/>\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}}\ /\ envLevel;}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{break};}
+\DoxyCodeLine{00066\ \ \ \ \ \}}
+\DoxyCodeLine{00067\ \}}
+
+\end{DoxyCode}
+\Hypertarget{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}\index{envelope.c@{envelope.c}!defaultAD@{defaultAD}}
+\index{defaultAD@{defaultAD}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{defaultAD()}{defaultAD()}}
+{\footnotesize\ttfamily \label{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de} 
+\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*} default\+AD (\begin{DoxyParamCaption}\item[{float}]{attack\+\_\+sec}{, }\item[{float}]{decay\+\_\+sec}{, }\item[{int}]{voice\+\_\+id}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00008\ \{}
+\DoxyCodeLine{00009\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}\ *env\ =\ (\mbox{\hyperlink{struct_envelope}{Envelope}}\ *)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_envelope}{Envelope}}));}
+\DoxyCodeLine{00010\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}}\ =\ 2;}
+\DoxyCodeLine{00011\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}\ =\ 0;}
+\DoxyCodeLine{00012\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a44383cfe11cae0a97253ad6633e94f25}{voice\_id}}\ =\ voice\_id;}
+\DoxyCodeLine{00013\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}{running}}\ =\ 0;}
+\DoxyCodeLine{00014\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}{loop}}\ =\ 0;}
+\DoxyCodeLine{00015\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}\ =\ (\mbox{\hyperlink{struct_env_stage}{EnvStage}}\ *)malloc(env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}}\ *\ \textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_env_stage}{EnvStage}}));}
+\DoxyCodeLine{00016\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[0]\ =\ *\mbox{\hyperlink{envelope_8c_a8facfef1873dccca86b90f19994623ea}{initEnvStage}}(attack\_sec,\ 1.0f,\ 1);}
+\DoxyCodeLine{00017\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[1]\ =\ *\mbox{\hyperlink{envelope_8c_a8facfef1873dccca86b90f19994623ea}{initEnvStage}}(decay\_sec,\ 1.5f,\ -\/1);}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keywordflow}{return}\ env;}
+\DoxyCodeLine{00019\ \}}
+
+\end{DoxyCode}
+\Hypertarget{envelope_8c_a8facfef1873dccca86b90f19994623ea}\index{envelope.c@{envelope.c}!initEnvStage@{initEnvStage}}
+\index{initEnvStage@{initEnvStage}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{initEnvStage()}{initEnvStage()}}
+{\footnotesize\ttfamily \label{envelope_8c_a8facfef1873dccca86b90f19994623ea} 
+\mbox{\hyperlink{struct_env_stage}{Env\+Stage}} \texorpdfstring{$\ast$}{*} init\+Env\+Stage (\begin{DoxyParamCaption}\item[{float}]{duration}{, }\item[{float}]{curve}{, }\item[{int}]{direction}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00022\ \{}
+\DoxyCodeLine{00023\ \ \ \ \ \mbox{\hyperlink{struct_env_stage}{EnvStage}}\ *stage\ =\ (\mbox{\hyperlink{struct_env_stage}{EnvStage}}\ *)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_env_stage}{EnvStage}}));}
+\DoxyCodeLine{00024\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_env_stage_aa53ea5f734eb54803d2c565dfa57e3fa}{duration\_in\_samples}}\ =\ (int)(duration\ *\ 44100);}
+\DoxyCodeLine{00025\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_env_stage_afa6c9138cd45a4ed2e1e25c735923f31}{curve}}\ =\ curve;}
+\DoxyCodeLine{00026\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}}\ =\ 0;}
+\DoxyCodeLine{00027\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_env_stage_a3c7304b3310680d55486da4c8404920c}{target}}\ =\ 1.0f;}
+\DoxyCodeLine{00028\ \ \ \ \ stage-\/>\mbox{\hyperlink{struct_env_stage_a6e722d66ec5f33fa7c05cfbf5ea97320}{direction}}\ =\ direction;}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordflow}{return}\ stage;\ \ \ }
+\DoxyCodeLine{00030\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{envelope_8c_a78021be178803b48b9e1ef4ef7b8f4de}{default\+AD()}}.
+
+\Hypertarget{envelope_8c_a1786664b791103372e642505858255d0}\index{envelope.c@{envelope.c}!initModMap@{initModMap}}
+\index{initModMap@{initModMap}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{initModMap()}{initModMap()}}
+{\footnotesize\ttfamily \label{envelope_8c_a1786664b791103372e642505858255d0} 
+\mbox{\hyperlink{struct_mod_map}{Mod\+Map}} \texorpdfstring{$\ast$}{*} init\+Mod\+Map (\begin{DoxyParamCaption}\item[{float \texorpdfstring{$\ast$}{*}}]{target}{, }\item[{float}]{min}{, }\item[{float}]{max}{, }\item[{float}]{attenuation}{, }\item[{int}]{mod\+Type}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00032\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00033\ \ \ \ \ \mbox{\hyperlink{struct_mod_map}{ModMap}}*\ map\ =\ (\mbox{\hyperlink{struct_mod_map}{ModMap}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_mod_map}{ModMap}}));}
+\DoxyCodeLine{00034\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_a431d959cc2afcb2c307ee66ff3629580}{target}}\ =\ target;}
+\DoxyCodeLine{00035\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_a09e64c01fcf3c54d73955903ea1a8092}{result}}\ =\ *target;}
+\DoxyCodeLine{00036\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_ac607273977e022519596ff047bbaaa10}{min\_val}}\ =\ min;}
+\DoxyCodeLine{00037\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_a0302e1961d3a8df205350b7ce0b1dba4}{max\_val}}\ =\ max;}
+\DoxyCodeLine{00038\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_a66ca11d78c2829e9a6974a194c6c93c6}{attenuation}}\ =\ attenuation;}
+\DoxyCodeLine{00039\ \ \ \ \ map-\/>\mbox{\hyperlink{struct_mod_map_a3dc9f4596defa70d3f5566e33601f829}{modType}}\ =\ modType;}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keywordflow}{return}\ map;}
+\DoxyCodeLine{00041\ \}}
+
+\end{DoxyCode}
+\Hypertarget{envelope_8c_a3533dde36809a95970adc92b589e5709}\index{envelope.c@{envelope.c}!resetEnvelope@{resetEnvelope}}
+\index{resetEnvelope@{resetEnvelope}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{resetEnvelope()}{resetEnvelope()}}
+{\footnotesize\ttfamily \label{envelope_8c_a3533dde36809a95970adc92b589e5709} 
+void reset\+Envelope (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00085\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_ad47005458ef188a8f154ad2bdb32f4c5}{currentLevel}}\ =\ 0.0f;}
+\DoxyCodeLine{00086\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}\ =\ 0;}
+\DoxyCodeLine{00087\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}{running}}\ =\ 0;}
+\DoxyCodeLine{00088\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ si\ =\ 0;\ si\ <\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}};\ si++)\{}
+\DoxyCodeLine{00089\ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[si].\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}}\ =\ 0;}
+\DoxyCodeLine{00090\ \ \ \ \ \}}
+\DoxyCodeLine{00091\ \}}
+
+\end{DoxyCode}
+\Hypertarget{envelope_8c_a894798cd11760b4835eb6dc4f5257879}\index{envelope.c@{envelope.c}!tickEnv@{tickEnv}}
+\index{tickEnv@{tickEnv}!envelope.c@{envelope.c}}
+\doxysubsubsection{\texorpdfstring{tickEnv()}{tickEnv()}}
+{\footnotesize\ttfamily \label{envelope_8c_a894798cd11760b4835eb6dc4f5257879} 
+void tick\+Env (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{struct_envelope}{Envelope}} \texorpdfstring{$\ast$}{*}}]{env}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00069\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keywordtype}{int}\ si\ =\ env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}};}
+\DoxyCodeLine{00071\ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[si].\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}}\ +=\ 2;}
+\DoxyCodeLine{00072\ \ \ \ \ \textcolor{keywordflow}{if}(env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[si].\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}}\ >=\ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[si].\mbox{\hyperlink{struct_env_stage_aa53ea5f734eb54803d2c565dfa57e3fa}{duration\_in\_samples}})\{}
+\DoxyCodeLine{00073\ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a4bac8fc772e3a70a1ffd887fa3e25914}{stages}}[si].\mbox{\hyperlink{struct_env_stage_a25383246422295d9fbef0aa8948e73c1}{current\_sample\_index}}\ =\ 0;}
+\DoxyCodeLine{00074\ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}\ =\ ++si;}
+\DoxyCodeLine{00075\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}\ \ >=\ env-\/>\mbox{\hyperlink{struct_envelope_a0cb9cab340064cc745ad91e74de6f39c}{stageCount}})\{}
+\DoxyCodeLine{00076\ \ \ \ \ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a013d68ea3dc3ed274f957df8054b4b5c}{stageIndex}}\ =\ 0;}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}(!env-\/>\mbox{\hyperlink{struct_envelope_a711ccfdf91743ced0d119afeb1ad9edb}{loop}})\{}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ env-\/>\mbox{\hyperlink{struct_envelope_a7bd4d44f8e28f469ed9d260a2b054f50}{running}}\ =\ 0;}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00081\ \ \ \ \ \}}
+\DoxyCodeLine{00082\ \}}
+
+\end{DoxyCode}

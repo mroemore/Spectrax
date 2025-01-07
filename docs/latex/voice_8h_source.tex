@@ -1,0 +1,76 @@
+\doxysection{voice.\+h}
+\hypertarget{voice_8h_source}{}\label{voice_8h_source}\mbox{\hyperlink{voice_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ VOICE\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ VOICE\_H}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <stdlib.h>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{settings_8h}{settings.h}}"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{oscillator_8h}{oscillator.h}}"{}}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{sample_8h}{sample.h}}"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{notes_8h}{notes.h}}"{}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{modsystem_8h}{modsystem.h}}"{}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{blit__synth_8h}{blit\_synth.h}}"{}}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#define\ MAX\_VOICES\_PER\_CHANNEL\ 6}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#define\ MAX\_LFOS\ 8}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#define\ MAX\_ENVELOPES\ 8}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa197c30a4e5e48c2a374bbee64eb7f96c}{VOICE\_TYPE\_OSCILLATOR}},}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aab66ebe7c3ab774d6ad9450dcfeb4e205}{VOICE\_TYPE\_SAMPLE}},}
+\DoxyCodeLine{00018\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa3fe04767cb89b2f0754fea47420dc187}{VOICE\_TYPE\_FM}},}
+\DoxyCodeLine{00019\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826aa6728d16851f5c008768e268123acb2c7}{VOICE\_TYPE\_BLEP}}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \}\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{VoiceType}};}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{enum}\ \{}
+\DoxyCodeLine{00024\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a01fa12aa1874ff4303fb22b56aafcc5d}{IT\_OSCILLATOR}},}
+\DoxyCodeLine{00025\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69a1bd60db021caf7c530dbe8ec01acfa26}{IT\_SAMPLE}},}
+\DoxyCodeLine{00026\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69af0d2c4b095a4ae93c5575218f096e131}{IT\_FM}},}
+\DoxyCodeLine{00027\ \ \ \ \ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69afb332bd1b07d67c388c0ff465ddf4b36}{IT\_BLEP}}}
+\DoxyCodeLine{00028\ \}\ \mbox{\hyperlink{voice_8h_a78a53e954df1d387bae9b3680287ec69}{InstrumentType}};}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00030\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_voice_a5344c0f8c7afb5b43a459ea7b4f4fcb7}{left\_phase}};}
+\DoxyCodeLine{00032\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_voice_a6d5d20ced3b32c7acdc8b2469c2307bd}{right\_phase}};}
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_a00362f21ed0f6e093c3676d6091c3e60}{samples\_elapsed}};}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_a2bae25f587209cd9bdaa347e4f023760}{active}};}
+\DoxyCodeLine{00035\ \ \ \ \ \mbox{\hyperlink{struct_param_list}{ParamList}}*\ \mbox{\hyperlink{struct_voice_a2e3e471d74ffa6e28e95a8e72314e31b}{paramList}};}
+\DoxyCodeLine{00036\ \ \ \ \ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ \mbox{\hyperlink{struct_voice_a496ce60e3e7f29528fd6671c2bea1f0e}{modList}};}
+\DoxyCodeLine{00037\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ \mbox{\hyperlink{struct_voice_a6d2f5b68511f4c2179f97b25b81608d0}{volume}};}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_a89a30f4ca48ac0892e0280469c109eed}{instrument\_index}};}
+\DoxyCodeLine{00039\ \ \ \ \ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{VoiceType}}\ \mbox{\hyperlink{struct_voice_ad4e1377cc8f655c29be9c880d10ecaa5}{type}};}
+\DoxyCodeLine{00040\ \ \ \ \ \textcolor{keyword}{union\ }\{}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_oscillator}{Oscillator}}\ \mbox{\hyperlink{struct_voice_a3518d5c3996e7c1669d009d0ad06f47f}{oscillator}};}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_sample}{Sample}}\ \mbox{\hyperlink{struct_voice_aec4195239899da41faab6855f72ff3b0}{sample}};}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \mbox{\hyperlink{struct_operator}{Operator}}\ *\mbox{\hyperlink{struct_voice_a80aead0564cd15faf2ca4b6122694f40}{operators}}[4];}
+\DoxyCodeLine{00044\ \ \ \ \ \}\ source;}
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_voice_a66a71efd087202f4ec4f4d1b6ef60835}{sample\_position}};\ \textcolor{comment}{//\ Position\ in\ the\ sample\ data}}
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_a80e25d7e7b35425ae77e2476db183e52}{note}}[2];}
+\DoxyCodeLine{00047\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ \mbox{\hyperlink{struct_voice_a23efb4fdc3167340b6e493817176b34e}{frequency}};}
+\DoxyCodeLine{00048\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_a399749dca6d795322de6a9b159c9558a}{env\_count}};}
+\DoxyCodeLine{00049\ \ \ \ \ \mbox{\hyperlink{struct_envelope}{Envelope}}*\ \mbox{\hyperlink{struct_voice_a397189b385767896fce920a8e145a417}{envelope}}[4];}
+\DoxyCodeLine{00050\ \ \ \ \ \mbox{\hyperlink{struct_l_f_o}{LFO}}\ *\ \mbox{\hyperlink{struct_voice_a762671c46b79b727fd772d8fb380f493}{lfo}}[2];}
+\DoxyCodeLine{00051\ \}\ \mbox{\hyperlink{struct_voice}{Voice}};}
+\DoxyCodeLine{00052\ }
+\DoxyCodeLine{00053\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00054\ \ \ \ \ \mbox{\hyperlink{struct_voice}{Voice}}*\ \mbox{\hyperlink{struct_voice_manager_a846c20e27724b1d6d72f512961034f50}{voicePools}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}][\mbox{\hyperlink{voice_8h_a44a241a0de87be69f511d69a94f95178}{MAX\_VOICES\_PER\_CHANNEL}}];}
+\DoxyCodeLine{00055\ \ \ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{struct_voice_manager_aef89bd9c23d06db259fa6ecdeca6f786}{voiceCount}}[\mbox{\hyperlink{settings_8h_a65e1535f1c96d54c9a70c045b70b2c2d}{MAX\_SEQUENCER\_CHANNELS}}];}
+\DoxyCodeLine{00056\ \}\ \mbox{\hyperlink{struct_voice_manager}{VoiceManager}};}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00058\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00059\ \ \ \ \ \mbox{\hyperlink{struct_sample}{Sample}}*\ \mbox{\hyperlink{struct_instrument_afc5876bc89d689a557cee9b7ef3c0e6e}{sample}};}
+\DoxyCodeLine{00060\ \}\ \mbox{\hyperlink{struct_instrument}{Instrument}};}
+\DoxyCodeLine{00061\ }
+\DoxyCodeLine{00062\ \mbox{\hyperlink{struct_voice_manager}{VoiceManager}}*\ \mbox{\hyperlink{voice_8h_abbc53a9b72a0325ae209cc677d06dbc8}{createVoiceManager}}();}
+\DoxyCodeLine{00063\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_ad5693b655ab868f32807784b02b0c19e}{initVoicePool}}(\mbox{\hyperlink{struct_voice_manager}{VoiceManager}}*\ vm,\ \textcolor{keywordtype}{int}\ seqChannel,\ \textcolor{keywordtype}{int}\ voiceCount,\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{VoiceType}}\ vt);}
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00065\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_a1df6d04e0e20e2a924c5e56feccd818e}{initialize\_voice}}(\mbox{\hyperlink{struct_voice}{Voice}}\ *voice,\ \mbox{\hyperlink{voice_8h_a5be0dfd9d8c4f0dade7ea851df0c826a}{VoiceType}}\ voiceType,\ \mbox{\hyperlink{struct_sample}{Sample}}*\ sample);}
+\DoxyCodeLine{00066\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_a20194ca21a6ac5b4f5d655779774c429}{initialize\_voice\_sample}}(\mbox{\hyperlink{struct_voice}{Voice}}\ *voice,\ \mbox{\hyperlink{struct_sample}{Sample}}\ sample,\ \textcolor{keywordtype}{int}\ voice\_id,\ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ modList);}
+\DoxyCodeLine{00067\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_a55b537cf91d37e775b3fb7bb267882c0}{initialize\_voice\_blep}}(\mbox{\hyperlink{struct_voice}{Voice}}\ *voice,\ \textcolor{keywordtype}{int}\ voice\_id,\ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ modList);}
+\DoxyCodeLine{00068\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_adc13c643066be852d8093826594376ce}{initialize\_voice\_fm}}(\mbox{\hyperlink{struct_voice}{Voice}}\ *voice,\ \textcolor{keywordtype}{int}\ voice\_id,\ \mbox{\hyperlink{struct_mod_list}{ModList}}*\ modList);}
+\DoxyCodeLine{00069\ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{voice_8h_ab23c06818e96353f7291be2c6bea255c}{init\_instrument}}(\mbox{\hyperlink{struct_instrument}{Instrument}}*\ instrument,\ \mbox{\hyperlink{struct_sample}{Sample}}*\ sample);}
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ VOICE\_H}}
+
+\end{DoxyCode}

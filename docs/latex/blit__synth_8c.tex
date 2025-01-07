@@ -1,0 +1,142 @@
+\doxysection{blit\+\_\+synth.\+c File Reference}
+\hypertarget{blit__synth_8c}{}\label{blit__synth_8c}\index{blit\_synth.c@{blit\_synth.c}}
+{\ttfamily \#include "{}blit\+\_\+synth.\+h"{}}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include $<$stdint.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{blit__synth_8c_ae5e64470f657ae9719c340970b137b60}{poly\+\_\+blep}} (float phase\+Increment, float t)
+\item 
+float \mbox{\hyperlink{blit__synth_8c_a42c84e9ea0c6c531ecc3fbae97849c3b}{noblep\+\_\+sine}} (float phase)
+\item 
+float \mbox{\hyperlink{blit__synth_8c_a876eddce24a62a7fd8894ec72e536009}{blep\+\_\+tri}} (float phase, float increment)
+\item 
+float \mbox{\hyperlink{blit__synth_8c_aa31158bcd30346bc7e0dabf71a98cdcb}{blep\+\_\+saw}} (float phase, float increment)
+\item 
+float \mbox{\hyperlink{blit__synth_8c_ad491b6b22e762bd827c92bd241e3a821}{blep\+\_\+square}} (float phase, float increment)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{blit__synth_8c_aa31158bcd30346bc7e0dabf71a98cdcb}\index{blit\_synth.c@{blit\_synth.c}!blep\_saw@{blep\_saw}}
+\index{blep\_saw@{blep\_saw}!blit\_synth.c@{blit\_synth.c}}
+\doxysubsubsection{\texorpdfstring{blep\_saw()}{blep\_saw()}}
+{\footnotesize\ttfamily \label{blit__synth_8c_aa31158bcd30346bc7e0dabf71a98cdcb} 
+float blep\+\_\+saw (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00051\ \{}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 0.0f;\ \textcolor{comment}{//\ Init\ output\ to\ avoid\ nasty\ surprises}}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keywordtype}{float}\ t\ =\ phase\ /\ \mbox{\hyperlink{blit__synth_8h_a4912c64aec0c943b7985db6cb61ff83a}{TWOPI}};\ \textcolor{comment}{//\ Define\ half\ phase}}
+\DoxyCodeLine{00054\ \ \ \ \ }
+\DoxyCodeLine{00055\ \ \ \ \ value\ =\ (2.0f\ *\ t)\ -\/\ 1.0f;\ \textcolor{comment}{//\ Render\ naive\ waveshape}}
+\DoxyCodeLine{00056\ \ \ \ \ value\ -\/=\ \mbox{\hyperlink{blit__synth_8c_ae5e64470f657ae9719c340970b137b60}{poly\_blep}}(increment,\ t);\ \textcolor{comment}{//\ Layer\ output\ of\ Poly\ BLEP\ on\ top}}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordflow}{return}\ value;\ \textcolor{comment}{//\ Output}}
+\DoxyCodeLine{00059\ \}}
+
+\end{DoxyCode}
+\Hypertarget{blit__synth_8c_ad491b6b22e762bd827c92bd241e3a821}\index{blit\_synth.c@{blit\_synth.c}!blep\_square@{blep\_square}}
+\index{blep\_square@{blep\_square}!blit\_synth.c@{blit\_synth.c}}
+\doxysubsubsection{\texorpdfstring{blep\_square()}{blep\_square()}}
+{\footnotesize\ttfamily \label{blit__synth_8c_ad491b6b22e762bd827c92bd241e3a821} 
+float blep\+\_\+square (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00062\ \{}
+\DoxyCodeLine{00063\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 0.0f;\ \textcolor{comment}{//\ Init\ output\ to\ avoid\ nasty\ surprises}}
+\DoxyCodeLine{00064\ \ \ \ \ \textcolor{keywordtype}{float}\ t\ =\ phase\ /\ \mbox{\hyperlink{blit__synth_8h_a4912c64aec0c943b7985db6cb61ff83a}{TWOPI}};\ \textcolor{comment}{//\ Define\ half\ phase}}
+\DoxyCodeLine{00065\ \ \ \ \ }
+\DoxyCodeLine{00066\ \ \ \ \ }
+\DoxyCodeLine{00067\ \ \ \ \ \textcolor{keywordflow}{if}\ (phase\ <\ M\_PI)}
+\DoxyCodeLine{00068\ \ \ \ \ \{\ \ \ \ \ }
+\DoxyCodeLine{00069\ \ \ \ \ value\ =\ 1.0f;\ \textcolor{comment}{//\ Flip\ }}
+\DoxyCodeLine{00070\ \ \ \ \ value\ -\/=\ \mbox{\hyperlink{blit__synth_8c_ae5e64470f657ae9719c340970b137b60}{poly\_blep}}(increment,\ t);\ \textcolor{comment}{//\ Layer\ output\ of\ Poly\ BLEP\ on\ top\ (flip)}}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{\ }
+\DoxyCodeLine{00073\ \ \ \ \ value\ =\ -\/1.0f;\ \textcolor{comment}{//\ Flop}}
+\DoxyCodeLine{00074\ \ \ \ \ value\ +=\ \mbox{\hyperlink{blit__synth_8c_ae5e64470f657ae9719c340970b137b60}{poly\_blep}}(increment,\ fmod(t\ +\ 0.5f,\ 1.0f));\ \textcolor{comment}{//\ Layer\ output\ of\ Poly\ BLEP\ on\ top\ (flop)}}
+\DoxyCodeLine{00075\ \ \ \ \ \}}
+\DoxyCodeLine{00076\ \ \ \ \ }
+\DoxyCodeLine{00077\ \ \ \ \ \textcolor{keywordflow}{return}\ value;\ \textcolor{comment}{//\ Output}}
+\DoxyCodeLine{00078\ \}}
+
+\end{DoxyCode}
+\Hypertarget{blit__synth_8c_a876eddce24a62a7fd8894ec72e536009}\index{blit\_synth.c@{blit\_synth.c}!blep\_tri@{blep\_tri}}
+\index{blep\_tri@{blep\_tri}!blit\_synth.c@{blit\_synth.c}}
+\doxysubsubsection{\texorpdfstring{blep\_tri()}{blep\_tri()}}
+{\footnotesize\ttfamily \label{blit__synth_8c_a876eddce24a62a7fd8894ec72e536009} 
+float blep\+\_\+tri (\begin{DoxyParamCaption}\item[{float}]{phase}{, }\item[{float}]{increment}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00032\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00033\ \ \ \ \ \textcolor{keywordtype}{float}\ value\ =\ 0.0f;\ \textcolor{comment}{//\ Init\ output\ to\ avoid\ nasty\ surprises}}
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{float}\ t\ =\ phase\ /\ \mbox{\hyperlink{blit__synth_8h_a4912c64aec0c943b7985db6cb61ff83a}{TWOPI}};\ \textcolor{comment}{//\ Define\ half\ phase}}
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{float}\ ttwo\ =\ (2.0f\ *\ t);}
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keywordflow}{if}(phase\ <\ 0.0f)\{}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ value\ =\ 1.0f\ -\/\ ttwo;}
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{comment}{//\ \ value\ -\/=\ poly\_blep(increment,\ t);}}
+\DoxyCodeLine{00039\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00040\ \ \ \ \ \ \ \ \ value\ =\ ttwo;}
+\DoxyCodeLine{00041\ \ \ \ \ \textcolor{comment}{//\ \ value\ +=\ poly\_blep(increment,\ t);}}
+\DoxyCodeLine{00042\ \ \ \ \ \}}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ \ \ \ \ value\ -\/=\ 1.0f;}
+\DoxyCodeLine{00045\ \ \ \ \ }
+\DoxyCodeLine{00046\ \ \ \ \ }
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keywordflow}{return}\ value;}
+\DoxyCodeLine{00048\ \}}
+
+\end{DoxyCode}
+\Hypertarget{blit__synth_8c_a42c84e9ea0c6c531ecc3fbae97849c3b}\index{blit\_synth.c@{blit\_synth.c}!noblep\_sine@{noblep\_sine}}
+\index{noblep\_sine@{noblep\_sine}!blit\_synth.c@{blit\_synth.c}}
+\doxysubsubsection{\texorpdfstring{noblep\_sine()}{noblep\_sine()}}
+{\footnotesize\ttfamily \label{blit__synth_8c_a42c84e9ea0c6c531ecc3fbae97849c3b} 
+float noblep\+\_\+sine (\begin{DoxyParamCaption}\item[{float}]{phase}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keywordflow}{return}\ sin(\mbox{\hyperlink{blit__synth_8h_a4912c64aec0c943b7985db6cb61ff83a}{TWOPI}}\ *\ phase);}
+\DoxyCodeLine{00030\ \}}
+
+\end{DoxyCode}
+\Hypertarget{blit__synth_8c_ae5e64470f657ae9719c340970b137b60}\index{blit\_synth.c@{blit\_synth.c}!poly\_blep@{poly\_blep}}
+\index{poly\_blep@{poly\_blep}!blit\_synth.c@{blit\_synth.c}}
+\doxysubsubsection{\texorpdfstring{poly\_blep()}{poly\_blep()}}
+{\footnotesize\ttfamily \label{blit__synth_8c_ae5e64470f657ae9719c340970b137b60} 
+float poly\+\_\+blep (\begin{DoxyParamCaption}\item[{float}]{phase\+Increment}{, }\item[{float}]{t}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00008\ \{}
+\DoxyCodeLine{00009\ \ \ \textcolor{keywordtype}{float}\ dt\ =\ phaseIncrement\ /\ \mbox{\hyperlink{blit__synth_8h_a4912c64aec0c943b7985db6cb61ff83a}{TWOPI}};}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \ \ \textcolor{comment}{//\ t-\/t\string^2/2\ +1/2}}
+\DoxyCodeLine{00012\ \ \ \textcolor{comment}{//\ 0\ <\ t\ <=\ 1}}
+\DoxyCodeLine{00013\ \ \ \textcolor{comment}{//\ discontinuities\ between\ 0\ \&\ 1}}
+\DoxyCodeLine{00014\ \ \ \textcolor{keywordflow}{if}\ (t\ <\ dt)\ }
+\DoxyCodeLine{00015\ \ \ \{}
+\DoxyCodeLine{00016\ \ \ \ t\ /=\ dt;}
+\DoxyCodeLine{00017\ \ \ \ \textcolor{keywordflow}{return}\ t\ +\ t\ -\/\ t\ *\ t\ -\/\ 1.0f;}
+\DoxyCodeLine{00018\ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ (t\ >\ 1.0f\ -\/\ dt)\ \{}
+\DoxyCodeLine{00019\ \ \ \ t\ =\ (t\ -\/\ 1.0f)\ /\ dt;}
+\DoxyCodeLine{00020\ \ \ \ \textcolor{keywordflow}{return}\ t\ *\ t\ +\ t\ +\ t\ +\ 1.0f;}
+\DoxyCodeLine{00021\ \ \ \}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \ \ \textcolor{comment}{//\ no\ discontinuities\ }}
+\DoxyCodeLine{00024\ \ \ \textcolor{comment}{//\ 0\ otherwise}}
+\DoxyCodeLine{00025\ \ \ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{return}\ 0.0f;}
+\DoxyCodeLine{00026\ \}}
+
+\end{DoxyCode}
+
+
+Referenced by \mbox{\hyperlink{blit__synth_8c_aa31158bcd30346bc7e0dabf71a98cdcb}{blep\+\_\+saw()}}, and \mbox{\hyperlink{blit__synth_8c_ad491b6b22e762bd827c92bd241e3a821}{blep\+\_\+square()}}.
+

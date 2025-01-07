@@ -1,0 +1,29 @@
+\doxysection{settings.\+c File Reference}
+\hypertarget{settings_8c}{}\label{settings_8c}\index{settings.c@{settings.c}}
+{\ttfamily \#include "{}settings.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*} \mbox{\hyperlink{settings_8c_a57e3e1d0f13fb573e864dae203b17c27}{create\+Settings}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{settings_8c_a57e3e1d0f13fb573e864dae203b17c27}\index{settings.c@{settings.c}!createSettings@{createSettings}}
+\index{createSettings@{createSettings}!settings.c@{settings.c}}
+\doxysubsubsection{\texorpdfstring{createSettings()}{createSettings()}}
+{\footnotesize\ttfamily \label{settings_8c_a57e3e1d0f13fb573e864dae203b17c27} 
+\mbox{\hyperlink{struct_settings}{Settings}} \texorpdfstring{$\ast$}{*} create\+Settings (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00003\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00004\ \ \ \ \ \mbox{\hyperlink{struct_settings}{Settings}}*\ settings\ =\ (\mbox{\hyperlink{struct_settings}{Settings}}*)malloc(\textcolor{keyword}{sizeof}(\mbox{\hyperlink{struct_settings}{Settings}}));}
+\DoxyCodeLine{00005\ \ \ \ \ \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ MAX\_SEQ\_CHAN;\ i++)\{}
+\DoxyCodeLine{00006\ \ \ \ \ \ \ \ \ settings-\/>defaultInstrumentTypes[i]\ =\ 2;}
+\DoxyCodeLine{00007\ \ \ \ \ \}}
+\DoxyCodeLine{00008\ \ \ \ \ settings-\/>\mbox{\hyperlink{struct_settings_a5fb6aa95e3dbd5256584d7e71d027040}{defaultSequenceLength}}\ =\ 16;}
+\DoxyCodeLine{00009\ \ \ \ \ settings-\/>defaultSequencerChannels\ =\ 4;}
+\DoxyCodeLine{00010\ \}}
+
+\end{DoxyCode}

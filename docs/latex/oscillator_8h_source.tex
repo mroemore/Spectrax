@@ -1,0 +1,34 @@
+\doxysection{oscillator.\+h}
+\hypertarget{oscillator_8h_source}{}\label{oscillator_8h_source}\mbox{\hyperlink{oscillator_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ OSCILLATOR\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ OSCILLATOR\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{modsystem_8h}{modsystem.h}}"{}}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#define\ SAMPLE\_RATE\ (44100)}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00010\ \ \ \ \ float\ (*\mbox{\hyperlink{struct_oscillator_ac2641f72be5e18a8c1c49c7cebb36869}{generate}})(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00011\ \}\ \mbox{\hyperlink{struct_oscillator}{Oscillator}};}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{keyword}{typedef}\ \textcolor{keyword}{struct\ }\{}
+\DoxyCodeLine{00014\ \ \ \ \ float\ (*\mbox{\hyperlink{struct_operator_a075caf2adeb23da4603928b1878c1b87}{generate}})(\textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}},\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00015\ \ \ \ \ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{struct_operator_afa4b2e69bc6d8061bb1ae89d1140dda7}{phase}};}
+\DoxyCodeLine{00016\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ \mbox{\hyperlink{struct_operator_ab7607800179e3bf38b145d146874c39a}{ratio}};}
+\DoxyCodeLine{00017\ \ \ \ \ \mbox{\hyperlink{struct_parameter}{Parameter}}*\ \mbox{\hyperlink{struct_operator_a3cf93a0cf4c712ca4694e5129277b9f8}{level}};}
+\DoxyCodeLine{00018\ \}\ \mbox{\hyperlink{struct_operator}{Operator}};}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_a7be07feaa3258a8c433788f95f8b3e0c}{sawtooth\_wave}}(\textcolor{keywordtype}{float}\ phase);}
+\DoxyCodeLine{00021\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_a70041d7c6c3a6964143f97fd5324e975}{sine\_wave}}(\textcolor{keywordtype}{float}\ phase,\ \ \textcolor{keywordtype}{float}\ mod);}
+\DoxyCodeLine{00022\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_aa292c6d5c52887711ea0ee83838e7701}{square\_wave}}(\textcolor{keywordtype}{float}\ phase);}
+\DoxyCodeLine{00023\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_ac1368ed4d35076bee625057bffb29ebe}{band\_limited\_sawtooth}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00024\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_a300bedb14faf5c88617c85de88430770}{band\_limited\_square}}(\textcolor{keywordtype}{float}\ phase,\ \textcolor{keywordtype}{float}\ increment);}
+\DoxyCodeLine{00025\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_af4692411f4a52a978b132919f64eb1e8}{sine\_fm}}(\mbox{\hyperlink{struct_operator}{Operator}}*\ ops[4],\ \textcolor{keywordtype}{float}\ frequency);}
+\DoxyCodeLine{00026\ \textcolor{keywordtype}{float}\ \mbox{\hyperlink{oscillator_8h_ac1070ef9ffb81db3e486526c78a9a05a}{sine\_op}}(\mbox{\hyperlink{struct_operator}{Operator}}*\ op,\ \textcolor{keywordtype}{float}\ frequency,\ \textcolor{keywordtype}{float}\ mod);}
+\DoxyCodeLine{00027\ \mbox{\hyperlink{struct_operator}{Operator}}*\ \mbox{\hyperlink{oscillator_8h_aaf5dcf36e939a9994375bd83133edd97}{createOperator}}(\mbox{\hyperlink{struct_param_list}{ParamList}}*\ paramList,\ \textcolor{keywordtype}{float}\ ratio);}
+\DoxyCodeLine{00028\ }
+\DoxyCodeLine{00029\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//\ OSCILLATOR\_H}}
+
+\end{DoxyCode}

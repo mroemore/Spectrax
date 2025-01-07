@@ -1,0 +1,156 @@
+\doxysection{paex\+\_\+saw.\+c File Reference}
+\hypertarget{paex__saw_8c}{}\label{paex__saw_8c}\index{paex\_saw.c@{paex\_saw.c}}
+
+
+Play a simple (aliasing) sawtooth wave.  
+
+
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$math.\+h$>$}\newline
+{\ttfamily \#include "{}portaudio.\+h"{}}\newline
+\doxysubsubsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structpa_voice}{pa\+Voice}}
+\item 
+struct \mbox{\hyperlink{structpa_test_data}{pa\+Test\+Data}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{paex__saw_8c_a40d4ce5dac355662b3ee76bc605f1430}\label{paex__saw_8c_a40d4ce5dac355662b3ee76bc605f1430} 
+\#define {\bfseries NUM\+\_\+\+SECONDS}~(8)
+\item 
+\Hypertarget{paex__saw_8c_a4b76a0c2859cfd819a343a780070ee2b}\label{paex__saw_8c_a4b76a0c2859cfd819a343a780070ee2b} 
+\#define {\bfseries SAMPLE\+\_\+\+RATE}~(44100)
+\item 
+\Hypertarget{paex__saw_8c_a5b0b677cb9527865430a9b3d7a71cb03}\label{paex__saw_8c_a5b0b677cb9527865430a9b3d7a71cb03} 
+\#define {\bfseries NUM\+\_\+\+NOTES}~12
+\item 
+\Hypertarget{paex__saw_8c_ae3f4615a20d2dae8c494a168778e790a}\label{paex__saw_8c_ae3f4615a20d2dae8c494a168778e790a} 
+\#define {\bfseries SEQUENCE\+\_\+\+LENGTH}~8
+\item 
+\Hypertarget{paex__saw_8c_aabb5151c265771c667a0267075ed4357}\label{paex__saw_8c_aabb5151c265771c667a0267075ed4357} 
+\#define {\bfseries NOTE\+\_\+\+DURATION}~0.\+5
+\item 
+\Hypertarget{paex__saw_8c_aca618e8fa76e4f9eaf21bef1d1ddccd5}\label{paex__saw_8c_aca618e8fa76e4f9eaf21bef1d1ddccd5} 
+\#define {\bfseries MAX\+\_\+\+VOICES}~8
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{paex__saw_8c_a840291bc02cba5474a4cb46a9b9566fe}{main}} (void)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const float \mbox{\hyperlink{paex__saw_8c_a1a98926128c4a21d37523a99f03b6ca5}{note\+Frequencies}} \mbox{[}NUM\+\_\+\+NOTES\mbox{]}
+\item 
+const int \mbox{\hyperlink{paex__saw_8c_aa1e91130381727c4a3dec7eaf436c396}{note\+Sequence}} \mbox{[}SEQUENCE\+\_\+\+LENGTH\mbox{]} = \{0, 2, 4, -\/1, 5, 7, 9, -\/1\}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Play a simple (aliasing) sawtooth wave. 
+
+\begin{DoxyAuthor}{Author}
+Phil Burk \href{http://www.softsynth.com}{\texttt{ http\+://www.\+softsynth.\+com}} 
+\end{DoxyAuthor}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{paex__saw_8c_a840291bc02cba5474a4cb46a9b9566fe}\index{paex\_saw.c@{paex\_saw.c}!main@{main}}
+\index{main@{main}!paex\_saw.c@{paex\_saw.c}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily \label{paex__saw_8c_a840291bc02cba5474a4cb46a9b9566fe} 
+int main (\begin{DoxyParamCaption}\item[{void}]{}{}\end{DoxyParamCaption})}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00173\ \{}
+\DoxyCodeLine{00174\ \ \ \ \ PaStream\ *stream;}
+\DoxyCodeLine{00175\ \ \ \ \ PaError\ err;}
+\DoxyCodeLine{00176\ }
+\DoxyCodeLine{00177\ \ \ \ \ printf(\textcolor{stringliteral}{"{}PortAudio\ Test:\ output\ sawtooth\ wave.\(\backslash\)n"{}});}
+\DoxyCodeLine{00178\ \ \ \ \ \textcolor{comment}{/*\ Initialize\ our\ data\ for\ use\ by\ callback.\ */}}
+\DoxyCodeLine{00179\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ i\ =\ 0;\ i\ <\ MAX\_VOICES;\ i++)\ \{}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ \ \ data.voices[i].active\ =\ 0;}
+\DoxyCodeLine{00181\ \ \ \ \ \}}
+\DoxyCodeLine{00182\ \ \ \ \ data.a\_sec\ =\ 0.005;}
+\DoxyCodeLine{00183\ \ \ \ \ data.d\_sec\ =\ 1.75;}
+\DoxyCodeLine{00184\ \ \ \ \ data.a\_per\_sample\ =\ (int)(data.a\_sec\ *\ SAMPLE\_RATE);}
+\DoxyCodeLine{00185\ \ \ \ \ data.d\_per\_sample\ =\ (int)(data.d\_sec\ *\ SAMPLE\_RATE);}
+\DoxyCodeLine{00186\ \ \ \ \ data.sequence\_index\ =\ 0;}
+\DoxyCodeLine{00187\ \ \ \ \ data.samples\_per\_note\ =\ (int)(NOTE\_DURATION\ *\ SAMPLE\_RATE);}
+\DoxyCodeLine{00188\ \ \ \ \ data.samples\_elapsed\ =\ 0;}
+\DoxyCodeLine{00189\ \ \ \ \ \textcolor{comment}{/*\ Initialize\ library\ before\ making\ any\ other\ calls.\ */}}
+\DoxyCodeLine{00190\ \ \ \ \ err\ =\ Pa\_Initialize();}
+\DoxyCodeLine{00191\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00192\ }
+\DoxyCodeLine{00193\ \ \ \ \ \textcolor{comment}{/*\ Open\ an\ audio\ I/O\ stream.\ */}}
+\DoxyCodeLine{00194\ \ \ \ \ err\ =\ Pa\_OpenDefaultStream(\ \&stream,}
+\DoxyCodeLine{00195\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ 0,\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ no\ input\ channels\ */}}
+\DoxyCodeLine{00196\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ 2,\ \ \ \ \ \ \ \ \ \ \textcolor{comment}{/*\ stereo\ output\ */}}
+\DoxyCodeLine{00197\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ paFloat32,\ \ \textcolor{comment}{/*\ 32\ bit\ floating\ point\ output\ */}}
+\DoxyCodeLine{00198\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SAMPLE\_RATE,}
+\DoxyCodeLine{00199\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ 256,\ \ \ \ \ \ \ \ \textcolor{comment}{/*\ frames\ per\ buffer\ */}}
+\DoxyCodeLine{00200\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ patestCallback,}
+\DoxyCodeLine{00201\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&data\ );}
+\DoxyCodeLine{00202\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00203\ }
+\DoxyCodeLine{00204\ \ \ \ \ err\ =\ Pa\_StartStream(\ stream\ );}
+\DoxyCodeLine{00205\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00206\ }
+\DoxyCodeLine{00207\ \ \ \ \ \textcolor{comment}{/*\ Sleep\ for\ several\ seconds.\ */}}
+\DoxyCodeLine{00208\ \ \ \ \ Pa\_Sleep(NUM\_SECONDS*1000);}
+\DoxyCodeLine{00209\ }
+\DoxyCodeLine{00210\ \ \ \ \ err\ =\ Pa\_StopStream(\ stream\ );}
+\DoxyCodeLine{00211\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00212\ \ \ \ \ err\ =\ Pa\_CloseStream(\ stream\ );}
+\DoxyCodeLine{00213\ \ \ \ \ \textcolor{keywordflow}{if}(\ err\ !=\ paNoError\ )\ \textcolor{keywordflow}{goto}\ error;}
+\DoxyCodeLine{00214\ \ \ \ \ Pa\_Terminate();}
+\DoxyCodeLine{00215\ \ \ \ \ printf(\textcolor{stringliteral}{"{}Test\ finished.\(\backslash\)n"{}});}
+\DoxyCodeLine{00216\ \ \ \ \ \textcolor{keywordflow}{return}\ err;}
+\DoxyCodeLine{00217\ error:}
+\DoxyCodeLine{00218\ \ \ \ \ Pa\_Terminate();}
+\DoxyCodeLine{00219\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}An\ error\ occurred\ while\ using\ the\ portaudio\ stream\(\backslash\)n"{}}\ );}
+\DoxyCodeLine{00220\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}Error\ number:\ \%d\(\backslash\)n"{}},\ err\ );}
+\DoxyCodeLine{00221\ \ \ \ \ fprintf(\ stderr,\ \textcolor{stringliteral}{"{}Error\ message:\ \%s\(\backslash\)n"{}},\ Pa\_GetErrorText(\ err\ )\ );}
+\DoxyCodeLine{00222\ \ \ \ \ \textcolor{keywordflow}{return}\ err;}
+\DoxyCodeLine{00223\ \}}
+
+\end{DoxyCode}
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{paex__saw_8c_a1a98926128c4a21d37523a99f03b6ca5}\index{paex\_saw.c@{paex\_saw.c}!noteFrequencies@{noteFrequencies}}
+\index{noteFrequencies@{noteFrequencies}!paex\_saw.c@{paex\_saw.c}}
+\doxysubsubsection{\texorpdfstring{noteFrequencies}{noteFrequencies}}
+{\footnotesize\ttfamily \label{paex__saw_8c_a1a98926128c4a21d37523a99f03b6ca5} 
+const float note\+Frequencies\mbox{[}NUM\+\_\+\+NOTES\mbox{]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ \{}
+\DoxyCodeLine{\ \ \ \ 440.0f,\ 466.16f,\ 493.88f,\ 523.25f,\ 554.37f,\ 587.33f,\ 622.25f,\ 659.25f,\ 698.46f,\ 739.99f,\ 783.99f,\ 830.61f}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \{}
+\DoxyCodeLine{00056\ \ \ \ \ 440.0f,\ 466.16f,\ 493.88f,\ 523.25f,\ 554.37f,\ 587.33f,\ 622.25f,\ 659.25f,\ 698.46f,\ 739.99f,\ 783.99f,\ 830.61f}
+\DoxyCodeLine{00057\ \};}
+
+\end{DoxyCode}
+\Hypertarget{paex__saw_8c_aa1e91130381727c4a3dec7eaf436c396}\index{paex\_saw.c@{paex\_saw.c}!noteSequence@{noteSequence}}
+\index{noteSequence@{noteSequence}!paex\_saw.c@{paex\_saw.c}}
+\doxysubsubsection{\texorpdfstring{noteSequence}{noteSequence}}
+{\footnotesize\ttfamily \label{paex__saw_8c_aa1e91130381727c4a3dec7eaf436c396} 
+const int note\+Sequence\mbox{[}SEQUENCE\+\_\+\+LENGTH\mbox{]} = \{0, 2, 4, -\/1, 5, 7, 9, -\/1\}}
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00060\ \{0,\ 2,\ 4,\ -\/1,\ 5,\ 7,\ 9,\ -\/1\};}
+
+\end{DoxyCode}

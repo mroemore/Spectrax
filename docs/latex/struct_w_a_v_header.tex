@@ -1,0 +1,169 @@
+\doxysection{WAVHeader Struct Reference}
+\hypertarget{struct_w_a_v_header}{}\label{struct_w_a_v_header}\index{WAVHeader@{WAVHeader}}
+\doxysubsubsection*{Data Fields}
+\begin{DoxyCompactItemize}
+\item 
+char \mbox{\hyperlink{struct_w_a_v_header_ad5bb83fc7dbce95f2927aed7e650bf89}{chunk\+ID}} \mbox{[}4\mbox{]}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a0ea90297703093d87bb5d44236737645}{chunk\+Size}}
+\item 
+char \mbox{\hyperlink{struct_w_a_v_header_a0b9772c21239902ba44b8324c5f7797d}{format}} \mbox{[}4\mbox{]}
+\item 
+char \mbox{\hyperlink{struct_w_a_v_header_afb63adb2aacdd68458d8f4e1fa31fb39}{subchunk1\+ID}} \mbox{[}4\mbox{]}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a44320da5df58fdbe03dca1c1f6d2745f}{subchunk1\+Size}}
+\item 
+uint16\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a7ee8b59a97275af80f962b106d6172da}{audio\+Format}}
+\item 
+uint16\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}{num\+Channels}}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a1f02d15eacba5240d2c0a9591e44a766}{sample\+Rate}}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a508bf4bb6d37addf1825352b647a57d1}{byte\+Rate}}
+\item 
+uint16\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a6a638320660414de078c54967bf239e0}{block\+Align}}
+\item 
+uint16\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}{bits\+Per\+Sample}}
+\item 
+char \mbox{\hyperlink{struct_w_a_v_header_ac7a6a70cead8369a4a79585e1e84aa42}{subchunk2\+ID}} \mbox{[}4\mbox{]}
+\item 
+uint32\+\_\+t \mbox{\hyperlink{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}{subchunk2\+Size}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Field Documentation}
+\Hypertarget{struct_w_a_v_header_a7ee8b59a97275af80f962b106d6172da}\index{WAVHeader@{WAVHeader}!audioFormat@{audioFormat}}
+\index{audioFormat@{audioFormat}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{audioFormat}{audioFormat}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a7ee8b59a97275af80f962b106d6172da} 
+uint16\+\_\+t WAVHeader\+::audio\+Format}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0}\index{WAVHeader@{WAVHeader}!bitsPerSample@{bitsPerSample}}
+\index{bitsPerSample@{bitsPerSample}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{bitsPerSample}{bitsPerSample}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a6df1037a85fb90fda82ec1e02c7a74e0} 
+uint16\+\_\+t WAVHeader\+::bits\+Per\+Sample}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a6a638320660414de078c54967bf239e0}\index{WAVHeader@{WAVHeader}!blockAlign@{blockAlign}}
+\index{blockAlign@{blockAlign}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{blockAlign}{blockAlign}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a6a638320660414de078c54967bf239e0} 
+uint16\+\_\+t WAVHeader\+::block\+Align}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a508bf4bb6d37addf1825352b647a57d1}\index{WAVHeader@{WAVHeader}!byteRate@{byteRate}}
+\index{byteRate@{byteRate}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{byteRate}{byteRate}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a508bf4bb6d37addf1825352b647a57d1} 
+uint32\+\_\+t WAVHeader\+::byte\+Rate}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_ad5bb83fc7dbce95f2927aed7e650bf89}\index{WAVHeader@{WAVHeader}!chunkID@{chunkID}}
+\index{chunkID@{chunkID}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{chunkID}{chunkID}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_ad5bb83fc7dbce95f2927aed7e650bf89} 
+char WAVHeader\+::chunk\+ID\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a0ea90297703093d87bb5d44236737645}\index{WAVHeader@{WAVHeader}!chunkSize@{chunkSize}}
+\index{chunkSize@{chunkSize}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{chunkSize}{chunkSize}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a0ea90297703093d87bb5d44236737645} 
+uint32\+\_\+t WAVHeader\+::chunk\+Size}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a0b9772c21239902ba44b8324c5f7797d}\index{WAVHeader@{WAVHeader}!format@{format}}
+\index{format@{format}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{format}{format}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a0b9772c21239902ba44b8324c5f7797d} 
+char WAVHeader\+::format\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8}\index{WAVHeader@{WAVHeader}!numChannels@{numChannels}}
+\index{numChannels@{numChannels}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{numChannels}{numChannels}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a0bdf0b0f3d3b29a17b6012910e9ad4d8} 
+uint16\+\_\+t WAVHeader\+::num\+Channels}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a1f02d15eacba5240d2c0a9591e44a766}\index{WAVHeader@{WAVHeader}!sampleRate@{sampleRate}}
+\index{sampleRate@{sampleRate}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{sampleRate}{sampleRate}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a1f02d15eacba5240d2c0a9591e44a766} 
+uint32\+\_\+t WAVHeader\+::sample\+Rate}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_afb63adb2aacdd68458d8f4e1fa31fb39}\index{WAVHeader@{WAVHeader}!subchunk1ID@{subchunk1ID}}
+\index{subchunk1ID@{subchunk1ID}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{subchunk1ID}{subchunk1ID}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_afb63adb2aacdd68458d8f4e1fa31fb39} 
+char WAVHeader\+::subchunk1\+ID\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a44320da5df58fdbe03dca1c1f6d2745f}\index{WAVHeader@{WAVHeader}!subchunk1Size@{subchunk1Size}}
+\index{subchunk1Size@{subchunk1Size}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{subchunk1Size}{subchunk1Size}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a44320da5df58fdbe03dca1c1f6d2745f} 
+uint32\+\_\+t WAVHeader\+::subchunk1\+Size}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_ac7a6a70cead8369a4a79585e1e84aa42}\index{WAVHeader@{WAVHeader}!subchunk2ID@{subchunk2ID}}
+\index{subchunk2ID@{subchunk2ID}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{subchunk2ID}{subchunk2ID}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_ac7a6a70cead8369a4a79585e1e84aa42} 
+char WAVHeader\+::subchunk2\+ID\mbox{[}4\mbox{]}}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+\Hypertarget{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743}\index{WAVHeader@{WAVHeader}!subchunk2Size@{subchunk2Size}}
+\index{subchunk2Size@{subchunk2Size}!WAVHeader@{WAVHeader}}
+\doxysubsubsection{\texorpdfstring{subchunk2Size}{subchunk2Size}}
+{\footnotesize\ttfamily \label{struct_w_a_v_header_a5d207ada8d43b37d2be171bcb1591743} 
+uint32\+\_\+t WAVHeader\+::subchunk2\+Size}
+
+
+
+Referenced by \mbox{\hyperlink{sample_8c_a8d196820eb4a3cbf7ea36daf9436999e}{load\+\_\+wav\+\_\+sample()}}.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{sample_8c}{sample.\+c}}\end{DoxyCompactItemize}
