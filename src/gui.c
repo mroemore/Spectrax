@@ -25,6 +25,22 @@ void initCustomFont(Font *f, char *path, int charCount, int width, int height){
 	}
 }
 
+SpriteSheet* createSpriteSheet(char* imagePath, int sprite_w, int sprite_h){
+	SpriteSheet * sh = (SpriteSheet*)malloc(sizeof(SpriteSheet));
+	sh->sheet = LoadTexture(imagePath);
+	sh->spriteCount = (sh->sheet.width / sprite_w) * (sh->sheet.height / sprite_h);
+	sh->spriteW = sprite_w;
+	sh->spriteH = sprite_h;
+	sh->spriteSize = (Rectangle){0, 0, sprite_w, sprite_h};
+}
+
+void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y){
+	index = index > spriteSheet->spriteCount ? index % spriteSheet->spriteCount : index;
+	spriteSheet->spriteSize.x = index * spriteSheet->spriteW;
+	DrawTextureRec(spriteSheet->sheet, spriteSheet->spriteSize, (Vector2){x,y}, WHITE);
+	spriteSheet->spriteSize.x = 0;
+}
+
 void initDefaultColourScheme(ColourScheme* colourScheme){
 	colourScheme->backgroundColor = (Color){17, 7, 8,255};
 	colourScheme->fontColour = (Color){207, 212, 121,255};
@@ -90,6 +106,7 @@ TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y)
 	tsGui->base.draw = drawTransportGui;
 	tsGui->x = x;
 	tsGui->y = y;
+	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
 	tsGui->playing = playing;
 	tsGui->arranger = arranger;
 	tsGui->tempo = &arranger->beats_per_minute;
@@ -462,7 +479,7 @@ void drawEnvelopeGui(void* self){
 void drawTransportGui(void *self){
 	Vector2 pos = (Vector2){600,10};
 	TransportGui *tg =(TransportGui*)self;
-	DrawTextEx(symbolFont, "abcdefgh", pos, symbolFont.baseSize, 2, RED); // Use characters 'A' to 'H'
+	drawSprite(tg->icons, 0, tg->x, tg->y);
 }
 
 void drawArrangerGui(void *self){
@@ -482,7 +499,7 @@ void drawArrangerGui(void *self){
 			if(arranger->song[j][i] > -1){
 				sprintf(cellText, "%i\0", arranger->song[j][i]);
 				if(arranger->playhead_indices[j] == px){
-					DrawRectangle(newx, newy, aGui->w, aGui->h, cs.highlightedCell);
+					DrawRectangle(newx, newy, aGui->w, aGui->h, (Color){255,0,0,255});
 				} else {
 					DrawRectangle(newx, newy, aGui->w, aGui->h, cs.defaultCell);
 				}

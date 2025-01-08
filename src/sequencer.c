@@ -18,7 +18,7 @@ Arranger* createArranger(Settings* settings){
 	arranger->loop = 1;
 	arranger->enabledChannels = settings->enabledChannels;
 
-	arranger->playing = 1;
+	arranger->playing = 0;
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		arranger->playhead_indices[i] = 0;
 	}

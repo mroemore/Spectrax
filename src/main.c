@@ -184,7 +184,6 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 int main(void)
 {
-	printf(INSTALL_DIR);
 	PaStream *stream;
 	PaError err;
 	paTestData data; 
@@ -332,7 +331,6 @@ int main(void)
 		// }
 		BeginDrawing();
 		clearBg();
-		//DrawText("It works!", 20, 20, 20, BLACK);
 		
 		//Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)){

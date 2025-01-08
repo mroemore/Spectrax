@@ -19,7 +19,6 @@ else ifeq ($(UNAME_S), Darwin)
     CFLAGS += -DMACOS
 else ifneq ($(findstring MINGW,$(UNAME_S)),)
     CFLAGS += -DWINDOWS $(MINGW_FLAGS)
-	TARGET += .exe
 else
     $(error Unsupported platform: $(UNAME_S))
 endif

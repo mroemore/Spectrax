@@ -42,6 +42,17 @@ typedef struct {
 } ColourScheme;
 
 typedef struct {
+	Texture2D sheet;
+	int spriteCount;
+	int spriteW;
+	int spriteH;
+	Rectangle spriteSize;
+} SpriteSheet;
+
+SpriteSheet* createSpriteSheet(char* imagePath, int sprite_w, int sprite_h);
+void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y);
+
+typedef struct {
 	DrawCallback draw;
 	OnPressCallback onPress;
 } Drawable;
@@ -134,6 +145,7 @@ typedef struct {
 	Drawable base;
 	int x;
 	int y;
+	SpriteSheet* icons;
 	int *playing;
 	int *tempo;
 	Arranger *arranger;
