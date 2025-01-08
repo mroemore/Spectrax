@@ -51,7 +51,7 @@ release: $(OUT_DIR)/$(TARGET)
 
 test: all
 test:
-	(cd bin/ && gdb -ex "run" $(TARGET))
+	(cd bin/ && chmod +x $(TARGET) && gdb -ex "run" $(TARGET))
 
 $(OUT_DIR)/$(TARGET): $(OBJS) | $(OUT_DIR)
 	$(CC) -o $@ $^ $(CFLAGS)
