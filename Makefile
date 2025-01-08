@@ -7,6 +7,7 @@ LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
 DEBUG_FLAGS = -g
 RELEASE_FLAGS = -O2
 
+SRC_DIR = src
 OUT_DIR = bin
 
 TARGET = spectrax
@@ -23,21 +24,23 @@ else
     $(error Unsupported platform: $(UNAME_S))
 endif
 
-SRCS = 	src/main.c \
-		src/voice.c \
-		src/blit_synth.c \
-		src/distortion.c \
-		src/modsystem.c \
-		src/input.c \
-		src/gui.c \
-		src/notes.c \
-		src/io.c \
-		src/settings.c \
-		src/appstate.c \
-		src/oscillator.c \
-		src/sample.c \
-		src/sequencer.c 
+# Prepend src/ to source files
+SRCS = 	$(SRC_DIR)/main.c \
+		$(SRC_DIR)/voice.c \
+		$(SRC_DIR)/blit_synth.c \
+		$(SRC_DIR)/distortion.c \
+		$(SRC_DIR)/modsystem.c \
+		$(SRC_DIR)/input.c \
+		$(SRC_DIR)/gui.c \
+		$(SRC_DIR)/notes.c \
+		$(SRC_DIR)/io.c \
+		$(SRC_DIR)/settings.c \
+		$(SRC_DIR)/appstate.c \
+		$(SRC_DIR)/oscillator.c \
+		$(SRC_DIR)/sample.c \
+		$(SRC_DIR)/sequencer.c 
 
+# Generate object files in the src directory
 OBJS = $(SRCS:.c=.o)
 
 all: CFLAGS += $(DEBUG_FLAGS)
@@ -53,8 +56,14 @@ test:
 $(OUT_DIR)/$(TARGET): $(OBJS) | $(OUT_DIR)
 	$(CC) -o $@ $^ $(CFLAGS)
 
+# Rule to compile .c files into .o files in the src directory
 %.o: %.c
 	$(CC) -c $< -o $@ $(CFLAGS)
 
+# Ensure the output directory exists
+$(OUT_DIR):
+	mkdir -p $(OUT_DIR)
+
+# Clean up object files in the src directory and the target binary
 clean:
 	rm -f $(OBJS) $(OUT_DIR)/$(TARGET)
