@@ -9,6 +9,8 @@ RELEASE_FLAGS = -O2
 
 OUT_DIR = bin
 
+TARGET = spectrax
+
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S), Linux)
@@ -17,6 +19,7 @@ else ifeq ($(UNAME_S), Darwin)
     CFLAGS += -DMACOS
 else ifneq ($(findstring MINGW,$(UNAME_S)),)
     CFLAGS += -DWINDOWS $(MINGW_FLAGS)
+	TARGET += .exe
 else
     $(error Unsupported platform: $(UNAME_S))
 endif
@@ -38,13 +41,15 @@ SRCS = 	src/main.c \
 
 OBJS = $(SRCS:.c=.o)
 
-TARGET = spectrax
-
 all: CFLAGS += $(DEBUG_FLAGS)
 all: $(OUT_DIR)/$(TARGET)
 
 release: CFLAGS += $(RELEASE_FLAGS)
 release: $(OUT_DIR)/$(TARGET)
+
+test: all
+test:
+	(cd bin/ && gdb -ex "run" $(TARGET))
 
 $(OUT_DIR)/$(TARGET): $(OBJS) | $(OUT_DIR)
 	$(CC) -o $@ $^ $(CFLAGS)

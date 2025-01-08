@@ -495,6 +495,41 @@ void drawArrangerGui(void *self){
 	}
 }
 
+OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h){
+	OscilloscopeGui* og = (OscilloscopeGui*)malloc(sizeof(OscilloscopeGui));
+	og->base.draw = drawOscilloscopeGui;
+	og->x = x;
+	og->y = y;
+	og->w = w < OSCILLOSCOPE_HISTORY ? w : OSCILLOSCOPE_HISTORY;
+	og->h = h;
+	og->updateIndex = 0;
+	og->backgroundColour = &cs.highlightedCell;
+	og->waveformColour = &cs.backgroundColor;
+	og->lineColour = &cs.fontColour;
+	return og;
+}
+
+void drawOscilloscopeGui(void* self){
+	OscilloscopeGui* og = (OscilloscopeGui*)self;
+
+	// Draw background
+	DrawRectangle(og->x, og->y, og->w, og->h, (Color){255,0,0,255});
+	//draw center line
+	DrawLine(og->x, og->y + og->h/2, og->x + og->w, og->y + og->h/2, (Color){255,255,0,255});
+	for(int i = 0; i < og->w-1; i++){
+		DrawLine(og->x + i, (og->y + og->h/2) + og->data[i], og->x+i+1, (og->y + og->h/2) + og->data[i+1], (Color){0,0,255,255});
+	}
+}
+
+void updateOscilloscopeGui(OscilloscopeGui* og, float* data, int length){
+	for(int i = 0; i < length; i++){
+		og->data[og->updateIndex] = data[i];
+		og->updateIndex++;
+		og->updateIndex %= og->w;
+	}
+}
+
+
 void updateGraphGui(GraphGui* graphGui){
 	graphGui->history[graphGui->index] = (int)(*graphGui->target * (graphGui->h - (graphGui->padding*2))); // Cast float to int
 	graphGui->index++;

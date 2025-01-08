@@ -29,8 +29,6 @@ typedef void (*OnPressCallback)(Parameter* parameter, float value);
 typedef void (*CallbackApplicator)(void* self, float value);
 
 
-
-
 typedef struct {
 	Color backgroundColor; //17, 7, 8
 	Color secondaryFontColour;
@@ -47,6 +45,19 @@ typedef struct {
 	DrawCallback draw;
 	OnPressCallback onPress;
 } Drawable;
+
+typedef struct {
+	Drawable base;
+	int x;
+	int y;
+	int w;
+	int h;
+	int updateIndex;
+	float data[OSCILLOSCOPE_HISTORY];
+	Color* backgroundColour;
+	Color* waveformColour;
+	Color* lineColour;
+} OscilloscopeGui;
 
 typedef struct {
 	Drawable base;
@@ -198,6 +209,7 @@ ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList, int
 SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h);
 InputsGui* createInputsGui(InputState* inputState, int x, int y);
+OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h);
 
 ContainerGroup* createContainerGroup();
 InputContainer* createInputContainer();
@@ -212,12 +224,14 @@ void drawButtonGui(void* self);
 void applyButtonCallback(void* self, float value);
 
 void clearBg();
+void drawOscilloscopeGui(void* self);
 void drawTransportGui(void *self);
 void drawSequencerGui(void* self);
 void drawGraphGui(void* self);
 void drawArrangerGui(void *self);
 void drawSongMinimapGui(void *self);
 void drawEnvelopeGui(void *self);
+void updateOscilloscopeGui(OscilloscopeGui* og, float* data, int length);
 void updateGraphGui(GraphGui* graphGui);
 void InitGUI(void);
 void DrawGUI(int currentScene);

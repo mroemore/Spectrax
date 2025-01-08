@@ -41,6 +41,7 @@ typedef struct
 	Instrument* instruments[MAX_INSTRUMENTS];
 	ModList* modList;
 	VoiceManager* voiceManager;
+	OscilloscopeGui* og;
 } paTestData;
 
 
@@ -166,7 +167,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 		data->samples_elapsed++;
 	}
-	
+
 	//Normalize the entire buffer to avoid clipping
 	// if (max_output > MAX_VOLUME)
 	// {
@@ -221,7 +222,9 @@ int main(void)
 	TransportGui* tsGui = createTransportGui(&data.arranger->playing, data.arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
 	InputsGui* inputsGui = createInputsGui(appState->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
-	add_drawable(&inputsGui->base, GLOBAL);
+	// add_drawable(&inputsGui->base, GLOBAL);
+	// data.og = createOscilloscopeGui(0, 400, 800, 75);
+	// add_drawable(&data.og->base, GLOBAL);
 
 
 	// int graphCount = MAX_SEQUENCER_CHANNELS*MAX_VOICES_PER_CHANNEL;
@@ -318,7 +321,6 @@ int main(void)
 	//ContainerGroup* modMappingGroup = createModMappingGroup(data.voices[0].paramList, &data.voices[0].envelope[0]->base, SCENE_INSTRUMENT, 300, 10);
 	//removeButtonFromContainer(attackGui2, envelopeControls2, SCENE_INSTRUMENT);
 
-	Color backgroundColor = (Color){146,213,230,255}; //17, 7, 8
 	
 	while (!WindowShouldClose())
 	{
