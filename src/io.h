@@ -12,6 +12,24 @@
 #define PATTERN_SECTION "PATT"
 #define ARRANGER_SECTION "ARRG"
 
+
+#ifdef _WIN32
+#define CloseWindow RLCloseWindow
+#define Rectangle RLRectangle
+#define ShowCursor RLShowCursor
+#include <windows.h>
+#undef CloseWindow
+#undef Rectangle
+#undef ShowCursor
+#else
+#include <dirent.h>
+#endif
+
+typedef struct {
+    char **file_paths;
+    size_t count;
+} DirectoryList;
+
 // File operation results
 typedef enum {
     FILE_OK,
@@ -31,8 +49,13 @@ typedef enum {
 } SequencerFileResult;
 
 
+DirectoryList* createDirectoryList();
+void freeDirectoryList(DirectoryList *list);
+void populateDirectoryList(DirectoryList *list,const char* dirPath);
+void loadSamplesfromDirectory(const char* path, SamplePool* sp);
+
 //Sample load_raw_sample(const char *filename, int sample_rate);
-Sample load_wav_sample(const char *filename);
+void load_wav_sample(const char *filename, SamplePool* sp);
 /**
  * @brief Saves a colour scheme to a binary file
  * @param filename Path to save the colour scheme file

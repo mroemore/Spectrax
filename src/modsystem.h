@@ -162,6 +162,7 @@ ModConnection* createConnection(ParamList* paramList, Mod* source, float amount,
 void incrementConnectionType(ModConnection* modConnection);
 void decrementConnectionType(ModConnection* modConnection);
 
+void freeParamList(ParamList* list);
 void freeModList(ModList* list);
 void freeParameter(Parameter* param);
 void freeMod(Mod* mod);

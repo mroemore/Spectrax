@@ -41,7 +41,7 @@ typedef struct
 	Instrument* instruments[MAX_INSTRUMENTS];
 	ModList* modList;
 	VoiceManager* voiceManager;
-	OscilloscopeGui* og;
+	SamplePool* samplePool;	
 } paTestData;
 
 
@@ -71,8 +71,10 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 		for(int sc = 0; sc < data->arranger->enabledChannels; sc++){
 			if(data->sequencer->running[sc]){
 				int *note = getCurrentStep(data->patternList, data->sequencer->pattern_index[sc], data->sequencer->playhead_index[sc]);
-				Voice* voice = getFreeVoice(data->voiceManager, sc);
-				triggerVoice(voice, note);
+				if(note[0] != OFF){
+					Voice* voice = getFreeVoice(data->voiceManager, sc);
+					triggerVoice(voice, note);
+				}
 			}
 		}
 	}
@@ -99,7 +101,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 						currentVoice->active = 0;
 						//printf("%i not triggered...", j);
 						if (currentVoice->type == VOICE_TYPE_SAMPLE){
-							currentVoice->sample_position = 0.0f;
+							currentVoice->samplePosition = 0.0f;
 						}
 					}
 
@@ -116,7 +118,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 					if (currentVoice->type == VOICE_TYPE_OSCILLATOR)
 					{
-						left_value = currentVoice->source.oscillator.generate(currentVoice->left_phase, phase_increment);
+						left_value = currentVoice->source.oscillator.generate(currentVoice->leftPhase, phase_increment);
 						right_value = left_value; // Modify for stereo oscillators if needed
 					} else if(currentVoice->type == VOICE_TYPE_FM) {
 						left_value = sine_fm(currentVoice->source.operators, getParameterValue(currentVoice->frequency));
@@ -124,11 +126,11 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 					} else if (currentVoice->type == VOICE_TYPE_BLEP) {
 						// left_value = blep_saw(currentVoice->left_phase, phase_increment);
 						// left_value *= 0.0005;
-						left_value = noblep_sine(currentVoice->left_phase);
+						left_value = noblep_sine(currentVoice->leftPhase);
 						left_value *= 0.5;
 						right_value = left_value; // Modify for stereo oscillators if needed
 					} else if (currentVoice->type == VOICE_TYPE_SAMPLE) {
-						left_value = get_sample_value(&data->samples[currentVoice->instrument_index], &currentVoice->sample_position, phase_increment, SAMPLE_RATE, 0);
+						left_value = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phase_increment, SAMPLE_RATE, 0);
 						right_value = left_value; // Mono playback
 					}
 
@@ -142,10 +144,10 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 						left_output += left_value * getParameterValue(currentVoice->volume);
 						right_output += right_value * getParameterValue(currentVoice->volume);
 
-						currentVoice->left_phase = fmodf(currentVoice->left_phase + phase_increment, 1.0f);
-						currentVoice->right_phase = fmodf(currentVoice->right_phase + phase_increment, 1.0f);
+						currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
+						currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
 
-						currentVoice->samples_elapsed++;
+						currentVoice->samplesElapsed++;
 					} else {
 						left_output = 0;
 						right_output = 0;
@@ -195,28 +197,22 @@ int main(void)
 
 	ApplicationState* appState = createApplicationState();
 	
+	data.samplePool = createSamplePool();
+	loadSamplesfromDirectory("resources/samples/", data.samplePool);
 	data.modList = createModList();
 	data.arranger = createArranger(settings);
 	data.patternList = createPatternList();
-	data.voiceManager = createVoiceManager(settings);
+	data.voiceManager = createVoiceManager(settings, data.samplePool);
 	
-	//loadSequencerState("s1.sng", data.arranger, data.patternList);
+
+	loadSequencerState("s1.sng", data.arranger, data.patternList);
 	data.sequencer = createSequencer(data.arranger);
 
-	data.samples[0] = load_wav_sample(SAMPLE_FILE);
-	data.samples[1] = load_wav_sample(SAMPLE_FILE_2);
-	data.samples[2] = load_wav_sample(SAMPLE_FILE_3);
-	data.samples[3] = load_wav_sample(SAMPLE_FILE_4);
 	if (!data.samples[0].data)
 	{
 		fprintf(stderr, "Failed to load sample\n");
 		return 1;
 	}
-
-	init_instrument(data.instruments[0], &data.samples[0]);
-	init_instrument(data.instruments[1], &data.samples[1]);
-	init_instrument(data.instruments[2], &data.samples[2]);
-	init_instrument(data.instruments[3], &data.samples[3]);
 
 	TransportGui* tsGui = createTransportGui(&data.arranger->playing, data.arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
@@ -473,10 +469,8 @@ int main(void)
 		goto error;
 	Pa_Terminate();
 
-	for(int i = 0; i < SAMPLE_COUNT; i++){
-		free_sample(&data.samples[i]);
-	}
-
+	
+	freeSamplePool(data.samplePool);
 	cleanupModSystem(data.modList);
 
 	printf("The end! :).\n");
@@ -485,9 +479,7 @@ error:
 	Pa_Terminate();
 	///fclose(data.log_file);
 	
-	for(int i =0; i < SAMPLE_COUNT; i++){
-		free_sample(&data.samples[i]);
-	}
+	freeSamplePool(data.samplePool);
 
 	cleanupModSystem(data.modList);
 

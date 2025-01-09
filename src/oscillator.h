@@ -25,5 +25,6 @@ float band_limited_square(float phase, float increment);
 float sine_fm(Operator* ops[4], float frequency);
 float sine_op(Operator* op, float frequency, float mod);
 Operator* createOperator(ParamList* paramList, float ratio);
+void freeOperator(Operator* op);
 
 #endif // OSCILLATOR_H

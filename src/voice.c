@@ -6,24 +6,63 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-VoiceManager* createVoiceManager(Settings* settings){
+VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp){
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-        initVoicePool(vm, i, settings->defaultVoiceCount, settings->voiceTypes[i]);
+        initVoicePool(vm, i, settings->defaultVoiceCount, settings->voiceTypes[i], sp);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }
 
     return vm;
 }
 
-void initVoicePool(VoiceManager* vm, int seqChannel, int voiceCount, VoiceType vt){
-    if(seqChannel >= MAX_SEQUENCER_CHANNELS - 1 || seqChannel < 0) seqChannel %= MAX_SEQUENCER_CHANNELS - 1;
-    if(voiceCount >= MAX_VOICES_PER_CHANNEL) voiceCount = MAX_VOICES_PER_CHANNEL;
+void freeVoiceManager(VoiceManager* vm){
+    for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
+        for(int j = 0; j < vm->voiceCount[i]; j++){
+            freeVoice(vm->voicePools[i][j]);
+        }
+    }
 
+    free(vm);
+}
+
+void freeVoice(Voice* v){
+    freeModList(v->modList);
+    freeParamList(v->paramList);
+    freeParameter(v->volume);
+    for(int i = 0; i < v->envCount; i++){
+        freeEnvelope(v->envelope[i]);
+    }
+    for(int i = 0; i < v->lfoCount; i++){
+        freeLFO(v->lfo[i]);
+    }
+    switch(v->type){
+        case VOICE_TYPE_FM:
+            for(int i = 0; i < MAX_FM_OPERATORS; i++){
+                freeOperator(v->source.operators[i]);
+            }
+            break;
+        case VOICE_TYPE_SAMPLE:
+            freeSample(v->source.sample);
+            break;
+        case VOICE_TYPE_BLEP:
+        default:
+            break;
+    }
+
+    free(v);
+}
+
+void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, VoiceType vt, SamplePool* sp){
+    if(channelIndex >= MAX_SEQUENCER_CHANNELS - 1 || channelIndex < 0) channelIndex %= MAX_SEQUENCER_CHANNELS;
+    if(voiceCount >= MAX_VOICES_PER_CHANNEL) voiceCount = MAX_VOICES_PER_CHANNEL;
+    vm->voiceCount[channelIndex] = 0;
+    
     for(int i = 0; i < voiceCount; i++){
-        vm->voicePools[seqChannel][i] = (Voice*)malloc(sizeof(Voice));
-        initialize_voice(vm->voicePools[seqChannel][i], vt, NULL);
-        vm->voiceCount[seqChannel]++;
+        printf("allocating voice %i of %i (type %i) for channel %i\n", i, voiceCount, vt, channelIndex);
+        vm->voicePools[channelIndex][i] = (Voice*)malloc(sizeof(Voice));
+        initialize_voice(vm->voicePools[channelIndex][i], vt, sp);
+        vm->voiceCount[channelIndex]++;
     }
 }
 
@@ -40,39 +79,39 @@ Voice* getFreeVoice(VoiceManager* vm, int seqChannel){
         default:
             break;
     }
-    
+    printf("returning voice %i of channel %i\n", voiceIndex, seqChannel);
     return vm->voicePools[seqChannel][voiceIndex];
 }
 
 void triggerVoice(Voice* voice, int note[NOTE_INFO_SIZE]){
     voice->note[0] = note[0];
     voice->note[1] = note[1];
-    voice->left_phase = 0.0f;
-    voice->right_phase = 0.0f;
-    voice->samples_elapsed = 0;
+    voice->leftPhase = 0.0f;
+    voice->rightPhase = 0.0f;
+    voice->samplesElapsed = 0;
     voice->active = 1;
-    for(int e = 0; e < voice->env_count; e++){
+    for(int e = 0; e < voice->envCount; e++){
         triggerEnvelope(voice->envelope[e]);
     }
 }
 
-void initialize_voice(Voice *voice, VoiceType voiceType, Sample* sample) {
-    voice->left_phase = 0.0f;
-    voice->right_phase = 0.0f;
+void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool) {
+    voice->leftPhase = 0.0f;
+    voice->rightPhase = 0.0f;
     voice->note[0] = OFF;
     voice->note[1] = 0;
     voice->paramList = createParamList();
     voice->modList = createModList();
     voice->frequency = createParameter(voice->paramList, "frequency", 440.0f, 0.001f, 20000.0f);
-    voice->samples_elapsed = 0;
-    voice->instrument_index = 0;
+    voice->samplesElapsed = 0;
     voice->active = 0;
     voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
     voice->type = voiceType;
 
     switch(voice->type){
         case VOICE_TYPE_BLEP:
-            voice->env_count = 2;
+            voice->envCount = 2;
+            voice->lfoCount = 0;
             voice->envelope[0] = createAD(voice->paramList, voice->modList, .25f, .25f, "AD1");
             voice->envelope[1] = createAD(voice->paramList, voice->modList, .25f, .25f, "AD2");
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
@@ -80,9 +119,10 @@ void initialize_voice(Voice *voice, VoiceType voiceType, Sample* sample) {
             break;
 
         case VOICE_TYPE_SAMPLE:
-            voice->source.sample = *sample;
-            voice->env_count = 1;
-            voice->sample_position = 0.0f; // Initialize sample position
+            voice->source.sample = samplePool->samples[1];
+            voice->envCount = 1;
+            voice->lfoCount = 0;
+            voice->samplePosition = 0.0f; // Initialize sample position
             voice->envelope[0] = createADSR(voice->paramList, voice->modList, 0.5f, 1.2f, 1.5f, 1.1f, "ADSR1");
             break;
 
@@ -91,9 +131,10 @@ void initialize_voice(Voice *voice, VoiceType voiceType, Sample* sample) {
             voice->source.operators[1] = createOperator(voice->paramList, 2.0f);
             voice->source.operators[2] = createOperator(voice->paramList, 4.0f);
             voice->source.operators[3] = createOperator(voice->paramList, 3.0f);
-            voice->sample_position = 0.0f; // Initialize sample position
-            voice->env_count = 4;
-            for(int i = 0; i < voice->env_count; i++) {
+            voice->samplePosition = 0.0f; // Initialize sample position
+            voice->envCount = 4;
+            voice->lfoCount = 0;
+            for(int i = 0; i < voice->envCount; i++) {
                 voice->envelope[i] = createAD(voice->paramList, voice->modList, 0.05f, 1.2f, "ADSR1");
                 addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
             }

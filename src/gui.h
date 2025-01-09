@@ -115,6 +115,8 @@ typedef struct {
 	Drawable base;
 	int x;
 	int y;
+	int iconx;
+	int icony;
 	int w;
 	int h;
 	int grid_padding;

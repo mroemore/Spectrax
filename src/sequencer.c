@@ -19,8 +19,10 @@ Arranger* createArranger(Settings* settings){
 	arranger->enabledChannels = settings->enabledChannels;
 
 	arranger->playing = 0;
+
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		arranger->playhead_indices[i] = 0;
+		arranger->voiceTypes[i] = settings->voiceTypes[i];
 	}
 
 	for(int i = 0; i < MAX_SONG_LENGTH; i++){
@@ -195,7 +197,6 @@ int* editCurrentNoteRelative(PatternList *patternList, int patternIndex, int not
 }
 
 void incrementSequencer(Sequencer* sequencer, PatternList *patternList, Arranger *arranger){ //TO-DO: add pattern mode func
-	//printf("s:%i p: %i inc. ", sequencer->sequencer_id, sequencer->pattern_index);
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		int patternSize = patternList->patterns[sequencer->pattern_index[i]].pattern_size;
 		if(sequencer->playhead_index[i] + 1 > patternSize - 1){

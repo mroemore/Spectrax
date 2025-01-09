@@ -6,6 +6,7 @@ LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
 
 DEBUG_FLAGS = -g
 RELEASE_FLAGS = -O2
+ASAN_FLAGS = -fsanitize=address -fno-omit-frame-poiner
 
 SRC_DIR = src
 OUT_DIR = bin
@@ -49,9 +50,15 @@ all: $(OUT_DIR)/$(TARGET)
 release: CFLAGS += $(RELEASE_FLAGS)
 release: $(OUT_DIR)/$(TARGET)
 
-test: all
-test:
+debug: all
+debug:
 	(cd bin/ && chmod +x $(TARGET) && gdb -ex "run" $(TARGET))
+
+test: 
+
+asan: CFLAGS += $(ASAN_FLAGS) + $(DEBUG_FLAGS)
+asan:
+	(cd bin && ./$(TARGET))
 
 $(OUT_DIR)/$(TARGET): $(OBJS) | $(OUT_DIR)
 	$(CC) -o $@ $^ $(CFLAGS)

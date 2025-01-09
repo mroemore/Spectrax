@@ -12,12 +12,14 @@
 
 #define MAX_LFOS 8
 #define MAX_ENVELOPES 8
+#define MAX_FM_OPERATORS 4
 
 typedef enum {
     VOICE_TYPE_OSCILLATOR,
     VOICE_TYPE_SAMPLE,
     VOICE_TYPE_FM,
-    VOICE_TYPE_BLEP
+    VOICE_TYPE_BLEP,
+    VOICE_TYPE_COUNT
 } VoiceType;
 
 typedef enum {
@@ -28,24 +30,24 @@ typedef enum {
 } InstrumentType;
 
 typedef struct {
-    float left_phase;
-    float right_phase;
-    int samples_elapsed;
+    float leftPhase;
+    float rightPhase;
+    int samplesElapsed;
     int active;
     ParamList* paramList;
     ModList* modList;
     Parameter* volume;
-    int instrument_index;
     VoiceType type;
     union {
         Oscillator oscillator;
-        Sample sample;
-        Operator *operators[4];
+        Sample *sample;
+        Operator *operators[MAX_FM_OPERATORS];
     } source;
-    float sample_position; // Position in the sample data
+    float samplePosition; // Position in the sample data
     int note[2];
     Parameter* frequency;
-    int env_count;
+    int envCount;
+    int lfoCount;
     Envelope* envelope[4];
     LFO * lfo[2];
 } Voice;
@@ -68,14 +70,16 @@ typedef struct {
     Sample* sample;
 } Instrument;
 
-VoiceManager* createVoiceManager(Settings* settings);
-void initVoicePool(VoiceManager* vm, int seqChannel, int voiceCount, VoiceType vt);
-void initVoiceManager(VoiceManager* vm);
+VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp);
+void initVoicePool(VoiceManager* vm, int seqChannel, int voiceCount, VoiceType vt, SamplePool* sp);
+void initVoiceManager(VoiceManager* vm, SamplePool* sp);
+void freeVoice(Voice* v);
+void freeVoiceManager(VoiceManager* vm);
 Voice* getFreeVoice(VoiceManager* vm, int seqChannel);
 void changeVoiceType(VoiceManager* vm, int seqChannel, VoiceType type);
 void triggerVoice(Voice* voice, int note[NOTE_INFO_SIZE]);
 
-void initialize_voice(Voice *voice, VoiceType voiceType, Sample* sample);
+void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool);
 void initialize_voice_sample(Voice *voice, Sample sample, int voice_id, ModList* modList);
 void initialize_voice_blep(Voice *voice, int voice_id, ModList* modList);
 void initialize_voice_fm(Voice *voice, int voice_id, ModList* modList);

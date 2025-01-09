@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define MAX_SAMPLE_POOL_BYTES 64000000
+#define MAX_LOADED_SAMPLES 1024
 
 #pragma pack(push, 1)
 typedef struct
@@ -25,14 +27,25 @@ typedef struct
 
 typedef struct {
     float *data;
+    char* name;
     int length;
-    int sample_rate;
+    int sampleRate;
     int bit;
 } Sample;
 
+typedef struct {
+    char* sampleData;
+    size_t memoryUsed;
+    Sample** samples;
+    size_t sampleCount;
+    size_t maxSamples;
+} SamplePool;
 
-void free_sample(Sample *sample);
-float get_sample_value(Sample *sample, float *sample_position, float phase_increment, int pa_sr, int loop);
-// float get_sample_value(Sample *sample, float *sample_position, int pa_sr, float phase);
 
-#endif // SAMPLE_H
+void loadSample(SamplePool* sp, const char* name, float* data, int bit, size_t length);
+SamplePool* createSamplePool();
+void freeSamplePool(SamplePool* sp);
+void freeSample(Sample *sample);
+float getSampleValue(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop);
+
+#endif

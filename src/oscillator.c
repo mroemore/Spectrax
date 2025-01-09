@@ -76,3 +76,9 @@ Operator* createOperator(ParamList* paramList, float ratio){
     op->level = createParameter(paramList, "level", .5f, 0.0f, 1.0f);
     return op;
 }
+
+void freeOperator(Operator* op){
+    freeParameter(op->ratio);
+    freeParameter(op->level);
+    free(op);
+}

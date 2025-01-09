@@ -11,5 +11,6 @@
 		"oscillator.h": "c",
 		"stdio.h": "c",
 		"modsystem.h": "c"
-	}
+	},
+	"C_Cpp.errorSquiggles": "enabled"
 }

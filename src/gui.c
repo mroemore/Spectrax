@@ -15,6 +15,7 @@ DrawableList *instrumentScreenDrawableList;
 Font textFont;
 Font symbolFont;
 ColourScheme cs;
+SpriteSheet *instrumentIcons;
 
 void initCustomFont(Font *f, char *path, int charCount, int width, int height){
 	*f = LoadFontEx(path, width, NULL, charCount);
@@ -97,6 +98,7 @@ void InitGUI(void)
 	
 	textFont = LoadFont("resources/fonts/setback.png");
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
+	instrumentIcons = createSpriteSheet("resources/fonts/synthicons.png", 24, 24);
 
 	SetTargetFPS(60);
 }
@@ -159,9 +161,11 @@ ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList, int
 	ArrangerGui *arrangerGui = (ArrangerGui*)malloc(sizeof(ArrangerGui));
 	arrangerGui->base.draw = drawArrangerGui;
 	arrangerGui->x = x;
-	arrangerGui->y = y;
-	arrangerGui->w = 20;
-	arrangerGui->h = 20;
+	arrangerGui->y = y + 30;
+	arrangerGui->w = 24;
+	arrangerGui->h = 24;
+	arrangerGui->iconx = x;
+	arrangerGui->icony = y;
 	arrangerGui->cellColour = cs.defaultCell;
 	arrangerGui->arranger = arranger;
 	arrangerGui->patternList = patternList;
@@ -490,15 +494,28 @@ void drawArrangerGui(void *self){
 	cursorx = aGui->x + arranger->selected_x * (aGui->w + aGui->grid_padding);
 	cursory = aGui->y + arranger->selected_y * (aGui->h + aGui->grid_padding);
 
+	for(int i = 0; i < arranger->enabledChannels; i++){
+		switch(arranger->voiceTypes[i]){
+			case VOICE_TYPE_BLEP:
+				drawSprite(instrumentIcons, 1, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				break;
+			case VOICE_TYPE_SAMPLE:
+				drawSprite(instrumentIcons, 0, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				break;
+			case VOICE_TYPE_FM:
+				drawSprite(instrumentIcons, 2, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				break;
+		}
+	}
 	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, aGui->w + (aGui->border_size * 2),aGui->h + (aGui->border_size * 2), cs.outlineColour);
-	for(int i = 0; i < MAX_SONG_LENGTH; i++){
-		int px = i % MAX_SEQUENCER_CHANNELS;
-		int newy = aGui->x + (i * aGui->w) + (aGui->grid_padding * i);
-		for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++){
-			int newx = aGui->y + (j * aGui->h) + (aGui->grid_padding * j);
-			if(arranger->song[j][i] > -1){
-				sprintf(cellText, "%i\0", arranger->song[j][i]);
-				if(arranger->playhead_indices[j] == px){
+	for(int i = 0; i < arranger->enabledChannels; i++){
+		//int px = i % arranger->enabledChannels;
+		int newx = aGui->x + (i * (aGui->w + aGui->grid_padding));
+		for(int j = 0; j < MAX_SONG_LENGTH; j++){
+			int newy = aGui->y + (j * (aGui->h + aGui->grid_padding));
+			if(arranger->song[i][j] > -1){
+				sprintf(cellText, "%i\0", arranger->song[i][j]);
+				if(arranger->playhead_indices[i] == j){
 					DrawRectangle(newx, newy, aGui->w, aGui->h, (Color){255,0,0,255});
 				} else {
 					DrawRectangle(newx, newy, aGui->w, aGui->h, cs.defaultCell);
