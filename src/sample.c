@@ -7,6 +7,7 @@
 
 SamplePool* createSamplePool(){
     SamplePool* sp = (SamplePool*)malloc(sizeof(SamplePool));
+	if(!sp) return NULL;
     sp->sampleData = (char*)malloc(MAX_SAMPLE_POOL_BYTES);
     if(!sp->sampleData){
         free(sp);
@@ -19,7 +20,6 @@ SamplePool* createSamplePool(){
     sp->maxSamples = MAX_LOADED_SAMPLES;
     if(!sp->samples){
         free(sp->sampleData);
-        free(sp->samples);
         free(sp);
         return NULL;
     }
@@ -38,7 +38,7 @@ void freeSamplePool(SamplePool* sp){
 	free(sp);
 }
 
-void loadSample(SamplePool* sp, const char* name, float* data, int bit, size_t length){
+void loadSample(SamplePool* sp, const char* name, float* data, int bit, int length){
     if (sp->sampleCount >= sp->maxSamples) {
         printf("Error: Maximum number of samples reached ().\n");
         return;
@@ -48,21 +48,36 @@ void loadSample(SamplePool* sp, const char* name, float* data, int bit, size_t l
         printf("sample memory maxed out.\n");
         return;
     }
-    float* sampleData = (float*)(sp->sampleData + sp->memoryUsed);
+    float* sampleData = (float*)((char*)sp->sampleData + sp->memoryUsed);
+	printf("Original data (first 10 samples):\n");
+	for (int i = 0; i < 10; i++) {
+		printf("%f ", data[i]);
+	}
+	printf("\n");
     memcpy(sampleData, data, dataSize);
-
+	
+	printf("\n");
     Sample* sample = (Sample*)malloc(sizeof(Sample));
     if(!sample) return;
     
     sample->data = sampleData;
-    sample->name = (char*)malloc(strlen(name)+1);
-	sample->bit = bit;
+    printf("Copied data (first 10 samples):\n");
+	for (int i = 0; i < 10; i++) {
+		printf("%f ", sample->data[i]);
+	}
+	
+	sample->name = (char*)malloc(strlen(name)+1);
 	strcpy(sample->name, name);
+	sample->bit = bit;
     sample->length = length;
+
+	printf("adding sample of %i length, %i bit\n", sample->length, sample->bit);
 
     sp->samples[sp->sampleCount] = sample;
     sp->sampleCount++;
     sp->memoryUsed += dataSize;
+
+	printf("%i samples, %i memoryUsed \n", sp->sampleCount, sp->memoryUsed);
 }
 
 void freeSample(Sample *sample)

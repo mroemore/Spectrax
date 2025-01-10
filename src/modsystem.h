@@ -138,8 +138,11 @@ Random* createRandom(ParamList* paramList, ModList* modList, int index, float ra
 Envelope* createEnvelope(ParamList* paramList, ModList* modList, int index, float sampleRate, char* name);
 //EnvelopeStage* createEnvelopeStage(bool isRising, float duration, float targetLevel, float curvature, char* name);
 void addEnvelopeStage(ParamList* paramList, Envelope* env, bool isRising, float duration, float targetLevel, float initialCurvature, char* name);
+void addParamPointerEnvelopeStage(ParamList* paramList, Envelope* env, bool isRising, Parameter* duration, float targetLevel, Parameter* initialCurvature, char* name);
 Envelope* createADSR(ParamList* paramList, ModList* modList, float a, float d, float s, float r, char* name);
+Envelope* createParamPointerADSR(ParamList* paramList, ModList* modList, Parameter* a, Parameter* d, Parameter* s, Parameter* r, char* name);
 Envelope* createAD(ParamList* paramList, ModList* modList, float a, float d, char* name);
+Envelope* createParamPointerAD(ParamList* paramList, ModList* modList, Parameter* a, Parameter* d,Parameter* acurve, Parameter* dcurve, char* name);
 
 void generateSine(void* self);
 void generateSquare(void* self);

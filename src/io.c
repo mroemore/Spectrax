@@ -180,9 +180,9 @@ void load_wav_sample(const char *filename, SamplePool* sp){
 			}
 			data[i] = value / header.numChannels;
 		}
-        loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, length);
+        loadSample(sp, filename, data, header.bitsPerSample, length);
 		free(pcm_data);
-        free(data);
+        //free(data);
 	}
 	else if (header.bitsPerSample == 16)
 	{
@@ -204,9 +204,9 @@ void load_wav_sample(const char *filename, SamplePool* sp){
 			}
 			data[i] = value / header.numChannels;
 		}
-        loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, length);
+        loadSample(sp, filename, data, header.bitsPerSample, length);
 		free(pcm_data);
-        free(data);
+        //free(data);
 	}
 	else
 	{
@@ -355,7 +355,7 @@ SequencerFileResult saveSequencerState(const char* filename, Arranger* arranger,
     fwrite(&arranger->loop, sizeof(int), 1, file);
     fwrite(&arranger->beats_per_minute, sizeof(int), 1, file);
     fwrite(&arranger->playing, sizeof(int), 1, file);
-    fwrite(&arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
+    fwrite(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
     fwrite(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file);
 
     fclose(file);
@@ -379,6 +379,7 @@ SequencerFileResult loadSequencerState(const char* filename, Arranger* arranger,
     // Read patterns
     if (fread(&patterns->pattern_count, sizeof(int), 1, file) != 1) {
         fclose(file);
+        printf("error reading pattern count\n");
         return SEQ_ERROR_READ;
     }
 
@@ -394,6 +395,7 @@ SequencerFileResult loadSequencerState(const char* filename, Arranger* arranger,
                 != MAX_SEQUENCE_LENGTH * NOTE_INFO_SIZE) {
             fclose(file);
             return SEQ_ERROR_READ;
+        printf("error reading pattern data\n");
         }
     }
 
@@ -403,17 +405,51 @@ SequencerFileResult loadSequencerState(const char* filename, Arranger* arranger,
         return SEQ_ERROR_FORMAT;
     }
 
-    if (fread(arranger->playhead_indices, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS ||
-        fread(&arranger->enabledChannels, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->selected_x, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->selected_y, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->loop, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->beats_per_minute, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->playing, sizeof(int), 1, file) != 1 ||
-        fread(&arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != 1 ||
-        fread(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file) 
+    if (fread(arranger->playhead_indices, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS){
+        fclose(file);
+        printf("error playhread\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->enabledChannels, sizeof(int), 1, file) != 1 ){
+        fclose(file);
+        printf("error enabledchans\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->selected_x, sizeof(int), 1, file) != 1 ){
+        fclose(file);
+        printf("error selx\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->selected_y, sizeof(int), 1, file) != 1 ){
+        fclose(file);
+        printf("error sely\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->loop, sizeof(int), 1, file) != 1 ){
+        fclose(file);
+        printf("error loop\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->beats_per_minute, sizeof(int), 1, file) != 1){
+        fclose(file);
+        printf("error bpm\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(&arranger->playing, sizeof(int), 1, file) != 1){
+        fclose(file);
+        printf("error ply\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS){
+        fclose(file);
+        printf("error voicetypes\n");
+        return SEQ_ERROR_READ;
+    }
+    if (fread(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file) 
             != MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH) {
         fclose(file);
+        printf("error reading arranger data.\n");
+
         return SEQ_ERROR_READ;
     }
 

@@ -28,6 +28,12 @@ typedef void (*DrawCallback)(void* self);
 typedef void (*OnPressCallback)(Parameter* parameter, float value);
 typedef void (*CallbackApplicator)(void* self, float value);
 
+typedef struct {
+	int x;
+	int y;
+	int w;
+	int h;
+} Shape;
 
 typedef struct {
 	Color backgroundColor; //17, 7, 8
@@ -59,10 +65,7 @@ typedef struct {
 
 typedef struct {
 	Drawable base;
-	int x;
-	int y;
-	int w;
-	int h;
+	Shape shape;
 	int updateIndex;
 	float data[OSCILLOSCOPE_HISTORY];
 	Color* backgroundColour;
@@ -76,10 +79,7 @@ typedef struct {
 	PatternList* pattern_list;
 	int *selected_pattern_index;
 	int *selected_note_index;
-	int x;
-	int y;
-	int pad_w;
-	int pad_h;
+	Shape shape;
 	int padding;
 	int border_size;
 	int pads_per_col;
@@ -95,10 +95,7 @@ typedef struct {
 	int index;
 	float min;
 	float max;
-	int x;
-	int y;
-	int w;
-	int h;
+	Shape shape;
 	int padding;
 	int margin;
 	int history_size;
@@ -113,12 +110,9 @@ typedef struct {
 
 typedef struct {
 	Drawable base;
-	int x;
-	int y;
+	Shape shape;
 	int iconx;
 	int icony;
-	int w;
-	int h;
 	int grid_padding;
 	int border_size;
 	Color cellColour;
@@ -130,10 +124,7 @@ typedef struct {
 typedef struct {
 	Drawable base;
 	Arranger* arranger;
-	int x;
-	int y;
-	int w;
-	int h;
+	Shape shape;
 	int padding;
 	int maxMapLength;
 	int *songIndex;
@@ -145,8 +136,7 @@ typedef struct {
 
 typedef struct {
 	Drawable base;
-	int x;
-	int y;
+	Shape shape;
 	SpriteSheet* icons;
 	int *playing;
 	int *tempo;
@@ -155,20 +145,14 @@ typedef struct {
 
 typedef struct {
 	Drawable base;
-	int x;
-	int y;
-	int w;
-	int h;
+	Shape shape;
 	Envelope* env;
 	int* graphData;
 } EnvelopeGui;
 
 typedef struct {
 	Drawable base;
-	int x;
-	int y;
-	int w;
-	int h;
+	Shape shape;
 	int selected;
 	CallbackApplicator applyCallback;
 	Parameter* parameter;
@@ -180,6 +164,8 @@ typedef struct {
 
 typedef struct {
 	ButtonGui* buttonRefs[MAX_BUTTON_ROWS][MAX_BUTTON_COLS];
+	Shape containerBounds;
+	int inputCount;
 	int rowCount;
 	int columnCount[MAX_BUTTON_CONTAINER_COLS];
 	int selectedRow;
@@ -199,12 +185,18 @@ typedef struct {
 	EnvelopeGui* envelopeGui;
 } EnvelopeContainer;
 
+EnvelopeContainer* createEnvelopeContainer();
+
 typedef struct {
 	Drawable base;
 	int x;
 	int y;
 	InputState* inputState;
 } InputsGui;
+
+InputsGui* createInputsGui(InputState* inputState, int x, int y);
+void drawInputsGui(void* self);
+
 
 void initDefaultColourScheme(ColourScheme* colourScheme);
 void setColourScheme(ColourScheme* colourScheme);
@@ -222,7 +214,6 @@ GraphGui* createGraphGui(float* target, char* name, float min, float max, int x,
 ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList, int x, int y);
 SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h);
-InputsGui* createInputsGui(InputState* inputState, int x, int y);
 OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h);
 
 ContainerGroup* createContainerGroup();
@@ -250,5 +241,4 @@ void updateGraphGui(GraphGui* graphGui);
 void InitGUI(void);
 void DrawGUI(int currentScene);
 void CleanupGUI(void);
-void drawInputsGui(void* self);
 #endif // GUI_H

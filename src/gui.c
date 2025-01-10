@@ -106,8 +106,8 @@ void InitGUI(void)
 TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y){
 	TransportGui *tsGui = (TransportGui*)malloc(sizeof(TransportGui));
 	tsGui->base.draw = drawTransportGui;
-	tsGui->x = x;
-	tsGui->y = y;
+	tsGui->shape.x = x;
+	tsGui->shape.y = y;
 	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
 	tsGui->playing = playing;
 	tsGui->arranger = arranger;
@@ -122,10 +122,10 @@ SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *sel
 	seqGui->base.draw = drawSequencerGui;
 	seqGui->sequencer = sequencer;
 	seqGui->pattern_list = pl;
-	seqGui->x = x;
-	seqGui->y = y;
-	seqGui->pad_w = 50;
-	seqGui->pad_h = 50;
+	seqGui->shape.x = x;
+	seqGui->shape.y = y;
+	seqGui->shape.w = 50;
+	seqGui->shape.h = 50;
 	seqGui->pads_per_col = 4;
 	seqGui->padding = 10;
 	seqGui->border_size = 3;
@@ -142,10 +142,10 @@ GraphGui *createGraphGui(float* target, char* name, float min, float max, int x,
 	graphGui->target = target;
 	graphGui->name = name;
 	graphGui->index = 0;
-	graphGui->x = x;
-	graphGui->y = y;
-	graphGui->w = size;
-	graphGui->h = 20;
+	graphGui->shape.x = x;
+	graphGui->shape.y = y;
+	graphGui->shape.w = size;
+	graphGui->shape.h = 20;
 	graphGui->padding = 1;
 	graphGui->margin = 2;
 	graphGui->min = min;
@@ -160,10 +160,10 @@ GraphGui *createGraphGui(float* target, char* name, float min, float max, int x,
 ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList, int x, int y){
 	ArrangerGui *arrangerGui = (ArrangerGui*)malloc(sizeof(ArrangerGui));
 	arrangerGui->base.draw = drawArrangerGui;
-	arrangerGui->x = x;
-	arrangerGui->y = y + 30;
-	arrangerGui->w = 24;
-	arrangerGui->h = 24;
+	arrangerGui->shape.x = x;
+	arrangerGui->shape.y = y + 30;
+	arrangerGui->shape.w = 24;
+	arrangerGui->shape.h = 24;
 	arrangerGui->iconx = x;
 	arrangerGui->icony = y;
 	arrangerGui->cellColour = cs.defaultCell;
@@ -179,12 +179,12 @@ SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, 
 	minimapGui->base.draw = drawSongMinimapGui;
 	minimapGui->arranger = arranger;
 	minimapGui->songIndex = songIndex;
-	minimapGui->x = x;
-	minimapGui->y = y;
-	minimapGui->w = 4;
-	minimapGui->h = 4;
+	minimapGui->shape.x = x;
+	minimapGui->shape.y = y;
+	minimapGui->shape.w = 4;
+	minimapGui->shape.h = 4;
 	minimapGui->padding = 1;
-	minimapGui->maxMapLength = (SCREEN_H - 150)/(minimapGui->h + minimapGui->padding);
+	minimapGui->maxMapLength = (SCREEN_H - 150)/(minimapGui->shape.h + minimapGui->padding);
 	minimapGui->defaultCellColour = cs.defaultCell;
 	minimapGui->selectedCellColour = cs.reddish;
 	minimapGui->playingCellColour = cs.highlightedCell;
@@ -197,6 +197,8 @@ InputContainer* createInputContainer(){
 	for(int i = 0; i < MAX_BUTTON_ROWS; i++){
 		btnCont->columnCount[i] = 0;
 	}
+	btnCont->containerBounds = (Shape){SCREEN_W,SCREEN_H,0,0};
+	btnCont->inputCount = 0;
 	btnCont->selectedRow = 0;
 	btnCont->selectedColumn = 0;
 	return btnCont;
@@ -344,26 +346,35 @@ void removeButtonFromContainer(ButtonGui* btnGui, InputContainer* btnCont, Scene
     }
 }
 
-void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, int col){
+void moveContainer(InputContainer* ic, int deltax, int deltay){
+	for (int row = 0; row < ic->rowCount; row++) {
+        for (int col = 0; col < ic->columnCount[row]; col++) {
+			ic->buttonRefs[row][col]->shape.x += deltax;
+			ic->buttonRefs[row][col]->shape.y += deltay;
+		}
+	}
+}
+
+void addButtonToContainer(ButtonGui* btnGui, InputContainer* ic, int row, int col){
 	if(row < 0 || col < 0 || row > MAX_BUTTON_CONTAINER_ROWS - 1 || col > MAX_BUTTON_CONTAINER_COLS - 1) {
 		printf("attempting out-of-bounds btn container insertion.\n");
 		return;
 	}
 	int insertRow = 0, insertCol = 0;
-	printf("CONTAINER:count before add:%i,%i adding ", btnCont->rowCount, btnCont->columnCount[row]);
+	printf("CONTAINER:count before add:%i,%i adding ", ic->rowCount, ic->columnCount[row]);
 	
-	if(row >= btnCont->rowCount){
-		insertRow = btnCont->rowCount;
-		btnCont->rowCount++;
+	if(row >= ic->rowCount){
+		insertRow = ic->rowCount;
+		ic->rowCount++;
 		printf(" [ir, ");
 	} else {
 		insertRow = row;
 		printf(" [nir, ");
 	}
 
-	if(col >= btnCont->columnCount[insertRow]){
-		insertCol = btnCont->columnCount[insertRow];
-		btnCont->columnCount[insertRow]++;
+	if(col >= ic->columnCount[insertRow]){
+		insertCol = ic->columnCount[insertRow];
+		ic->columnCount[insertRow]++;
 		printf("ic] ");
 		
 	} else {
@@ -373,17 +384,33 @@ void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, i
 	}
 	printf(btnGui->buttonText);
 	printf(" at %i, %i\n", insertRow, insertCol);
-	btnCont->buttonRefs[insertRow][insertCol] = btnGui;
+
+	if(btnGui->shape.x < ic->containerBounds.x){
+		ic->containerBounds.x = btnGui->shape.x;
+	}
+	if(btnGui->shape.y < ic->containerBounds.y){
+		ic->containerBounds.y = btnGui->shape.y;
+	}
+	int btnEndX = btnGui->shape.x + btnGui->shape.w;
+	if(btnEndX > ic->containerBounds.x + ic->containerBounds.w){
+		ic->containerBounds.h = btnEndX - ic->containerBounds.x;
+	}
+	int btnEndY = btnGui->shape.y + btnGui->shape.h;
+	if(btnEndY > ic->containerBounds.y + ic->containerBounds.h){
+		ic->containerBounds.w = btnEndY - ic->containerBounds.y;
+	}
+	ic->buttonRefs[insertRow][insertCol] = btnGui;
+	ic->inputCount++;
 }
 
 ButtonGui* createButtonGui(int x, int y, int w, int h, char* buttonText, Parameter* param, void* callback){
 	ButtonGui* btnGui = (ButtonGui*)malloc(sizeof(ButtonGui));
 	btnGui->base.draw = drawButtonGui;
 	btnGui->base.onPress = callback;
-	btnGui->x = x;
-	btnGui->y = y;
-	btnGui->w = w;
-	btnGui->h = h;
+	btnGui->shape.x = x;
+	btnGui->shape.y = y;
+	btnGui->shape.w = w;
+	btnGui->shape.h = h;
 	btnGui->buttonText = buttonText;
 	btnGui->backgroundColour = RED;
 	btnGui->selectedColour = BROWN;
@@ -397,14 +424,14 @@ ButtonGui* createButtonGui(int x, int y, int w, int h, char* buttonText, Paramet
 void drawButtonGui(void* self){
 	ButtonGui* btnGui = (ButtonGui*)self;
 	if(btnGui->selected){
-		DrawRectangle(btnGui->x-2, btnGui->y-2, btnGui->w+4, btnGui->h+4, btnGui->selectedColour);
+		DrawRectangle(btnGui->shape.x-2, btnGui->shape.y-2, btnGui->shape.w+4, btnGui->shape.h+4, btnGui->selectedColour);
 	}
-	DrawRectangle(btnGui->x, btnGui->y, btnGui->w, btnGui->h, btnGui->backgroundColour);
-	DrawText(btnGui->buttonText, btnGui->x, btnGui->y + btnGui->h/2, 10, btnGui->textColour);
+	DrawRectangle(btnGui->shape.x, btnGui->shape.y, btnGui->shape.w, btnGui->shape.h, btnGui->backgroundColour);
+	DrawText(btnGui->buttonText, btnGui->shape.x, btnGui->shape.y + btnGui->shape.h/2, 10, btnGui->textColour);
 	char valueStr[32];
     snprintf(valueStr, sizeof(valueStr), "%.2f", btnGui->parameter->baseValue);
-    DrawText(valueStr, btnGui->x + MeasureText(btnGui->buttonText, 10) + 5, 
-             btnGui->y + btnGui->h/2, 12, btnGui->textColour);
+    DrawText(valueStr, btnGui->shape.x + MeasureText(btnGui->buttonText, 10) + 5, 
+             btnGui->shape.y + btnGui->shape.h/2, 12, btnGui->textColour);
 }
 
 void applyButtonCallback(void* self, float value){
@@ -421,10 +448,10 @@ EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h){
 	EnvelopeGui *envGui = (EnvelopeGui*)malloc(sizeof(EnvelopeGui));
 	envGui->base.draw = drawEnvelopeGui;
 	envGui->env = env;
-	envGui->x = x;
-	envGui->y = y;
-	envGui->w = w;
-	envGui->h = h;
+	envGui->shape.x = x;
+	envGui->shape.y = y;
+	envGui->shape.w = w;
+	envGui->shape.h = h;
 	envGui->graphData = malloc(sizeof(int) * w);
 }
 
@@ -435,12 +462,12 @@ void drawEnvelopeGui(void* self){
 	float currentTime = 0.0f;
 	float currentLevel = 0.0f;
 	float previousLevel = 0.0f;
-	DrawRectangle(eg->x, eg->y, eg->w, eg->h, BLACK);
+	DrawRectangle(eg->shape.x, eg->shape.y, eg->shape.w, eg->shape.h, BLACK);
 	for(int s = 0; s < eg->env->stageCount; s++){
 		totalDuration += eg->env->stages[s].duration->currentValue;
 	}
-	float basicIncrement = totalDuration / eg->w; 
-	for(int w = 0; w < eg->w; w++){
+	float basicIncrement = totalDuration / eg->shape.w; 
+	for(int w = 0; w < eg->shape.w; w++){
 		// if (!eg->env->stages[stageIndex].isSustain) {
 		// 	float increment = calculateCurvedIncrement(
 		// 		currentLevel, 
@@ -457,7 +484,7 @@ void drawEnvelopeGui(void* self){
 						eg->env->stages[stageIndex-1].targetLevel : 
 						0.0f;
 		currentLevel = startLevel + (eg->env->stages[stageIndex].targetLevel - startLevel) * shapedT;
-		DrawLineEx((Vector2){eg->x + w, eg->y + eg->h - (previousLevel * eg->h)},(Vector2){ eg->x + w + 1, eg->y + eg->h - (currentLevel * eg->h)}, 2.0f, RED);
+		DrawLineEx((Vector2){eg->shape.x + w, eg->shape.y + eg->shape.h - (previousLevel * eg->shape.h)},(Vector2){ eg->shape.x + w + 1, eg->shape.y + eg->shape.h - (currentLevel * eg->shape.h)}, 2.0f, RED);
 		//DrawRectangle(eg->x + w, eg->y + eg->h - (currentLevel * eg->h), 2, 2, RED);
 
 		currentTime += basicIncrement;
@@ -465,14 +492,14 @@ void drawEnvelopeGui(void* self){
         	currentTime = 0.0f;
 			
 			if (stageIndex < eg->env->stageCount - 1) {
-				DrawLine(eg->x + w, eg->y, eg->x + w, eg->y + eg->h, GREEN);
+				DrawLine(eg->shape.x + w, eg->shape.y, eg->shape.x + w, eg->shape.y + eg->shape.h, GREEN);
 				stageIndex++;
 			}
 		}
 		if(eg->env->isTriggered){
-			int currentInc = ( eg->w * (eg->env->totalElapsedTime / totalDuration));
+			int currentInc = ( eg->shape.w * (eg->env->totalElapsedTime / totalDuration));
 			if((int)(currentInc) == w){
-				DrawLine(eg->x + w, eg->y, eg->x + w, eg->y + eg->h, PURPLE);
+				DrawLine(eg->shape.x + w, eg->shape.y, eg->shape.x + w, eg->shape.y + eg->shape.h, PURPLE);
 			}
 
 		}
@@ -483,7 +510,7 @@ void drawEnvelopeGui(void* self){
 void drawTransportGui(void *self){
 	Vector2 pos = (Vector2){600,10};
 	TransportGui *tg =(TransportGui*)self;
-	drawSprite(tg->icons, 0, tg->x, tg->y);
+	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y);
 }
 
 void drawArrangerGui(void *self){
@@ -491,39 +518,39 @@ void drawArrangerGui(void *self){
 	Arranger *arranger = (Arranger*)aGui->arranger;
 	char *cellText = malloc(sizeof(char) *4);
 	int cursorx, cursory;
-	cursorx = aGui->x + arranger->selected_x * (aGui->w + aGui->grid_padding);
-	cursory = aGui->y + arranger->selected_y * (aGui->h + aGui->grid_padding);
+	cursorx = aGui->shape.x + arranger->selected_x * (aGui->shape.w + aGui->grid_padding);
+	cursory = aGui->shape.y + arranger->selected_y * (aGui->shape.h + aGui->grid_padding);
 
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		switch(arranger->voiceTypes[i]){
 			case VOICE_TYPE_BLEP:
-				drawSprite(instrumentIcons, 1, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 1, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
 				break;
 			case VOICE_TYPE_SAMPLE:
-				drawSprite(instrumentIcons, 0, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 0, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
 				break;
 			case VOICE_TYPE_FM:
-				drawSprite(instrumentIcons, 2, aGui->iconx + i * (aGui->w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 2, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
 				break;
 		}
 	}
-	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, aGui->w + (aGui->border_size * 2),aGui->h + (aGui->border_size * 2), cs.outlineColour);
+	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, aGui->shape.w + (aGui->border_size * 2),aGui->shape.h + (aGui->border_size * 2), cs.outlineColour);
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		//int px = i % arranger->enabledChannels;
-		int newx = aGui->x + (i * (aGui->w + aGui->grid_padding));
+		int newx = aGui->shape.x + (i * (aGui->shape.w + aGui->grid_padding));
 		for(int j = 0; j < MAX_SONG_LENGTH; j++){
-			int newy = aGui->y + (j * (aGui->h + aGui->grid_padding));
+			int newy = aGui->shape.y + (j * (aGui->shape.h + aGui->grid_padding));
 			if(arranger->song[i][j] > -1){
 				sprintf(cellText, "%i\0", arranger->song[i][j]);
 				if(arranger->playhead_indices[i] == j){
-					DrawRectangle(newx, newy, aGui->w, aGui->h, (Color){255,0,0,255});
+					DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, (Color){255,0,0,255});
 				} else {
-					DrawRectangle(newx, newy, aGui->w, aGui->h, cs.defaultCell);
+					DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, cs.defaultCell);
 				}
-				DrawText(cellText, newx - 5 + aGui->w / 2, newy - 5 + aGui->h / 2, textFont.baseSize, cs.secondaryFontColour);
+				DrawText(cellText, newx - 5 + aGui->shape.w / 2, newy - 5 + aGui->shape.h / 2, textFont.baseSize, cs.secondaryFontColour);
 			} else {
-				DrawRectangle(newx, newy, aGui->w, aGui->h, cs.blankCell);
-				DrawText("--", newx - 5 + aGui->w / 2, newy - 5 + aGui->h / 2, textFont.baseSize, cs.secondaryFontColour);
+				DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, cs.blankCell);
+				DrawText("--", newx - 5 + aGui->shape.w / 2, newy - 5 + aGui->shape.h / 2, textFont.baseSize, cs.secondaryFontColour);
 			}
 		}
 	}
@@ -532,10 +559,10 @@ void drawArrangerGui(void *self){
 OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h){
 	OscilloscopeGui* og = (OscilloscopeGui*)malloc(sizeof(OscilloscopeGui));
 	og->base.draw = drawOscilloscopeGui;
-	og->x = x;
-	og->y = y;
-	og->w = w < OSCILLOSCOPE_HISTORY ? w : OSCILLOSCOPE_HISTORY;
-	og->h = h;
+	og->shape.x = x;
+	og->shape.y = y;
+	og->shape.w = w < OSCILLOSCOPE_HISTORY ? w : OSCILLOSCOPE_HISTORY;
+	og->shape.h = h;
 	og->updateIndex = 0;
 	og->backgroundColour = &cs.highlightedCell;
 	og->waveformColour = &cs.backgroundColor;
@@ -547,11 +574,11 @@ void drawOscilloscopeGui(void* self){
 	OscilloscopeGui* og = (OscilloscopeGui*)self;
 
 	// Draw background
-	DrawRectangle(og->x, og->y, og->w, og->h, (Color){255,0,0,255});
+	DrawRectangle(og->shape.x, og->shape.y, og->shape.w, og->shape.h, (Color){255,0,0,255});
 	//draw center line
-	DrawLine(og->x, og->y + og->h/2, og->x + og->w, og->y + og->h/2, (Color){255,255,0,255});
-	for(int i = 0; i < og->w-1; i++){
-		DrawLine(og->x + i, (og->y + og->h/2) + og->data[i], og->x+i+1, (og->y + og->h/2) + og->data[i+1], (Color){0,0,255,255});
+	DrawLine(og->shape.x, og->shape.y + og->shape.h/2, og->shape.x + og->shape.w, og->shape.y + og->shape.h/2, (Color){255,255,0,255});
+	for(int i = 0; i < og->shape.w-1; i++){
+		DrawLine(og->shape.x + i, (og->shape.y + og->shape.h/2) + og->data[i], og->shape.x+i+1, (og->shape.y + og->shape.h/2) + og->data[i+1], (Color){0,0,255,255});
 	}
 }
 
@@ -559,25 +586,25 @@ void updateOscilloscopeGui(OscilloscopeGui* og, float* data, int length){
 	for(int i = 0; i < length; i++){
 		og->data[og->updateIndex] = data[i];
 		og->updateIndex++;
-		og->updateIndex %= og->w;
+		og->updateIndex %= og->shape.w;
 	}
 }
 
 
 void updateGraphGui(GraphGui* graphGui){
-	graphGui->history[graphGui->index] = (int)(*graphGui->target * (graphGui->h - (graphGui->padding*2))); // Cast float to int
+	graphGui->history[graphGui->index] = (int)(*graphGui->target * (graphGui->shape.h - (graphGui->padding*2))); // Cast float to int
 	graphGui->index++;
 	graphGui->index %= MAX_GRAPH_HISTORY - 1;
 }
 
 void drawGraphGui(void *self){
 	GraphGui *graphGui = (GraphGui*)self;
-	DrawRectangle(graphGui->x + graphGui->margin, graphGui->y + graphGui->margin, graphGui->w, graphGui->h,(Color){(int)(*graphGui->target*255),255,255,255});
+	DrawRectangle(graphGui->shape.x + graphGui->margin, graphGui->shape.y + graphGui->margin, graphGui->shape.w, graphGui->shape.h,(Color){(int)(*graphGui->target*255),255,255,255});
 	for(int gi = 0; gi < graphGui->history_size; gi++){
 		int offset = (int)((float)graphGui->history[gi] / (float)graphGui->max);
-		DrawRectangle(graphGui->x + gi, graphGui->y + graphGui->padding + offset, 1, 1, BLACK);
+		DrawRectangle(graphGui->shape.x + gi, graphGui->shape.y + graphGui->padding + offset, 1, 1, BLACK);
 	}
-	DrawText(graphGui->name, graphGui->x, graphGui->y, textFont.baseSize, RED);
+	DrawText(graphGui->name, graphGui->shape.x, graphGui->shape.y, textFont.baseSize, RED);
 }
 
 ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int scene, int x, int y){
@@ -626,17 +653,17 @@ void drawSequencerGui(void *self) {
 
 		
 		if(currentNoteIndex == i){
-			DrawRectangle((seqGui->x + seqGui->padding * ix + (ix * (seqGui->pad_w))) - (seqGui->border_size), seqGui->y + seqGui->padding * j + ((seqGui->pad_h) * j) - (seqGui->border_size), seqGui->pad_w + seqGui->border_size*2, seqGui->pad_h + seqGui->border_size*2, seqGui->outline_colour);
+			DrawRectangle((seqGui->shape.x + seqGui->padding * ix + (ix * (seqGui->shape.w))) - (seqGui->border_size), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j) - (seqGui->border_size), seqGui->shape.w + seqGui->border_size*2, seqGui->shape.h + seqGui->border_size*2, seqGui->outline_colour);
 		}
 		if(currentlyPlaying > -1 && seq->playhead_index[currentlyPlaying] == i)
 		{
-			DrawRectangle(seqGui->x + seqGui->padding * ix + (ix * seqGui->pad_w), seqGui->y + seqGui->padding * j + ((seqGui->pad_h) * j), seqGui->pad_w, seqGui->pad_h, seqGui->playing_fill_colour);
+			DrawRectangle(seqGui->shape.x + seqGui->padding * ix + (ix * seqGui->shape.w), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j), seqGui->shape.w, seqGui->shape.h, seqGui->playing_fill_colour);
 		}
 		else
 		{
-			DrawRectangle(seqGui->x + seqGui->padding * ix + (ix * seqGui->pad_w), seqGui->y + seqGui->padding * j + ((seqGui->pad_h ) * j), seqGui->pad_w, seqGui->pad_h, seqGui->default_fill_colour);
+			DrawRectangle(seqGui->shape.x + seqGui->padding * ix + (ix * seqGui->shape.w), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h ) * j), seqGui->shape.w, seqGui->shape.h, seqGui->default_fill_colour);
 		}
-		Vector2 textPosition = (Vector2){(float)(seqGui->x + (ix * seqGui->pad_w)  + (seqGui->padding * ix)),(float)(seqGui->y  + seqGui->padding  * j + ((seqGui->pad_h) * j))};
+		Vector2 textPosition = (Vector2){(float)(seqGui->shape.x + (ix * seqGui->shape.w)  + (seqGui->padding * ix)),(float)(seqGui->shape.y  + seqGui->padding  * j + ((seqGui->shape.h) * j))};
 		DrawTextEx(textFont, getNoteString(note[0], note[1]), textPosition, textFont.baseSize, 4, cs.fontColour);
 	}
 }
@@ -648,19 +675,19 @@ void drawSongMinimapGui(void *self){
 	//printf("coord %d,%d\n", smGui->songIndex[0], smGui->songIndex[1]);
 	
 	for(int i = startIndex; i < smGui->maxMapLength; i++){
-		int newy = smGui->y + (i * smGui->w) + (smGui->padding * i);
+		int newy = smGui->shape.y + (i * smGui->shape.w) + (smGui->padding * i);
 		for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++){
-			int newx = smGui->x + (j * smGui->h) + (smGui->padding * j);
+			int newx = smGui->shape.x + (j * smGui->shape.h) + (smGui->padding * j);
 			if(arranger->song[j][i] > -1){
 				if(smGui->songIndex[0] == j && smGui->songIndex[1] == i){
-					DrawRectangle(newx, newy, smGui->w, smGui->h, smGui->selectedCellColour);
+					DrawRectangle(newx, newy, smGui->shape.w, smGui->shape.h, smGui->selectedCellColour);
 				}else if(arranger->playhead_indices[j] == i){
-					DrawRectangle(newx, newy, smGui->w, smGui->h, smGui->playingCellColour);
+					DrawRectangle(newx, newy, smGui->shape.w, smGui->shape.h, smGui->playingCellColour);
 				} else {
-					DrawRectangle(newx, newy, smGui->w, smGui->h, smGui->defaultCellColour);
+					DrawRectangle(newx, newy, smGui->shape.w, smGui->shape.h, smGui->defaultCellColour);
 				}
 			} else {
-				DrawRectangle(newx, newy, smGui->w, smGui->h, smGui->blankCellColour);
+				DrawRectangle(newx, newy, smGui->shape.w, smGui->shape.h, smGui->blankCellColour);
 			}
 		}
 	}

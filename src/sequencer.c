@@ -17,17 +17,17 @@ Arranger* createArranger(Settings* settings){
 	arranger->selected_y = 0;
 	arranger->loop = 1;
 	arranger->enabledChannels = settings->enabledChannels;
-
+	arranger->beats_per_minute = 120;
 	arranger->playing = 0;
 
-	for(int i = 0; i < arranger->enabledChannels; i++){
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
 		arranger->playhead_indices[i] = 0;
 		arranger->voiceTypes[i] = settings->voiceTypes[i];
 	}
 
-	for(int i = 0; i < MAX_SONG_LENGTH; i++){
-		for(int j = 0; j < arranger->enabledChannels; j++){
-			arranger->song[j][i] = -1;
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
+		for(int j = 0; j < MAX_SONG_LENGTH; j++){
+			arranger->song[i][j] = -1;
 		}
 	}
 

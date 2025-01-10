@@ -9,7 +9,8 @@
 VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp){
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-        initVoicePool(vm, i, settings->defaultVoiceCount, settings->voiceTypes[i], sp);
+        init_instrument(vm->instruments[i], settings->voiceTypes[i], sp->samples[3]);
+        initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }
 
@@ -53,15 +54,15 @@ void freeVoice(Voice* v){
     free(v);
 }
 
-void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, VoiceType vt, SamplePool* sp){
+void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrument* inst){
     if(channelIndex >= MAX_SEQUENCER_CHANNELS - 1 || channelIndex < 0) channelIndex %= MAX_SEQUENCER_CHANNELS;
     if(voiceCount >= MAX_VOICES_PER_CHANNEL) voiceCount = MAX_VOICES_PER_CHANNEL;
     vm->voiceCount[channelIndex] = 0;
     
     for(int i = 0; i < voiceCount; i++){
-        printf("allocating voice %i of %i (type %i) for channel %i\n", i, voiceCount, vt, channelIndex);
+        printf("allocating voice %i of %i (type %i) for channel %i\n", i, voiceCount, inst->voiceType, channelIndex);
         vm->voicePools[channelIndex][i] = (Voice*)malloc(sizeof(Voice));
-        initialize_voice(vm->voicePools[channelIndex][i], vt, sp);
+        initialize_voice(vm->voicePools[channelIndex][i], inst);
         vm->voiceCount[channelIndex]++;
     }
 }
@@ -95,7 +96,7 @@ void triggerVoice(Voice* voice, int note[NOTE_INFO_SIZE]){
     }
 }
 
-void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool) {
+void initialize_voice(Voice *voice, Instrument* inst) {
     voice->leftPhase = 0.0f;
     voice->rightPhase = 0.0f;
     voice->note[0] = OFF;
@@ -106,7 +107,7 @@ void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool)
     voice->samplesElapsed = 0;
     voice->active = 0;
     voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
-    voice->type = voiceType;
+    voice->type = inst->voiceType;
 
     switch(voice->type){
         case VOICE_TYPE_BLEP:
@@ -119,11 +120,11 @@ void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool)
             break;
 
         case VOICE_TYPE_SAMPLE:
-            voice->source.sample = samplePool->samples[1];
+            voice->source.sample = inst->sample;
             voice->envCount = 1;
             voice->lfoCount = 0;
             voice->samplePosition = 0.0f; // Initialize sample position
-            voice->envelope[0] = createADSR(voice->paramList, voice->modList, 0.5f, 1.2f, 1.5f, 1.1f, "ADSR1");
+            voice->envelope[0] = createAD(voice->paramList, voice->modList, 0.15f, 1.2f, "AD1");
             break;
 
         case VOICE_TYPE_FM:
@@ -145,7 +146,9 @@ void initialize_voice(Voice *voice, VoiceType voiceType, SamplePool* samplePool)
     }
 }
 
-void init_instrument(Instrument* instrument, Sample* sample) {
+
+void init_instrument(Instrument* instrument, VoiceType vt, Sample* sample) {
     instrument = (Instrument*)malloc(sizeof(Instrument));
     instrument->sample = sample;
+    instrument->voiceType = vt;
 }

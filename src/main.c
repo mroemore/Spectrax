@@ -130,7 +130,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 						left_value *= 0.5;
 						right_value = left_value; // Modify for stereo oscillators if needed
 					} else if (currentVoice->type == VOICE_TYPE_SAMPLE) {
-						left_value = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phase_increment, SAMPLE_RATE, 0);
+						left_value = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phase_increment, SAMPLE_RATE, 1);
 						right_value = left_value; // Mono playback
 					}
 
@@ -205,7 +205,8 @@ int main(void)
 	data.voiceManager = createVoiceManager(settings, data.samplePool);
 	
 
-	loadSequencerState("s1.sng", data.arranger, data.patternList);
+	int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
+	printf("arranger/pattern load result: %i\n", loadstate);
 	data.sequencer = createSequencer(data.arranger);
 
 	if (!data.samples[0].data)
