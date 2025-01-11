@@ -180,7 +180,11 @@ void load_wav_sample(const char *filename, SamplePool* sp){
 			}
 			data[i] = value / header.numChannels;
 		}
-        loadSample(sp, filename, data, header.bitsPerSample, length);
+        printf("Copied data (first 10 samples):\n");
+        for (int i = 0; i < 10; i++) {
+            printf("%f ", data[i]);
+        }
+        loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, header.sampleRate, length);
 		free(pcm_data);
         //free(data);
 	}
@@ -204,7 +208,11 @@ void load_wav_sample(const char *filename, SamplePool* sp){
 			}
 			data[i] = value / header.numChannels;
 		}
-        loadSample(sp, filename, data, header.bitsPerSample, length);
+        printf("Copied data (first 10 samples):\n");
+        for (int i = 0; i < 10; i++) {
+            printf("%f ", data[i]);
+        }
+        loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, header.sampleRate, length);
 		free(pcm_data);
         //free(data);
 	}

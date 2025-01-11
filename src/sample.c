@@ -38,7 +38,7 @@ void freeSamplePool(SamplePool* sp){
 	free(sp);
 }
 
-void loadSample(SamplePool* sp, const char* name, float* data, int bit, int length){
+void loadSample(SamplePool* sp, const char* name, float* data, int bit, int sampleSr, int length){
     if (sp->sampleCount >= sp->maxSamples) {
         printf("Error: Maximum number of samples reached ().\n");
         return;
@@ -70,6 +70,7 @@ void loadSample(SamplePool* sp, const char* name, float* data, int bit, int leng
 	strcpy(sample->name, name);
 	sample->bit = bit;
     sample->length = length;
+	sample->sampleRate = sampleSr;
 
 	printf("adding sample of %i length, %i bit\n", sample->length, sample->bit);
 

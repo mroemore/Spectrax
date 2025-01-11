@@ -6,10 +6,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp){
+VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp) {
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
-    for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-        init_instrument(vm->instruments[i], settings->voiceTypes[i], sp->samples[3]);
+    if (vm == NULL) {
+        fprintf(stderr, "Failed to allocate memory for VoiceManager\n");
+        return NULL;
+    }
+
+    // Initialize voiceCount to 0 for all channels
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        vm->voiceCount[i] = 0;
+    }
+
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        init_instrument(&vm->instruments[i], settings->voiceTypes[i], sp->samples[3]);
         initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }
@@ -55,16 +65,25 @@ void freeVoice(Voice* v){
 }
 
 void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrument* inst){
-    if(channelIndex >= MAX_SEQUENCER_CHANNELS - 1 || channelIndex < 0) channelIndex %= MAX_SEQUENCER_CHANNELS;
+    if(channelIndex >= MAX_SEQUENCER_CHANNELS || channelIndex < 0) {
+        printf("out of bounds!\n");
+    }
     if(voiceCount >= MAX_VOICES_PER_CHANNEL) voiceCount = MAX_VOICES_PER_CHANNEL;
+    
     vm->voiceCount[channelIndex] = 0;
     
     for(int i = 0; i < voiceCount; i++){
-        printf("allocating voice %i of %i (type %i) for channel %i\n", i, voiceCount, inst->voiceType, channelIndex);
+        printf("allocating voice %i of %i (type %i) for channel %i\n", i+1, voiceCount, inst->voiceType, channelIndex);
         vm->voicePools[channelIndex][i] = (Voice*)malloc(sizeof(Voice));
+        if (vm->voicePools[channelIndex][i] == NULL) {
+            fprintf(stderr, "Failed to allocate memory for voice %d in channel %d\n", i, channelIndex);
+            return;
+        }
         initialize_voice(vm->voicePools[channelIndex][i], inst);
         vm->voiceCount[channelIndex]++;
     }
+
+    printf("voice count of %i for channel %i, from starting input of %i", vm->voiceCount[channelIndex], channelIndex, voiceCount);
 }
 
 Voice* getFreeVoice(VoiceManager* vm, int seqChannel){
@@ -108,6 +127,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
     voice->active = 0;
     voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
     voice->type = inst->voiceType;
+    printf("active: %i\n", voice->active);
 
     switch(voice->type){
         case VOICE_TYPE_BLEP:
@@ -121,6 +141,14 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 
         case VOICE_TYPE_SAMPLE:
             voice->source.sample = inst->sample;
+            printf("Copied data (first 10 samples):\n");
+            for (int i = 0; i < 10; i++) {
+                printf("%f ", inst->sample->data[i]);
+            }
+            printf("Copied data (first 10 samples):\n");
+            for (int i = 0; i < 10; i++) {
+                printf("%f ", voice->source.sample->data[i]);
+            }
             voice->envCount = 1;
             voice->lfoCount = 0;
             voice->samplePosition = 0.0f; // Initialize sample position
@@ -147,8 +175,8 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 }
 
 
-void init_instrument(Instrument* instrument, VoiceType vt, Sample* sample) {
-    instrument = (Instrument*)malloc(sizeof(Instrument));
-    instrument->sample = sample;
-    instrument->voiceType = vt;
+void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
+    *instrument = (Instrument*)malloc(sizeof(Instrument));
+    (*instrument)->sample = sample;
+    (*instrument)->voiceType = vt;
 }

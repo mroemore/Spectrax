@@ -205,8 +205,8 @@ int main(void)
 	data.voiceManager = createVoiceManager(settings, data.samplePool);
 	
 
-	int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
-	printf("arranger/pattern load result: %i\n", loadstate);
+	//int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
+	//printf("arranger/pattern load result: %i\n", loadstate);
 	data.sequencer = createSequencer(data.arranger);
 
 	if (!data.samples[0].data)

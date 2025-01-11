@@ -42,7 +42,7 @@ typedef struct {
 } SamplePool;
 
 
-void loadSample(SamplePool* sp, const char* name, float* data, int bit, int length);
+void loadSample(SamplePool* sp, const char* name, float* data, int bit, int sampleSr, int length);
 SamplePool* createSamplePool();
 void freeSamplePool(SamplePool* sp);
 void freeSample(Sample *sample);

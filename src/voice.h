@@ -87,5 +87,5 @@ void initialize_voice(Voice *voice, Instrument* inst);
 void initialize_voice_sample(Voice *voice, Sample sample, int voice_id, ModList* modList);
 void initialize_voice_blep(Voice *voice, int voice_id, ModList* modList);
 void initialize_voice_fm(Voice *voice, int voice_id, ModList* modList);
-void init_instrument(Instrument* instrument, VoiceType vt, Sample* sample);
+void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample);
 #endif // VOICE_H
