@@ -472,7 +472,7 @@ Envelope* createParamPointerAD(ParamList* paramList, ModList* modList, Parameter
 void processModulations(ParamList* paramList, ModList* modList, float deltaTime) {
     if (!modList) return;
     if (!paramList) return;
-
+    
     for (int i = 0; i < modList->count; i++) {
         Mod* mod = modList->mods[i];
         updateMod(mod, deltaTime);

@@ -167,6 +167,7 @@ typedef struct {
 	Shape containerBounds;
 	int inputCount;
 	int rowCount;
+	int inputPadding;
 	int columnCount[MAX_BUTTON_CONTAINER_COLS];
 	int selectedRow;
 	int selectedColumn;
@@ -181,11 +182,14 @@ typedef struct {
 } ContainerGroup;
 
 typedef struct {
-	ContainerGroup* envInputs;
+	InputContainer* envInputs;
 	EnvelopeGui* envelopeGui;
 } EnvelopeContainer;
 
-EnvelopeContainer* createEnvelopeContainer();
+EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene);
+EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene);
+void freeEnvelopeContainer(EnvelopeContainer* ec);
+ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene);
 
 typedef struct {
 	Drawable base;
@@ -196,7 +200,7 @@ typedef struct {
 
 InputsGui* createInputsGui(InputState* inputState, int x, int y);
 void drawInputsGui(void* self);
-
+EnvelopeContainer* createEnvelopeContainer(Envelope* env, int x, int y, int w, int h);
 
 void initDefaultColourScheme(ColourScheme* colourScheme);
 void setColourScheme(ColourScheme* colourScheme);

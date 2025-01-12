@@ -199,6 +199,7 @@ InputContainer* createInputContainer(){
 	}
 	btnCont->containerBounds = (Shape){SCREEN_W,SCREEN_H,0,0};
 	btnCont->inputCount = 0;
+	btnCont->inputPadding = 2;
 	btnCont->selectedRow = 0;
 	btnCont->selectedColumn = 0;
 	return btnCont;
@@ -453,6 +454,76 @@ EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h){
 	envGui->shape.w = w;
 	envGui->shape.h = h;
 	envGui->graphData = malloc(sizeof(int) * w);
+}
+
+EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene){
+	EnvelopeContainer* ec = (EnvelopeContainer*)malloc(sizeof(EnvelopeContainer));
+	ec->envelopeGui = createEnvelopeGui(env, x,y,w,h/2);
+	ec->envInputs = createInputContainer();
+	int offsetY = y + h/2 + ec->envInputs->inputPadding;
+	int offsetX = x;
+	int btnH = 25;
+	int btnW = 70;
+	ButtonGui* attackBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "ATK", env->stages[0].duration, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* attackCurveBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "A-CRV", env->stages[1].curvature, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* decayCurveBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "D-CRV", env->stages[1].curvature, modifyParameterBaseValue); 
+	addButtonToContainer(attackBtn, ec->envInputs, 0,0);
+	addButtonToContainer(attackCurveBtn, ec->envInputs, 0,1);
+	addButtonToContainer(decayBtn, ec->envInputs, 0,2);
+	addButtonToContainer(decayCurveBtn, ec->envInputs, 0,3);
+	add_drawable(&ec->envelopeGui->base, scene);
+	add_drawable(&attackBtn->base, scene);
+	add_drawable(&decayBtn->base, scene);
+	add_drawable(&attackCurveBtn->base, scene);
+	add_drawable(&decayCurveBtn->base, scene);
+	return ec;
+}
+
+EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene){
+	EnvelopeContainer* ec = (EnvelopeContainer*)malloc(sizeof(EnvelopeContainer));
+	ec->envelopeGui = createEnvelopeGui(env, x,y,w,h/2);
+	ec->envInputs = createInputContainer();
+	int offsetY = y + h/4 + ec->envInputs->inputPadding;
+	int offsetX = x;
+	int btnH = 20;
+	int btnW = 40;
+	ButtonGui* attackBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "ATK", env->stages[0].duration, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* sustainBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SUS", env->stages[2].duration, modifyParameterBaseValue); 
+	offsetX += btnW + ec->envInputs->inputPadding;
+	ButtonGui* releaseBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "REL", env->stages[3].duration, modifyParameterBaseValue); 
+	addButtonToContainer(attackBtn, ec->envInputs, 0,0);
+	addButtonToContainer(decayBtn, ec->envInputs, 0,1);
+	addButtonToContainer(sustainBtn, ec->envInputs, 0,2);
+	addButtonToContainer(releaseBtn, ec->envInputs, 0,3);
+	add_drawable(&ec->envelopeGui->base, scene);
+	add_drawable(&attackBtn->base, scene);
+	add_drawable(&decayBtn->base, scene);
+	add_drawable(&sustainBtn->base, scene);
+	add_drawable(&releaseBtn->base, scene);
+	return ec;
+}
+
+ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene){
+	ContainerGroup* cg = createContainerGroup();
+	for(int i = 0; i < inst->envelopeCount; i++){
+		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i], (i % 2) * contW, (i / 2) * (contH+50), contW, contH, scene);
+		addContainerToGroup(cg, ic->envInputs, (int)i/2, (int)i%2);
+	}
+
+	return cg;
+}
+
+void freeEnvelopeContainer(EnvelopeContainer* ec){
+	free(ec->envelopeGui);
+	free(ec->envInputs);
+	free(ec);
 }
 
 void drawEnvelopeGui(void* self){

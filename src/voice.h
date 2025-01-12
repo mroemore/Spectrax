@@ -61,7 +61,11 @@ typedef enum {
 
 typedef struct {
     Sample* sample;
-    Envelope* envelopes[MAX_ENVELOPES]; 
+    ModList* modList;
+    ParamList* paramList;
+    Envelope* envelopes[MAX_ENVELOPES];
+    int envelopeCount; 
+    int lfoCount; 
     VoiceType voiceType;
 } Instrument;
 

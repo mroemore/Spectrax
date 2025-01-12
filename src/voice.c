@@ -128,31 +128,30 @@ void initialize_voice(Voice *voice, Instrument* inst) {
     voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
     voice->type = inst->voiceType;
     printf("active: %i\n", voice->active);
+    voice->envCount = inst->envelopeCount;
+    voice->lfoCount = inst->lfoCount;
+    for(int i = 0; i < voice->envCount; i++){
+        voice->envelope[i] = createParamPointerAD(
+            voice->paramList,
+            voice->modList, 
+            inst->envelopes[i]->stages[0].duration, 
+            inst->envelopes[i]->stages[1].duration, 
+            inst->envelopes[i]->stages[0].curvature, 
+            inst->envelopes[i]->stages[1].curvature, 
+            "AD"
+        );
+    }
 
     switch(voice->type){
         case VOICE_TYPE_BLEP:
-            voice->envCount = 2;
-            voice->lfoCount = 0;
-            voice->envelope[0] = createAD(voice->paramList, voice->modList, .25f, .25f, "AD1");
-            voice->envelope[1] = createAD(voice->paramList, voice->modList, .25f, .25f, "AD2");
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
             addModulation(voice->paramList, &voice->envelope[1]->base, voice->frequency, 400.5f, MO_ADD);
             break;
 
         case VOICE_TYPE_SAMPLE:
             voice->source.sample = inst->sample;
-            printf("Copied data (first 10 samples):\n");
-            for (int i = 0; i < 10; i++) {
-                printf("%f ", inst->sample->data[i]);
-            }
-            printf("Copied data (first 10 samples):\n");
-            for (int i = 0; i < 10; i++) {
-                printf("%f ", voice->source.sample->data[i]);
-            }
-            voice->envCount = 1;
-            voice->lfoCount = 0;
             voice->samplePosition = 0.0f; // Initialize sample position
-            voice->envelope[0] = createAD(voice->paramList, voice->modList, 0.15f, 1.2f, "AD1");
+            addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
             break;
 
         case VOICE_TYPE_FM:
@@ -161,10 +160,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             voice->source.operators[2] = createOperator(voice->paramList, 4.0f);
             voice->source.operators[3] = createOperator(voice->paramList, 3.0f);
             voice->samplePosition = 0.0f; // Initialize sample position
-            voice->envCount = 4;
-            voice->lfoCount = 0;
             for(int i = 0; i < voice->envCount; i++) {
-                voice->envelope[i] = createAD(voice->paramList, voice->modList, 0.05f, 1.2f, "ADSR1");
                 addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
             }
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
@@ -178,5 +174,26 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
     *instrument = (Instrument*)malloc(sizeof(Instrument));
     (*instrument)->sample = sample;
+    (*instrument)->modList = createModList();
+    (*instrument)->paramList = createParamList();
+    switch(vt){
+        case VOICE_TYPE_BLEP:
+            (*instrument)->envelopeCount = 2;
+            (*instrument)->lfoCount = 0;
+            break;
+        case VOICE_TYPE_SAMPLE:
+            (*instrument)->envelopeCount = 1;
+            (*instrument)->lfoCount = 0;
+            break;
+        case VOICE_TYPE_FM:
+            (*instrument)->envelopeCount = 4;
+            (*instrument)->lfoCount = 0;
+            break;
+    
+    }
+    for(int i = 0; i < (*instrument)->envelopeCount; i++){
+        (*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, .25f, "AD1");
+    }
+    
     (*instrument)->voiceType = vt;
 }
