@@ -154,6 +154,7 @@ void generateEnvelope(void* self);
 void triggerEnvelope(Envelope* env);
 
 Parameter* createParameter(ParamList* paramList, const char* name, float initialValue, float minValue, float maxValue);
+Parameter* createParameterEx(ParamList* paramList, const char* name, float initialValue, float minValue, float maxValue, float fineIncrement, float coarseIncrement);
 void setParameterValue(Parameter* param, float value);
 void setParameterBaseValue(Parameter* param, float value);
 float getParameterValue(Parameter* param);

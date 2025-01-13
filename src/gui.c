@@ -3,6 +3,7 @@
 #include "raylib.h"
 #include "gui.h"
 #include "input.h"
+#include "oscillator.h"
 #include "sequencer.h"
 #include "modsystem.h"
 #include "notes.h"
@@ -519,20 +520,22 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	int btnW = 60;
 	ButtonGui* ratioBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 1", inst->ops[0]->ratio, modifyParameterBaseValue);
 	offsetX += btnW + ic->inputPadding;
-	ButtonGui* fdbkBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 1", inst->ops[0]->ratio, modifyParameterBaseValue);
+	ButtonGui* fdbkBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 1", inst->ops[0]->feedbackAmount, modifyParameterBaseValue);
 	offsetX += btnW*2 + ic->inputPadding;
 	ButtonGui* ratioBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 2", inst->ops[1]->ratio, modifyParameterBaseValue);
 	offsetX += btnW + ic->inputPadding;
-	ButtonGui* fdbkBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 2", inst->ops[1]->ratio, modifyParameterBaseValue);
+	ButtonGui* fdbkBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 2", inst->ops[1]->feedbackAmount, modifyParameterBaseValue);
 	offsetX = x;
 	offsetY += btnH + ic->inputPadding;
 	ButtonGui* ratioBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 3", inst->ops[2]->ratio, modifyParameterBaseValue);
 	offsetX += btnW + ic->inputPadding;
-	ButtonGui* fdbkBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 3", inst->ops[2]->ratio, modifyParameterBaseValue);
+	ButtonGui* fdbkBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 3", inst->ops[2]->feedbackAmount, modifyParameterBaseValue);
 	offsetX += btnW*2 + ic->inputPadding;
 	ButtonGui* ratioBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 4", inst->ops[3]->ratio, modifyParameterBaseValue);
 	offsetX += btnW + ic->inputPadding;
-	ButtonGui* fdbkBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 4", inst->ops[3]->ratio, modifyParameterBaseValue);
+	ButtonGui* fdbkBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 4", inst->ops[3]->feedbackAmount, modifyParameterBaseValue);
+	offsetX += btnW + ic->inputPadding;
+	ButtonGui* algoBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "ALGO", inst->selectedAlgorithm, modifyParameterBaseValue);
 	addButtonToContainer(ratioBtn1, ic, 0,0);
 	addButtonToContainer(fdbkBtn1, ic, 0,1);
 	addButtonToContainer(ratioBtn2, ic, 0,2);
@@ -541,15 +544,71 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	addButtonToContainer(fdbkBtn3, ic, 1,1);
 	addButtonToContainer(ratioBtn4, ic, 1,2);
 	addButtonToContainer(fdbkBtn4, ic, 1,3);
+	addButtonToContainer(algoBtn4, ic, 1,4);
+	AlgoGraphGui* agg = createAlgoGraphGui(inst->selectedAlgorithm, SCREEN_W-110, 0, 100,100);
+	add_drawable(&agg->base, scene);
 	add_drawable(&ratioBtn1->base, scene);
 	add_drawable(&fdbkBtn1->base, scene);
 	add_drawable(&ratioBtn2->base, scene);
-	add_drawable(&ratioBtn2->base, scene);
+	add_drawable(&fdbkBtn2->base, scene);
 	add_drawable(&ratioBtn3->base, scene);
 	add_drawable(&fdbkBtn3->base, scene);
 	add_drawable(&ratioBtn4->base, scene);
 	add_drawable(&fdbkBtn4->base, scene);
+	add_drawable(&algoBtn4->base, scene);
 	return ic;
+}
+
+AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int h){
+	AlgoGraphGui* agg = (AlgoGraphGui*)malloc(sizeof(AlgoGraphGui));
+	agg->algorithm = algorithm;
+	agg->shape = (Shape){x,y,w,h};
+	agg->backgroundColour = cs.outlineColour;
+	agg->graphColour = cs.reddish;
+	agg->base.draw = drawAlgoGraphGui;
+}
+
+void drawAlgoGraphGui(void* self){
+	AlgoGraphGui* agg = (AlgoGraphGui*)self;
+	int opSize = agg->shape.w/5;
+	int padding = 16;
+	DrawRectangleLines(agg->shape.x, agg->shape.y, agg->shape.w, agg->shape.h, agg->backgroundColour);
+
+	DrawRectangleLines(agg->shape.x + padding, agg->shape.y + padding, opSize, opSize, agg->graphColour);
+	DrawText("1", agg->shape.x + padding + opSize/2, agg->shape.y + padding + opSize/2, 10, agg->graphColour);
+
+	DrawRectangleLines(agg->shape.x + opSize + padding*2, agg->shape.y + padding, opSize, opSize, agg->graphColour);
+	DrawText("2", agg->shape.x + padding + opSize/2, agg->shape.y + padding + opSize/2, 10, agg->graphColour);
+
+	DrawRectangleLines(agg->shape.x + opSize + padding*2, agg->shape.y + opSize + padding * 2, opSize, opSize, agg->graphColour);
+	DrawText("3", agg->shape.x + opSize + padding*2 + opSize/2, agg->shape.y + padding + opSize/2, 10, agg->graphColour);
+
+	DrawRectangleLines(agg->shape.x + padding, agg->shape.y + opSize + padding * 2, opSize, opSize, agg->graphColour);
+	DrawText("4", agg->shape.x + opSize + padding*2 + opSize/2, agg->shape.y + opSize + padding * 2 + opSize/2, 10, agg->graphColour);
+
+	int alg = getParameterValueAsInt(agg->algorithm);
+	int algOffset = alg * ALGO_SIZE;
+
+	for(int i = algOffset; i < algOffset + ALGO_SIZE; i++){
+		int srcIndex = 4 - fm_algorithm[i][0];
+		int dstIndex = 4 - fm_algorithm[i][1];
+
+		if(dstIndex != -1){
+			DrawLine(
+				agg->shape.x + (opSize/2) + (opSize * (srcIndex / 2)), 
+				agg->shape.y + opSize + padding + padding + (opSize * (int)(srcIndex % 2)), 
+				agg->shape.x + (opSize/2) + (opSize * (dstIndex / 2)), 
+				agg->shape.y + opSize + padding + padding + (opSize * (int)(dstIndex % 2)),
+				agg->graphColour);
+		} else {
+			DrawLine(
+				agg->shape.x + (opSize/2) + padding + (opSize * (srcIndex % 2)), 
+				agg->shape.y + opSize + padding + padding + (opSize * (int)(srcIndex / 2)), 
+				agg->shape.x + (opSize/2) + (padding + opSize)*5, 
+				agg->shape.y + opSize + padding + padding  + (padding + opSize)*5,
+				agg->graphColour);
+		}
+	}
 }
 
 ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene){

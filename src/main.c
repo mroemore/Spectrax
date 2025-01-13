@@ -122,7 +122,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 					float left_value = 0.0f, right_value = 0.0f;
 
 					if(currentVoice->type == VOICE_TYPE_FM) {
-						left_value = sineFmAlgo(currentVoice->source.operators, getParameterValue(currentVoice->frequency), 0);
+						left_value = sineFmAlgo(currentVoice->source.operators, getParameterValue(currentVoice->frequency), getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
 						right_value = left_value; // Modify for stereo oscillators if needed
 					} else if (currentVoice->type == VOICE_TYPE_BLEP) {
 						// left_value = blep_saw(currentVoice->left_phase, phase_increment);

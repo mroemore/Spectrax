@@ -122,6 +122,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
     voice->note[1] = 0;
     voice->paramList = createParamList();
     voice->modList = createModList();
+    voice->instrumentRef = inst;
     voice->frequency = createParameter(voice->paramList, "frequency", 440.0f, 0.001f, 20000.0f);
     voice->samplesElapsed = 0;
     voice->active = 0;
@@ -188,6 +189,7 @@ void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
         case VOICE_TYPE_FM:
             (*instrument)->envelopeCount = 4;
             (*instrument)->lfoCount = 0;
+            (*instrument)->selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1, 10);
             for(int i = 0; i < MAX_FM_OPERATORS; i++){
                 (*instrument)->ops[i] = createOperator((*instrument)->paramList, (float)i+1);
             }

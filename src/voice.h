@@ -22,6 +22,18 @@ typedef enum {
 } VoiceType;
 
 typedef struct {
+    Sample* sample;
+    ModList* modList;
+    ParamList* paramList;
+    Envelope* envelopes[MAX_ENVELOPES];
+    int envelopeCount; 
+    int lfoCount; 
+    VoiceType voiceType;
+    Parameter* selectedAlgorithm;
+    Operator* ops[MAX_FM_OPERATORS];
+} Instrument;
+
+typedef struct {
     float leftPhase;
     float rightPhase;
     int samplesElapsed;
@@ -30,6 +42,7 @@ typedef struct {
     ModList* modList;
     Parameter* volume;
     VoiceType type;
+    Instrument* instrumentRef;
     union {
         Oscillator oscillator;
         Sample *sample;
@@ -50,17 +63,6 @@ typedef enum {
     VA_ROUND_ROBIN,
     VA_RANDOM
 } AllocationBehaviour;
-
-typedef struct {
-    Sample* sample;
-    ModList* modList;
-    ParamList* paramList;
-    Envelope* envelopes[MAX_ENVELOPES];
-    int envelopeCount; 
-    int lfoCount; 
-    VoiceType voiceType;
-    Operator* ops[MAX_FM_OPERATORS];
-} Instrument;
 
 typedef struct {
     Voice* voicePools[MAX_SEQUENCER_CHANNELS][MAX_VOICES_PER_CHANNEL];

@@ -163,6 +163,14 @@ typedef struct {
 } ButtonGui;
 
 typedef struct {
+	Drawable base;
+	Shape shape;
+	Parameter* algorithm;
+	Color backgroundColour;
+	Color graphColour;
+} AlgoGraphGui;
+
+typedef struct {
 	ButtonGui* buttonRefs[MAX_BUTTON_ROWS][MAX_BUTTON_COLS];
 	Shape containerBounds;
 	int inputCount;
@@ -219,6 +227,7 @@ ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList, int
 SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h);
 OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h);
+AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int h);
 
 ContainerGroup* createContainerGroup();
 InputContainer* createInputContainer();
@@ -240,6 +249,7 @@ void drawGraphGui(void* self);
 void drawArrangerGui(void *self);
 void drawSongMinimapGui(void *self);
 void drawEnvelopeGui(void *self);
+void drawAlgoGraphGui(void* self);
 void updateOscilloscopeGui(OscilloscopeGui* og, float* data, int length);
 void updateGraphGui(GraphGui* graphGui);
 void InitGUI(void);
