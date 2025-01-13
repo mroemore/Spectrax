@@ -15,19 +15,11 @@
 #define MAX_FM_OPERATORS 4
 
 typedef enum {
-    VOICE_TYPE_OSCILLATOR,
     VOICE_TYPE_SAMPLE,
     VOICE_TYPE_FM,
     VOICE_TYPE_BLEP,
     VOICE_TYPE_COUNT
 } VoiceType;
-
-typedef enum {
-    IT_OSCILLATOR,
-    IT_SAMPLE,
-    IT_FM,
-    IT_BLEP
-} InstrumentType;
 
 typedef struct {
     float leftPhase;

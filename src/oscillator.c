@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BLEP_SIZE 32
-#define ALGO_SIZE 6
-#define OP_COUNT 4
+
 
 static float blep[BLEP_SIZE] = {
     // Precomputed BLEP table values
@@ -15,8 +13,14 @@ static float blep[BLEP_SIZE] = {
     0.0576f, 0.0625f, 0.0676f, 0.0729f, 0.0784f, 0.0841f, 0.09f, 0.0961f
 };
 
-static int fm_algorithm[ALGO_SIZE][2] = {
-    {3,2}, {2,0}, {1,0}, {0,-1}, {-1,-1}, {-1,-1}
+static int fm_algorithm[ALGO_COUNT * ALGO_SIZE][2] = {
+    {3,2}, {2,1}, {1,0}, {0,-1}, {-1,-1}, {-1,-1},
+    {3,2}, {2,0}, {1,0}, {0,-1}, {-1,-1}, {-1,-1},
+    {3,1}, {2,1}, {1,0}, {0,-1}, {-1,-1}, {-1,-1},
+    {3,1}, {3,2}, {2,1}, {1,0}, {0,-1}, {-1,-1},
+    {3,0}, {2,0}, {1,0}, {0,-1}, {-1,-1}, {-1,-1},
+    {3,-1}, {2,-1}, {1,-1}, {0,-1}, {-1,-1}, {-1,-1},
+    {3,2}, {2,1}, {1,0}, {2,0}, {0,-1}, {-1,-1},
 };
 
 float sawtooth_wave(float phase) {
@@ -38,8 +42,39 @@ float sine_fm(Operator* ops[4], float frequency){
     return c;
 }
 
+float sineFmAlgo(Operator* ops[OP_COUNT], float frequency, int algorithm){
+    int algoOffset = algorithm * ALGO_SIZE;
+    float out = 0.0f;
+    for(int i = 0; i < OP_COUNT; i++){
+        ops[i]->lastVal = ops[i]->currentVal;
+        ops[i]->currentVal = 0.0f;
+        ops[i]->modVal = 0.0f;
+        ops[i]->generated = 0;
+    }
+
+    for(int i = algoOffset; i < algoOffset + ALGO_SIZE; i++){
+        int modDstIndex = fm_algorithm[i][1];
+        int modSrcIndex = fm_algorithm[i][0];
+        if(modSrcIndex == -1){
+            continue;
+        }
+        if(!ops[modSrcIndex]->generated){
+            ops[modSrcIndex]->currentVal = sine_op(ops[modSrcIndex], frequency, ops[modSrcIndex]->modVal);
+            ops[modSrcIndex]->generated = 1;
+        }
+        if(modDstIndex == -1){
+            out += ops[modSrcIndex]->currentVal;
+        } else {
+            ops[modDstIndex]->modVal += ops[modSrcIndex]->currentVal;
+        }
+    }
+
+    return out;
+}
+
 float sine_op(Operator* op, float frequency, float mod){
     float phase_inc = (frequency * getParameterValue(op->ratio)) / SAMPLE_RATE;
+    float feedbackLevel = getParameterValue(op->feedbackAmount) * op->lastVal;
     op->phase = fmodf(op->phase + phase_inc, 1.0f);
     float a = sinf(2 * M_PI * (op->phase + mod));
     return a * getParameterValue(op->level);
@@ -71,7 +106,12 @@ float band_limited_square(float phase, float increment) {
 
 Operator* createOperator(ParamList* paramList, float ratio){
     Operator* op = (Operator*)malloc(sizeof(Operator));
+    op->generated = 0;
     op->phase = 0.0f;
+    op->currentVal = 0.0f;
+    op->lastVal = 0.0f;
+    op->modVal = 0.0f;
+    op->feedbackAmount = createParameter(paramList, "feedback", 0.0f, 0.0f, 1.0f);
     op->ratio = createParameter(paramList, "ratio", ratio, 0.25f, 30.0f);
     op->level = createParameter(paramList, "level", .5f, 0.0f, 1.0f);
     return op;

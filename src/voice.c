@@ -138,7 +138,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             inst->envelopes[i]->stages[1].duration, 
             inst->envelopes[i]->stages[0].curvature, 
             inst->envelopes[i]->stages[1].curvature, 
-            "AD"
+            "ADp"
         );
     }
 
