@@ -279,9 +279,10 @@ void containerGroupNavigate(ContainerGroup* cg, int rowInc, int colInc){
 			printf("containergroup selectedcolumn > 0\n");
 
 			cg->selectedColumn--;
+
 			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
 			ic = (InputContainer*)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-			ic->selectedColumn = ic->columnCount[cg->selectedRow]-1;
+			ic->selectedColumn = ic->columnCount[ic->selectedRow]-1;
 			printf("\t\tcontcoldec%i,%i, ic selected: %i, %i\n",cg->selectedRow,cg->selectedColumn, ic->selectedRow, ic->selectedColumn);
 
 			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
@@ -510,11 +511,57 @@ EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int 
 	return ec;
 }
 
+InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene){
+	InputContainer* ic = createInputContainer();
+	int offsetY = y + ic->inputPadding;
+	int offsetX = x;
+	int btnH = 20;
+	int btnW = 60;
+	ButtonGui* ratioBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 1", inst->ops[0]->ratio, modifyParameterBaseValue);
+	offsetX += btnW + ic->inputPadding;
+	ButtonGui* fdbkBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 1", inst->ops[0]->ratio, modifyParameterBaseValue);
+	offsetX += btnW*2 + ic->inputPadding;
+	ButtonGui* ratioBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 2", inst->ops[1]->ratio, modifyParameterBaseValue);
+	offsetX += btnW + ic->inputPadding;
+	ButtonGui* fdbkBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 2", inst->ops[1]->ratio, modifyParameterBaseValue);
+	offsetX = x;
+	offsetY += btnH + ic->inputPadding;
+	ButtonGui* ratioBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 3", inst->ops[2]->ratio, modifyParameterBaseValue);
+	offsetX += btnW + ic->inputPadding;
+	ButtonGui* fdbkBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 3", inst->ops[2]->ratio, modifyParameterBaseValue);
+	offsetX += btnW*2 + ic->inputPadding;
+	ButtonGui* ratioBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 4", inst->ops[3]->ratio, modifyParameterBaseValue);
+	offsetX += btnW + ic->inputPadding;
+	ButtonGui* fdbkBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 4", inst->ops[3]->ratio, modifyParameterBaseValue);
+	addButtonToContainer(ratioBtn1, ic, 0,0);
+	addButtonToContainer(fdbkBtn1, ic, 0,1);
+	addButtonToContainer(ratioBtn2, ic, 0,2);
+	addButtonToContainer(fdbkBtn2, ic, 0,3);
+	addButtonToContainer(ratioBtn3, ic, 1,0);
+	addButtonToContainer(fdbkBtn3, ic, 1,1);
+	addButtonToContainer(ratioBtn4, ic, 1,2);
+	addButtonToContainer(fdbkBtn4, ic, 1,3);
+	add_drawable(&ratioBtn1->base, scene);
+	add_drawable(&fdbkBtn1->base, scene);
+	add_drawable(&ratioBtn2->base, scene);
+	add_drawable(&ratioBtn2->base, scene);
+	add_drawable(&ratioBtn3->base, scene);
+	add_drawable(&fdbkBtn3->base, scene);
+	add_drawable(&ratioBtn4->base, scene);
+	add_drawable(&fdbkBtn4->base, scene);
+	return ic;
+}
+
 ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene){
 	ContainerGroup* cg = createContainerGroup();
-	for(int i = 0; i < inst->envelopeCount; i++){
-		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i], (i % 2) * contW, (i / 2) * (contH+50), contW, contH, scene);
-		addContainerToGroup(cg, ic->envInputs, (int)i/2, (int)i%2);
+	switch(inst->voiceType){
+		case VOICE_TYPE_FM:
+			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene);
+			addContainerToGroup(cg, fmParams,0,0);
+	}
+	for(int i = 1	; i < inst->envelopeCount+1; i++){
+		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i-1], (i % 2) * contW, 200 + (i / 2) * (contH+50), contW, contH, scene);
+		addContainerToGroup(cg, ic->envInputs, (int)(i)/2, (int)(i)%2);
 	}
 
 	return cg;

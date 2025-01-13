@@ -117,6 +117,19 @@ Operator* createOperator(ParamList* paramList, float ratio){
     return op;
 }
 
+Operator* createParamPointerOperator(ParamList* paramList, Parameter* fbamt, Parameter* ratio){
+    Operator* op = (Operator*)malloc(sizeof(Operator));
+    op->generated = 0;
+    op->phase = 0.0f;
+    op->currentVal = 0.0f;
+    op->lastVal = 0.0f;
+    op->modVal = 0.0f;
+    op->feedbackAmount = fbamt;
+    op->ratio = ratio;
+    op->level = createParameter(paramList, "level", .5f, 0.0f, 1.0f);
+    return op;
+}
+
 void freeOperator(Operator* op){
     freeParameter(op->ratio);
     freeParameter(op->level);

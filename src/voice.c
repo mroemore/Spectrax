@@ -155,10 +155,10 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             break;
 
         case VOICE_TYPE_FM:
-            voice->source.operators[0] = createOperator(voice->paramList, 1.0f);
-            voice->source.operators[1] = createOperator(voice->paramList, 2.0f);
-            voice->source.operators[2] = createOperator(voice->paramList, 4.0f);
-            voice->source.operators[3] = createOperator(voice->paramList, 3.0f);
+            voice->source.operators[0] = createParamPointerOperator(voice->paramList, inst->ops[0]->feedbackAmount, inst->ops[0]->ratio);
+            voice->source.operators[1] = createParamPointerOperator(voice->paramList, inst->ops[1]->feedbackAmount, inst->ops[1]->ratio);
+            voice->source.operators[2] = createParamPointerOperator(voice->paramList, inst->ops[2]->feedbackAmount, inst->ops[2]->ratio);
+            voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio);
             voice->samplePosition = 0.0f; // Initialize sample position
             for(int i = 0; i < voice->envCount; i++) {
                 addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
@@ -188,6 +188,9 @@ void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
         case VOICE_TYPE_FM:
             (*instrument)->envelopeCount = 4;
             (*instrument)->lfoCount = 0;
+            for(int i = 0; i < MAX_FM_OPERATORS; i++){
+                (*instrument)->ops[i] = createOperator((*instrument)->paramList, (float)i+1);
+            }
             break;
     
     }

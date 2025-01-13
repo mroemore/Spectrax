@@ -59,6 +59,7 @@ typedef struct {
     int envelopeCount; 
     int lfoCount; 
     VoiceType voiceType;
+    Operator* ops[MAX_FM_OPERATORS];
 } Instrument;
 
 typedef struct {

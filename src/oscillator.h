@@ -34,6 +34,7 @@ float sine_fm(Operator* ops[4], float frequency);
 float sineFmAlgo(Operator* ops[OP_COUNT], float frequency, int algorithm);
 float sine_op(Operator* op, float frequency, float mod);
 Operator* createOperator(ParamList* paramList, float ratio);
+Operator* createParamPointerOperator(ParamList* paramList, Parameter* fbamt, Parameter* ratio);
 void freeOperator(Operator* op);
 
 #endif // OSCILLATOR_H
