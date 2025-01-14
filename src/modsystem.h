@@ -9,6 +9,7 @@
 #define MAX_PARAMS 1024
 #define MAX_CONNECTIONS 8
 #define MAX_ENVELOPE_STAGES 8
+#define TWO_PI 3.14159265358979323846 * 2
 
 #define DEBUG_LOG(msg, ...) fprintf(stderr, "[DEBUG] " msg "\n", ##__VA_ARGS__)
 #define DEBUG_FREE(msg, ptr) DEBUG_LOG("Freeing %s at %p", msg, (void*)ptr)

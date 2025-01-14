@@ -56,7 +56,8 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 {
 	paTestData *data = (paTestData *)userData;
 	float *out = (float *)outputBuffer;
-	unsigned int i, j;
+	unsigned int i = 0;
+	unsigned int j = 0;
 	float max_output = 0.0f;
 	(void)inputBuffer;
 	
@@ -209,11 +210,11 @@ int main(void)
 	//printf("arranger/pattern load result: %i\n", loadstate);
 	data.sequencer = createSequencer(data.arranger);
 
-	if (!data.samples[0].data)
-	{
-		fprintf(stderr, "Failed to load sample\n");
-		return 1;
-	}
+	// if (!data.samples[0].data)
+	// {
+	// 	fprintf(stderr, "Failed to load sample\n");
+	// 	return 1;
+	// }
 
 	TransportGui* tsGui = createTransportGui(&data.arranger->playing, data.arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
@@ -430,11 +431,11 @@ int main(void)
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)){
 						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
-						btnGui->applyCallback(btnGui, 0.10f);
+						btnGui->applyCallback(btnGui, 2.0f);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
 						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
-						btnGui->applyCallback(btnGui, -0.10f);
+						btnGui->applyCallback(btnGui, -2.0f);
 					}
 				} else{
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){

@@ -7,7 +7,7 @@ LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
 DEBUG_FLAGS = -g
 RELEASE_FLAGS = -O2
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-poiner
-
+VALGRIND_FLAGS = -O0
 SRC_DIR = src
 OUT_DIR = bin
 
@@ -54,7 +54,15 @@ debug: all
 debug:
 	(cd bin/ && chmod +x $(TARGET) && gdb -ex "run" $(TARGET))
 
-test: 
+valc: CFLAGS += $(VALGRIND_FLAGS)
+valc: all
+valc:
+	(cd bin && valgrind --suppressions=../valgrind.supp --gen-suppressions=all --leak-check=full ./$(TARGET))
+
+valg: CFLAGS += $(VALGRIND_FLAGS)
+valg: all
+valg:
+	(cd bin && valgrind ./$(TARGET))
 
 asan: CFLAGS += $(ASAN_FLAGS) + $(DEBUG_FLAGS)
 asan:

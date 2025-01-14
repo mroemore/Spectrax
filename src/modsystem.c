@@ -191,7 +191,7 @@ LFO* createLFO(ParamList* paramList, ModList* modList, int index, float rate, in
 
 void generateSine(void* self) {
     LFO* lfo = (LFO*)self;
-    float value = sinf(getParameterValue(lfo->phase) * 2.0f * M_PI);
+    float value = sinf(getParameterValue(lfo->phase) * TWO_PI);
     setParameterBaseValue(lfo->base.output, value);
     setParameterValue(lfo->base.output, value);
 }

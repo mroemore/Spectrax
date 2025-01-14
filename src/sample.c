@@ -44,27 +44,14 @@ void loadSample(SamplePool* sp, const char* name, float* data, int bit, int samp
         return;
     }
     size_t dataSize = length * sizeof(float);
-    if(sp->memoryUsed + dataSize > MAX_SAMPLE_POOL_BYTES){
-        printf("sample memory maxed out.\n");
-        return;
-    }
     float* sampleData = (float*)((char*)sp->sampleData + sp->memoryUsed);
-	printf("Original data (first 10 samples):\n");
-	for (int i = 0; i < 10; i++) {
-		printf("%f ", data[i]);
-	}
-	printf("\n");
+
     memcpy(sampleData, data, dataSize);
-	
-	printf("\n");
+
     Sample* sample = (Sample*)malloc(sizeof(Sample));
     if(!sample) return;
     
     sample->data = sampleData;
-    printf("Copied data (first 10 samples):\n");
-	for (int i = 0; i < 10; i++) {
-		printf("%f ", sample->data[i]);
-	}
 	
 	sample->name = (char*)malloc(strlen(name)+1);
 	strcpy(sample->name, name);

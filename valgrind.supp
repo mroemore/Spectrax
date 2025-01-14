@@ -1,0 +1,291 @@
+{
+PA_1
+Memcheck:Cond
+obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+fun:snd_pcm_hw_params_set_period_size_near
+obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+fun:PaAlsa_Initialize
+fun:Pa_Initialize
+fun:main
+}
+{
+   PA_2
+   Memcheck:Cond
+   fun:memmove
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_3
+   Memcheck:Cond
+   fun:memmove
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_4
+   Memcheck:Value8
+   fun:memmove
+   fun:snd_pcm_area_copy
+   fun:snd_pcm_areas_copy
+   fun:snd_pcm_areas_copy_wrap
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+}
+{
+   PA_5
+   Memcheck:Value8
+   fun:memmove
+   fun:snd_pcm_area_copy
+   fun:snd_pcm_areas_copy
+   fun:snd_pcm_areas_copy_wrap
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+}
+{
+   PA_6
+   Memcheck:Cond
+   fun:snd_pcm_area_silence
+   fun:snd_pcm_areas_silence
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_7
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   fun:snd_pcm_drop
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_8
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   fun:snd_config_hook_load
+   fun:snd_config_hook_load_for_all_cards
+}
+{
+   PA_9
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   fun:snd_config_hook_load
+   fun:snd_config_hook_load_for_all_cards
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   fun:snd_config_searcha_hooks
+}
+{
+   PA_10
+   Memcheck:Value8
+   fun:memmove
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_11
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_12
+   Memcheck:Cond
+   fun:memmove
+   fun:snd_pcm_area_copy
+   fun:snd_pcm_areas_copy
+   fun:snd_pcm_areas_copy_wrap
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/alsa-lib/libasound_module_pcm_pipewire.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/audioconvert/libspa-audioconvert.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+   obj:/usr/lib/x86_64-linux-gnu/spa-0.2/support/libspa-support.so
+   obj:/usr/lib/x86_64-linux-gnu/libpipewire-0.3.so.0.1204.0
+}
+{
+   PA_13
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_14
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_15
+   Memcheck:Value8
+   fun:patestCallback
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_16
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+{
+   PA_17
+   Memcheck:Cond
+   fun:patestCallback
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:start_thread
+   fun:clone
+}
+
+{
+   PA_M_1
+   Memcheck:Cond
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libasound.so.2.0.0
+   fun:snd_pcm_hw_params
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libportaudio.so.2.0.0
+   fun:Pa_OpenStream
+   fun:Pa_OpenDefaultStream
+   fun:main
+}
+
+{
+   LGL_1
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0
+   fun:_glfwCreateContextGLX
+   fun:_glfwCreateWindowX11
+}
+{
+   LGL_2
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libGLX_mesa.so.0.0.0
+   obj:/usr/lib/x86_64-linux-gnu/libGLX.so.0.0.0
+   fun:_glfwCreateContextGLX
+}
+
+{
+   LGL_3
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+   obj:/usr/lib/x86_64-linux-gnu/libgallium-24.2.3-1ubuntu1.so
+}

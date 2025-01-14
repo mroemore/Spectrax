@@ -156,10 +156,10 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             break;
 
         case VOICE_TYPE_FM:
-            voice->source.operators[0] = createParamPointerOperator(voice->paramList, inst->ops[0]->feedbackAmount, inst->ops[0]->ratio);
-            voice->source.operators[1] = createParamPointerOperator(voice->paramList, inst->ops[1]->feedbackAmount, inst->ops[1]->ratio);
-            voice->source.operators[2] = createParamPointerOperator(voice->paramList, inst->ops[2]->feedbackAmount, inst->ops[2]->ratio);
-            voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio);
+            voice->source.operators[0] = createParamPointerOperator(voice->paramList, inst->ops[0]->feedbackAmount, inst->ops[0]->ratio, inst->ops[0]->level);
+            voice->source.operators[1] = createParamPointerOperator(voice->paramList, inst->ops[1]->feedbackAmount, inst->ops[1]->ratio, inst->ops[1]->level);
+            voice->source.operators[2] = createParamPointerOperator(voice->paramList, inst->ops[2]->feedbackAmount, inst->ops[2]->ratio, inst->ops[2]->level);
+            voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio, inst->ops[3]->level);
             voice->samplePosition = 0.0f; // Initialize sample position
             for(int i = 0; i < voice->envCount; i++) {
                 addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
@@ -172,9 +172,8 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 }
 
 
-void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
+void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePool) {
     *instrument = (Instrument*)malloc(sizeof(Instrument));
-    (*instrument)->sample = sample;
     (*instrument)->modList = createModList();
     (*instrument)->paramList = createParamList();
     switch(vt){
@@ -185,11 +184,13 @@ void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample) {
         case VOICE_TYPE_SAMPLE:
             (*instrument)->envelopeCount = 1;
             (*instrument)->lfoCount = 0;
+            (*instrument)->sample = samplePool->samples[0];
+
             break;
         case VOICE_TYPE_FM:
             (*instrument)->envelopeCount = 4;
             (*instrument)->lfoCount = 0;
-            (*instrument)->selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1, 10);
+            (*instrument)->selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
             for(int i = 0; i < MAX_FM_OPERATORS; i++){
                 (*instrument)->ops[i] = createOperator((*instrument)->paramList, (float)i+1);
             }

@@ -2,8 +2,9 @@
 #define SAMPLE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
-#define MAX_SAMPLE_POOL_BYTES 64000000
+#define MAX_SAMPLE_POOL_BYTES 32000000
 #define MAX_LOADED_SAMPLES 1024
 
 #pragma pack(push, 1)

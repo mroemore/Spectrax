@@ -2,12 +2,34 @@
 #define OSCILLATOR_H
 
 #include "modsystem.h"
+#include <stddef.h>
 
 #define SAMPLE_RATE (44100)
 #define BLEP_SIZE 32
 #define ALGO_SIZE 6
 #define ALGO_COUNT 7
 #define OP_COUNT 4
+
+#define MAX_WAVETABLES 128
+#define MAX_WTPOOL_BYTES 1600000
+
+typedef struct {
+    float *data;
+    char* name;
+    int length;
+} Wavetable;
+
+typedef struct { 
+    char* data;
+    Wavetable** tables; 
+    size_t memoryUsed;
+    int tableSizes[MAX_WAVETABLES];
+    int tableCount;
+} WavetablePool;
+
+WavetablePool* createWavetablePool();
+void freeWavetablePool(WavetablePool* wtp);
+void loadWavetable(WavetablePool* wtp, char* name, float* data, size_t length);
 
 typedef struct {
     float (*generate)(float phase, float increment);
@@ -45,7 +67,7 @@ float sine_fm(Operator* ops[4], float frequency);
 float sineFmAlgo(Operator* ops[OP_COUNT], float frequency, int algorithm);
 float sine_op(Operator* op, float frequency, float mod);
 Operator* createOperator(ParamList* paramList, float ratio);
-Operator* createParamPointerOperator(ParamList* paramList, Parameter* fbamt, Parameter* ratio);
+Operator* createParamPointerOperator(ParamList* paramList, Parameter* fbamt, Parameter* ratio, Parameter* level);
 void freeOperator(Operator* op);
 
 #endif // OSCILLATOR_H

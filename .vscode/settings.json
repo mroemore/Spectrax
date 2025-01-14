@@ -10,7 +10,8 @@
 		"raylib.h": "c",
 		"oscillator.h": "c",
 		"stdio.h": "c",
-		"modsystem.h": "c"
+		"modsystem.h": "c",
+		"math.h": "c"
 	},
 	"C_Cpp.errorSquiggles": "enabled"
 }
