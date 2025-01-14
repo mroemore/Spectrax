@@ -172,7 +172,9 @@ typedef struct {
 
 typedef struct {
 	ButtonGui* buttonRefs[MAX_BUTTON_ROWS][MAX_BUTTON_COLS];
+	Drawable* otherDrawables[MAX_BUTTON_ROWS];
 	Shape containerBounds;
+	int otherDrawableCount;
 	int inputCount;
 	int rowCount;
 	int inputPadding;
@@ -234,9 +236,11 @@ InputContainer* createInputContainer();
 ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int scene, int x, int y);
 ButtonGui* createButtonGui(int x, int y, int w, int h, char* text, Parameter* param, void* callback);
 void addContainerToGroup(ContainerGroup* cg, InputContainer* ic, int row, int col);
+void removeContainerGroup(ContainerGroup* cg, int scene);
 void containerGroupNavigate(ContainerGroup* cg, int rowInc, int colInc);
 void removeButtonFromContainer(ButtonGui* btnGui, InputContainer* btnCont, Scene scene);
 void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, int col);
+void addDrawableToContainer(InputContainer* ic, Drawable* d);
 ButtonGui* getSelectedInput(ContainerGroup* cg);
 void drawButtonGui(void* self);
 void applyButtonCallback(void* self, float value);

@@ -3,6 +3,7 @@
 
 #include "modsystem.h"
 #include <stddef.h>
+#include <string.h>
 
 #define SAMPLE_RATE (44100)
 #define BLEP_SIZE 32

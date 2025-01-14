@@ -200,10 +200,16 @@ InputContainer* createInputContainer(){
 	}
 	btnCont->containerBounds = (Shape){SCREEN_W,SCREEN_H,0,0};
 	btnCont->inputCount = 0;
+	btnCont->otherDrawableCount = 0;
 	btnCont->inputPadding = 2;
 	btnCont->selectedRow = 0;
 	btnCont->selectedColumn = 0;
 	return btnCont;
+}
+
+void addDrawableToContainer(InputContainer* ic, Drawable* d){
+	ic->otherDrawables[ic->otherDrawableCount] = d;
+	ic->otherDrawableCount++;
 }
 
 ContainerGroup* createContainerGroup(){
@@ -489,10 +495,10 @@ EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int 
 	EnvelopeContainer* ec = (EnvelopeContainer*)malloc(sizeof(EnvelopeContainer));
 	ec->envelopeGui = createEnvelopeGui(env, x,y,w,h/2);
 	ec->envInputs = createInputContainer();
-	int offsetY = y + h/4 + ec->envInputs->inputPadding;
+	int offsetY = y + h/2 + ec->envInputs->inputPadding;
 	int offsetX = x;
-	int btnH = 20;
-	int btnW = 40;
+	int btnH = 25;
+	int btnW = 70;
 	ButtonGui* attackBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "ATK", env->stages[0].duration, incParameterBaseValue); 
 	offsetX += btnW + ec->envInputs->inputPadding;
 	ButtonGui* decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, incParameterBaseValue); 
@@ -546,6 +552,7 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	addButtonToContainer(fdbkBtn4, ic, 1,3);
 	addButtonToContainer(algoBtn4, ic, 1,4);
 	AlgoGraphGui* agg = createAlgoGraphGui(inst->selectedAlgorithm, SCREEN_W-110, 0, 100,100);
+	addDrawableToContainer(ic, &agg->base);
 	add_drawable(&agg->base, scene);
 	add_drawable(&ratioBtn1->base, scene);
 	add_drawable(&fdbkBtn1->base, scene);
@@ -557,6 +564,10 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	add_drawable(&fdbkBtn4->base, scene);
 	add_drawable(&algoBtn4->base, scene);
 	return ic;
+}
+
+void removeContainerGroupFromScene(ContainerGroup* cg, int scene){
+
 }
 
 AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int h){

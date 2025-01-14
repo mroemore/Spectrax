@@ -6,12 +6,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp) {
+VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePool* wtp) {
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     if (vm == NULL) {
         fprintf(stderr, "Failed to allocate memory for VoiceManager\n");
         return NULL;
     }
+
+    vm->wavetablePool = wtp;
+    vm->samplePool = sp;
 
     // Initialize voiceCount to 0 for all channels
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
@@ -19,7 +22,7 @@ VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp) {
     }
 
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-        init_instrument(&vm->instruments[i], settings->voiceTypes[i], sp->samples[3]);
+        init_instrument(&vm->instruments[i], settings->voiceTypes[i], sp);
         initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }
@@ -64,6 +67,29 @@ void freeVoice(Voice* v){
     free(v);
 }
 
+OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement, float frequency){
+    OutVal out;
+    float L = 0.0f;
+    float R = 0.0f;
+    switch(currentVoice->type){
+        case VOICE_TYPE_BLEP:
+            L = blep_square(currentVoice->leftPhase, phaseIncrement);
+            out = (OutVal){L, L};
+            break;
+        case VOICE_TYPE_FM:
+            L = sineFmAlgo(currentVoice->source.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
+            out = (OutVal){L, L};
+            break;
+        case VOICE_TYPE_SAMPLE:
+            L = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
+            out = (OutVal){L, L};
+            break;
+        default:
+            break;
+    }
+    return out;
+}
+
 void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrument* inst){
     if(channelIndex >= MAX_SEQUENCER_CHANNELS || channelIndex < 0) {
         printf("out of bounds!\n");
@@ -101,6 +127,21 @@ Voice* getFreeVoice(VoiceManager* vm, int seqChannel){
     }
     printf("returning voice %i of channel %i\n", voiceIndex, seqChannel);
     return vm->voicePools[seqChannel][voiceIndex];
+}
+
+int selectSample(VoiceManager* vm, int channelIndex, int sampleIndex){
+    if(sampleIndex < 0 || sampleIndex >= vm->samplePool->sampleCount){
+        sampleIndex %= vm->samplePool->sampleCount - 1;
+    }
+
+    vm->instruments[channelIndex]->sample = vm->samplePool->samples[sampleIndex];
+    return sampleIndex;
+}
+
+void incrementSampleParam(Parameter* sampleIndex, float delta){
+    int index = getParameterValueAsInt(sampleIndex);
+    index += (int)delta;
+
 }
 
 void triggerVoice(Voice* voice, int note[NOTE_INFO_SIZE]){
@@ -185,7 +226,7 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
             (*instrument)->envelopeCount = 1;
             (*instrument)->lfoCount = 0;
             (*instrument)->sample = samplePool->samples[0];
-
+            (*instrument)->sampleIndex = createParameterEx((*instrument)->paramList, "algo", 0, 0, (float)MAX_LOADED_SAMPLES, 1.0f, 10.0f);
             break;
         case VOICE_TYPE_FM:
             (*instrument)->envelopeCount = 4;

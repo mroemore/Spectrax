@@ -40,9 +40,9 @@ typedef struct
 	Sequencer* sequencer;
 	ModList* modList;
 	VoiceManager* voiceManager;
-	SamplePool* samplePool;	
+	SamplePool* samplePool;
+	WavetablePool* wavetablePool;
 } paTestData;
-
 
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
@@ -78,7 +78,6 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 			}
 		}
 	}
-    
 	
 	
 	for (i = 0; i < framesPerBuffer; i++)
@@ -112,47 +111,32 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 					}
 
 					float phase_increment = 0.0f;
+					float freq = 0.0f;
 					if (currentVoice->note[0] != OFF)
 					{
-						float freq = noteFrequencies[currentVoice->note[0]][currentVoice->note[1]];
+						freq = noteFrequencies[currentVoice->note[0]][currentVoice->note[1]];
 						setParameterBaseValue(currentVoice->frequency, freq);
 						setParameterValue(currentVoice->frequency, freq);
 						phase_increment = freq / SAMPLE_RATE;
 					}
 
-					float left_value = 0.0f, right_value = 0.0f;
+					OutVal currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);
 
-					if(currentVoice->type == VOICE_TYPE_FM) {
-						left_value = sineFmAlgo(currentVoice->source.operators, getParameterValue(currentVoice->frequency), getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
-						right_value = left_value; // Modify for stereo oscillators if needed
-					} else if (currentVoice->type == VOICE_TYPE_BLEP) {
-						// left_value = blep_saw(currentVoice->left_phase, phase_increment);
-						// left_value *= 0.0005;
-						left_value = noblep_sine(currentVoice->leftPhase);
-						left_value *= 0.5;
-						right_value = left_value; // Modify for stereo oscillators if needed
-					} else if (currentVoice->type == VOICE_TYPE_SAMPLE) {
-						left_value = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phase_increment, SAMPLE_RATE, 0);
-						right_value = left_value; // Mono playback
-					}
-
-					// left_value = fold(left_value, 8.0f, 1.0f);
-					// right_value = left_value; // Mono playback
 					if(data->arranger->playing){
 						// float vol = getParameterValue(currentVoice->volume);
 						// if(j == 0){
 						// 	printf("VOLUME: %f\n", vol);
 						// }
-						left_output += left_value * getParameterValue(currentVoice->volume);
-						right_output += right_value * getParameterValue(currentVoice->volume);
+						left_output += currentSample.L * getParameterValue(currentVoice->volume);
+						right_output += currentSample.R * getParameterValue(currentVoice->volume);
 
 						currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
 						currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
 
 						currentVoice->samplesElapsed++;
 					} else {
-						left_output = 0;
-						right_output = 0;
+						currentSample.L = 0;
+						currentSample.R = 0;
 					}
 				} else {
 				//	data->voices[j].mod[0].result = 0;			
@@ -204,7 +188,8 @@ int main(void)
 	data.modList = createModList();
 	data.arranger = createArranger(settings);
 	data.patternList = createPatternList();
-	data.voiceManager = createVoiceManager(settings, data.samplePool);
+	data.wavetablePool = createWavetablePool();
+	data.voiceManager = createVoiceManager(settings, data.samplePool, data.wavetablePool);
 
 	//int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
 	//printf("arranger/pattern load result: %i\n", loadstate);

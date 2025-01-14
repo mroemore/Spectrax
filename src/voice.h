@@ -22,6 +22,11 @@ typedef enum {
 } VoiceType;
 
 typedef struct {
+	float L;
+	float R;
+} OutVal;
+
+typedef struct {
     Sample* sample;
     ModList* modList;
     ParamList* paramList;
@@ -30,6 +35,7 @@ typedef struct {
     int lfoCount; 
     VoiceType voiceType;
     Parameter* selectedAlgorithm;
+    Parameter* sampleIndex;
     Operator* ops[MAX_FM_OPERATORS];
 } Instrument;
 
@@ -69,11 +75,13 @@ typedef struct {
     Instrument* instruments[MAX_SEQUENCER_CHANNELS];
     VoiceType voiceTypes[MAX_SEQUENCER_CHANNELS];
     int voiceCount[MAX_SEQUENCER_CHANNELS];
+    WavetablePool* wavetablePool;
+    SamplePool* samplePool;
     AllocationBehaviour voiceAllocation[MAX_SEQUENCER_CHANNELS];
 } VoiceManager;
 
 
-VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp);
+VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePool* wtp);
 void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrument* inst);
 void initVoiceManager(VoiceManager* vm, SamplePool* sp);
 void freeVoice(Voice* v);
@@ -81,10 +89,11 @@ void freeVoiceManager(VoiceManager* vm);
 Voice* getFreeVoice(VoiceManager* vm, int seqChannel);
 void changeVoiceType(VoiceManager* vm, int seqChannel, VoiceType type);
 void triggerVoice(Voice* voice, int note[NOTE_INFO_SIZE]);
+OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement, float frequency);
 
 void initialize_voice(Voice *voice, Instrument* inst);
 void initialize_voice_sample(Voice *voice, Sample sample, int voice_id, ModList* modList);
 void initialize_voice_blep(Voice *voice, int voice_id, ModList* modList);
 void initialize_voice_fm(Voice *voice, int voice_id, ModList* modList);
-void init_instrument(Instrument** instrument, VoiceType vt, Sample* sample);
+void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePool);
 #endif // VOICE_H
