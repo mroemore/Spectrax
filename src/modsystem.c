@@ -87,7 +87,6 @@ void setParameterBaseValue(Parameter* param, float value) {
 
 float getParameterValue(Parameter* param) {
 	//DEBUG_LOG("get param");
-
     return param->currentValue;
 }
 

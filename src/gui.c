@@ -13,6 +13,7 @@ DrawableList *patternScreenDrawableList;
 DrawableList *globalDrawableList;
 DrawableList *arrangerScreenDrawableList;
 DrawableList *instrumentScreenDrawableList;
+
 Font textFont;
 Font symbolFont;
 ColourScheme cs;
@@ -107,6 +108,7 @@ void InitGUI(void)
 TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y){
 	TransportGui *tsGui = (TransportGui*)malloc(sizeof(TransportGui));
 	tsGui->base.draw = drawTransportGui;
+	tsGui->base.enabled = true;
 	tsGui->shape.x = x;
 	tsGui->shape.y = y;
 	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
@@ -121,6 +123,7 @@ SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *sel
 {
 	SequencerGui *seqGui = (SequencerGui *)malloc(sizeof(SequencerGui));
 	seqGui->base.draw = drawSequencerGui;
+	seqGui->base.enabled = true;
 	seqGui->sequencer = sequencer;
 	seqGui->pattern_list = pl;
 	seqGui->shape.x = x;
@@ -140,6 +143,7 @@ SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *sel
 GraphGui *createGraphGui(float* target, char* name, float min, float max, int x, int y, int h, int size){
 	GraphGui *graphGui = (GraphGui*)malloc(sizeof(GraphGui));
 	graphGui->base.draw = drawGraphGui;
+	graphGui->base.enabled = true;
 	graphGui->target = target;
 	graphGui->name = name;
 	graphGui->index = 0;
@@ -161,6 +165,7 @@ GraphGui *createGraphGui(float* target, char* name, float min, float max, int x,
 ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList, int x, int y){
 	ArrangerGui *arrangerGui = (ArrangerGui*)malloc(sizeof(ArrangerGui));
 	arrangerGui->base.draw = drawArrangerGui;
+	arrangerGui->base.enabled = true;
 	arrangerGui->shape.x = x;
 	arrangerGui->shape.y = y + 30;
 	arrangerGui->shape.w = 24;
@@ -364,7 +369,7 @@ void moveContainer(InputContainer* ic, int deltax, int deltay){
 	}
 }
 
-void addButtonToContainer(ButtonGui* btnGui, InputContainer* ic, int row, int col){
+void addButtonToContainer(ButtonGui* btnGui, InputContainer* ic, int row, int col, int scene, int enabled){
 	if(row < 0 || col < 0 || row > MAX_BUTTON_CONTAINER_ROWS - 1 || col > MAX_BUTTON_CONTAINER_COLS - 1) {
 		printf("attempting out-of-bounds btn container insertion.\n");
 		return;
@@ -410,12 +415,18 @@ void addButtonToContainer(ButtonGui* btnGui, InputContainer* ic, int row, int co
 	}
 	ic->buttonRefs[insertRow][insertCol] = btnGui;
 	ic->inputCount++;
+
+	//add the button to the drawable list and track it in the container's drawable reference array.
+	btnGui->base.enabled = enabled;
+	add_drawable(&btnGui->base, scene);
+	addDrawableToContainer(ic, &btnGui->base);
 }
 
 ButtonGui* createButtonGui(int x, int y, int w, int h, char* buttonText, Parameter* param, void* callback){
 	ButtonGui* btnGui = (ButtonGui*)malloc(sizeof(ButtonGui));
 	btnGui->base.draw = drawButtonGui;
 	btnGui->base.onPress = callback;
+	btnGui->base.enabled = true;
 	btnGui->shape.x = x;
 	btnGui->shape.y = y;
 	btnGui->shape.w = w;
@@ -456,6 +467,7 @@ ButtonGui* getSelectedInput(ContainerGroup* cg){
 EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h){
 	EnvelopeGui *envGui = (EnvelopeGui*)malloc(sizeof(EnvelopeGui));
 	envGui->base.draw = drawEnvelopeGui;
+	envGui->base.enabled = true;
 	envGui->env = env;
 	envGui->shape.x = x;
 	envGui->shape.y = y;
@@ -464,7 +476,7 @@ EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h){
 	envGui->graphData = malloc(sizeof(int) * w);
 }
 
-EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene){
+EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled){
 	EnvelopeContainer* ec = (EnvelopeContainer*)malloc(sizeof(EnvelopeContainer));
 	ec->envelopeGui = createEnvelopeGui(env, x,y,w,h/2);
 	ec->envInputs = createInputContainer();
@@ -479,19 +491,14 @@ EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w,
 	ButtonGui* decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, incParameterBaseValue); 
 	offsetX += btnW + ec->envInputs->inputPadding;
 	ButtonGui* decayCurveBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "D-CRV", env->stages[1].curvature, incParameterBaseValue); 
-	addButtonToContainer(attackBtn, ec->envInputs, 0,0);
-	addButtonToContainer(attackCurveBtn, ec->envInputs, 0,1);
-	addButtonToContainer(decayBtn, ec->envInputs, 0,2);
-	addButtonToContainer(decayCurveBtn, ec->envInputs, 0,3);
-	add_drawable(&ec->envelopeGui->base, scene);
-	add_drawable(&attackBtn->base, scene);
-	add_drawable(&decayBtn->base, scene);
-	add_drawable(&attackCurveBtn->base, scene);
-	add_drawable(&decayCurveBtn->base, scene);
+	addButtonToContainer(attackBtn, ec->envInputs, 0,0, scene, enabled);
+	addButtonToContainer(attackCurveBtn, ec->envInputs, 0,1, scene, enabled);
+	addButtonToContainer(decayBtn, ec->envInputs, 0,2, scene, enabled);
+	addButtonToContainer(decayCurveBtn, ec->envInputs, 0,3, scene, enabled);
 	return ec;
 }
 
-EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene){
+EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled){
 	EnvelopeContainer* ec = (EnvelopeContainer*)malloc(sizeof(EnvelopeContainer));
 	ec->envelopeGui = createEnvelopeGui(env, x,y,w,h/2);
 	ec->envInputs = createInputContainer();
@@ -506,19 +513,14 @@ EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int 
 	ButtonGui* sustainBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SUS", env->stages[2].duration, incParameterBaseValue); 
 	offsetX += btnW + ec->envInputs->inputPadding;
 	ButtonGui* releaseBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "REL", env->stages[3].duration, incParameterBaseValue); 
-	addButtonToContainer(attackBtn, ec->envInputs, 0,0);
-	addButtonToContainer(decayBtn, ec->envInputs, 0,1);
-	addButtonToContainer(sustainBtn, ec->envInputs, 0,2);
-	addButtonToContainer(releaseBtn, ec->envInputs, 0,3);
-	add_drawable(&ec->envelopeGui->base, scene);
-	add_drawable(&attackBtn->base, scene);
-	add_drawable(&decayBtn->base, scene);
-	add_drawable(&sustainBtn->base, scene);
-	add_drawable(&releaseBtn->base, scene);
+	addButtonToContainer(attackBtn, ec->envInputs, 0, 0, scene, enabled);
+	addButtonToContainer(decayBtn, ec->envInputs, 0, 1, scene, enabled);
+	addButtonToContainer(sustainBtn, ec->envInputs, 0, 2, scene, enabled);
+	addButtonToContainer(releaseBtn, ec->envInputs, 0, 3, scene, enabled);
 	return ec;
 }
 
-InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene){
+InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled){
 	InputContainer* ic = createInputContainer();
 	int offsetY = y + ic->inputPadding;
 	int offsetX = x;
@@ -542,32 +544,33 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	ButtonGui* fdbkBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 4", inst->ops[3]->feedbackAmount, incParameterBaseValue);
 	offsetX += btnW + ic->inputPadding;
 	ButtonGui* algoBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "ALGO", inst->selectedAlgorithm, incParameterBaseValue);
-	addButtonToContainer(ratioBtn1, ic, 0,0);
-	addButtonToContainer(fdbkBtn1, ic, 0,1);
-	addButtonToContainer(ratioBtn2, ic, 0,2);
-	addButtonToContainer(fdbkBtn2, ic, 0,3);
-	addButtonToContainer(ratioBtn3, ic, 1,0);
-	addButtonToContainer(fdbkBtn3, ic, 1,1);
-	addButtonToContainer(ratioBtn4, ic, 1,2);
-	addButtonToContainer(fdbkBtn4, ic, 1,3);
-	addButtonToContainer(algoBtn4, ic, 1,4);
+	addButtonToContainer(ratioBtn1, ic, 0,0, scene, enabled);
+	addButtonToContainer(fdbkBtn1, ic, 0,1, scene, enabled);
+	addButtonToContainer(ratioBtn2, ic, 0,2, scene, enabled);
+	addButtonToContainer(fdbkBtn2, ic, 0,3, scene, enabled);
+	addButtonToContainer(ratioBtn3, ic, 1,0, scene, enabled);
+	addButtonToContainer(fdbkBtn3, ic, 1,1, scene, enabled);
+	addButtonToContainer(ratioBtn4, ic, 1,2, scene, enabled);
+	addButtonToContainer(fdbkBtn4, ic, 1,3, scene, enabled);
+	addButtonToContainer(algoBtn4, ic, 1,4, scene, enabled);
 	AlgoGraphGui* agg = createAlgoGraphGui(inst->selectedAlgorithm, SCREEN_W-110, 0, 100,100);
 	addDrawableToContainer(ic, &agg->base);
-	add_drawable(&agg->base, scene);
-	add_drawable(&ratioBtn1->base, scene);
-	add_drawable(&fdbkBtn1->base, scene);
-	add_drawable(&ratioBtn2->base, scene);
-	add_drawable(&fdbkBtn2->base, scene);
-	add_drawable(&ratioBtn3->base, scene);
-	add_drawable(&fdbkBtn3->base, scene);
-	add_drawable(&ratioBtn4->base, scene);
-	add_drawable(&fdbkBtn4->base, scene);
-	add_drawable(&algoBtn4->base, scene);
 	return ic;
 }
 
-void removeContainerGroupFromScene(ContainerGroup* cg, int scene){
+InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene){
+	InstrumentGui* ig = (InstrumentGui*)malloc(sizeof(InstrumentGui));
+	if(!ig) return NULL;
+	ig->selectedInstrument = selectedInstrument;
+	
+	for(int i = 0; i < vm->enabledChannels; i++){
+		int isSelected = *selectedInstrument == i ? 1 : 0;
+		ig->instrumentControls[i] = createInstrumentModulationGui(vm->instruments[i], 10, 10, SCREEN_W-20, SCREEN_H-20, SCENE_INSTRUMENT, isSelected);
+	}
+}
 
+void removeContainerGroupFromScene(ContainerGroup* cg, int scene){
+	
 }
 
 AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int h){
@@ -577,6 +580,7 @@ AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int 
 	agg->backgroundColour = cs.outlineColour;
 	agg->graphColour = cs.reddish;
 	agg->base.draw = drawAlgoGraphGui;
+	agg->base.enabled = true;
 }
 
 void drawAlgoGraphGui(void* self){
@@ -622,11 +626,11 @@ void drawAlgoGraphGui(void* self){
 	}
 }
 
-ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene){
+ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled){
 	ContainerGroup* cg = createContainerGroup();
 	switch(inst->voiceType){
 		case VOICE_TYPE_FM:
-			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene);
+			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
 			addContainerToGroup(cg, fmParams,0,0);
 	}
 	for(int i = 1	; i < inst->envelopeCount+1; i++){
@@ -747,6 +751,7 @@ void drawArrangerGui(void *self){
 OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h){
 	OscilloscopeGui* og = (OscilloscopeGui*)malloc(sizeof(OscilloscopeGui));
 	og->base.draw = drawOscilloscopeGui;
+	og->base.enabled = true;
 	og->shape.x = x;
 	og->shape.y = y;
 	og->shape.w = w < OSCILLOSCOPE_HISTORY ? w : OSCILLOSCOPE_HISTORY;
@@ -884,6 +889,7 @@ void drawSongMinimapGui(void *self){
 InputsGui* createInputsGui(InputState* inputState, int x, int y){
 	InputsGui* iGui = (InputsGui*)malloc(sizeof(InputsGui));
 	iGui->base.draw = drawInputsGui;
+	iGui->base.enabled = true;
 	iGui->x = x;
 	iGui->y = y;
 	iGui->inputState = inputState;
@@ -999,19 +1005,19 @@ void DrawGUI(int currentScene)
 		case SCENE_ARRANGER:
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
 			{
-				arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
+				if(arrangerScreenDrawableList->drawables[i]->enabled) arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_PATTERN:
 			for (int i = 0; i < patternScreenDrawableList->size; i++)
 			{
-				patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
+				if(patternScreenDrawableList->drawables[i]->enabled) patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_INSTRUMENT:
 			for (int i = 0; i < instrumentScreenDrawableList->size; i++)
 			{
-				instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
+				if(instrumentScreenDrawableList->drawables[i]->enabled) instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
 			}
 			break;
 		default:
@@ -1019,7 +1025,7 @@ void DrawGUI(int currentScene)
 	}
 	for (int i = 0; i < globalDrawableList->size; i++)
 	{
-		globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
+		if(globalDrawableList->drawables[i]->enabled) globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
 	}
 }
 

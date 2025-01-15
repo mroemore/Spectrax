@@ -60,6 +60,7 @@ void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y);
 
 typedef struct {
 	DrawCallback draw;
+	int enabled;
 	OnPressCallback onPress;
 } Drawable;
 
@@ -196,8 +197,16 @@ typedef struct {
 	EnvelopeGui* envelopeGui;
 } EnvelopeContainer;
 
-EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene);
-EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene);
+typedef struct {
+	ContainerGroup* instrumentControls[MAX_SEQUENCER_CHANNELS];
+	int* selectedInstrument;
+	Shape shape;
+} InstrumentGui;
+
+InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene);
+
+EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
+EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
 void freeEnvelopeContainer(EnvelopeContainer* ec);
 ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene);
 
@@ -239,7 +248,7 @@ void addContainerToGroup(ContainerGroup* cg, InputContainer* ic, int row, int co
 void removeContainerGroup(ContainerGroup* cg, int scene);
 void containerGroupNavigate(ContainerGroup* cg, int rowInc, int colInc);
 void removeButtonFromContainer(ButtonGui* btnGui, InputContainer* btnCont, Scene scene);
-void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, int col);
+void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, int col, int scene, int enabled);
 void addDrawableToContainer(InputContainer* ic, Drawable* d);
 ButtonGui* getSelectedInput(ContainerGroup* cg);
 void drawButtonGui(void* self);

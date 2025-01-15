@@ -75,6 +75,7 @@ typedef struct {
     Instrument* instruments[MAX_SEQUENCER_CHANNELS];
     VoiceType voiceTypes[MAX_SEQUENCER_CHANNELS];
     int voiceCount[MAX_SEQUENCER_CHANNELS];
+    int enabledChannels;
     WavetablePool* wavetablePool;
     SamplePool* samplePool;
     AllocationBehaviour voiceAllocation[MAX_SEQUENCER_CHANNELS];

@@ -15,6 +15,7 @@ VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePo
 
     vm->wavetablePool = wtp;
     vm->samplePool = sp;
+    vm->enabledChannels = settings->enabledChannels;
 
     // Initialize voiceCount to 0 for all channels
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
@@ -226,7 +227,7 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
             (*instrument)->envelopeCount = 1;
             (*instrument)->lfoCount = 0;
             (*instrument)->sample = samplePool->samples[0];
-            (*instrument)->sampleIndex = createParameterEx((*instrument)->paramList, "algo", 0, 0, (float)MAX_LOADED_SAMPLES, 1.0f, 10.0f);
+            (*instrument)->sampleIndex = createParameterEx((*instrument)->paramList, "algo", 0, 0, (float)samplePool->sampleCount, 1.0f, 10.0f);
             break;
         case VOICE_TYPE_FM:
             (*instrument)->envelopeCount = 4;
