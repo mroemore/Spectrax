@@ -74,7 +74,21 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
     float R = 0.0f;
     switch(currentVoice->type){
         case VOICE_TYPE_BLEP:
-            L = blep_square(currentVoice->leftPhase, phaseIncrement);
+            int shape = getParameterValueAsInt(currentVoice->instrumentRef->shape);
+            switch(shape){
+                case BLEP_RAMP:
+                    L = blep_saw(currentVoice->leftPhase, phaseIncrement);
+                    L *= 0.025;
+                    break;
+                case BLEP_SQUARE:
+                    L = blep_square(currentVoice->leftPhase, phaseIncrement);
+                    L *= 0.025;
+                    break;
+                case BLEP_SINE:
+                    L = noblep_sine(currentVoice->leftPhase);
+                    L*=0.5;
+                    break;
+            }
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_FM:
@@ -82,7 +96,8 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_SAMPLE:
-            L = getSampleValue(currentVoice->source.sample, &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
+            int sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
+            L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
             out = (OutVal){L, L};
             break;
         default:
@@ -222,6 +237,7 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
         case VOICE_TYPE_BLEP:
             (*instrument)->envelopeCount = 2;
             (*instrument)->lfoCount = 0;
+            (*instrument)->shape = createParameterEx((*instrument)->paramList, "shape", 0.0f, 0.0f, (float)BLEP_SHAPE_COUNT - 1, 1.0, 10.0);
             break;
         case VOICE_TYPE_SAMPLE:
             (*instrument)->envelopeCount = 1;

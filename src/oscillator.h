@@ -14,6 +14,13 @@
 #define MAX_WAVETABLES 128
 #define MAX_WTPOOL_BYTES 1600000
 
+typedef enum {
+    BLEP_SQUARE,
+    BLEP_RAMP,
+    BLEP_SINE,
+    BLEP_SHAPE_COUNT
+} BlepShape;
+
 typedef struct {
     float *data;
     char* name;

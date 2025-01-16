@@ -78,17 +78,17 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 			}
 		}
 	}
+
+	//process instrument-level param changes:
+	for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++){
+		processModulations(data->voiceManager->instruments[j]->paramList, data->voiceManager->instruments[j]->modList, 1.0f / framesPerBuffer);
+	}
 	
 	
 	for (i = 0; i < framesPerBuffer; i++)
 	{
 		float left_output = 0.0f;
 		float right_output = 0.0f;
-		
-		//process instrument-level param changes:
-		for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++){
-			processModulations(data->voiceManager->instruments[j]->paramList, data->voiceManager->instruments[j]->modList, 1.0f / SAMPLE_RATE);
-		}
 
 
 		for (j = 0; j < data->arranger->enabledChannels; j++)
@@ -260,7 +260,9 @@ int main(void)
 	SongMinimapGui *songMinimapGui = createSongMinimapGui(data.arranger, appState->selectedArrangerCell, 400, 10);
 	add_drawable(&songMinimapGui->base, SCENE_PATTERN);
 
-	ContainerGroup* instMod = createInstrumentModulationGui(data.voiceManager->instruments[1], 10, 10, SCREEN_W/2 - 20, 100, SCENE_INSTRUMENT);
+	InstrumentGui* instrumentGui = createInstrumentGui(data.voiceManager,&appState->selectedArrangerCell[0], SCENE_INSTRUMENT);
+	
+//	ContainerGroup* instMod = createInstrumentModulationGui(data.voiceManager->instruments[1], 10, 10, SCREEN_W/2 - 20, 100, SCENE_INSTRUMENT);
 
 	// EnvelopeGui *envGui = createEnvelopeGui(data.voices[0].envelope[0], 10, 10, 300, 100);
 	// add_drawable(&envGui->base, SCENE_INSTRUMENT);
@@ -405,35 +407,49 @@ int main(void)
 				
 				break;
 			case SCENE_INSTRUMENT:
-				if(isKeyHeld(appState->inputState, KM_EDIT)){
+				if(isKeyHeld(appState->inputState, KM_FUNCTION)){
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
+						selectArrangerCell(data.arranger, 0, -1, 0, appState->selectedArrangerCell);	
+						updateInstrumentGui(instrumentGui);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
+						selectArrangerCell(data.arranger, 0, 1, 0, appState->selectedArrangerCell);	
+						updateInstrumentGui(instrumentGui);
+					}
+				}
+				if(isKeyHeld(appState->inputState, KM_EDIT)){
+					ContainerGroup* currentInstGroup = instrumentGui->instrumentControls[*instrumentGui->selectedInstrument];
+
+					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
+						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
 						btnGui->applyCallback(btnGui, -0.01f);	
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
+						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
 						btnGui->applyCallback(btnGui, 0.01f);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
+						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
 						btnGui->applyCallback(btnGui, 2.0f);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(instMod);
+						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
 						btnGui->applyCallback(btnGui, -2.0f);
 					}
 				} else{
+					ContainerGroup* currentInstGroup = instrumentGui->instrumentControls[*instrumentGui->selectedInstrument];
+					
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
-					containerGroupNavigate(instMod, 0, -1);
+						containerGroupNavigate(currentInstGroup, 0, -1);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
-						containerGroupNavigate(instMod, 0, 1);
+						containerGroupNavigate(currentInstGroup, 0, 1);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)){
-						containerGroupNavigate(instMod, -1, 0);
+						containerGroupNavigate(currentInstGroup, -1, 0);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
-						containerGroupNavigate(instMod, 1, 0);
+						containerGroupNavigate(currentInstGroup, 1, 0);
 					}
 				}
 				

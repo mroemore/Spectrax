@@ -199,16 +199,20 @@ typedef struct {
 
 typedef struct {
 	ContainerGroup* instrumentControls[MAX_SEQUENCER_CHANNELS];
+	int instrumentCount;
 	int* selectedInstrument;
 	Shape shape;
 } InstrumentGui;
 
 InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene);
-
+void updateInstrumentGui(InstrumentGui* ig);
 EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
 EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
 void freeEnvelopeContainer(EnvelopeContainer* ec);
-ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene);
+ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled);
+InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
+InputContainer* createBlepParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
+InputContainer* createSampleParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
 
 typedef struct {
 	Drawable base;
@@ -242,7 +246,7 @@ AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int 
 
 ContainerGroup* createContainerGroup();
 InputContainer* createInputContainer();
-ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int scene, int x, int y);
+ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int x, int y, int scene, int enabled);
 ButtonGui* createButtonGui(int x, int y, int w, int h, char* text, Parameter* param, void* callback);
 void addContainerToGroup(ContainerGroup* cg, InputContainer* ic, int row, int col);
 void removeContainerGroup(ContainerGroup* cg, int scene);

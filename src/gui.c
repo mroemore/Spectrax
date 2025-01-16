@@ -558,14 +558,77 @@ InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, i
 	return ic;
 }
 
+InputContainer* createSampleParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled){
+	InputContainer* ic = createInputContainer();
+	int offsetY = y + ic->inputPadding;
+	int offsetX = x;
+	int btnH = 20;
+	int btnW = 60;
+	ButtonGui* sampleBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SAMPLE", inst->sampleIndex, incParameterBaseValue);
+	addButtonToContainer(sampleBtn, ic, 0,0, scene, enabled);
+	return ic;
+}
+
+InputContainer* createBlepParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled){
+	InputContainer* ic = createInputContainer();
+	int offsetY = y + ic->inputPadding;
+	int offsetX = x;
+	int btnH = 20;
+	int btnW = 60;
+	ButtonGui* shapeBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SHAPE", inst->shape, incParameterBaseValue);
+	addButtonToContainer(shapeBtn, ic, 0,0, scene, enabled);
+	return ic;
+}
+
 InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene){
 	InstrumentGui* ig = (InstrumentGui*)malloc(sizeof(InstrumentGui));
 	if(!ig) return NULL;
 	ig->selectedInstrument = selectedInstrument;
 	
 	for(int i = 0; i < vm->enabledChannels; i++){
-		int isSelected = *selectedInstrument == i ? 1 : 0;
+		int isSelected = *selectedInstrument == i;
 		ig->instrumentControls[i] = createInstrumentModulationGui(vm->instruments[i], 10, 10, SCREEN_W-20, SCREEN_H-20, SCENE_INSTRUMENT, isSelected);
+		ig->instrumentCount++;
+	}
+
+	return ig;
+}
+
+
+ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled){
+	ContainerGroup* cg = createContainerGroup();
+	switch(inst->voiceType){
+		case VOICE_TYPE_FM:
+			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			addContainerToGroup(cg, fmParams,0,0);
+			break;
+		case VOICE_TYPE_BLEP:
+			InputContainer* blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			addContainerToGroup(cg, blepParams,0,0);
+			break;
+		case VOICE_TYPE_SAMPLE:
+			InputContainer* sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			addContainerToGroup(cg, sampleParams,0,0);
+			break;
+	}
+	for(int i = 1; i < inst->envelopeCount+1; i++){
+		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i-1], (i % 2) * contW, 200 + (i / 2) * (contH+50), contW, contH, scene, enabled);
+		addContainerToGroup(cg, ic->envInputs, (int)(i)/2, (int)(i)%2);
+	}
+
+	return cg;
+}
+
+void updateInstrumentGui(InstrumentGui* ig){
+	for(int i = 0; i < ig->instrumentCount; i++){
+		int isSelected = *ig->selectedInstrument == i;
+		for(int r = 0; r < ig->instrumentControls[i]->rowCount; r++){
+			for(int c = 0; c < ig->instrumentControls[i]->columnCount[r]; c++){
+				for(int d = 0; d < ig->instrumentControls[i]->containerRefs[r][c]->otherDrawableCount; d++){
+					ig->instrumentControls[i]->containerRefs[r][c]->otherDrawables[d]->enabled = isSelected;
+				}
+			}
+		}
 	}
 }
 
@@ -624,21 +687,6 @@ void drawAlgoGraphGui(void* self){
 				agg->graphColour);
 		}
 	}
-}
-
-ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled){
-	ContainerGroup* cg = createContainerGroup();
-	switch(inst->voiceType){
-		case VOICE_TYPE_FM:
-			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
-			addContainerToGroup(cg, fmParams,0,0);
-	}
-	for(int i = 1	; i < inst->envelopeCount+1; i++){
-		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i-1], (i % 2) * contW, 200 + (i / 2) * (contH+50), contW, contH, scene);
-		addContainerToGroup(cg, ic->envInputs, (int)(i)/2, (int)(i)%2);
-	}
-
-	return cg;
 }
 
 void freeEnvelopeContainer(EnvelopeContainer* ec){
@@ -800,7 +848,7 @@ void drawGraphGui(void *self){
 	DrawText(graphGui->name, graphGui->shape.x, graphGui->shape.y, textFont.baseSize, RED);
 }
 
-ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int scene, int x, int y){
+ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int x, int y, int scene, int enabled){
 	ContainerGroup* cg = createContainerGroup();
 	for(int i = 0; i < paramList->count; i++){
 		ModConnection* conn = paramList->params[i]->modulators;
@@ -812,8 +860,8 @@ ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int scene,
 				add_drawable(&amountBtn->base, scene);
 				ButtonGui* typeBtn = createButtonGui(x+47, y, 45, 30, conn->type->name, conn->amount, incParameterBaseValue);
 				add_drawable(&typeBtn->base, scene);
-				addButtonToContainer(amountBtn, ic, 0, 0);
-				addButtonToContainer(typeBtn, ic, 0, 1);
+				addButtonToContainer(amountBtn, ic, 0, 0, scene, enabled);
+				addButtonToContainer(typeBtn, ic, 0, 1, scene, enabled);
 				addContainerToGroup(cg, ic, 0, 0);	
 			}
 			conn = conn->next;

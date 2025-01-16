@@ -34,6 +34,7 @@ typedef struct {
     int envelopeCount; 
     int lfoCount; 
     VoiceType voiceType;
+    Parameter* shape;
     Parameter* selectedAlgorithm;
     Parameter* sampleIndex;
     Operator* ops[MAX_FM_OPERATORS];
