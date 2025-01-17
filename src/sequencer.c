@@ -159,6 +159,7 @@ int selectStep(PatternList *patternList, int patternIndex, int selectedStep){
 }
 
 int* editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]){
+	printf("editing...");
 	if(patternList->patterns[patternIndex].notes[noteIndex][0] == OFF){
 		patternList->patterns[patternIndex].notes[noteIndex][0] = C;
 		patternList->patterns[patternIndex].notes[noteIndex][1] = 3;	

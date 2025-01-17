@@ -83,15 +83,6 @@ typedef struct {
 
 typedef void (*SceneInputHandler)(InputState* input, AppStateData* data);
 
-// typedef struct {
-//     SceneInputHandler handlers[SCENE_COUNT];
-// } SceneManager;
-
-// typedef struct {
-//     void (*execute)(GameData* data);
-//     void (*undo)(GameData* data);
-// } Command;
-
 InputState* createInputState(InputDeviceType type);
 bool isKeyHeld(InputState* state, KeyMapping keyCode);
 bool isKeyJustPressed(InputState* state, KeyMapping keyCode);

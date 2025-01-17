@@ -199,6 +199,7 @@ int main(void)
 	TransportGui* tsGui = createTransportGui(&data.arranger->playing, data.arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
 	InputsGui* inputsGui = createInputsGui(appState->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
+	add_drawable(&inputsGui->base, GLOBAL);
 	
 	data.active_sequencer_index = 0;
 	data.sequence_index = 0;
@@ -260,7 +261,8 @@ int main(void)
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)){
 						addBlankIfEmpty(data.patternList, data.arranger, appState->selectedArrangerCell[0], appState->selectedArrangerCell[1]);
 					}
-					if(isKeyJustPressed(appState->inputState, KM_FUNCTION)){
+				} else if(isKeyHeld(appState->inputState, KM_FUNCTION)){
+					if(isKeyJustPressed(appState->inputState, KM_EDIT)){
 						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
 					}
 				}
@@ -283,6 +285,10 @@ int main(void)
 				break;
 			case SCENE_PATTERN:
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)){
+					if(isKeyJustPressed(appState->inputState, KM_EDIT)){
+						printf("combo recopgnized...\n");
+						editCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){OFF,0}); //NOTE OFF
+					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
 						selectArrangerCell(data.arranger, 1, -1, 0, appState->selectedArrangerCell);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
@@ -300,9 +306,6 @@ int main(void)
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)){
-					if(isKeyJustPressed(appState->inputState, KM_FUNCTION)){
-						editCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){OFF,0}); //NOTE OFF
-					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
 						editCurrentNoteRelative(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){-1,0});
 					}
