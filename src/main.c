@@ -193,39 +193,12 @@ int main(void)
 
 	//int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
 	//printf("arranger/pattern load result: %i\n", loadstate);
-	data.sequencer = createSequencer(data.arranger);
 
-	// if (!data.samples[0].data)
-	// {
-	// 	fprintf(stderr, "Failed to load sample\n");
-	// 	return 1;
-	// }
+	data.sequencer = createSequencer(data.arranger);
 
 	TransportGui* tsGui = createTransportGui(&data.arranger->playing, data.arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
 	InputsGui* inputsGui = createInputsGui(appState->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
-	// add_drawable(&inputsGui->base, GLOBAL);
-	// data.og = createOscilloscopeGui(0, 400, 800, 75);
-	// add_drawable(&data.og->base, GLOBAL);
-
-
-	// int graphCount = MAX_SEQUENCER_CHANNELS*MAX_VOICES_PER_CHANNEL;
-	// GraphGui* gs[MAX_SEQUENCER_CHANNELS][settings->defaultVoiceCount];
-
-	// int gpad = 2;	
-	// int xoff = 10;
-	// int gmaxw = (int)800/(xoff+gpad);
-	// int yoff = 0;
-	// int gheight = 12;
-	// for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++)
-	// {
-	// 	for(int j = 0; j < settings->defaultVoiceCount; j++){
-	// 		char* name = (char*)malloc(10 * sizeof(char));
-	// 		snprintf(name, 10, "C%i,V:%i ",i+1, j+1);
-	// 		gs[i][j] = createGraphGui(&data.voiceManager->voicePools[i][j]->volume->currentValue, name, 0.0f, 1.0f, i * 26, j*13, gheight, MAX_GRAPH_HISTORY);
-	// 		add_drawable(&gs[i][j]->base, SCENE_PATTERN);
-	// 	}
-	// }
 	
 	data.active_sequencer_index = 0;
 	data.sequence_index = 0;
@@ -262,60 +235,9 @@ int main(void)
 
 	InstrumentGui* instrumentGui = createInstrumentGui(data.voiceManager,&appState->selectedArrangerCell[0], SCENE_INSTRUMENT);
 	
-//	ContainerGroup* instMod = createInstrumentModulationGui(data.voiceManager->instruments[1], 10, 10, SCREEN_W/2 - 20, 100, SCENE_INSTRUMENT);
-
-	// EnvelopeGui *envGui = createEnvelopeGui(data.voices[0].envelope[0], 10, 10, 300, 100);
-	// add_drawable(&envGui->base, SCENE_INSTRUMENT);
-	// for(int i = 0; i < 16; i++){
-	// 	printf("(%i, %i, %i, %i)\n", data.arranger->song[0][i], data.arranger->song[1][i], data.arranger->song[2][i], data.arranger->song[3][i]);
-	// }
-
-	// ContainerGroup* instControls = createContainerGroup();
-	// InputContainer* envelopeControls1 = createInputContainer();
-	// InputContainer* envelopeControls2 = createInputContainer();
-	// InputContainer* envelopeControls3 = createInputContainer();
-	// ButtonGui* attackGui1 = createButtonGui(100, 100, 30,30, "A1", data.voices[0].envelope[0]->stages[0].duration, modifyParameterBaseValue);
-	// ButtonGui* sustainGui1 = createButtonGui(132, 100, 30,30, "S1", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// ButtonGui* decayGui1 = createButtonGui(164, 100, 30,30, "D1", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// ButtonGui* attackGui2 = createButtonGui(100, 132, 30,30, "A2", data.voices[0].envelope[0]->stages[0].duration, modifyParameterBaseValue);
-	// ButtonGui* sustainGui2 = createButtonGui(132, 132, 30,30, "S2", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// ButtonGui* decayGui2 = createButtonGui(164, 132, 30,30, "D2", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// ButtonGui* attackGui3 = createButtonGui(100, 164, 30,30, "A3", data.voices[0].envelope[0]->stages[0].duration, modifyParameterBaseValue);
-	// ButtonGui* sustainGui3 = createButtonGui(132, 164, 30,30, "S3", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// ButtonGui* decayGui3 = createButtonGui(164, 164, 30,30, "D3", data.voices[0].envelope[0]->stages[1].duration, modifyParameterBaseValue);
-	// add_drawable(&attackGui1->base, SCENE_INSTRUMENT);
-	// add_drawable(&decayGui1->base, SCENE_INSTRUMENT);
-	// add_drawable(&sustainGui1->base, SCENE_INSTRUMENT);
-	// add_drawable(&attackGui2->base, SCENE_INSTRUMENT);
-	// add_drawable(&decayGui2->base, SCENE_INSTRUMENT);
-	// add_drawable(&sustainGui2->base, SCENE_INSTRUMENT);
-	// add_drawable(&attackGui3->base, SCENE_INSTRUMENT);
-	// add_drawable(&decayGui3->base, SCENE_INSTRUMENT);
-	// add_drawable(&sustainGui3->base, SCENE_INSTRUMENT);
-	// addButtonToContainer(attackGui1, envelopeControls1,0,0);
-	// addButtonToContainer(sustainGui1, envelopeControls1,0,1);
-	// addButtonToContainer(decayGui1, envelopeControls1, 0,2);
-	// addButtonToContainer(attackGui2, envelopeControls2, 0,0);
-	// addButtonToContainer(sustainGui2, envelopeControls2, 0,1);
-	// addButtonToContainer(decayGui2, envelopeControls2, 0,2);
-	// addButtonToContainer(attackGui3, envelopeControls3, 0,0);
-	// addButtonToContainer(sustainGui3, envelopeControls3, 0,1);
-	// addButtonToContainer(decayGui3, envelopeControls3, 0, 2);
-	// addContainerToGroup(instControls, envelopeControls1, 0, 0);
-	// addContainerToGroup(instControls, envelopeControls2, 1, 0);
-	// addContainerToGroup(instControls, envelopeControls3, 2, 0);
-	//ContainerGroup* modMappingGroup = createModMappingGroup(data.voices[0].paramList, &data.voices[0].envelope[0]->base, SCENE_INSTRUMENT, 300, 10);
-	//removeButtonFromContainer(attackGui2, envelopeControls2, SCENE_INSTRUMENT);
-
-	
 	while (!WindowShouldClose())
 	{
 		updateInputState(appState->inputState);
-		// for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-		// 	for (int j = 0; j < MAX_VOICES_PER_CHANNEL; j++){
-		// 		updateGraphGui(gs[i][j]);
-		// 	}
-		// }
 		BeginDrawing();
 		clearBg();
 		
@@ -337,6 +259,9 @@ int main(void)
 				if(isKeyHeld(appState->inputState, KM_SELECT)){
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)){
 						addBlankIfEmpty(data.patternList, data.arranger, appState->selectedArrangerCell[0], appState->selectedArrangerCell[1]);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_FUNCTION)){
+						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
 					}
 				}
 				if(isKeyJustPressed(appState->inputState, KM_LEFT)){

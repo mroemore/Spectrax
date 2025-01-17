@@ -237,7 +237,7 @@ void stopPlaying(Arranger *arranger){
 
 void startPlaying(Sequencer* sequencer, PatternList *patternList, Arranger *arranger, int playMode){
 	arranger->playing = 1;
-	int playRow = arranger->selected_x;
+	int playRow = arranger->selected_y;
 	for(int i = 0; i < arranger->enabledChannels; i++){
 		arranger->playhead_indices[i] = playRow;
 		sequencer->playhead_index[i] = 0;
