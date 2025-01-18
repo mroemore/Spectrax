@@ -587,7 +587,7 @@ InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, in
 	
 	for(int i = 0; i < vm->enabledChannels; i++){
 		int isSelected = *selectedInstrument == i;
-		ig->instrumentControls[i] = createInstrumentModulationGui(vm->instruments[i], 10, 10, SCREEN_W-20, SCREEN_H-20, SCENE_INSTRUMENT, isSelected);
+		ig->instrumentControls[i] = createInstrumentModulationGui(vm->instruments[i], 10, 10, (SCREEN_W-20)/2, (SCREEN_H-20)/8, SCENE_INSTRUMENT, isSelected);
 		ig->instrumentCount++;
 	}
 
