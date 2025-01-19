@@ -1,6 +1,3 @@
 #include "fx.h"
+#include <math.h>
 
-
-void granularProcess(GranularProcessor* gp, float sample){
-    
-}

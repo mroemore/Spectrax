@@ -18,6 +18,7 @@ typedef enum {
     VOICE_TYPE_SAMPLE,
     VOICE_TYPE_FM,
     VOICE_TYPE_BLEP,
+    VOICE_TYPE_GRAIN,
     VOICE_TYPE_COUNT
 } VoiceType;
 
@@ -25,6 +26,31 @@ typedef struct {
 	float L;
 	float R;
 } OutVal;
+
+#define GRANULAR_BUFFER_SIZE 441000 //10 seconds
+#define GRAIN_COUNT 16
+#define GRAIN_WINDOW_SIZE 1024
+
+typedef struct {
+    ParamList* paramList;
+    ModList* modList;
+    float buffer[GRANULAR_BUFFER_SIZE];
+    float grainWindow[GRAIN_WINDOW_SIZE];
+    int windowIndex[GRAIN_WINDOW_SIZE];
+    int writeHead;
+    Parameter* grainStartPos[GRAIN_COUNT];
+    float grainReadPos[GRAIN_COUNT];
+    Parameter* grainVelocity;
+    Parameter* grainMs;
+    Parameter* volume;
+    Sample* sample;
+    Envelope* mainEnv;
+    Envelope* grainEnvs[GRAIN_COUNT];
+
+} GranularProcessor;
+
+GranularProcessor* createGranularProcessor();
+OutVal granularProcess(GranularProcessor* gp, float phaseIncrement);
 
 typedef struct {
     Sample* sample;
@@ -54,6 +80,7 @@ typedef struct {
         Oscillator oscillator;
         Sample *sample;
         Operator *operators[MAX_FM_OPERATORS];
+        GranularProcessor* granularProcessor;
     } source;
     float samplePosition; // Position in the sample data
     int note[2];

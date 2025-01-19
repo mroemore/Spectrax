@@ -41,7 +41,7 @@ void freeVoiceManager(VoiceManager* vm){
     free(vm);
 }
 
-void freeVoice(Voice* v){
+void freeVoice(Voice* v){ //TO-DO: free grain
     freeModList(v->modList);
     freeParamList(v->paramList);
     freeParameter(v->volume);
@@ -100,6 +100,8 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
             L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
             out = (OutVal){L, L};
             break;
+        case VOICE_TYPE_GRAIN:
+            out = granularProcess(currentVoice->source.granularProcessor, phaseIncrement);
         default:
             break;
     }
@@ -223,6 +225,9 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             }
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
             break;
+        case VOICE_TYPE_GRAIN:
+            voice->source.granularProcessor = createGranularProcessor(inst->sample); 
+            break;
         default:
             break;
     }
@@ -252,6 +257,10 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
             for(int i = 0; i < MAX_FM_OPERATORS; i++){
                 (*instrument)->ops[i] = createOperator((*instrument)->paramList, (float)i+1);
             }
+        case VOICE_TYPE_GRAIN:
+            (*instrument)->sample = samplePool->samples[2];
+            (*instrument)->envelopeCount = 1;
+            
             break;
     
     }
@@ -260,4 +269,65 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
     }
     
     (*instrument)->voiceType = vt;
+}
+
+GranularProcessor* createGranularProcessor(Sample* s){
+    GranularProcessor* gp = (GranularProcessor*)malloc(sizeof(GranularProcessor));
+    if(!gp) return NULL;
+    gp->paramList = createParamList();
+    if(!gp->paramList) {
+        free(gp);
+        return NULL;
+    }
+    gp->modList = createModList();
+    if(!gp->modList) {
+        free(gp->paramList);
+        free(gp);
+        return NULL;
+    }
+    gp->grainVelocity = createParameter(gp->paramList, "gVel", 0.333f, 0.001f, 100.0f);
+    gp->volume = createParameter(gp->paramList, "gVol", 1.0f, 0.0f, 1.0f);
+    gp->writeHead = 0;
+    gp->mainEnv = createAD(gp->paramList, gp->modList, 0.05, 10.5, "gEnv");
+    gp->sample = s;
+    for(int i = 0; i < GRAIN_WINDOW_SIZE; i++){
+        gp->grainWindow[i] = sin((i/GRAIN_WINDOW_SIZE) * TWO_PI);
+        gp->windowIndex[i] = 0;
+    }
+    for(int i = 0; i < GRAIN_COUNT; i++){
+        float startPos = rand() * GRANULAR_BUFFER_SIZE/4;
+        gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", rand() * GRANULAR_BUFFER_SIZE/4, 0.0f, (float)GRANULAR_BUFFER_SIZE);
+        gp->grainReadPos[i] = startPos;
+    }
+
+    return gp;
+}
+
+OutVal granularProcess(GranularProcessor* gp, float phaseIncrement){
+    OutVal result = (OutVal){0.0f, 0.0f};
+
+    for(int i = 0; i < GRAIN_COUNT; i++){
+        float adjusted_phase_increment = phaseIncrement * (SAMPLE_RATE / (gp->sample->sampleRate /  gp->sample->bit)*2);
+    	gp->grainReadPos[i] += adjusted_phase_increment;
+        gp->windowIndex[i] += adjusted_phase_increment;
+
+        int indexFloor = (int)gp->grainReadPos[i];
+        int sIndexCeil = (indexFloor + 1) % gp->sample->length; // Wrap around at the end
+        int wIndexCeil = (indexFloor + 1) % GRAIN_WINDOW_SIZE; // Wrap around at the end
+        float frac = gp->grainReadPos[i] - indexFloor;
+
+        // Perform linear interpolation between indexFloor and indexCeil
+        float windowVal = gp->grainWindow[indexFloor] * (1.0f - frac) +  gp->grainWindow[sIndexCeil] * frac;
+        float value = gp->sample->data[indexFloor] * (1.0f - frac) + gp->sample->data[wIndexCeil] * frac;
+        if(gp->grainReadPos[i] >= gp->sample->length-2){
+            result.L += 0;
+        } else {
+            result.L += value * windowVal;
+        }
+    }
+
+    result.L /= GRAIN_WINDOW_SIZE;
+    result.R = result.L;
+
+    return result;
 }
