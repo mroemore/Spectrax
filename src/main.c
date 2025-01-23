@@ -44,7 +44,7 @@ typedef struct
 	WavetablePool* wavetablePool;
 } paTestData;
 
-void initApplication(paTestData* data, ApplicationState* appState, InstrumentGui* instrumentGui);
+void initApplication(paTestData* data, ApplicationState** appState, InstrumentGui** instrumentGui);
 
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
@@ -181,23 +181,21 @@ int main(void)
 	InstrumentGui* instrumentGui;
 
 	//loading screen
-	printf("hmm 1\n");
-	printf("hmm 1.5\n");
 
 	InitGUI();
 	Texture2D loadingImage = LoadTexture("resources/images/spectrax_splash5_fix_2x.png");
-	printf("hmm 2\n");
 	
 	BeginDrawing();
-    ClearBackground(RAYWHITE);
-    DrawTexture(loadingImage, 0, 0, WHITE);
-	
-	initApplication(&data, appState, instrumentGui);
-	
-	printf("hmm 3\n");
-	
+    ClearBackground(BLACK);
+    //DrawTexture(loadingImage, 0, 0, WHITE);
+	float scale = loadingImage.height > SCREEN_H ? (float)SCREEN_H / loadingImage.height : .5;
+	int xOffset = (int)((loadingImage.width * scale - SCREEN_W) / 2);
+	DrawTextureEx(loadingImage, (Vector2){xOffset,0}, 0.0f, scale, WHITE);
+	EndDrawing();
+	WaitTime(2.0);
+
+	initApplication(&data, &appState, &instrumentGui);
     initModSystem();
-	printf("data thing: %i \n", data.samples_per_beat);
 
 	err = Pa_Initialize();
 	if (err != paNoError)
@@ -406,11 +404,11 @@ error:
 	return err;
 }
 
-void initApplication(paTestData* data, ApplicationState* appState, InstrumentGui* instrumentGui){
+void initApplication(paTestData* data, ApplicationState** appState, InstrumentGui** instrumentGui){
 	Settings* settings = createSettings();
 	loadColourSchemeTxt("colourscheme2.txt", getColorSchemeAsPointerArray(), 9);
 
-	appState = createApplicationState();
+	*appState = createApplicationState();
 	
 	data->samplePool = createSamplePool();
 	loadSamplesfromDirectory("resources/samples/", data->samplePool);
@@ -427,7 +425,7 @@ void initApplication(paTestData* data, ApplicationState* appState, InstrumentGui
 
 	TransportGui* tsGui = createTransportGui(&data->arranger->playing, data->arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
-	InputsGui* inputsGui = createInputsGui(appState->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
+	InputsGui* inputsGui = createInputsGui((*appState)->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
 	add_drawable(&inputsGui->base, GLOBAL);
 	
 	data->active_sequencer_index = 0;
@@ -437,14 +435,14 @@ void initApplication(paTestData* data, ApplicationState* appState, InstrumentGui
 
 	printf("bpm yo: %i", data->samples_per_beat);
 
-	SequencerGui *seqGui = createSequencerGui(data->sequencer, data->patternList, &appState->selectedPattern, &appState->selectedStep, 10, 10);
+	SequencerGui *seqGui = createSequencerGui(data->sequencer, data->patternList, &(*appState)->selectedPattern, &(*appState)->selectedStep, 10, 10);
 	add_drawable(&seqGui->base, SCENE_PATTERN);
 	
-	ArrangerGui *arrGui = createArrangerGui(data->arranger, data->patternList, 10, 10);
+	ArrangerGui *arrGui = createArrangerGui(data->arranger, data->patternList);
 	add_drawable(&arrGui->base, SCENE_ARRANGER);
 
-	SongMinimapGui *songMinimapGui = createSongMinimapGui(data->arranger, appState->selectedArrangerCell, 400, 10);
+	SongMinimapGui *songMinimapGui = createSongMinimapGui(data->arranger, (*appState)->selectedArrangerCell, 400, 10);
 	add_drawable(&songMinimapGui->base, SCENE_PATTERN);
 
-	instrumentGui = createInstrumentGui(data->voiceManager,&appState->selectedArrangerCell[0], SCENE_INSTRUMENT);
+	*instrumentGui = createInstrumentGui(data->voiceManager,&(*appState)->selectedArrangerCell[0], SCENE_INSTRUMENT);
 }

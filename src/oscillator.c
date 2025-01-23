@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-
 static float blep[BLEP_SIZE] = {
     // Precomputed BLEP table values
     0.0f, 0.0001f, 0.0004f, 0.0009f, 0.0016f, 0.0025f, 0.0036f, 0.0049f,
@@ -44,7 +42,32 @@ void freeWavetablePool(WavetablePool* wtp){
     free(wtp);
 }
 
-void loadWavetable(WavetablePool* wtp, char* name, float* data, size_t length){
+void generateCurve(float* data, size_t length, float curve, int steepnessFactor){
+    for(int i = 0; i < length; i++){
+        const float t = (float) i / (length - 1);
+        const float epsilon = 0.0001f;
+        if(fabs(curve - 0.5f) < epsilon){
+            data[i] = t;
+        } else if(curve > 0.5f){
+            data[i] = powf(t, curve * 2 * steepnessFactor);
+        } else if(curve < 0.5f){
+            data[i] = 1.0f - powf(1 - t, (1 - curve) * 2 * steepnessFactor);
+        }
+    }
+}
+
+void generateCurveWavetables(WavetablePool* wtp, size_t iterations, size_t wtLength){
+    
+    for(int i = 0; i < iterations; i++){
+        float steepnessScaler = 0.5f + (afbs(1 + i - ((float)iterations / 2)) / iterations);
+        steepnessScaler *= 3;
+        float currentTable[wtLength];
+        generateCurve(currentTable, wtLength, (float)i/iterations, steepnessScaler);
+        loadWavetable(wtp, "test", currentTable, wtLength);
+    }   
+}
+
+void loadWavetable(WavetablePool* wtp, const char* name, float* data, size_t length){
     if(wtp->tableCount > MAX_WAVETABLES){
         printf("Max WT count reached\n");
         return;
@@ -60,6 +83,10 @@ void loadWavetable(WavetablePool* wtp, char* name, float* data, size_t length){
     wt->data = wtData;
     wt->length = length;
     wt->name = name;
+    if (!wt->name) {
+        free(wt);
+        return;
+    }
 
     wtp->tables[wtp->tableCount] = wt;
     wtp->tableCount++;
@@ -78,7 +105,6 @@ float sine_fm(Operator* ops[4], float frequency){
     float a = sine_op(ops[2], frequency, 0.0f);
     float b = sine_op(ops[1], frequency, a);
     float c = sine_op(ops[0], frequency, b);
-
     return c;
 }
 

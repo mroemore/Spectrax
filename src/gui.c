@@ -96,7 +96,7 @@ void InitGUI(void)
 	instrumentScreenDrawableList = create_drawable_list();
 	globalDrawableList = create_drawable_list(); // Initialize globalDrawableList
 
-	InitWindow(screenWidth, screenHeight, "Raylib basic window");
+	InitWindow(screenWidth, screenHeight, "Spectrax");
 	
 	textFont = LoadFont("resources/fonts/setback.png");
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
@@ -162,20 +162,21 @@ GraphGui *createGraphGui(float* target, char* name, float min, float max, int x,
 	return graphGui; // Return the created GraphGui object
 }
 
-ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList, int x, int y){
+ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList){
 	ArrangerGui *arrangerGui = (ArrangerGui*)malloc(sizeof(ArrangerGui));
 	arrangerGui->base.draw = drawArrangerGui;
-	arrangerGui->base.enabled = true;
-	arrangerGui->shape.x = x;
-	arrangerGui->shape.y = y + 30;
-	arrangerGui->shape.w = 24;
-	arrangerGui->shape.h = 24;
-	arrangerGui->iconx = x;
-	arrangerGui->icony = y;
-	arrangerGui->cellColour = cs.defaultCell;
 	arrangerGui->arranger = arranger;
 	arrangerGui->patternList = patternList;
-	arrangerGui->grid_padding = 4;
+	arrangerGui->base.enabled = true;
+	arrangerGui->grid_padding = 6;
+	arrangerGui->shape.w = 40;
+	arrangerGui->shape.h = 40;
+	arrangerGui->shape.x = (SCREEN_W / 2) - (arranger->enabledChannels * (arrangerGui->shape.w + arrangerGui->grid_padding)) / 2;
+	arrangerGui->shape.y = 40;
+	arrangerGui->iconx = arrangerGui->shape.x;
+	arrangerGui->icony = arrangerGui->shape.y - 30;
+	arrangerGui->cellColour = cs.defaultCell;
+	
 	arrangerGui->border_size = 3;
 	return arrangerGui;
 }

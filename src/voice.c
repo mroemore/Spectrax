@@ -303,30 +303,36 @@ GranularProcessor* createGranularProcessor(Sample* s){
     return gp;
 }
 
-OutVal granularProcess(GranularProcessor* gp, float phaseIncrement){
-    OutVal result = (OutVal){0.0f, 0.0f};
+OutVal granularProcess(GranularProcessor* gp, float phaseIncrement) {
+    OutVal result = {0.0f, 0.0f};
 
-    for(int i = 0; i < GRAIN_COUNT; i++){
-        float adjusted_phase_increment = phaseIncrement * (SAMPLE_RATE / (gp->sample->sampleRate /  gp->sample->bit)*2);
-    	gp->grainReadPos[i] += adjusted_phase_increment;
-        gp->windowIndex[i] += adjusted_phase_increment;
+    for (int i = 0; i < GRAIN_COUNT; i++) {
+        float adjusted_phaseinc_sample = phaseIncrement * (SAMPLE_RATE / (float)gp->sample->sampleRate);
+        gp->grainReadPos[i] += adjusted_phaseinc_sample;
+        gp->windowIndex[i] += phaseIncrement;
+
+        if (gp->windowIndex[i] >= GRAIN_WINDOW_SIZE) {
+            gp->windowIndex[i] -= GRAIN_WINDOW_SIZE;
+        }
+
+        if (gp->grainReadPos[i] >= gp->sample->length) {
+            gp->grainReadPos[i] -= gp->sample->length;
+        }
 
         int indexFloor = (int)gp->grainReadPos[i];
         int sIndexCeil = (indexFloor + 1) % gp->sample->length; // Wrap around at the end
-        int wIndexCeil = (indexFloor + 1) % GRAIN_WINDOW_SIZE; // Wrap around at the end
+        int wIndexFloor = gp->windowIndex[i];
+        int wIndexCeil = (wIndexFloor + 1) % GRAIN_WINDOW_SIZE; // Wrap around at the end
         float frac = gp->grainReadPos[i] - indexFloor;
 
         // Perform linear interpolation between indexFloor and indexCeil
-        float windowVal = gp->grainWindow[indexFloor] * (1.0f - frac) +  gp->grainWindow[sIndexCeil] * frac;
-        float value = gp->sample->data[indexFloor] * (1.0f - frac) + gp->sample->data[wIndexCeil] * frac;
-        if(gp->grainReadPos[i] >= gp->sample->length-2){
-            result.L += 0;
-        } else {
-            result.L += value * windowVal;
-        }
+        float windowVal = gp->grainWindow[wIndexFloor] * (1.0f - frac) + gp->grainWindow[wIndexCeil] * frac;
+        float value = gp->sample->data[indexFloor] * (1.0f - frac) + gp->sample->data[sIndexCeil] * frac;
+
+        result.L += value * windowVal;
     }
 
-    result.L /= GRAIN_WINDOW_SIZE;
+    result.L /= GRAIN_COUNT; // Normalize by the number of grains
     result.R = result.L;
 
     return result;

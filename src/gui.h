@@ -238,7 +238,7 @@ void removeDrawable(Drawable* drawable, int scene);
 TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y);
 SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedNote, int x, int y);
 GraphGui* createGraphGui(float* target, char* name, float min, float max, int x, int y, int h, int size);
-ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList, int x, int y);
+ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList);
 SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h);
 OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h);
