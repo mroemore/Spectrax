@@ -11,8 +11,6 @@
 #define ALGO_COUNT 7
 #define OP_COUNT 4
 
-#define MAX_WAVETABLES 128
-#define MAX_WTPOOL_BYTES 1600000
 
 typedef enum {
     BLEP_SQUARE,
@@ -20,24 +18,6 @@ typedef enum {
     BLEP_SINE,
     BLEP_SHAPE_COUNT
 } BlepShape;
-
-typedef struct {
-    float *data;
-    char* name;
-    int length;
-} Wavetable;
-
-typedef struct { 
-    char* data;
-    Wavetable** tables; 
-    size_t memoryUsed;
-    int tableSizes[MAX_WAVETABLES];
-    int tableCount;
-} WavetablePool;
-
-WavetablePool* createWavetablePool();
-void freeWavetablePool(WavetablePool* wtp);
-void loadWavetable(WavetablePool* wtp, char* name, float* data, size_t length);
 
 typedef struct {
     float (*generate)(float phase, float increment);

@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stddef.h>
+
+#include "wavetable.h"
 
 #define MAX_MODS 128
 #define MAX_PARAMS 1024
@@ -144,6 +147,9 @@ Envelope* createADSR(ParamList* paramList, ModList* modList, float a, float d, f
 Envelope* createParamPointerADSR(ParamList* paramList, ModList* modList, Parameter* a, Parameter* d, Parameter* s, Parameter* r, char* name);
 Envelope* createAD(ParamList* paramList, ModList* modList, float a, float d, char* name);
 Envelope* createParamPointerAD(ParamList* paramList, ModList* modList, Parameter* a, Parameter* d,Parameter* acurve, Parameter* dcurve, char* name);
+
+void generateCurve(float* data, size_t length, float curve, int steepnessFactor);
+void generateCurveWavetables(WavetablePool* wtp, size_t iterations, size_t wtLength);
 
 void generateSine(void* self);
 void generateSquare(void* self);

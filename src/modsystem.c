@@ -1,7 +1,10 @@
 #include "modsystem.h"
+
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
+
+WavetablePool* envTables;
 
 static float _clampValue(float value, float min, float max) {
     if (value < min) return min;
@@ -10,8 +13,35 @@ static float _clampValue(float value, float min, float max) {
 }
 
 void initModSystem(){
-    //paramList = createParamList();
+    envTables = createWavetablePool();
+    generateCurveWavetables(envTables, 16, 1024);
 }
+
+void generateCurve(float* data, size_t length, float curve, int steepnessFactor){
+    for(int i = 0; i < length; i++){
+        const float t = (float) i / (length - 1);
+        const float epsilon = 0.0001f;
+        if(fabsf(curve - 0.5f) < epsilon){
+            data[i] = t;
+        } else if(curve > 0.5f){
+            data[i] = powf(t, curve * 2 * steepnessFactor);
+        } else if(curve < 0.5f){
+            data[i] = 1.0f - powf(1 - t, (1 - curve) * 2 * steepnessFactor);
+        }
+    }
+}
+
+void generateCurveWavetables(WavetablePool* wtp, size_t iterations, size_t wtLength){
+    
+    for(int i = 0; i < iterations; i++){
+        float steepnessScaler = 0.5f + (fabsf(1 + i - ((float)iterations / 2)) / iterations);
+        steepnessScaler *= 3;
+        float currentTable[wtLength];
+        generateCurve(currentTable, wtLength, (float)i/iterations, steepnessScaler);
+        loadWavetable(wtp, "test", currentTable, wtLength);
+    }   
+}
+
 
 ModList* createModList() {
     ModList* list = (ModList*)malloc(sizeof(ModList));
@@ -308,15 +338,23 @@ void generateEnvelope(void* self) {
     float dt = 1.0f / env->sampleRate;
     env->currentTime += dt;
     
-    float t = env->currentTime / stage->duration->currentValue;
-    float shapedT = applyCurve(t, stage->curvature->currentValue);
+    int tIdx = 8;
+    Wavetable* wt = envTables->tables[tIdx];
+    float t = env->currentTime / stage->duration->baseValue;
+    int index0 = (int) (t * wt->length);
+    int index1 = index0 < wt->length ? index0 + 1 : index0;
+    float diff = fmodf(t, 1.0f);
+    float enval = wt->data[index0] * (1.0 - diff) + wt->data[index1] * diff;
+
+    //float shapedT = applyCurve(t, stage->curvature->currentValue);
     
     float startLevel = (env->currentStageIndex > 0) ? 
                       env->stages[env->currentStageIndex-1].targetLevel : 
                       0.0f;
     
-    env->currentLevel = startLevel + (stage->targetLevel - startLevel) * shapedT;
-    if (t >= 1.0f) {
+    env->currentLevel = startLevel + (stage->targetLevel - startLevel) * enval;
+
+    if (index0 >= wt->length - 1) {
             //printf("stage %i complete\n", env->currentStageIndex);
 
         env->currentTime = 0.0f;
