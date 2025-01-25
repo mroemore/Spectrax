@@ -105,6 +105,8 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
         default:
             break;
     }
+    out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
+    out.R = out.L;
     return out;
 }
 
@@ -231,6 +233,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
         default:
             break;
     }
+    voice->filter = createFilter(kTransposeCanonical, secondOrderLPF, 250.0f, 10.0f);
 }
 
 

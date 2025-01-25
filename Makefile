@@ -40,6 +40,7 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/oscillator.c \
 		$(SRC_DIR)/sample.c \
 		$(SRC_DIR)/wavetable.c \
+		$(SRC_DIR)/filters.c \
 		$(SRC_DIR)/sequencer.c 
 
 # Generate object files in the src directory

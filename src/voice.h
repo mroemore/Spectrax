@@ -7,6 +7,7 @@
 #include "notes.h"
 #include "modsystem.h"
 #include "blit_synth.h"
+#include "filters.h"
 
 
 
@@ -89,6 +90,7 @@ typedef struct {
     int lfoCount;
     Envelope* envelope[4];
     LFO * lfo[2];
+    Filter* filter;
 } Voice;
 
 typedef enum {

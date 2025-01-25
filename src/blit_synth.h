@@ -6,9 +6,9 @@
 #include <stdbool.h>
 #include <stdlib.h> // Include for malloc
 #include <string.h> // Include for memset
+#include "settings.h"
 
 #define NO_BLIT false
-#define TWOPI 2.0f * M_PI
 
 typedef struct {
     float dac_center;
