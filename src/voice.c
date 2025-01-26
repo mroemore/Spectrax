@@ -98,6 +98,12 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
         case VOICE_TYPE_SAMPLE:
             int sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
             L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
+            int bitDepthDiff = 24 - getParameterValueAsInt(currentVoice->instrumentRef->bitDepth);
+            int intVal = (int)(L*1000000000000000000000000);
+            intVal >> bitDepthDiff;
+            intVal << bitDepthDiff;
+            L = (float)intVal / 1000000000000000000000000;
+
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_GRAIN:
@@ -251,6 +257,8 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
             (*instrument)->envelopeCount = 1;
             (*instrument)->lfoCount = 0;
             (*instrument)->sample = samplePool->samples[0];
+            (*instrument)->bitDepth = createParameterEx((*instrument)->paramList, "bitdepth", 24.0f, 8.0f, 24.0f, 1.0f, 4.0f);
+            (*instrument)->sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 44100.0f, 2000.0f, 44100.0f, 100.0f, 1000.0f);
             (*instrument)->sampleIndex = createParameterEx((*instrument)->paramList, "algo", 0, 0, (float)samplePool->sampleCount, 1.0f, 10.0f);
             break;
         case VOICE_TYPE_FM:

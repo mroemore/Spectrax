@@ -59,10 +59,13 @@ typedef struct {
     ParamList* paramList;
     Envelope* envelopes[MAX_ENVELOPES];
     int envelopeCount; 
-    int lfoCount; 
+    int lfoCount;
+    float volumeAttenuation;
     VoiceType voiceType;
     Parameter* shape;
     Parameter* selectedAlgorithm;
+    Parameter* sampleRate;
+    Parameter* bitDepth;
     Parameter* sampleIndex;
     Operator* ops[MAX_FM_OPERATORS];
 } Instrument;
