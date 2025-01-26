@@ -1,6 +1,9 @@
 #ifndef FILTERS_H
 #define FILTERS_H
 
+#define SMALLEST_POS_FLOAT 1.175494351e-38         /* min positive value */
+#define SMALLEST_NEG_FLOAT -1.175494351e-38         /* min negative value */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,8 +59,17 @@ typedef struct {
     float q;
 } Filter;
 
+typedef struct {
+    float terminalResistace;
+    float openTerminalResistance;
+    float sourceResistance;
+    
+} WdfAdaptor;
+
 BiquadFilter* createBiquadFilter(BiquadType type);
 void resetState(BiquadFilter* bf);
+
+int checkFLoatUnderflow(float* val);
 
 float processKDirect(BiquadFilter* bf, float xn);
 float processKCanonical(BiquadFilter* bf, float xn);

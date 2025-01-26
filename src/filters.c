@@ -28,6 +28,19 @@ BiquadFilter* createBiquadFilter(BiquadType type){
     return bf;
 }
 
+int checkFLoatUnderflow(float* val){
+    int undeflowPresent = 0;
+    if(*val > 0.0 && *val < SMALLEST_POS_FLOAT){
+        undeflowPresent = 1;
+        *val = 0.0f;
+    }
+    if(*val < 0.0 && *val > SMALLEST_NEG_FLOAT){
+        undeflowPresent = 1;
+        *val = 0.0f;
+    }
+    return undeflowPresent;
+}
+
 float processKDirect(BiquadFilter* bf, float xn){
     float yn = 
         bf->coefficients[a0] * xn +
@@ -61,7 +74,7 @@ float processKTransposeDirect(BiquadFilter* bf, float xn){
     float wn = xn + bf->states[y_z1];
     float yn = bf->coefficients[a0] * wn + bf->states[x_z1];
 
-    //TO-DO: undeflow check here.
+    checkFLoatUnderflow(&yn);
 
     bf->states[y_z1] = bf->states[y_z2] - bf->coefficients[b1] * wn;
     bf->states[y_z2] = -bf->coefficients[b2] * wn;
@@ -75,7 +88,7 @@ float processKTransposeDirect(BiquadFilter* bf, float xn){
 float processKTransposeCanonical(BiquadFilter* bf, float xn){
     float yn = bf->coefficients[a0] * xn + bf->states[x_z1];
 
-    //TO-DO: undeflow check here.
+    checkFLoatUnderflow(&yn);
 
     bf->states[x_z1] =  bf->coefficients[a1] * xn -
                         bf->coefficients[b1] * yn + bf->states[x_z2];
