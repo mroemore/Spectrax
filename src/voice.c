@@ -72,9 +72,12 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
     OutVal out;
     float L = 0.0f;
     float R = 0.0f;
+    int shape = 0;
+    int sampleIndex = 0;
+
     switch(currentVoice->type){
         case VOICE_TYPE_BLEP:
-            int shape = getParameterValueAsInt(currentVoice->instrumentRef->shape);
+            shape = getParameterValueAsInt(currentVoice->instrumentRef->shape);
             switch(shape){
                 case BLEP_RAMP:
                     L = blep_saw(currentVoice->leftPhase, phaseIncrement);
@@ -96,7 +99,7 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_SAMPLE:
-            int sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
+            sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
             L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
             int bitDepthDiff = 24 - getParameterValueAsInt(currentVoice->instrumentRef->bitDepth);
             int intVal = (int)(L*1000000000000000000000000);

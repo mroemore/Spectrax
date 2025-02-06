@@ -268,25 +268,32 @@ void updateMod(Mod* mod, float deltaTime) {
     if (mod == NULL) return;
     
     switch(mod->type){
+        Envelope* env = NULL;
+        LFO* lfo = NULL;
+        Random* rand = NULL;
+        float l_phase = 0.0f;
+        float r_phase = 0.0f;
+        float l_rate = 0.0f;
+        float r_rate = 0.0f;
         case MT_ENV:
-            Envelope* env = (Envelope*)mod;
+            env = (Envelope*)mod;
             if (env->isTriggered) {
                 env->currentTime += deltaTime;
             }
             break;
         case MT_LFO:
-            LFO* lfo = (LFO*)mod;
-            float l_phase = getParameterValue(lfo->phase);
-            float l_rate = getParameterValue(lfo->rate);
+            lfo = (LFO*)mod;
+            l_phase = getParameterValue(lfo->phase);
+            l_rate = getParameterValue(lfo->rate);
             l_phase += l_rate * deltaTime;
             if (l_phase >= 1.0f) l_phase -= 1.0f;
             setParameterBaseValue(lfo->phase, l_phase);
             setParameterValue(lfo->phase, l_phase);
             break;
         case MT_RND:
-            Random* rand = (Random*)mod;
-            float r_phase = getParameterValue(rand->phase);
-            float r_rate = getParameterValue(rand->rate);
+            rand = (Random*)mod;
+            r_phase = getParameterValue(rand->phase);
+            r_rate = getParameterValue(rand->rate);
             r_phase += r_rate * deltaTime;
             if (r_phase >= 1.0f) r_phase -= 1.0f;
             setParameterBaseValue(rand->phase, r_phase);
