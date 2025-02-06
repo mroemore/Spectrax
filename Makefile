@@ -3,8 +3,8 @@ CC = gcc
 CFLAGS = -Iinclude -lportaudio -lraylib -lm
 MINGW_FLAGS =  -Llib/win -lgdi32 -lwinmm
 LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
-ARM_FLAGS = -Iinclude/arm -l:libportaudio.a -l:libraylib.a -lm -lpthread -ldl
-ARM_LD_FLAGS = -Llib/arm
+ARM_FLAGS = -Iinclude/arm -l:libportaudio.a -l:libraylib.a -static -lm -lpthread -ldl
+ARM_LD_FLAGS = -Llib/arm -l:libasound.a
 
 
 DEBUG_FLAGS = -g
@@ -56,7 +56,7 @@ release: CFLAGS += $(RELEASE_FLAGS)
 release: $(OUT_DIR)/$(TARGET)
 
 arm: TARGET = spectrax_arm
-arm: CC = arm-linux-gnueabihf-gcc
+arm: CC = /opt/miyoo/bin/arm-miyoo-linux-uclibcgnueabi-gcc
 arm: CFLAGS = $(RELEASE_FLAGS) 
 arm: CFLAGS += $(ARM_FLAGS)
 arm: CFLAGS += $(ARM_LD_FLAGS)

@@ -598,17 +598,20 @@ InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, in
 
 ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled){
 	ContainerGroup* cg = createContainerGroup();
+	InputContainer* fmParams = NULL;
+	InputContainer* sampleParams = NULL;
+	InputContainer* blepParams = NULL;
 	switch(inst->voiceType){
 		case VOICE_TYPE_FM:
-			InputContainer* fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
 			addContainerToGroup(cg, fmParams,0,0);
 			break;
 		case VOICE_TYPE_BLEP:
-			InputContainer* blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
 			addContainerToGroup(cg, blepParams,0,0);
 			break;
 		case VOICE_TYPE_SAMPLE:
-			InputContainer* sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
+			sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
 			addContainerToGroup(cg, sampleParams,0,0);
 			break;
 	}
