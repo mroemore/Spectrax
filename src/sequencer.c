@@ -14,6 +14,7 @@ PatternList* createPatternList(){
 		return NULL;
 	}
 	patternList->pattern_count = 0;
+	printf("\t-> DONE.\n");
 	return patternList;
 }
 
@@ -29,6 +30,8 @@ Arranger* createArranger(Settings* settings){
 	arranger->selected_y = 0;
 	arranger->loop = 1;
 	arranger->enabledChannels = settings->enabledChannels;
+    printf("set channels.\n");
+	
 	arranger->beats_per_minute = 120;
 	arranger->playing = 0;
 
@@ -36,12 +39,15 @@ Arranger* createArranger(Settings* settings){
 		arranger->playhead_indices[i] = 0;
 		arranger->voiceTypes[i] = settings->voiceTypes[i];
 	}
+    printf("set playhead indices.\n");
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
 		for(int j = 0; j < MAX_SONG_LENGTH; j++){
 			arranger->song[i][j] = -1;
 		}
 	}
+    printf("initialised song structure.\n");
+
 	printf("\t-> DONE.\n");
 	return arranger;
 }
