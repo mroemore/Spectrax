@@ -16,4 +16,5 @@ Settings* createSettings(){
 	settings->defaultSequenceLength = 16;
 	settings->enabledChannels = 8;
 	settings->defaultVoiceCount = 4;
+	return settings;
 }
