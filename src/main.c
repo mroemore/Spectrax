@@ -216,7 +216,7 @@ int main(void)
 	if (err != paNoError)
 		goto error;
 
-	
+	printf("begin loop:\n");
 	while (!WindowShouldClose())
 	{
 		updateInputState(appState->inputState);
@@ -445,4 +445,5 @@ void initApplication(paTestData* data, ApplicationState** appState, InstrumentGu
 	add_drawable(&songMinimapGui->base, SCENE_PATTERN);
 
 	*instrumentGui = createInstrumentGui(data->voiceManager,&(*appState)->selectedArrangerCell[0], SCENE_INSTRUMENT);
+	printf("synthesis init complete.\n");
 }
