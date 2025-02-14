@@ -1059,6 +1059,11 @@ void DrawGUI(int currentScene)
 {
 	printf("DrawGui\n");
 	printf("current scene: %i\n", currentScene);
+	printf("arranger drawables: %i\n", arrangerScreenDrawableList->size);
+	printf("pattern drawables: %i\n", patternScreenDrawableList->size);
+	printf("inst drawables: %i\n", instrumentScreenDrawableList->size);
+	printf("global drawables: %i\n", globalDrawableList->size);
+	
 	switch(currentScene){
 		case SCENE_ARRANGER:
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
