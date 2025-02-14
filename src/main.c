@@ -222,7 +222,7 @@ int main(void)
 		updateInputState(appState->inputState);
 		BeginDrawing();
 		clearBg();
-		
+		printf("checking inputs...\n");
 		//Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)){
 			data.arranger->playing ? stopPlaying(data.arranger) : startPlaying(data.sequencer, data.patternList, data.arranger, appState->currentScene);
@@ -366,7 +366,7 @@ int main(void)
 			
 		}
 		
-		
+		printf("drawing GUI...\n");
 		DrawGUI(appState->currentScene);
 		EndDrawing();
 	}
