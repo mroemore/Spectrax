@@ -55,7 +55,7 @@ release: CFLAGS += $(RELEASE_FLAGS)
 release: $(OUT_DIR)/$(TARGET)
 
 arm: TARGET = spectrax_arm
-arm: CC = /opt/miyoo/bin/arm-miyoo-linux-uclibcgnueabi-gcc
+arm: CC = aarch64-buildroot-linux-gnu-gcc
 arm: CFLAGS = $(RELEASE_FLAGS) 
 arm: CFLAGS += $(ARM_FLAGS)
 arm: CFLAGS += $(ARM_LD_FLAGS)

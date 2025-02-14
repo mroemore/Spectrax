@@ -7,6 +7,8 @@
 #include <stdio.h>
 
 VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePool* wtp) {
+    printf("creating voiceManager\n");
+
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     if (!vm) {
         fprintf(stderr, "Failed to allocate memory for VoiceManager\n");
@@ -247,6 +249,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 
 
 void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePool) {
+    printf("init instrument\n");
     *instrument = (Instrument*)malloc(sizeof(Instrument));
     if(!*instrument){
         printf("could not allocate memory for instrument in init_instrument.\n");

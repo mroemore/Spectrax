@@ -6,6 +6,8 @@
 #include "notes.h"
 
 PatternList* createPatternList(){
+    printf("creating patternList\n");
+
 	PatternList * patternList = (PatternList*)malloc(sizeof(PatternList));
 	if(!patternList){
 		printf("could not allocate memory for PtternList\n");
@@ -16,6 +18,8 @@ PatternList* createPatternList(){
 }
 
 Arranger* createArranger(Settings* settings){
+    printf("create arranger.\n");
+
 	Arranger *arranger = (Arranger*)malloc(sizeof(Arranger));
 	arranger->selected_x = 0;
 	arranger->selected_y = 0;
@@ -69,6 +73,8 @@ void removeChannel(Arranger* arranger, int channelIndex) {
 }
 
 Sequencer* createSequencer(Arranger *arranger){
+    printf("creating sequencer\n");
+
     Sequencer* sequencer = (Sequencer*)malloc(sizeof(Sequencer));
 	
 	for(int i = 0; i < arranger->enabledChannels; i++){

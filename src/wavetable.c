@@ -1,6 +1,8 @@
 #include "wavetable.h"
 
 WavetablePool* createWavetablePool(){
+    printf("creating wavetable pool\n");
+
     WavetablePool* wtp = (WavetablePool*)malloc(sizeof(WavetablePool));
     if(!wtp){
         printf("Could not allocate memory for WavetablePool.\n");
