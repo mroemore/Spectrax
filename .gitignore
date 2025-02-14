@@ -1,3 +1,4 @@
 docs/*
 src/*.o
 .clang-format
+rg35xx-copy.sh
