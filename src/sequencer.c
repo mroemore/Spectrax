@@ -122,10 +122,13 @@ int addPattern(PatternList * patternList, int patternSize, int notes[][NOTE_INFO
 }
 
 void addPatternToArranger(Arranger* arranger, int patternId, int sequencer_id, int row){
+	printf("addpattern\n");
+
 	arranger->song[sequencer_id][row] = patternId;
 }
 
 void addBlankIfEmpty(PatternList* patternList, Arranger* arranger, int sequencerId, int row){
+	printf("addblank\n");
 	int patternID = addBlankPattern(patternList);
 	if(arranger->song[sequencerId][row] == -1){
 		addPatternToArranger(arranger, patternID, sequencerId, row);
@@ -133,6 +136,7 @@ void addBlankIfEmpty(PatternList* patternList, Arranger* arranger, int sequencer
 }
 
 int *getStep(PatternList *patternList, int patternIndex, int noteIndex){
+	printf("getstep\n");
 	return patternList->patterns[patternIndex].notes[noteIndex];
 }
 
@@ -141,6 +145,7 @@ int* getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex){
 }
 
 int* selectArrangerCell(Arranger* arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell){
+	printf("selectcell\n");
 	int newx, newy;
 	newx = arranger->selected_x + relativex;
 	newy = arranger->selected_y + relativey;

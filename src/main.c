@@ -220,7 +220,7 @@ int main(void)
 	printf("arranger cell 0: %i\n", appState->selectedArrangerCell[0]);
 	printf("arranger cell 1: %i\n", appState->selectedArrangerCell[1]);
 	printf("current step: %i\n", appState->selectedStep);
-	printf("current pattern: %i\n", appState->currentPattern);
+	printf("selected pattern: %i\n", appState->selectedPattern);
 	printf("current scene: %i\n", appState->currentScene);
 	while (!WindowShouldClose())
 	{
@@ -249,6 +249,7 @@ int main(void)
 					}
 				} else if(isKeyHeld(appState->inputState, KM_FUNCTION)){
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)){
+						printf("erasecell\n");
 						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
 					}
 				}
