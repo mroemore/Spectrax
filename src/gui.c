@@ -1057,6 +1057,7 @@ void add_drawable(Drawable *drawable, int scene)
 
 void DrawGUI(int currentScene)
 {
+	printf("current scene: %i", currentScene);
 	switch(currentScene){
 		case SCENE_ARRANGER:
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
