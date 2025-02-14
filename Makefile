@@ -3,9 +3,8 @@ CC = gcc
 CFLAGS = -Iinclude -lportaudio -lraylib -lm
 MINGW_FLAGS =  -Llib/win -lgdi32 -lwinmm
 LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
-ARM_FLAGS = -Iinclude/arm -l:libportaudio.a -l:libraylib.a -static -lm -lpthread -ldl
-ARM_LD_FLAGS = -Llib/arm -l:libasound.a
-
+ARM_FLAGS = -Iinclude/arm  -lportaudio -l:libraylib.a -lm -lpthread -ldl
+ARM_LD_FLAGS = -Llib/arm -L/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib -I/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib/gl4es/ -lSDL2 -lasound
 
 DEBUG_FLAGS = -g
 RELEASE_FLAGS = -O2

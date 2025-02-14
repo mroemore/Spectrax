@@ -2,10 +2,14 @@
 
 WavetablePool* createWavetablePool(){
     WavetablePool* wtp = (WavetablePool*)malloc(sizeof(WavetablePool));
-    if(!wtp) return NULL;
+    if(!wtp){
+        printf("Could not allocate memory for WavetablePool.\n");
+        return NULL;
+    }
     wtp->data = (char*)malloc(MAX_WTPOOL_BYTES);
     if(!wtp->data){
         free(wtp);
+        printf("Could not allocate memory for WavetablePool->data.\n");
         return NULL;
     }
 
@@ -15,6 +19,7 @@ WavetablePool* createWavetablePool(){
     if(!wtp->tables){
         free(wtp->data);
         free(wtp);
+        printf("Could not allocate memory for WavetablePool->tables.\n");
         return NULL;
     }
 

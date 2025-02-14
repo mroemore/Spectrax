@@ -7,6 +7,10 @@
 
 PatternList* createPatternList(){
 	PatternList * patternList = (PatternList*)malloc(sizeof(PatternList));
+	if(!patternList){
+		printf("could not allocate memory for PtternList\n");
+		return NULL;
+	}
 	patternList->pattern_count = 0;
 	return patternList;
 }

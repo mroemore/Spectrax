@@ -164,6 +164,10 @@ GraphGui *createGraphGui(float* target, char* name, float min, float max, int x,
 
 ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList){
 	ArrangerGui *arrangerGui = (ArrangerGui*)malloc(sizeof(ArrangerGui));
+	if(!arrangerGui){
+		printf("could not allocate arranger GUI\n");
+		return NULL;
+	}
 	arrangerGui->base.draw = drawArrangerGui;
 	arrangerGui->arranger = arranger;
 	arrangerGui->patternList = patternList;

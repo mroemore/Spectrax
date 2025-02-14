@@ -45,14 +45,20 @@ void generateCurveWavetables(WavetablePool* wtp, size_t iterations, size_t wtLen
 
 ModList* createModList() {
     ModList* list = (ModList*)malloc(sizeof(ModList));
-	if (!list) return NULL;
+	if (!list){
+        printf("could not allocate memory for modList.\n");
+         return NULL;
+    }
     list->count = 0;
     return list;
 }
 
 ParamList* createParamList() {
     ParamList* list = (ParamList*)malloc(sizeof(ParamList));
-	if (!list) return NULL;
+	if (!list){
+        printf("could not allocate memory for paramList.\n");
+        return NULL;
+    }
     list->count = 0;
     return list;
 }

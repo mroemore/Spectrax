@@ -8,7 +8,7 @@
 
 VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePool* wtp) {
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
-    if (vm == NULL) {
+    if (!vm) {
         fprintf(stderr, "Failed to allocate memory for VoiceManager\n");
         return NULL;
     }
@@ -248,8 +248,19 @@ void initialize_voice(Voice *voice, Instrument* inst) {
 
 void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePool) {
     *instrument = (Instrument*)malloc(sizeof(Instrument));
+    if(!*instrument){
+        printf("could not allocate memory for instrument in init_instrument.\n");
+        return;
+    }
     (*instrument)->modList = createModList();
+    if(!(*instrument)->modList){
+        printf("modList creation failed in init_instrument.\n");
+        return;
+    }
     (*instrument)->paramList = createParamList();
+    if(!(*instrument)->paramList){
+        printf("paramList creation failed in init_instrument.\n");
+    }
     switch(vt){
         case VOICE_TYPE_BLEP:
             (*instrument)->envelopeCount = 2;
