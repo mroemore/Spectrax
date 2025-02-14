@@ -174,7 +174,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 int main(void)
 {
-	PaStream *stream;
+	PaStream* stream;
 	PaError err;
 	paTestData data;
 	ApplicationState* appState;
@@ -217,6 +217,11 @@ int main(void)
 		goto error;
 
 	printf("begin loop:\n");
+	printf("arranger cell 0: %i\n", appState->selectedArrangerCell[0]);
+	printf("arranger cell 1: %i\n", appState->selectedArrangerCell[1]);
+	printf("current step: %i\n", appState->selectedStep);
+	printf("current pattern: %i\n", appState->currentPattern);
+	printf("current scene: %i\n", appState->currentScene);
 	while (!WindowShouldClose())
 	{
 		updateInputState(appState->inputState);
@@ -366,7 +371,7 @@ int main(void)
 			
 		}
 		
-		printf("drawing GUI...\n");
+		printf("drawing GUI... %i\n", appState->currentScene);
 		DrawGUI(appState->currentScene);
 		EndDrawing();
 	}
