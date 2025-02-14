@@ -409,20 +409,50 @@ void initApplication(paTestData* data, ApplicationState** appState, InstrumentGu
 	loadColourSchemeTxt("colourscheme2.txt", getColorSchemeAsPointerArray(), 9);
 
 	*appState = createApplicationState();
+	if(!*appState){
+		printf("AppState creation failed.\n");
+		return;
+	}
 	
 	data->samplePool = createSamplePool();
+	if(!data->samplePool){
+		printf("samplePool creation failed.\n");
+		return;
+	}
 	loadSamplesfromDirectory("resources/samples/", data->samplePool);
 	data->modList = createModList();
+	if(!data->modList){
+		printf("modList creation failed.\n");
+		return;
+	}
 	data->arranger = createArranger(settings);
+	if(!data->arranger){
+		printf("arranger creation failed.\n");
+		return;
+	}
 	data->patternList = createPatternList();
+	if(!data->patternList){
+		printf("patternList creation failed.\n");
+		return;
+	}
 	data->wavetablePool = createWavetablePool();
+	if(!data->wavetablePool){
+		printf("wavetablePool creation failed.\n");
+		return;
+	}
 	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool);
-
+	if(!data->voiceManager){
+		printf("voiceManager creation failed.\n");
+		return;
+	}
 	//int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
 	//printf("arranger/pattern load result: %i\n", loadstate);
 
 	data->sequencer = createSequencer(data->arranger);
-
+	if(!data->sequencer){
+		printf("sequencer creation failed.\n");
+		return;
+	}
 	TransportGui* tsGui = createTransportGui(&data->arranger->playing, data->arranger, 10, 10);
 	add_drawable(&tsGui->base, GLOBAL);
 	InputsGui* inputsGui = createInputsGui((*appState)->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);

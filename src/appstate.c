@@ -5,6 +5,10 @@
 
 ApplicationState* createApplicationState(){
 	ApplicationState* as = (ApplicationState*)malloc(sizeof(ApplicationState));
+	if(!as){
+		printf("could not allocate memory for ApplicationState.\n");
+		return NULL;
+	}
 	as->selectedPattern = -1;
 	as->selectedArrangerCell[0] = 0;
 	as->selectedArrangerCell[1] = 0;
