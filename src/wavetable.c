@@ -25,6 +25,7 @@ WavetablePool* createWavetablePool(){
         return NULL;
     }
 
+	printf("\t-> DONE.\n");
     return wtp;
 }
 

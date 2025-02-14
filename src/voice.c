@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePool* wtp) {
-    printf("creating voiceManager\n");
+    printf("creating voiceManager.\n");
 
     VoiceManager* vm = (VoiceManager*)malloc(sizeof(VoiceManager));
     if (!vm) {
@@ -29,7 +29,7 @@ VoiceManager* createVoiceManager(Settings* settings, SamplePool* sp, WavetablePo
         initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
         vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
     }
-
+	printf("\t-> DONE.\n");
     return vm;
 }
 

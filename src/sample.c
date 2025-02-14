@@ -6,11 +6,17 @@
 #include <math.h>
 
 SamplePool* createSamplePool(){
+	printf("creating sample pool.\n");
+
     SamplePool* sp = (SamplePool*)malloc(sizeof(SamplePool));
-	if(!sp) return NULL;
+	if(!sp){
+        printf("could not allocate memory for sample pool struct.\n");
+        return NULL;
+    }
     sp->sampleData = (char*)malloc(MAX_SAMPLE_POOL_BYTES);
     if(!sp->sampleData){
         free(sp);
+        printf("could not allocate memory for sample pool data.\n");
         return NULL;
     }
 
@@ -21,9 +27,10 @@ SamplePool* createSamplePool(){
     if(!sp->samples){
         free(sp->sampleData);
         free(sp);
+        printf("could not allocate memory for sample within pool.\n");
         return NULL;
     }
-
+	printf("\t-> DONE.\n");
     return sp;
 }
 

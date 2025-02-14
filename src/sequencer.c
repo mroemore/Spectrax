@@ -21,6 +21,10 @@ Arranger* createArranger(Settings* settings){
     printf("create arranger.\n");
 
 	Arranger *arranger = (Arranger*)malloc(sizeof(Arranger));
+	if(!arranger){
+		printf("could not allocate memory for arranger.\n");
+		return NULL;
+	}
 	arranger->selected_x = 0;
 	arranger->selected_y = 0;
 	arranger->loop = 1;
@@ -38,7 +42,7 @@ Arranger* createArranger(Settings* settings){
 			arranger->song[i][j] = -1;
 		}
 	}
-
+	printf("\t-> DONE.\n");
 	return arranger;
 }
 

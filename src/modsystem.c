@@ -52,6 +52,7 @@ ModList* createModList() {
          return NULL;
     }
     list->count = 0;
+	printf("\t-> DONE.\n");
     return list;
 }
 
@@ -63,6 +64,7 @@ ParamList* createParamList() {
         return NULL;
     }
     list->count = 0;
+	printf("\t-> DONE.\n");
     return list;
 }
 
