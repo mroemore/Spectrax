@@ -1066,6 +1066,7 @@ void DrawGUI(int currentScene)
 	
 	switch(currentScene){
 		case SCENE_ARRANGER:
+			printf("a!");
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
 			{
 				printf("a,");
@@ -1073,6 +1074,7 @@ void DrawGUI(int currentScene)
 			}
 			break;
 		case SCENE_PATTERN:
+			printf("p!");
 			for (int i = 0; i < patternScreenDrawableList->size; i++)
 			{
 				printf("p,");
@@ -1080,6 +1082,7 @@ void DrawGUI(int currentScene)
 			}
 			break;
 		case SCENE_INSTRUMENT:
+			printf("i!");
 			for (int i = 0; i < instrumentScreenDrawableList->size; i++)
 			{
 				printf("i,");
@@ -1087,8 +1090,10 @@ void DrawGUI(int currentScene)
 			}
 			break;
 		default:
+			printf("d!");
 			break;
 	}
+	printf("g!");
 	for (int i = 0; i < globalDrawableList->size; i++)
 	{
 		printf("g,");
