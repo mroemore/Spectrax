@@ -1068,18 +1068,21 @@ void DrawGUI(int currentScene)
 		case SCENE_ARRANGER:
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
 			{
+				printf("a,");
 				if(arrangerScreenDrawableList->drawables[i]->enabled) arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_PATTERN:
 			for (int i = 0; i < patternScreenDrawableList->size; i++)
 			{
+				printf("p,");
 				if(patternScreenDrawableList->drawables[i]->enabled) patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_INSTRUMENT:
 			for (int i = 0; i < instrumentScreenDrawableList->size; i++)
 			{
+				printf("i,");
 				if(instrumentScreenDrawableList->drawables[i]->enabled) instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
 			}
 			break;
@@ -1088,8 +1091,10 @@ void DrawGUI(int currentScene)
 	}
 	for (int i = 0; i < globalDrawableList->size; i++)
 	{
+		printf("g,");
 		if(globalDrawableList->drawables[i]->enabled) globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
 	}
+	printf("\n");
 }
 
 void CleanupGUI(void)
