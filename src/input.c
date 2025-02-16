@@ -24,13 +24,13 @@ InputState* createInputState(InputDeviceType type) {
 }
 
 void updateInputState(InputState* state) {
-	printf("updating inputs...\n");
+	//printf("updating inputs...\n");
     for (int i = 0; i < KEY_MAPPING_COUNT; i++) {
-		printf("%i, ", i);
+		//printf("%i, ", i);
         state->keys[i].wasPressed = state->keys[i].isPressed;
         state->keys[i].isPressed = IsKeyDown(state->currentMap[i]);
     }
-	printf("\n");
+	//printf("\n");
 }
 
 void addToHistory(InputState* state, KeyMapping keyCode){

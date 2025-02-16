@@ -32,8 +32,11 @@ SpriteSheet* createSpriteSheet(char* imagePath, int sprite_w, int sprite_h){
 	SpriteSheet * sh = (SpriteSheet*)malloc(sizeof(SpriteSheet));
 	sh->sheet = LoadTexture(imagePath);
 	sh->spriteCount = (sh->sheet.width / sprite_w) * (sh->sheet.height / sprite_h);
+	printf("spriteCount %i\n", sh->spriteCount);
 	sh->spriteW = sprite_w;
+	printf("sW %i\n", sh->spriteW);
 	sh->spriteH = sprite_h;
+	printf("sH %i\n", sh->spriteH);
 	sh->spriteSize = (Rectangle){0, 0, sprite_w, sprite_h};
 }
 
@@ -234,14 +237,14 @@ ContainerGroup* createContainerGroup(){
 }
 
 void containerGroupNavigate(ContainerGroup* cg, int rowInc, int colInc){
-	printf("NAV GRP: %i, %i inc: %i, %i\n", cg->selectedRow, cg->selectedColumn, rowInc, colInc);
+	//printf("NAV GRP: %i, %i inc: %i, %i\n", cg->selectedRow, cg->selectedColumn, rowInc, colInc);
 	InputContainer* ic = (InputContainer*)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
 	ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = false;
-	printf("NAV CONT: %i, %i\n", ic->selectedRow, ic->selectedColumn);
+	//printf("NAV CONT: %i, %i\n", ic->selectedRow, ic->selectedColumn);
 	int newRow = ic->selectedRow + rowInc;
 	int newCol = ic->selectedColumn + colInc;
 	if(newRow >= ic->rowCount){
-		printf("newcol > inputcontainer rowcount\n");
+		//printf("newcol > inputcontainer rowcount\n");
 
 		if(cg->selectedRow < cg->rowCount - 1){
 			printf("containergroup selectedrow %i < rowcount %i\n", cg->selectedRow, cg->rowCount);
@@ -1057,49 +1060,49 @@ void add_drawable(Drawable *drawable, int scene)
 
 void DrawGUI(int currentScene)
 {
-	printf("DrawGui\n");
-	printf("current scene: %i\n", currentScene);
-	printf("arranger drawables: %i\n", arrangerScreenDrawableList->size);
-	printf("pattern drawables: %i\n", patternScreenDrawableList->size);
-	printf("inst drawables: %i\n", instrumentScreenDrawableList->size);
-	printf("global drawables: %i\n", globalDrawableList->size);
+	//printf("DrawGui\n");
+	//printf("current scene: %i\n", currentScene);
+	//printf("arranger drawables: %i\n", arrangerScreenDrawableList->size);
+	//printf("pattern drawables: %i\n", patternScreenDrawableList->size);
+	//printf("inst drawables: %i\n", instrumentScreenDrawableList->size);
+	//printf("global drawables: %i\n", globalDrawableList->size);
 	
 	switch(currentScene){
 		case SCENE_ARRANGER:
-			printf("a!");
+			//printf("a!");
 			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
 			{
-				printf("a,");
+				//printf("a,");
 				if(arrangerScreenDrawableList->drawables[i]->enabled) arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_PATTERN:
-			printf("p!");
+			//printf("p!");
 			for (int i = 0; i < patternScreenDrawableList->size; i++)
 			{
-				printf("p,");
+				//printf("p,");
 				if(patternScreenDrawableList->drawables[i]->enabled) patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
 			}
 			break;
 		case SCENE_INSTRUMENT:
-			printf("i!");
+			//printf("i!");
 			for (int i = 0; i < instrumentScreenDrawableList->size; i++)
 			{
-				printf("i,");
+				//printf("i,");
 				if(instrumentScreenDrawableList->drawables[i]->enabled) instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
 			}
 			break;
 		default:
-			printf("d!");
+			//printf("d!");
 			break;
 	}
-	printf("g!");
+	//printf("g!");
 	for (int i = 0; i < globalDrawableList->size; i++)
 	{
-		printf("g,");
+		//printf("g,");
 		if(globalDrawableList->drawables[i]->enabled) globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
 	}
-	printf("\n");
+	//printf("\n");
 }
 
 void CleanupGUI(void)
