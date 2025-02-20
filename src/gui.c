@@ -2,17 +2,22 @@
 #include <stdlib.h>
 #include "raylib.h"
 #include "gui.h"
+#include "graph_gui.h"
 #include "input.h"
 #include "oscillator.h"
 #include "sequencer.h"
 #include "modsystem.h"
 #include "notes.h"
 
+Graph* globalGraph;
+Graph* patternGraph;
+Graph* arrangerGraph;
+Graph* instrumentGraph;
 
-DrawableList *patternScreenDrawableList;
-DrawableList *globalDrawableList;
-DrawableList *arrangerScreenDrawableList;
-DrawableList *instrumentScreenDrawableList;
+// DrawableList *patternScreenDrawableList;
+// DrawableList *globalDrawableList;
+// DrawableList *arrangerScreenDrawableList;
+// DrawableList *instrumentScreenDrawableList;
 
 Font textFont;
 Font symbolFont;
@@ -94,10 +99,14 @@ void InitGUI(void)
 
 	initDefaultColourScheme(&cs);
 
-	patternScreenDrawableList = create_drawable_list();
-	arrangerScreenDrawableList = create_drawable_list();
-	instrumentScreenDrawableList = create_drawable_list();
-	globalDrawableList = create_drawable_list(); // Initialize globalDrawableList
+	globalGraph = createGraph();
+	patternGraph = createGraph();
+	arrangerGraph = createGraph();
+	instrumentGraph = createGraph();
+	// patternScreenDrawableList = create_drawable_list();
+	// arrangerScreenDrawableList = create_drawable_list();
+	// instrumentScreenDrawableList = create_drawable_list();
+	// globalDrawableList = create_drawable_list();
 
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	
@@ -621,6 +630,8 @@ ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, in
 			sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
 			addContainerToGroup(cg, sampleParams,0,0);
 			break;
+		default:
+			break;
 	}
 	for(int i = 1; i < inst->envelopeCount+1; i++){
 		EnvelopeContainer* ic = createADEnvelopeContainer(inst->envelopes[i-1], (i % 2) * contW, 200 + (i / 2) * (contH+50), contW, contH, scene, enabled);
@@ -782,6 +793,8 @@ void drawArrangerGui(void *self){
 				break;
 			case VOICE_TYPE_FM:
 				drawSprite(instrumentIcons, 2, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
+				break;
+			default:
 				break;
 		}
 	}
@@ -992,71 +1005,73 @@ void free_drawable_list(DrawableList *list)
 	free(list);
 }
 
-void removeDrawable(Drawable* drawable, int scene){
-	DrawableList *list;
-	switch(scene){
-		case GLOBAL:
-			list = globalDrawableList;
-			break;
-		case SCENE_ARRANGER:
-			list = arrangerScreenDrawableList;
-			break;
-		case SCENE_PATTERN:
-			list = patternScreenDrawableList;
-			break;
-		case SCENE_INSTRUMENT:
-			list = instrumentScreenDrawableList;
-			break;
-		default:
-			return;
-			break;
-	}
+// void removeDrawable(Drawable* drawable, int scene){
+// 	DrawableList *list;
+// 	switch(scene){
+// 		case GLOBAL:
+// 			list = globalDrawableList;
+// 			break;
+// 		case SCENE_ARRANGER:
+// 			list = arrangerScreenDrawableList;
+// 			break;
+// 		case SCENE_PATTERN:
+// 			list = patternScreenDrawableList;
+// 			break;
+// 		case SCENE_INSTRUMENT:
+// 			list = instrumentScreenDrawableList;
+// 			break;
+// 		default:
+// 			printf("invalid scene, nothing removed.\n");
+// 			return;
+// 			break;
+// 	}
 
-	int addressMatch = 0;
-	int matchIndex = 0;
-	for (int i = 0; i < list->size; i++) {
-        if (list->drawables[i] == drawable) {
-            // Shift remaining elements left
-            for (; i < list->size - 1; i++) {
-                list->drawables[i] = list->drawables[i + 1];
-            }
-            list->size--;
-            return;
-        }
-    }
-	printf("drawable DONE\n");
+// 	int addressMatch = 0;
+// 	int matchIndex = 0;
+// 	for (int i = 0; i < list->size; i++) {
+//         if (list->drawables[i] == drawable) {
+//             // Shift remaining elements left
+//             for (; i < list->size - 1; i++) {
+//                 list->drawables[i] = list->drawables[i + 1];
+//             }
+//             list->size--;
+//             return;
+//         }
+//     }
+// 	printf("drawable DONE\n");
 
-}
+// }
 
-void add_drawable(Drawable *drawable, int scene)
-{
-	DrawableList *list;
-	switch(scene){
-		case GLOBAL:
-			list = globalDrawableList;
-			break;
-		case SCENE_ARRANGER:
-			list = arrangerScreenDrawableList;
-			break;
-		case SCENE_PATTERN:
-			list = patternScreenDrawableList;
-			break;
-		case SCENE_INSTRUMENT:
-			list = instrumentScreenDrawableList;
-			break;
-		default:
-			return;
-			break;
-	}
+// void add_drawable(Drawable *drawable, int scene)
+// {
+// 	DrawableList *list;
+// 	switch(scene){
+// 		case GLOBAL:
+// 			list = globalDrawableList;
+// 			break;
+// 		case SCENE_ARRANGER:
+// 			list = arrangerScreenDrawableList;
+// 			break;
+// 		case SCENE_PATTERN:
+// 			list = patternScreenDrawableList;
+// 			break;
+// 		case SCENE_INSTRUMENT:
+// 			list = instrumentScreenDrawableList;
+// 			break;
+// 		default:
+// 			printf("invalid scene, drawable not added.\n");
+// 			return;
+// 			break;
+// 	}
 
-	if (list->size == list->capacity)
-	{
-		list->capacity += 16;
-		list->drawables = (Drawable **)realloc(list->drawables, sizeof(Drawable *) * list->capacity);
-	}
+// 	if (list->size == list->capacity)
+// 	{
+// 		list->capacity += 16;
+// 		list->drawables = (Drawable **)realloc(list->drawables, sizeof(Drawable *) * list->capacity);
+// 	}
 
-	list->drawables[list->size++] = drawable;
-}
+// 	list->drawables[list->size++] = drawable;
+// }
 
 void DrawGUI(int currentScene)
 {
@@ -1070,50 +1085,34 @@ void DrawGUI(int currentScene)
 	switch(currentScene){
 		case SCENE_ARRANGER:
 			//printf("a!");
-			for (int i = 0; i < arrangerScreenDrawableList->size; i++)
-			{
-				//printf("a,");
-				if(arrangerScreenDrawableList->drawables[i]->enabled) arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
-			}
+			drawNode(arrangerGraph->root);
 			break;
 		case SCENE_PATTERN:
 			//printf("p!");
-			for (int i = 0; i < patternScreenDrawableList->size; i++)
-			{
-				//printf("p,");
-				if(patternScreenDrawableList->drawables[i]->enabled) patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
-			}
+			drawNode(patternGraph->root);
+			
 			break;
 		case SCENE_INSTRUMENT:
 			//printf("i!");
-			for (int i = 0; i < instrumentScreenDrawableList->size; i++)
-			{
-				//printf("i,");
-				if(instrumentScreenDrawableList->drawables[i]->enabled) instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
-			}
+			drawNode(instrumentGraph->root);
 			break;
 		default:
-			//printf("d!");
+			printf("Invalid scene, nothing to draw\n");
 			break;
 	}
-	//printf("g!");
-	for (int i = 0; i < globalDrawableList->size; i++)
-	{
-		//printf("g,");
-		if(globalDrawableList->drawables[i]->enabled) globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
-	}
+	drawNode(globalGraph->root);
 	//printf("\n");
 }
 
 void CleanupGUI(void)
 {
-	printf("freeing drawables 1...");
-	free_drawable_list(globalDrawableList);
-	printf("freeing drawables 2...");
-	free_drawable_list(instrumentScreenDrawableList);
-	printf("freeing drawables 3...");
-	free_drawable_list(patternScreenDrawableList);
-	printf("freeing drawables 4...");
-	free_drawable_list(arrangerScreenDrawableList);
-	printf("freeing drawables 5...");
+	// printf("freeing drawables 1...");
+	// free_drawable_list(globalDrawableList);
+	// printf("freeing drawables 2...");
+	// free_drawable_list(instrumentScreenDrawableList);
+	// printf("freeing drawables 3...");
+	// free_drawable_list(patternScreenDrawableList);
+	// printf("freeing drawables 4...");
+	// free_drawable_list(arrangerScreenDrawableList);
+	// printf("freeing drawables 5...");
 }

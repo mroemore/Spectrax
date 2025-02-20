@@ -4,12 +4,12 @@
 #include <stdbool.h>
 #include "sequencer.h"
 #include "modsystem.h"
+#include "settings.h"
 #include "raylib.h"
 #include "input.h"
+#include "graph_gui.h"
 
 #define MAX_GRAPH_HISTORY 25
-#define SCREEN_W 800
-#define SCREEN_H 600
 #define MAX_BUTTON_ROWS 64
 #define MAX_BUTTON_COLS 64
 #define MAX_BUTTON_CONTAINER_ROWS 64
