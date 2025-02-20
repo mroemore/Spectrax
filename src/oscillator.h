@@ -27,6 +27,7 @@ typedef struct {
     float (*generate)(float phase, float increment);
     int generated;
     float phase;
+    float phase_increment;
     float currentVal;
     float lastVal;
     float modVal;

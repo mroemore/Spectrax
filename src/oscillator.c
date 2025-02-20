@@ -26,7 +26,7 @@ float sine_fm(Operator* ops[4], float frequency){
     return c;
 }
 
-float sineFmAlgo(Operator* ops[OP_COUNT], float frequency, int algorithm){
+float sineFmAlgo(Operator* ops[], float frequency, int algorithm){
     int algoOffset = algorithm * ALGO_SIZE;
     float out = 0.0f;
     for(int i = 0; i < OP_COUNT; i++){
@@ -92,6 +92,7 @@ Operator* createOperator(ParamList* paramList, float ratio){
     Operator* op = (Operator*)malloc(sizeof(Operator));
     op->generated = 0;
     op->phase = 0.0f;
+    op->phase_increment = 0.0f;
     op->currentVal = 0.0f;
     op->lastVal = 0.0f;
     op->modVal = 0.0f;

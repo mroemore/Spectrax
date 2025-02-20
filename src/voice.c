@@ -98,6 +98,8 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
             break;
         case VOICE_TYPE_FM:
             L = sineFmAlgo(currentVoice->source.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
+            //L = sine_fm(currentVoice->source.operators, 440.0f);
+            
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_SAMPLE:
@@ -110,8 +112,8 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
         default:
             break;
     }
-    out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
-    out.R = out.L;
+    // out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
+    // out.R = out.L;
     return out;
 }
 
@@ -228,7 +230,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio, inst->ops[3]->level);
             voice->samplePosition = 0.0f; // Initialize sample position
             for(int i = 0; i < voice->envCount; i++) {
-                addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
+                addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
             }
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
             break;
@@ -287,7 +289,7 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
     
     }
     for(int i = 0; i < (*instrument)->envelopeCount; i++){
-        (*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, .25f, "AD1");
+        (*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, 2.25f, "AD1");
     }
     
     (*instrument)->voiceType = vt;

@@ -136,7 +136,7 @@ void addBlankIfEmpty(PatternList* patternList, Arranger* arranger, int sequencer
 }
 
 int *getStep(PatternList *patternList, int patternIndex, int noteIndex){
-	printf("getstep\n");
+	//printf("getstep\n");
 	return patternList->patterns[patternIndex].notes[noteIndex];
 }
 
