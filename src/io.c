@@ -67,6 +67,7 @@ void populateDirectoryList(DirectoryList *list,const char* dirPath){
     DIR *dir = opendir(dirPath);
     if (!dir) {
         perror("Failed to open directory");
+        printf("%s\n", dirPath);
         return;
     }
 
@@ -106,7 +107,7 @@ void populateDirectoryList(DirectoryList *list,const char* dirPath){
 
 void loadSamplesfromDirectory(const char* path, SamplePool* sp){
     DirectoryList* dirList = createDirectoryList();
-    populateDirectoryList(dirList, "resources/samples/");
+    populateDirectoryList(dirList, path);
 
     for(int i = 0; i < dirList->count; i++){
         load_wav_sample(dirList->file_paths[i], sp);

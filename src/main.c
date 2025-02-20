@@ -114,15 +114,16 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 
 					float phase_increment = 0.0f;
 					float freq = 0.0f;
+					OutVal currentSample = (OutVal){0,0};
 					if (currentVoice->note[0] != OFF)
 					{
 						freq = noteFrequencies[currentVoice->note[0]][currentVoice->note[1]];
 						setParameterBaseValue(currentVoice->frequency, freq);
 						setParameterValue(currentVoice->frequency, freq);
 						phase_increment = freq / SAMPLE_RATE;
+						currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);
 					}
 
-					OutVal currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);
 
 					if(data->arranger->playing){
 						// float vol = getParameterValue(currentVoice->volume);
@@ -366,9 +367,12 @@ int main(void)
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
 						containerGroupNavigate(currentInstGroup, 1, 0);
 					}
-				}
-				
-			break;
+				}	
+				break;
+			case GLOBAL:
+			default:
+				printf("Invalid scene, no inputs to detect.\n");
+				break;
 			
 		}
 		

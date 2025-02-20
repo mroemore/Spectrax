@@ -44,7 +44,7 @@ void generateCurveWavetables(WavetablePool* wtp, size_t iterations, size_t wtLen
 
 
 ModList* createModList() {
-    printf("creating modlist\n");
+    //printf("creating modlist\n");
 
     ModList* list = (ModList*)malloc(sizeof(ModList));
 	if (!list){
@@ -52,19 +52,19 @@ ModList* createModList() {
          return NULL;
     }
     list->count = 0;
-	printf("\t-> DONE.\n");
+	//printf("\t-> DONE.\n");
     return list;
 }
 
 ParamList* createParamList() {
-    printf("creating paramlist\n");
+    //printf("creating paramlist\n");
     ParamList* list = (ParamList*)malloc(sizeof(ParamList));
 	if (!list){
         printf("could not allocate memory for paramList.\n");
         return NULL;
     }
     list->count = 0;
-	printf("\t-> DONE.\n");
+	//printf("\t-> DONE.\n");
     return list;
 }
 
@@ -181,6 +181,11 @@ Random* createRandom(ParamList* paramList, ModList* modList, int index, float ra
         case RT_DRK:
             rnd->base.generate = generateDrunk;
             break;
+        default:
+            printf("Invalid RNG type, returning null");
+            freeParameter(rnd->base.output);
+            free(rnd);
+            return NULL;
     }
     rnd->rate = createParameter(paramList, "RNG rate", rate, 0.1f, 100.0f);
     rnd->phase = createParameter(paramList, "RNG phase", 0.0f, 0.0f, 1.0f);
@@ -217,6 +222,11 @@ LFO* createLFO(ParamList* paramList, ModList* modList, int index, float rate, in
 		case LS_RMP:
 			lfo->base.generate = generateRamp;
 			break;
+        default:
+            printf("Invalid LFO type, returning null");
+            freeParameter(lfo->base.output);
+            free(lfo);
+            return NULL;
 	}
     
     // Initialize LFO-specific parameters
@@ -310,6 +320,7 @@ void updateMod(Mod* mod, float deltaTime) {
             setParameterBaseValue(rand->phase, r_phase);
             setParameterValue(rand->phase, r_phase);
         default:
+            printf("Invalid mod type.\n");
             break;
     }
 	//DEBUG_LOG("update mod DONE");
@@ -559,6 +570,7 @@ void processModulations(ParamList* paramList, ModList* modList, float deltaTime)
                     }
                     break;
                 default:
+                    printf("Invalid mod type.\n");
                     break;
             }
             

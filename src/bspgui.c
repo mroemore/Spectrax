@@ -265,6 +265,8 @@ void reflowCoordinates(GuiNode* n){
                 n->items[i]->x = n->x + (x_scalar * weightsAccumlator) + (n->padding);
                 n->items[i]->w = (x_scalar * n->items[i]->weightRef->val) - (n->padding * 2);
                 break;
+            default:
+                break;
         }
 
         weightsAccumlator += n->items[i]->weightRef->val;
@@ -329,6 +331,8 @@ void navigateGraph(GuiNode* selected, int keymapping){
         case KM_LEFT:
             break;
         case KM_RIGHT:
+            break;
+        default:
             break;
     }
 }

@@ -42,7 +42,7 @@ ModMap* initModMap(float *target, float min, float max, float attenuation, int m
 
 void applyModulation(ModMap *param, Envelope *env){
 	float envLevel = apply_envelope((float)env->stages[env->stageIndex].current_sample_index, (float)env->stages[env->stageIndex].duration_in_samples, env->stages[env->stageIndex].curve);
-	if(envLevel < 0.1f){ //TO-DO fix this hacky shit
+	if(envLevel < 0.0001f){ //TO-DO fix this hacky shit
 		envLevel = 0.0f;
 	}
 	if(env->stages[env->stageIndex].direction < 0){
@@ -62,6 +62,8 @@ void applyModulation(ModMap *param, Envelope *env){
 			break;
 		case DIV:
 			param->result = *param->target / envLevel;
+			break;
+		default:
 			break;
 	}
 }

@@ -12,7 +12,11 @@
 		"stdio.h": "c",
 		"modsystem.h": "c",
 		"math.h": "c",
-		"string.h": "c"
+		"string.h": "c",
+		"stddef.h": "c",
+		"notes.h": "c",
+		"io.h": "c",
+		"dstruct.h": "c"
 	},
 	"C_Cpp.errorSquiggles": "enabled"
 }

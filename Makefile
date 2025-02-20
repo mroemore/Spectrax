@@ -2,11 +2,11 @@ CC = gcc
 
 CFLAGS = -Iinclude -lportaudio -lraylib -lm
 MINGW_FLAGS =  -Llib/win -lgdi32 -lwinmm
-LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
+LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11 -Wall
 ARM_FLAGS = -Iinclude/arm  -lportaudio -l:libraylib.a -g -O0 -lm -lpthread -ldl
 ARM_LD_FLAGS = -Llib/arm -L/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib -I/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib/gl4es/ -lSDL2 -lasound
 
-DEBUG_FLAGS = -g -O1
+DEBUG_FLAGS = -g
 RELEASE_FLAGS = -O2
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-poiner
 VALGRIND_FLAGS = -O0
@@ -32,6 +32,8 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/voice.c \
 		$(SRC_DIR)/blit_synth.c \
 		$(SRC_DIR)/distortion.c \
+		$(SRC_DIR)/dstruct.c \
+		$(SRC_DIR)/graph_gui.c \
 		$(SRC_DIR)/modsystem.c \
 		$(SRC_DIR)/input.c \
 		$(SRC_DIR)/gui.c \

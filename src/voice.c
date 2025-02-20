@@ -64,6 +64,7 @@ void freeVoice(Voice* v){ //TO-DO: free grain
             break;
         case VOICE_TYPE_BLEP:
         default:
+            printf("Invalid voice type.\n");
             break;
     }
 
@@ -93,30 +94,28 @@ OutVal generateVoice(VoiceManager* vm, Voice* currentVoice, float phaseIncrement
                     L = noblep_sine(currentVoice->leftPhase);
                     L*=0.5;
                     break;
+                default:
+                    printf("Invalid BLEP type.\n");
+                    break;
             }
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_FM:
-            L = sineFmAlgo(currentVoice->source.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
+            L = sineFmAlgo(currentVoice->source.operators, frequency, 1);
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_SAMPLE:
             sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
             L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, 0);
-            int bitDepthDiff = 24 - getParameterValueAsInt(currentVoice->instrumentRef->bitDepth);
-            int intVal = (int)(L*1000000000000000000000000);
-            intVal >> bitDepthDiff;
-            intVal << bitDepthDiff;
-            L = (float)intVal / 1000000000000000000000000;
-
             out = (OutVal){L, L};
             break;
         case VOICE_TYPE_GRAIN:
             out = granularProcess(currentVoice->source.granularProcessor, phaseIncrement);
         default:
+            printf("Invalid voice type.\n");
             break;
     }
-    out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
+    //out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
     out.R = out.L;
     return out;
 }
@@ -130,7 +129,7 @@ void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrumen
     vm->voiceCount[channelIndex] = 0;
     
     for(int i = 0; i < voiceCount; i++){
-        printf("allocating voice %i of %i (type %i) for channel %i\n", i+1, voiceCount, inst->voiceType, channelIndex);
+        //printf("allocating voice %i of %i (type %i) for channel %i\n", i+1, voiceCount, inst->voiceType, channelIndex);
         vm->voicePools[channelIndex][i] = (Voice*)malloc(sizeof(Voice));
         if (vm->voicePools[channelIndex][i] == NULL) {
             fprintf(stderr, "Failed to allocate memory for voice %d in channel %d\n", i, channelIndex);
@@ -140,7 +139,7 @@ void initVoicePool(VoiceManager* vm, int channelIndex, int voiceCount, Instrumen
         vm->voiceCount[channelIndex]++;
     }
 
-    printf("voice count of %i for channel %i, from starting input of %i", vm->voiceCount[channelIndex], channelIndex, voiceCount);
+    //printf("voice count of %i for channel %i, from starting input of %i", vm->voiceCount[channelIndex], channelIndex, voiceCount);
 }
 
 Voice* getFreeVoice(VoiceManager* vm, int seqChannel){
@@ -154,6 +153,7 @@ Voice* getFreeVoice(VoiceManager* vm, int seqChannel){
             }
             break;
         default:
+            printf("Invalid voice allocation type.\n");
             break;
     }
     printf("returning voice %i of channel %i\n", voiceIndex, seqChannel);
@@ -200,7 +200,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
     voice->active = 0;
     voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
     voice->type = inst->voiceType;
-    printf("active: %i\n", voice->active);
+    //printf("active: %i\n", voice->active);
     voice->envCount = inst->envelopeCount;
     voice->lfoCount = inst->lfoCount;
     for(int i = 0; i < voice->envCount; i++){
@@ -234,7 +234,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio, inst->ops[3]->level);
             voice->samplePosition = 0.0f; // Initialize sample position
             for(int i = 0; i < voice->envCount; i++) {
-                addModulation(voice->paramList, &voice->envelope[i]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
+                addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
             }
             addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
             break;
@@ -242,6 +242,7 @@ void initialize_voice(Voice *voice, Instrument* inst) {
             voice->source.granularProcessor = createGranularProcessor(inst->sample); 
             break;
         default:
+            printf("Invalid voice type.\n");
             break;
     }
     voice->filter = createFilter(kTransposeCanonical, secondOrderLPF, 250.0f, 10.0f);
@@ -288,7 +289,9 @@ void init_instrument(Instrument** instrument, VoiceType vt, SamplePool* samplePo
         case VOICE_TYPE_GRAIN:
             (*instrument)->sample = samplePool->samples[2];
             (*instrument)->envelopeCount = 1;
-            
+            break;
+        default:
+            printf("Invalid voice type.\n");
             break;
     
     }

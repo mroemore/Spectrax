@@ -23,6 +23,8 @@ BiquadFilter* createBiquadFilter(BiquadType type){
         case kTransposeCanonical:
             bf->processSample = processKTransposeCanonical;
             break;
+        default:
+            break;
     }
 
     return bf;
