@@ -10,6 +10,9 @@
 #define NOTE_INFO_SIZE 2 // One for note index, one for octave index
 #define TWOPI 2.0f * M_PI
 
+#define SCREEN_W 640
+#define SCREEN_H 480
+
 #ifndef INSTALL_DIR
 #define INSTALL_DIR "C:/msys64/home/Krang/portaudio/build/bin/"
 #endif

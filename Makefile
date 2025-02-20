@@ -6,7 +6,7 @@ LINUX_FLAGS =  -Llib/linux -lGL -lrt -ldl -lX11
 ARM_FLAGS = -Iinclude/arm  -lportaudio -l:libraylib.a -g -O0 -lm -lpthread -ldl
 ARM_LD_FLAGS = -Llib/arm -L/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib -I/muos-sdk/aarch64-buildroot-linux-gnu/sysroot/usr/lib/gl4es/ -lSDL2 -lasound
 
-DEBUG_FLAGS = -g -O1
+DEBUG_FLAGS = -g -O0
 RELEASE_FLAGS = -O2
 ASAN_FLAGS = -fsanitize=address -fno-omit-frame-poiner
 VALGRIND_FLAGS = -O0
