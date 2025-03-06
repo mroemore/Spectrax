@@ -42,7 +42,7 @@ typedef struct {
     int capacity;
     ListElement* pool;
     ListElement* freeList;
-}   List;
+}List;
 
 typedef struct {
     List l;

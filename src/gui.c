@@ -19,8 +19,12 @@ DrawableList *globalDrawableList;
 DrawableList *arrangerScreenDrawableList;
 DrawableList *instrumentScreenDrawableList;
 
+//Graph* instrumentScreenGraph[MAX_SEQUENCER_CHANNELS];
+InstrumentGui* igui;
+
 Font textFont;
 Font symbolFont;
+Font pixelFont;
 ColourScheme cs;
 SpriteSheet *instrumentIcons;
 
@@ -99,10 +103,6 @@ void InitGUI(void)
 
 	initDefaultColourScheme(&cs);
 
-	// globalGraph = createGraph();
-	// patternGraph = createGraph();
-	// arrangerGraph = createGraph();
-	// instrumentGraph = createGraph();
 	patternScreenDrawableList = create_drawable_list();
 	arrangerScreenDrawableList = create_drawable_list();
 	instrumentScreenDrawableList = create_drawable_list();
@@ -111,6 +111,7 @@ void InitGUI(void)
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	
 	textFont = LoadFont("resources/fonts/setback.png");
+	pixelFont = LoadFontEx("resources/fonts/KiwiSoda.ttf", 16, 0, 255);
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
 	instrumentIcons = createSpriteSheet("resources/fonts/synthicons.png", 24, 24);
 
@@ -597,20 +598,23 @@ InputContainer* createBlepParamsContainer(Instrument* inst, int x, int y, int w,
 	return ic;
 }
 
-InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene){
+void createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene){
 	InstrumentGui* ig = (InstrumentGui*)malloc(sizeof(InstrumentGui));
-	if(!ig) return NULL;
+	if(!ig) return;
 	ig->selectedInstrument = selectedInstrument;
 	
 	for(int i = 0; i < vm->enabledChannels; i++){
 		int isSelected = *selectedInstrument == i;
-		ig->instrumentControls[i] = createInstrumentModulationGui(vm->instruments[i], 10, 10, (SCREEN_W-20)/2, (SCREEN_H-20)/8, SCENE_INSTRUMENT, isSelected);
+		ig->instrumentScreenGraphs[i] = createFMInstGraph(vm->instruments[i], isSelected);
 		ig->instrumentCount++;
 	}
 
-	return ig;
+	igui = ig;
 }
 
+Graph* getSelectedInstGraph(){
+	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
+}
 
 ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled){
 	ContainerGroup* cg = createContainerGroup();
@@ -641,18 +645,18 @@ ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, in
 	return cg;
 }
 
-void updateInstrumentGui(InstrumentGui* ig){
-	for(int i = 0; i < ig->instrumentCount; i++){
-		int isSelected = *ig->selectedInstrument == i;
-		for(int r = 0; r < ig->instrumentControls[i]->rowCount; r++){
-			for(int c = 0; c < ig->instrumentControls[i]->columnCount[r]; c++){
-				for(int d = 0; d < ig->instrumentControls[i]->containerRefs[r][c]->otherDrawableCount; d++){
-					ig->instrumentControls[i]->containerRefs[r][c]->otherDrawables[d]->enabled = isSelected;
-				}
-			}
-		}
-	}
-}
+// void updateInstrumentGui(InstrumentGui* ig){
+// 	for(int i = 0; i < ig->instrumentCount; i++){
+// 		int isSelected = *ig->selectedInstrument == i;
+// 		for(int r = 0; r < ig->instrumentControls[i]->rowCount; r++){
+// 			for(int c = 0; c < ig->instrumentControls[i]->columnCount[r]; c++){
+// 				for(int d = 0; d < ig->instrumentControls[i]->containerRefs[r][c]->otherDrawableCount; d++){
+// 					ig->instrumentControls[i]->containerRefs[r][c]->otherDrawables[d]->enabled = isSelected;
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 void removeContainerGroupFromScene(ContainerGroup* cg, int scene){
 	
@@ -1099,9 +1103,7 @@ void DrawGUI(int currentScene)
 			break;
 		case SCENE_INSTRUMENT:
 			//printf("i!");
-			for(int i = 0; i < instrumentScreenDrawableList->size; i++){
-				instrumentScreenDrawableList->drawables[i]->draw(instrumentScreenDrawableList->drawables[i]);
-			}
+			drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 			//drawNode(instrumentGraph->root);
 			break;
 		default:

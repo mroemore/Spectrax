@@ -34,6 +34,8 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/distortion.c \
 		$(SRC_DIR)/modsystem.c \
 		$(SRC_DIR)/input.c \
+		$(SRC_DIR)/graph_gui.c \
+		$(SRC_DIR)/dstruct.c \
 		$(SRC_DIR)/gui.c \
 		$(SRC_DIR)/notes.c \
 		$(SRC_DIR)/io.c \

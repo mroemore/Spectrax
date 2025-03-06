@@ -24,54 +24,21 @@ static float angleBetweenVector2(Vector2 v1, Vector2 v2) {
     return acos(cosTheta);
 }
 
-// Box* createBox(int x, int y, int w, int h, Color c, int selected){
-//     Box* b = (Box*)malloc(sizeof(Box));
-//     if(!b){
-//         printf("ERR: createBox: malloc fail.\n");
-//     }
-//     b->base.draw = drawBox;
-//     b->base.bounds = (Rectangle){x,y,w,h};
-//     b->c_selected = c;
-//     b->c_default = GREEN;
-//     b->selected = selected;
-
-//     return b;
-// }
-
-// void drawBox(void* self){
-//     Box* b = (Box*)self;
-//     if(b->selected){
-//         DrawRectangleLinesEx(b->base.bounds, 2, b->c_selected);
-//     } else {
-//         DrawRectangleLinesEx(b->base.bounds, 2, b->c_default);
-//     }
-// }
-
-// void drawList(List* dl){
-//     if(dl->count <= 0){
-//         return;
-//     }
-//     ListElement* current = dl->head;
-//     for(int i = 0; i < dl->count; i++){
-//         printf("%i, ", i);
-//         Drawable* d = (Drawable*)current->data;
-//         d->draw(d);
-//         current = current->next;
-//     }
-
-//     printf("\n");
-// }
-
-GuiNode* createGuiNode(int x, int y, int w, int h, int padding, DrawableAlignment da, NodeAlignment na, Color c, const char* name, int selected){
+GuiNode* createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, Color c, const char* name, bool selectable, bool selected){
     GuiNode* gn = (GuiNode*)malloc(sizeof(GuiNode));
     if(!gn) return NULL;
-
+    if(x < 0 || x > SCREEN_W || y < 0 || y > SCREEN_H || w < 0 || w > SCREEN_W || h < 0 || h > SCREEN_H){
+        printf("error: invalid GuiNode dimensions. [x:%i y:%i w:%i h:%i ]\n", x, y, w, h);
+        free(gn);
+        return NULL;
+    }
     gn->container = NULL;
     gn->x = x;
     gn->y = y;
     gn->w = w;
     gn->h = h;
-    gn->items = createList(128);
+    gn->resizeable = true;
+    gn->items = createList(16);
     gn->name = malloc(sizeof(char) * strlen(name));
     if(gn->name == NULL){
         printf("ERR: createGuiNode: malloc fail\n");
@@ -82,13 +49,128 @@ GuiNode* createGuiNode(int x, int y, int w, int h, int padding, DrawableAlignmen
     gn->padding = padding;
     gn->weightRef = NULL;
     gn->selected = selected;
-    gn->itemWeights = createList(128);
+    gn->selectable = selectable;
+    gn->itemWeights = createList(16);
     gn->totalItemWeights = 0;
     gn->itemCount = 0;
+    gn->hasSelectableItems = false;
     gn->c = c;
-    gn->drawableAlignment = da;
+    if(na >= nodeAlignmentCount){
+        printf("error: invalid alignment %i", na);
+        free(gn);
+        return NULL;
+    }
     gn->nodeAlignment = na;
     return gn;
+}
+
+GuiNode* createInputGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, Color c, const char* name, bool selected, OnPressCallback callback, Parameter* p){
+    GuiNode* gn = createGuiNode(x,y,w,h, padding, na, c, name, 1, selected);
+    if(gn == NULL){
+        printf("InputGuiNode error, could not create.");
+        return NULL;
+    }
+    gn->callback = callback;
+    gn->p = p;
+    return gn;
+}
+
+GuiNode* createBlankGuiNode(){
+    GuiNode* gn = createGuiNode(0,0,0,0,0, na_horizontal, WHITE, "blank", 0, 0);
+    if(gn == NULL){
+        printf("BlankGuiNode error, could not create.");
+        return NULL;
+    }
+    return gn;
+}
+
+void appendFMInstControlNode(Graph* g, GuiNode* container, char* name, int weight, bool selected, Instrument *inst){
+    GuiNode* btnwrap = createGuiNode(0,0,100,100, 5, na_vertical, RED, "bwrp1", 0,0);
+
+    GuiNode* btnrow1 = createGuiNode(0,0,100,100, 5, na_horizontal, ORANGE, "br1", 0,0);
+    GuiNode* btnrow2 = createGuiNode(0,0,100,100, 5, na_horizontal, ORANGE, "br2", 0,0);
+
+    GuiNode* rat1 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b1", 0, incParameterBaseValue, inst->ops[0]->ratio);
+    GuiNode* fb1 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b2", 0, incParameterBaseValue, inst->ops[0]->feedbackAmount);
+    GuiNode* rat2 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b3", 0, incParameterBaseValue, inst->ops[1]->ratio);
+    GuiNode* fb2 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b4", 0, incParameterBaseValue, inst->ops[1]->feedbackAmount);
+    GuiNode* rat3 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b5", 0, incParameterBaseValue, inst->ops[2]->ratio);
+    GuiNode* fb3 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b6", 0, incParameterBaseValue, inst->ops[2]->feedbackAmount);
+    GuiNode* rat4 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b7", 0, incParameterBaseValue, inst->ops[3]->ratio);
+    GuiNode* fb4 = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b8", 0, incParameterBaseValue, inst->ops[3]->feedbackAmount);
+    GuiNode* alg = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b9", 0, incParameterBaseValue, inst->selectedAlgorithm);
+
+    if(selected){ g->selected = rat1;}
+
+    GuiNode* sp1 = createBlankGuiNode();
+    GuiNode* sp2 = createBlankGuiNode();
+    GuiNode* sp3 = createBlankGuiNode();
+    GuiNode* sp4 = createBlankGuiNode();
+    GuiNode* sp5 = createBlankGuiNode();
+
+    appendItem(btnrow1,rat1,2);
+    appendItem(btnrow1,fb1,2);
+    appendItem(btnrow1,sp1,1);
+    appendItem(btnrow1,rat2,2);
+    appendItem(btnrow1,fb2,2);
+    appendItem(btnrow1,sp2,1);
+    appendItem(btnrow1,sp3,2);
+
+    appendItem(btnrow2,rat3,2);
+    appendItem(btnrow2,fb3,2);
+    appendItem(btnrow2,sp4,1);
+    appendItem(btnrow2,rat4,2);
+    appendItem(btnrow2,fb4,2);
+    appendItem(btnrow2,sp5,1);
+    appendItem(btnrow2,alg,2);
+
+    appendItem(btnwrap,btnrow1,1);
+    appendItem(btnwrap,btnrow2,1);
+
+    appendItem(container,btnwrap,weight);
+}
+
+void appendADEnvControlNode(Graph* g, GuiNode* container, char* name, int weight, bool selected, Envelope *env){
+    GuiNode* envwrap = createGuiNode(0,0,100,100, 5, na_vertical, RED, "envwrp", 0,0);
+
+    GuiNode* ar = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b1", selected, incParameterBaseValue, env->stages[0].duration);
+    GuiNode* ac = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b1", 0, incParameterBaseValue, env->stages[0].curvature);
+    GuiNode* dr = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b1", 0, incParameterBaseValue, env->stages[1].duration);
+    GuiNode* dc = createInputGuiNode(0,0,100,100, 5, na_horizontal, RED, "b1", 0, incParameterBaseValue, env->stages[0].curvature);
+    if(selected){ g->selected = ar;}
+
+    GuiNode* sp1 = createBlankGuiNode();
+
+    appendItem(envwrap,ar,2);
+    appendItem(envwrap,ac,2);
+    appendItem(envwrap,dr,2);
+    appendItem(envwrap,dc,2);
+    appendItem(envwrap,sp1,1);
+
+    appendItem(container,envwrap,weight);
+}
+
+Graph* createFMInstGraph(Instrument* inst, bool selected){
+    Graph* fmi = createGraph();
+    GuiNode* margin1 = createBlankGuiNode();
+    GuiNode* margin2 = createBlankGuiNode();
+    GuiNode* pad1 = createBlankGuiNode();
+    GuiNode* pad2 = createBlankGuiNode();
+
+    GuiNode* fmwrap = createGuiNode(0,0,100,100, 5, na_vertical, RED, "fm_wrap", 0,0);
+    appendItem(fmwrap, pad1,2);
+    appendFMInstControlNode(fmi, fmwrap, "fmctrl", 4, selected, inst);
+    appendItem(fmwrap, pad2,2);
+
+    GuiNode* modwrap = createGuiNode(0,0,100,100, 5, na_vertical, RED, "mod_wrap", 0,0);
+    for(int i = 0; i < inst->envelopeCount; i++){
+        appendADEnvControlNode(fmi, modwrap, "mod", 1, false, inst->envelopes[0]);
+    }
+    appendItem(fmwrap, modwrap,8);
+    appendItem(fmi->root, margin1,1);
+    appendItem(fmi->root, fmwrap,8);
+    appendItem(fmi->root, margin2,1);
+    return fmi;
 }
 
 void reflowCoordinates(GuiNode* n){
@@ -153,6 +235,9 @@ void appendItem(GuiNode* parent, GuiNode* child, int weight){
     child->itemListRef = appendToList(parent->items, (const void*)&child, sizeof(GuiNode*), 0);
     parent->itemCount++;
     parent->totalItemWeights += weight;
+    if(child->selectable || child->hasSelectableItems){
+        parent->hasSelectableItems = true;
+    }
     printf("%s weightref: %i\n", child->name, *(int*)child->weightRef->data);
     printf("weightref: %i\n", *(int*)parent->itemWeights->head->data);
     reflowCoordinates(parent);
@@ -171,7 +256,7 @@ void drawNode(GuiNode* cont){
         ListElement* current = cont->items->head;
         for(int i = 0; i < cont->itemCount; i++){
             GuiNode* gn = *(GuiNode**)current->data;
-            drawBSP(gn);
+            drawNode(gn);
             current = current->next;
         }
     }
@@ -180,208 +265,209 @@ void drawNode(GuiNode* cont){
 
 Graph* createGraph(){
     Graph* g = (Graph*)malloc(sizeof(Graph));
-    g->root = createGuiNode(0,0, SCREEN_W, SCREEN_H, 4, da_center, na_horizontal, RED, "root", 0);
+    g->root = createGuiNode(0,0, SCREEN_W, SCREEN_H, 4, na_horizontal, RED, "root", false, false);
     g->selected = NULL;
 }
 
 void navigateGraph(Graph* g, int keymapping){
-    int success = 0;
-    switch (g->selected->container->nodeAlignment){
-        case na_horizontal:
+    printf("NEW INPUT--------- \n\n\n");
+    GuiNode* cont = g->selected->container;
+    GuiNode* r;
+    switch(cont->nodeAlignment){
+        case na_vertical:
             switch (keymapping){
                 case KM_UP:
-                    success = findClosestLeafLeft(g, na_horizontal);
-                    printf("na_horizontal KM_UP result: %i\n", success);
+                    navAdjacent(g, g->selected, na_vertical, true, false);
                     break;
                 case KM_DOWN:
-                    success = findClosestLeafRight(g, na_horizontal);
-                    printf("na_horizontal KM_DOWN result: %i\n", success);
+                    navAdjacent(g, g->selected, na_vertical, false, true);
                     break;
                 case KM_LEFT:
-                    success = selectRelative(g, g->selected, -1);
-                        printf("na_horizontal KM_EFT result1: %i\n", success);
-                    if(!success){
-                        success = findClosestLeafRight(g, na_vertical);
-                        printf("na_horizontal KM_EFT result2: %i\n", success);
+                    r = searchUpwardsByAlignment(g->selected, na_horizontal, true);
+                    //r = getAdjacentNode(r, true);
+                    if(r != NULL){
+                        selectLeaf(g, r, false);
                     }
                     break;
                 case KM_RIGHT:
-                    success = selectRelative(g, g->selected, 1);
-                        printf("na_horizontal KM_RIGHT result1: %i\n", success);
-                    if(!success){
-                        success = findClosestLeafLeft(g, na_vertical);
-                        printf("na_horizontal KM_RIGHT result2: %i\n", success);
+                    r = searchUpwardsByAlignment(g->selected, na_horizontal, false);
+                    //r = getAdjacentNode(r, false);
+                    if(r != NULL){
+                        selectLeaf(g, r, true);
                     }
                     break;
             }
             break;
-        case na_vertical:
-                switch (keymapping){
-                    case KM_UP:
-                        success = selectRelative(g, g->selected, -1);
-                            printf("na_vertical KM_UP result1: %i\n", success);
-                        if(!success){
-                            success = findClosestLeafLeft(g, na_vertical);
-                            printf("na_vertical KM_UP result2: %i\n", success);
-                        }
-                        break;
-                    case KM_DOWN:
-                        success = selectRelative(g, g->selected, 1);
-                            printf("na_vertical KM_DOWN result1: %i\n", success);
-                        if(!success){
-                            success = findClosestLeafRight(g, na_vertical);
-                            printf("na_vertical KM_DOWN result2: %i\n", success);
-                        }
-                        break;
-                    case KM_LEFT:
-                        success = findClosestLeafLeft(g, na_vertical);
-                        printf("na_vertical KM_LEFT result: %i\n", success);
-                        break;
-                    case KM_RIGHT:
-                        success = findClosestLeafRight(g, na_vertical);
-                        printf("na_vertical KM_RIGHT result: %i\n", success);
-                        break;
-                }
+        case na_horizontal:
+            switch (keymapping){
+                case KM_UP:
+                    r = searchUpwardsByAlignment(g->selected, na_vertical, true);
+                    if(r != NULL){
+                        printf("using adjacent node [ %s ]\n", r->name);
+                        selectLeaf(g, r, false);
+                    }else {
+                        printf("parents prev is null\n");
+                    }
+                    break;
+                case KM_DOWN:
+                    r = searchUpwardsByAlignment(g->selected, na_vertical, false);
+                    if(r != NULL){
+                        printf("using adjacent node [ %s ]\n", r->name);
+                        selectLeaf(g, r, true);
+                    } else {
+                        printf("parents next is null\n");
+                    }
+                    break;
+                case KM_LEFT:
+                    navAdjacent(g, g->selected, na_vertical, true, false);
+                    break;
+                case KM_RIGHT:
+                    navAdjacent(g, g->selected, na_vertical, false, true);
+                    break;
+            }
             break;
     }
-    
 }
 
-int findClosestLeafLeft(Graph* g, int alignment){
-    if(g->selected->container == NULL) return 0;
 
-    ListElement* previousNode = g->selected->container->itemListRef->prev;
-    if(g->selected->container->nodeAlignment != alignment){
-        previousNode = NULL;
+bool selectLeaf(Graph* g, GuiNode* n, bool head){
+    printf("[SL] leaf search... \n");
+    if(n == NULL){
+    printf("[SL] leaf null... \n");
+        return false;
     }
-    GuiNode* current = NULL;
-        
-    if(previousNode != NULL){
-        printf("PrevNode\n");
+    if(n->selectable){
+    printf("[SL] picking leaf... \n");
 
-        current = *(GuiNode**)previousNode->data;
-        selectTailLeaf(g, current);
-        
-        return 1;
-    } else {
-        current = g->selected->container;
-        printf("Traversing upwards\n");
-
-        if(current->container != NULL){
-            current = current->container;
-            while(current->container != NULL){ 
-                if(current->container->nodeAlignment != alignment){
-                    current = current->container;
-                    printf(" NO: %s, %i", current->name, current->nodeAlignment);
-                } else {
-                    break;
-                }
-                printf("(%s) -> ", current->name);
-            }
-            printf("(%s)\n", current->name);
-        }
-
-        if(current == NULL){
-            return 0;
+        changeGraphSelection(g,n);
+        return true;
+    } else if(n->hasSelectableItems){
+    printf("[SL] iterating items... \n");
+        ListElement* l;
+        if(head){
+            l = n->items->head;
         } else {
-            selectTailLeaf(g, current);
-            return 1;
+            l = n->items->tail;
         }
-    }
-}
-
-int findClosestLeafRight(Graph* g, int alignment){
-
-    if(g->selected->container == NULL) return 0;
-
-    ListElement* previousNode = g->selected->container->itemListRef->next;
-    if(g->selected->container->nodeAlignment != alignment){
-        previousNode = NULL;
-    }
-    GuiNode* current = NULL;
-
-    if(previousNode != NULL){
-        current = *(GuiNode**)previousNode->data;
-
-        printf("NextNode\n");
-        selectHeadLeaf(g, current);
-        
-        return 1;
-    } else {
-        current = g->selected->container;
-        printf("Traversing upwards\n");
-
-        if(current->container != NULL){
-            current = current->container;
-            while(current->container != NULL){ 
-                if(current->container->nodeAlignment != alignment){
-                    current = current->container;
-                    printf(" NO ");
-                } else {
-                    break;
-                }
-                printf("(%s) -> ", current->name);
-            }
-            printf("(%s)\n", current->name);
-        }
-
-        if(current == NULL){
-            return 0;
+        if(l!=NULL){
+            n = *(GuiNode**)l->data;
         } else {
-            selectHeadLeaf(g, current);
-            return 1;
+            n = NULL;
         }
+        while (n != NULL)
+        {
+            if(n != NULL){
+                printf("[SL] trying [ %s ]... ", n->name);
+                if(selectLeaf(g, n, head)){
+                    printf("[SL] leaf selectable... \n");
+                    return true;
+                }
+            } else {
+                return false;
+            }
+            n = getAdjacentNode(n, !head);
+        }
+    } else {
+        printf("[SL] leaf not found... \n");
+        return false;
     }
 }
 
-void selectTailLeaf(Graph* g, GuiNode* current) {
-    if (g->selected != NULL) {
-        g->selected->selected = 0;
+GuiNode* searchUpwardsByAlignment(GuiNode* n, NodeAlignment na, bool prev){
+    printf("searching up...\n");
+
+    GuiNode* result = NULL;
+    n = n->container;
+    while (n->container != NULL)
+    {
+        if(n != NULL){
+            printf("[SU] trying [ %s ], ", n->name);
+        }
+        
+        if(n->container->nodeAlignment == na){
+            printf("\n[SU]found correct alignment. CONTAINER: [ %s ] RETURN: [ %s ]\n", n->container->name, n->name);
+            GuiNode* adjacent = getAdjacentNode(n, prev);
+            while(adjacent != NULL){
+                if(adjacent->hasSelectableItems){
+                    result = adjacent;
+                    break;
+                } else {
+                    printf("adjacent node has no selectable items.\n");
+                }
+                adjacent = getAdjacentNode(adjacent, prev);
+            }
+            if(result != NULL){
+                break;
+            } else {
+                printf("no adjacent node within container.\n");
+            }
+            
+        }
+        n = n->container;
     }
-    printf("tail nav: \n");
-    while (current->items->tail != NULL) {
-        current = *(GuiNode**)current->items->tail->data;
-        printf(" -> (%s)", current->name);
+    if(n == NULL){
+        printf("no container of alignment [%i] found with adjacent item in direction [%i]", na, prev);
     }
-    printf("\n");
-    g->selected = current;
-    g->selected->selected = 1;  
+    return result;
 }
 
-void selectHeadLeaf(Graph* g, GuiNode* current) {
-    if (g->selected != NULL) {
-        g->selected->selected = 0;
+GuiNode* getAdjacentNode(GuiNode* c, bool prev){
+    ListElement* l;
+    if(prev){
+        l = c->itemListRef->prev;
+    } else {
+        l = c->itemListRef->next;
     }
-    printf("head nav: \n");
-    while (current->items->head != NULL) {
-        current = *(GuiNode**)current->items->head->data;
-        printf(" -> (%s)", current->name);
+    if(l==NULL) {
+        printf("adj was null. %i\n", prev);
+        c = NULL;
+    } else {
+        c = *(GuiNode**)l->data;
     }
-    printf("\n");
-    g->selected = current;
+    return c;
+}
+
+GuiNode* selectAdjacent(Graph* g, GuiNode* c, bool prev){
+    printf("selecting...\n");
+    GuiNode* result = getAdjacentNode(c, prev);
+    while (result != NULL)
+    {
+        if(result->selectable){
+            printf("found adjacent selectable: %s\n", result->name);
+            changeGraphSelection(g, result);
+            break;
+        }
+        result = getAdjacentNode(result, prev);
+    }
+
+    return result;
+}
+
+void changeGraphSelection(Graph* g, GuiNode* new){
+    printf("de-selecting: %s \n", g->selected->name);
+
+    g->selected->selected = 0;
+    g->selected = new;
     g->selected->selected = 1;
+    printf("selected: %s \n", g->selected->name);
 }
 
-int selectRelative(Graph* g, GuiNode* selected, int direction){
-    switch(direction){
-        case -1:
-            if(selected->itemListRef->prev != NULL){
-                GuiNode* previous = *(GuiNode**)selected->itemListRef->prev->data;
-                selectTailLeaf(g, previous);
-                
-                return 1;
+void navAdjacent(Graph* g, GuiNode* n, NodeAlignment na, bool prev, bool head){
+    GuiNode* res = selectAdjacent(g, g->selected, prev);
+    if(res == NULL){
+        res = searchUpwardsByAlignment(g->selected, na, prev);
+        if(res != NULL){
+            // if(na_horizontal != na)res = res->container; //fix this hack
+            // res = getAdjacentNode(res, prev);
+            if(selectLeaf(g, res, head)){
+                printf("gotit.\n");
             } else {
-                return 0;
+                printf("leaf selection fail.\n");
             }
-            break;
-        case 1:
-            if(selected->itemListRef->next != NULL){
-                GuiNode* next = *(GuiNode**)selected->itemListRef->next->data;
-                selectHeadLeaf(g, next);
-                return 1;
-            } else {
-                return 0;
-            }
-            break;
+        } else {
+            printf("upnav fail.\n");
+        }
+    }else {
+        printf("adjacent nav fail.\n");
     }
 }

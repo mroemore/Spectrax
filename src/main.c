@@ -15,6 +15,8 @@
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"
+#include "graph_gui.h"
+
 
 #define NUM_SECONDS (28)
 #define NUM_NOTES 12
@@ -178,7 +180,6 @@ int main(void)
 	PaError err;
 	paTestData data;
 	ApplicationState* appState;
-	InstrumentGui* instrumentGui;
 
 	//loading screen
 
@@ -192,9 +193,8 @@ int main(void)
 	int xOffset = (int)((loadingImage.width * scale - SCREEN_W) / 2);
 	DrawTextureEx(loadingImage, (Vector2){xOffset,0}, 0.0f, scale, WHITE);
 	EndDrawing();
-	WaitTime(2.0);
 
-	initApplication(&data, &appState, &instrumentGui);
+	initApplication(&data, &appState, NULL);
     initModSystem();
 
 	err = Pa_Initialize();
@@ -325,46 +325,44 @@ int main(void)
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)){
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
 						selectArrangerCell(data.arranger, 0, -1, 0, appState->selectedArrangerCell);	
-						updateInstrumentGui(instrumentGui);
+						//updateInstrumentGui(instrumentGui);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
 						selectArrangerCell(data.arranger, 0, 1, 0, appState->selectedArrangerCell);	
-						updateInstrumentGui(instrumentGui);
+						//updateInstrumentGui(instrumentGui);
 					}
 				}
 				if(isKeyHeld(appState->inputState, KM_EDIT)){
-					ContainerGroup* currentInstGroup = instrumentGui->instrumentControls[*instrumentGui->selectedInstrument];
+					Graph* currentGraph = getSelectedInstGraph();
 
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
-						btnGui->applyCallback(btnGui, -0.01f);	
+						currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
-						btnGui->applyCallback(btnGui, 0.01f);
+						currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
+
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
-						btnGui->applyCallback(btnGui, 2.0f);
+						currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
+;
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
-						ButtonGui* btnGui = (ButtonGui*)getSelectedInput(currentInstGroup);
-						btnGui->applyCallback(btnGui, -2.0f);
+						currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
 					}
 				} else{
-					ContainerGroup* currentInstGroup = instrumentGui->instrumentControls[*instrumentGui->selectedInstrument];
+					Graph* currentGraph = getSelectedInstGraph();
 					
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)){
-						containerGroupNavigate(currentInstGroup, 0, -1);
+						navigateGraph(currentGraph, KM_LEFT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)){
-						containerGroupNavigate(currentInstGroup, 0, 1);
+						navigateGraph(currentGraph, KM_RIGHT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)){
-						containerGroupNavigate(currentInstGroup, -1, 0);
+						navigateGraph(currentGraph, KM_UP);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)){
-						containerGroupNavigate(currentInstGroup, 1, 0);
+						navigateGraph(currentGraph, KM_DOWN);
 					}
 				}
 				
@@ -480,6 +478,6 @@ void initApplication(paTestData* data, ApplicationState** appState, InstrumentGu
 	SongMinimapGui *songMinimapGui = createSongMinimapGui(data->arranger, (*appState)->selectedArrangerCell, 400, 10);
 	add_drawable(&songMinimapGui->base, SCENE_PATTERN);
 
-	*instrumentGui = createInstrumentGui(data->voiceManager,&(*appState)->selectedArrangerCell[0], SCENE_INSTRUMENT);
+	createInstrumentGui(data->voiceManager,&(*appState)->selectedArrangerCell[0], SCENE_INSTRUMENT);
 	printf("synthesis init complete.\n");
 }

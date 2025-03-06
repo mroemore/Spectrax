@@ -10,7 +10,7 @@ Settings* createSettings(){
 		return NULL;
 	}
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++){
-		settings->voiceTypes[i] = (i % 3);
+		settings->voiceTypes[i] = 1;//(i % 3);
 		printf("V%i :%i\n", i, settings->voiceTypes[i]);
 	}
 	settings->defaultSequenceLength = 16;

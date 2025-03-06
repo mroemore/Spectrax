@@ -24,8 +24,6 @@ typedef enum {
 	SCENE_COUNT
 } Scene;
 
-typedef void (*DrawCallback)(void* self);
-typedef void (*OnPressCallback)(Parameter* parameter, float value);
 typedef void (*CallbackApplicator)(void* self, float value);
 
 typedef struct {
@@ -198,14 +196,14 @@ typedef struct {
 } EnvelopeContainer;
 
 typedef struct {
-	ContainerGroup* instrumentControls[MAX_SEQUENCER_CHANNELS];
+	Graph* instrumentScreenGraphs[MAX_SEQUENCER_CHANNELS];
 	int instrumentCount;
 	int* selectedInstrument;
 	Shape shape;
 } InstrumentGui;
 
-InstrumentGui* createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene);
-void updateInstrumentGui(InstrumentGui* ig);
+void createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene);
+Graph* getSelectedInstGraph();
 EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
 EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
 void freeEnvelopeContainer(EnvelopeContainer* ec);
