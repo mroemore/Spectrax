@@ -24,7 +24,7 @@ typedef enum {
 	SCENE_COUNT
 } Scene;
 
-typedef void (*CallbackApplicator)(void* self, float value);
+typedef void (*CallbackApplicator)(void *self, float value);
 
 typedef struct {
 	int x;
@@ -34,7 +34,7 @@ typedef struct {
 } Shape;
 
 typedef struct {
-	Color backgroundColor; //17, 7, 8
+	Color backgroundColor; // 17, 7, 8
 	Color secondaryFontColour;
 	Color fontColour;
 	Color outlineColour;
@@ -53,7 +53,7 @@ typedef struct {
 	Rectangle spriteSize;
 } SpriteSheet;
 
-SpriteSheet* createSpriteSheet(char* imagePath, int sprite_w, int sprite_h);
+SpriteSheet *createSpriteSheet(char *imagePath, int sprite_w, int sprite_h);
 void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y);
 
 typedef struct {
@@ -67,15 +67,15 @@ typedef struct {
 	Shape shape;
 	int updateIndex;
 	float data[OSCILLOSCOPE_HISTORY];
-	Color* backgroundColour;
-	Color* waveformColour;
-	Color* lineColour;
+	Color *backgroundColour;
+	Color *waveformColour;
+	Color *lineColour;
 } OscilloscopeGui;
 
 typedef struct {
 	Drawable base;
-	Sequencer* sequencer;
-	PatternList* pattern_list;
+	Sequencer *sequencer;
+	PatternList *pattern_list;
 	int *selected_pattern_index;
 	int *selected_note_index;
 	Shape shape;
@@ -98,11 +98,11 @@ typedef struct {
 	int padding;
 	int margin;
 	int history_size;
-	int history[MAX_GRAPH_HISTORY];	
+	int history[MAX_GRAPH_HISTORY];
 } GraphGui;
 
 typedef struct {
-	Drawable** drawables;
+	Drawable **drawables;
 	size_t size;
 	size_t capacity;
 } DrawableList;
@@ -116,13 +116,13 @@ typedef struct {
 	int border_size;
 	Color cellColour;
 	Color textColour;
-	Arranger* arranger;
-	PatternList* patternList;
+	Arranger *arranger;
+	PatternList *patternList;
 } ArrangerGui;
 
 typedef struct {
 	Drawable base;
-	Arranger* arranger;
+	Arranger *arranger;
 	Shape shape;
 	int padding;
 	int maxMapLength;
@@ -136,7 +136,7 @@ typedef struct {
 typedef struct {
 	Drawable base;
 	Shape shape;
-	SpriteSheet* icons;
+	SpriteSheet *icons;
 	int *playing;
 	int *tempo;
 	Arranger *arranger;
@@ -145,8 +145,8 @@ typedef struct {
 typedef struct {
 	Drawable base;
 	Shape shape;
-	Envelope* env;
-	int* graphData;
+	Envelope *env;
+	int *graphData;
 } EnvelopeGui;
 
 typedef struct {
@@ -154,24 +154,24 @@ typedef struct {
 	Shape shape;
 	int selected;
 	CallbackApplicator applyCallback;
-	Parameter* parameter;
+	Parameter *parameter;
 	Color backgroundColour;
 	Color selectedColour;
 	Color textColour;
-	char* buttonText;
+	char *buttonText;
 } ButtonGui;
 
 typedef struct {
 	Drawable base;
 	Shape shape;
-	Parameter* algorithm;
+	Parameter *algorithm;
 	Color backgroundColour;
 	Color graphColour;
 } AlgoGraphGui;
 
 typedef struct {
-	ButtonGui* buttonRefs[MAX_BUTTON_ROWS][MAX_BUTTON_COLS];
-	Drawable* otherDrawables[MAX_BUTTON_ROWS];
+	ButtonGui *buttonRefs[MAX_BUTTON_ROWS][MAX_BUTTON_COLS];
+	Drawable *otherDrawables[MAX_BUTTON_ROWS];
 	Shape containerBounds;
 	int otherDrawableCount;
 	int inputCount;
@@ -183,7 +183,7 @@ typedef struct {
 } InputContainer;
 
 typedef struct {
-	InputContainer* containerRefs[MAX_BUTTON_CONTAINER_ROWS][MAX_BUTTON_CONTAINER_COLS];
+	InputContainer *containerRefs[MAX_BUTTON_CONTAINER_ROWS][MAX_BUTTON_CONTAINER_COLS];
 	int rowCount;
 	int columnCount[MAX_BUTTON_CONTAINER_COLS];
 	int selectedRow;
@@ -191,82 +191,93 @@ typedef struct {
 } ContainerGroup;
 
 typedef struct {
-	InputContainer* envInputs;
-	EnvelopeGui* envelopeGui;
+	InputContainer *envInputs;
+	EnvelopeGui *envelopeGui;
 } EnvelopeContainer;
 
 typedef struct {
-	Graph* instrumentScreenGraphs[MAX_SEQUENCER_CHANNELS];
+	Graph *instrumentScreenGraphs[MAX_SEQUENCER_CHANNELS];
 	int instrumentCount;
-	int* selectedInstrument;
+	int *selectedInstrument;
 	Shape shape;
 } InstrumentGui;
 
-void createInstrumentGui(VoiceManager* vm, int* selectedInstrument, int scene);
-Graph* getSelectedInstGraph();
-EnvelopeContainer* createADEnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
-EnvelopeContainer* createADSREnvelopeContainer(Envelope* env, int x, int y, int w, int h, int scene, int enabled);
-void freeEnvelopeContainer(EnvelopeContainer* ec);
-ContainerGroup* createInstrumentModulationGui(Instrument* inst, int x, int y, int contW, int contH, int scene, int enabled);
-InputContainer* createFmParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
-InputContainer* createBlepParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
-InputContainer* createSampleParamsContainer(Instrument* inst, int x, int y, int w, int h, int scene, int enabled);
+void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
+Graph *getSelectedInstGraph();
+EnvelopeContainer *createADEnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled);
+EnvelopeContainer *createADSREnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled);
+void freeEnvelopeContainer(EnvelopeContainer *ec);
+ContainerGroup *createInstrumentModulationGui(Instrument *inst, int x, int y, int contW, int contH, int scene, int enabled);
+InputContainer *createFmParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled);
+InputContainer *createBlepParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled);
+InputContainer *createSampleParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled);
 
 typedef struct {
 	Drawable base;
 	int x;
 	int y;
-	InputState* inputState;
+	InputState *inputState;
 } InputsGui;
 
-InputsGui* createInputsGui(InputState* inputState, int x, int y);
-void drawInputsGui(void* self);
-EnvelopeContainer* createEnvelopeContainer(Envelope* env, int x, int y, int w, int h);
+InputsGui *createInputsGui(InputState *inputState, int x, int y);
+void drawInputsGui(void *self);
+EnvelopeContainer *createEnvelopeContainer(Envelope *env, int x, int y, int w, int h);
 
-void initDefaultColourScheme(ColourScheme* colourScheme);
-void setColourScheme(ColourScheme* colourScheme);
-Color** getColorSchemeAsPointerArray();
-ColourScheme* getColourScheme();
+void initDefaultColourScheme(ColourScheme *colourScheme);
+void setColourScheme(ColourScheme *colourScheme);
+Color **getColorSchemeAsPointerArray();
+ColourScheme *getColourScheme();
 
-DrawableList* create_drawable_list();
+DrawableList *create_drawable_list();
 void free_drawable_list(DrawableList *list);
-void add_drawable(Drawable* drawable, int scene);
-void removeDrawable(Drawable* drawable, int scene);
+void add_drawable(Drawable *drawable, int scene);
+void removeDrawable(Drawable *drawable, int scene);
 
 TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y);
 SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedNote, int x, int y);
-GraphGui* createGraphGui(float* target, char* name, float min, float max, int x, int y, int h, int size);
-ArrangerGui* createArrangerGui(Arranger *arranger, PatternList *patternList);
-SongMinimapGui* createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
-EnvelopeGui* createEnvelopeGui(Envelope* env, int x, int y, int w, int h);
-OscilloscopeGui* createOscilloscopeGui(int x, int y, int w, int h);
-AlgoGraphGui* createAlgoGraphGui(Parameter* algorithm, int x, int y, int w, int h);
+GraphGui *createGraphGui(float *target, char *name, float min, float max, int x, int y, int h, int size);
+ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList);
+SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
+EnvelopeGui *createEnvelopeGui(Envelope *env, int x, int y, int w, int h);
+OscilloscopeGui *createOscilloscopeGui(int x, int y, int w, int h);
+AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h);
 
-ContainerGroup* createContainerGroup();
-InputContainer* createInputContainer();
-ContainerGroup* createModMappingGroup(ParamList* paramList, Mod* mod, int x, int y, int scene, int enabled);
-ButtonGui* createButtonGui(int x, int y, int w, int h, char* text, Parameter* param, void* callback);
-void addContainerToGroup(ContainerGroup* cg, InputContainer* ic, int row, int col);
-void removeContainerGroup(ContainerGroup* cg, int scene);
-void containerGroupNavigate(ContainerGroup* cg, int rowInc, int colInc);
-void removeButtonFromContainer(ButtonGui* btnGui, InputContainer* btnCont, Scene scene);
-void addButtonToContainer(ButtonGui* btnGui, InputContainer* btnCont, int row, int col, int scene, int enabled);
-void addDrawableToContainer(InputContainer* ic, Drawable* d);
-ButtonGui* getSelectedInput(ContainerGroup* cg);
-void drawButtonGui(void* self);
-void applyButtonCallback(void* self, float value);
+GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
+void drawDialGuiNode(void *self);
+void drawBtnGuiNode(void *self);
+void drawWrapperNode(void *self);
+void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
+void appendBlankNode(GuiNode *container, int weight);
+Graph *createInstGraph(Instrument *inst, bool selected);
+
+ContainerGroup *createContainerGroup();
+InputContainer *createInputContainer();
+ContainerGroup *createModMappingGroup(ParamList *paramList, Mod *mod, int x, int y, int scene, int enabled);
+ButtonGui *createButtonGui(int x, int y, int w, int h, char *text, Parameter *param, void *callback);
+void addContainerToGroup(ContainerGroup *cg, InputContainer *ic, int row, int col);
+void removeContainerGroup(ContainerGroup *cg, int scene);
+void containerGroupNavigate(ContainerGroup *cg, int rowInc, int colInc);
+void removeButtonFromContainer(ButtonGui *btnGui, InputContainer *btnCont, Scene scene);
+void addButtonToContainer(ButtonGui *btnGui, InputContainer *btnCont, int row, int col, int scene, int enabled);
+void addDrawableToContainer(InputContainer *ic, Drawable *d);
+ButtonGui *getSelectedInput(ContainerGroup *cg);
+void drawButtonGui(void *self);
+void applyButtonCallback(void *self, float value);
 
 void clearBg();
-void drawOscilloscopeGui(void* self);
+void drawOscilloscopeGui(void *self);
 void drawTransportGui(void *self);
-void drawSequencerGui(void* self);
-void drawGraphGui(void* self);
+void drawSequencerGui(void *self);
+void drawGraphGui(void *self);
 void drawArrangerGui(void *self);
 void drawSongMinimapGui(void *self);
 void drawEnvelopeGui(void *self);
-void drawAlgoGraphGui(void* self);
-void updateOscilloscopeGui(OscilloscopeGui* og, float* data, int length);
-void updateGraphGui(GraphGui* graphGui);
+void drawAlgoGraphGui(void *self);
+void updateOscilloscopeGui(OscilloscopeGui *og, float *data, int length);
+void updateGraphGui(GraphGui *graphGui);
 void InitGUI(void);
 void DrawGUI(int currentScene);
 void CleanupGUI(void);

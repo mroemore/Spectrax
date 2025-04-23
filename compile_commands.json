@@ -1,0 +1,290 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/main.o",
+      "src/main.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/main.c",
+    "output": "/home/krang/Spectrax/src/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/voice.o",
+      "src/voice.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/voice.c",
+    "output": "/home/krang/Spectrax/src/voice.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/blit_synth.o",
+      "src/blit_synth.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/blit_synth.c",
+    "output": "/home/krang/Spectrax/src/blit_synth.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/distortion.o",
+      "src/distortion.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/distortion.c",
+    "output": "/home/krang/Spectrax/src/distortion.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/modsystem.o",
+      "src/modsystem.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/modsystem.c",
+    "output": "/home/krang/Spectrax/src/modsystem.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/input.o",
+      "src/input.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/input.c",
+    "output": "/home/krang/Spectrax/src/input.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/graph_gui.o",
+      "src/graph_gui.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/graph_gui.c",
+    "output": "/home/krang/Spectrax/src/graph_gui.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/dstruct.o",
+      "src/dstruct.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/dstruct.c",
+    "output": "/home/krang/Spectrax/src/dstruct.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/gui.o",
+      "src/gui.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/gui.c",
+    "output": "/home/krang/Spectrax/src/gui.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/notes.o",
+      "src/notes.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/notes.c",
+    "output": "/home/krang/Spectrax/src/notes.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/io.o",
+      "src/io.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/io.c",
+    "output": "/home/krang/Spectrax/src/io.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/settings.o",
+      "src/settings.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/settings.c",
+    "output": "/home/krang/Spectrax/src/settings.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/appstate.o",
+      "src/appstate.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/appstate.c",
+    "output": "/home/krang/Spectrax/src/appstate.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/oscillator.o",
+      "src/oscillator.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/oscillator.c",
+    "output": "/home/krang/Spectrax/src/oscillator.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/sample.o",
+      "src/sample.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/sample.c",
+    "output": "/home/krang/Spectrax/src/sample.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/wavetable.o",
+      "src/wavetable.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/wavetable.c",
+    "output": "/home/krang/Spectrax/src/wavetable.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/filters.o",
+      "src/filters.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/filters.c",
+    "output": "/home/krang/Spectrax/src/filters.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/sequencer.o",
+      "src/sequencer.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/sequencer.c",
+    "output": "/home/krang/Spectrax/src/sequencer.o"
+  }
+]

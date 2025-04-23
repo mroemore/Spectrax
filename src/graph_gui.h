@@ -14,69 +14,64 @@
 
 #define MAX_GRAPH_ITEMS sizeof(uint8_t)
 
-
-typedef void (*DrawCallback)(void* self);
-typedef void (*OnPressCallback)(Parameter* parameter, float value);
+typedef void (*DrawCallback)(void *self);
+typedef void (*OnPressCallback)(Parameter *parameter, float value);
 
 typedef struct GuiNode GuiNode;
 
 typedef enum {
-    na_horizontal,
-    na_vertical,
-    nodeAlignmentCount
+	na_horizontal,
+	na_vertical,
+	nodeAlignmentCount
 } NodeAlignment;
 
-void drawList(List* dl);
+void drawList(List *dl);
 
 struct GuiNode {
-    GuiNode* container;
-    List* items;
-    OnPressCallback callback;
-    Parameter* p;
-    uint8_t itemCount;
-    List* itemWeights;
-    ListElement* weightRef;
-    ListElement* itemListRef;
-    uint32_t totalItemWeights;
-    Color c;
-    char* name;
-    bool selectable;
-    bool hasSelectableItems;
-    bool selected;
-    bool resizeable;
-    bool drawable;
-    uint8_t nodeAlignment;
-    uint16_t x;
-    uint16_t y;
-    uint16_t w;
-    uint16_t h;
-    uint16_t padding;
+	GuiNode *container;
+	List *items;
+	OnPressCallback callback;
+	DrawCallback draw;
+	Parameter *p;
+	uint8_t itemCount;
+	List *itemWeights;
+	ListElement *weightRef;
+	ListElement *itemListRef;
+	uint32_t totalItemWeights;
+	char *name;
+	bool selectable;
+	bool hasSelectableItems;
+	bool selected;
+	bool resizeable;
+	bool drawable;
+	uint8_t nodeAlignment;
+	uint16_t x;
+	uint16_t y;
+	uint16_t w;
+	uint16_t h;
+	uint16_t padding;
 };
 
 typedef struct {
-    GuiNode* root;
-    GuiNode* selected;
+	GuiNode *root;
+	GuiNode *selected;
 } Graph;
 
-GuiNode* createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, Color c, const char* name, bool selectable, bool selected);
-GuiNode* createInputGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, Color c, const char* name, bool selected, OnPressCallback callback, Parameter* p);
-GuiNode* createBlankGuiNode();
+bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
+GuiNode *createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
+GuiNode *createBlankGuiNode();
 
-void appendFMInstControlNode(Graph* g, GuiNode* container, char* name, int weight, bool selected, Instrument *inst);
-void appendADEnvControlNode(Graph* g, GuiNode* container, char* name, int weight, bool selected, Envelope *env);
-Graph* createFMInstGraph(Instrument* inst, bool selected);
+void reflowCoordinates(GuiNode *n);
+void appendItem(GuiNode *parent, GuiNode *child, int weight);
+void drawNode(GuiNode *cont);
+Graph *createGraph();
 
-void reflowCoordinates(GuiNode* n);
-void appendItem(GuiNode* parent, GuiNode* child, int weight);
-void drawNode(GuiNode* cont);
-Graph* createGraph();
-
-void navigateGraph(Graph* g, int keymapping);
-bool selectLeaf(Graph* g, GuiNode* n, bool head);
-GuiNode* searchUpwardsByAlignment(GuiNode* n, NodeAlignment na, bool prev);
-GuiNode* getAdjacentNode(GuiNode* c, bool prev);
-GuiNode* selectAdjacent(Graph* g, GuiNode* c, bool prev);
-void changeGraphSelection(Graph* g, GuiNode* new);
-void navAdjacent(Graph* g, GuiNode* n, NodeAlignment na, bool prev, bool head);
+void navigateGraph(Graph *g, int keymapping);
+bool selectLeaf(Graph *g, GuiNode *n, bool head);
+GuiNode *searchUpwardsByAlignment(GuiNode *n, NodeAlignment na, bool prev);
+GuiNode *getAdjacentNode(GuiNode *c, bool prev);
+GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev);
+void changeGraphSelection(Graph *g, GuiNode *new);
+void navAdjacent(Graph *g, GuiNode *n, NodeAlignment na, bool prev, bool head);
 
 #endif
