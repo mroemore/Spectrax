@@ -64,7 +64,7 @@ GuiNode *createBlankGuiNode();
 void reflowCoordinates(GuiNode *n);
 void appendItem(GuiNode *parent, GuiNode *child, int weight);
 void drawNode(GuiNode *cont);
-Graph *createGraph();
+Graph *createGraph(NodeAlignment na);
 
 void navigateGraph(Graph *g, int keymapping);
 bool selectLeaf(Graph *g, GuiNode *n, bool head);

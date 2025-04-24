@@ -2,10 +2,9 @@
 #include "gui.h"
 #include "input.h"
 
-
-ApplicationState* createApplicationState(){
-	ApplicationState* as = (ApplicationState*)malloc(sizeof(ApplicationState));
-	if(!as){
+ApplicationState *createApplicationState() {
+	ApplicationState *as = (ApplicationState *)malloc(sizeof(ApplicationState));
+	if(!as) {
 		printf("could not allocate memory for ApplicationState.\n");
 		return NULL;
 	}
@@ -14,22 +13,24 @@ ApplicationState* createApplicationState(){
 	as->selectedArrangerCell[1] = 0;
 	as->selectedStep = 0;
 	as->currentScene = SCENE_ARRANGER;
+	as->lastUsedNote[0] = C;
+	as->lastUsedNote[1] = 3;
 	as->inputState = createInputState(INPUT_TYPE_KEYBOARD);
 	return as;
 }
 
-void incrementScene(ApplicationState* appState){
-	if(appState->currentScene < SCENE_COUNT - 1){
-		if(appState->selectedPattern != -1){
+void incrementScene(ApplicationState *appState) {
+	if(appState->currentScene < SCENE_COUNT - 1) {
+		if(appState->selectedPattern != -1) {
 			appState->currentScene++;
 			printf("\n\nSCENE: %i\n\n", appState->currentScene);
 		}
-	}	
+	}
 }
 
-void decrementScene(ApplicationState* appState){
+void decrementScene(ApplicationState *appState) {
 	printf("\n\n\nDECREMENT SCENE\n\n\n");
-	if(appState->currentScene > 1){
+	if(appState->currentScene > 1) {
 		appState->currentScene--;
 	}
 }

@@ -4,9 +4,8 @@
 #include "settings.h"
 #include "voice.h"
 
-
 /**
- * @brief Represents a musical pattern containing a sequence of notes. 
+ * @brief Represents a musical pattern containing a sequence of notes.
  * Each row is a note n your pattern, each column contains the octave and a note index from 0-12.
  */
 typedef struct {
@@ -27,6 +26,7 @@ typedef struct
 	int selected_y;
 	int loop;
 	int beats_per_minute;
+	int samplesPerStep;
 	int playing;
 	int voiceTypes[MAX_SEQUENCER_CHANNELS];
 	int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
@@ -40,31 +40,35 @@ typedef struct
 	int pattern_index[MAX_SEQUENCER_CHANNELS];
 } Sequencer;
 
-
 /**
  * @brief Creates a new PatternList.
  * @return A pointer to the newly created PatternList.
  */
-PatternList* createPatternList();
+PatternList *createPatternList();
 /**
  * @brief Creates a new Arranger with the given settings.
  * @param settings Pointer to the settings to initialize the Arranger.
  * @return A pointer to the newly created Arranger.
  */
-Arranger *createArranger(Settings* settings);
-
+Arranger *createArranger(Settings *settings);
 /**
  * @brief Adds a new channel to the Arranger at the specified index.
  * @param arranger Pointer to the Arranger.
  * @param channelIndex Index at which to add the new channel.
  */
-void addChannel(Arranger* arranger, int channelIndex);
+void addChannel(Arranger *arranger, int channelIndex);
+/**
+ * @brief Sets BPM and samplesPerStep based on BPM input.
+ * @param arranger Pointer to the Arranger.
+ * @param bpm int representing the BPM.
+ */
+void updateBpm(Arranger *arranger, int bpm);
 /**
  * @brief Removes a channel from the Arranger at the specified index.
  * @param arranger Pointer to the Arranger.
  * @param channelIndex Index of the channel to remove.
  */
-void removeChannel(Arranger* arranger, int channelIndex);
+void removeChannel(Arranger *arranger, int channelIndex);
 /**
  * @brief Adds a new pattern to the PatternList.
  * @param patternList Pointer to the PatternList.
@@ -86,13 +90,13 @@ void addPatternToArranger(Arranger *arranger, int patternId, int sequencer_id, i
  * @param sequencerId Channel index.
  * @param row Row index.
  */
-void addBlankIfEmpty(PatternList* patternList, Arranger* arranger, int sequencerId, int row);
+void addBlankIfEmpty(PatternList *patternList, Arranger *arranger, int sequencerId, int row);
 /**
  * @brief Creates a new Sequencer based on the current state of the Arranger.
  * @param arranger Pointer to the Arranger.
  * @return A pointer to the newly created Sequencer.
  */
-Sequencer* createSequencer(Arranger *arranger);
+Sequencer *createSequencer(Arranger *arranger);
 
 /**
  * @brief Retrieves a step (note) from a pattern.
@@ -109,7 +113,7 @@ int *getStep(PatternList *patternList, int patternIndex, int noteIndex);
  * @param noteIndex Index of the note.
  * @return Pointer to the note data.
  */
-int* getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex);
+int *getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex);
 /**
  * @brief Selects a cell in the Arranger and updates the selected coordinates.
  * @param arranger Pointer to the Arranger.
@@ -119,7 +123,15 @@ int* getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex);
  * @param selectedArrangerCell Array to store the selected coordinates.
  * @return Pointer to the selected coordinates.
  */
-int* selectArrangerCell(Arranger* arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell);
+int *selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell);
+/**
+ * @brief Returns the song index for the loop point for a given sequencerID and playhead index
+ * @param arranger Pointer to the Arranger.
+ * @param sequencerId 'x' coordinate for song array.
+ * @param currentY Index of the pattern.
+ * @return The selected step index.
+ */
+int findArrangerLoopIndex(Arranger *arranger, int sequencerId, int currentY);
 /**
  * @brief Selects a step in a pattern and ensures it is within bounds.
  * @param patternList Pointer to the PatternList.
@@ -129,30 +141,44 @@ int* selectArrangerCell(Arranger* arranger, int checkBlankPattern, int relativex
  */
 int selectStep(PatternList *patternList, int patternIndex, int selectedStep);
 /**
+ * @brief Checks if some step in the pattern is blank.
+ * @param patternList Pointer to the PatternList.
+ * @param patternIndex Index of the pattern.
+ * @param noteIndex Index of the note to edit.
+ * @return Boolean result of check.
+ */
+bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteIndex);
+/**
+ * @brief Overwrites current note in pattern, even if not already exists.
+ * @param patternList Pointer to the PatternList.
+ * @param patternIndex Index of the pattern.
+ * @param noteIndex Index of the note to edit.
+ * @param note New note data.
+ */
+void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
+/**
  * @brief Edits the current note in a pattern.
  * @param patternList Pointer to the PatternList.
  * @param patternIndex Index of the pattern.
  * @param noteIndex Index of the note to edit.
  * @param note New note data.
- * @return Pointer to the edited note data.
  */
-int* editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
+void editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
 /**
  * @brief Edits the current note in a pattern with relative changes.
  * @param patternList Pointer to the PatternList.
  * @param patternIndex Index of the pattern.
  * @param noteIndex Index of the note to edit.
  * @param note Relative changes to the note data. [1,0] would increase note chromatically, [0,1] would increase octave.
- * @return Pointer to the edited note data.
  */
-int* editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
+void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
 /**
  * @brief Advances the sequencer to the next step for all active channels.
  * @param sequencer Pointer to the Sequencer.
  * @param patternList Pointer to the PatternList.
  * @param arranger Pointer to the Arranger.
  */
-void incrementSequencer(Sequencer* sequencer, PatternList *patternList, Arranger *arranger);
+void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger *arranger);
 
 /**
  * @brief Edits a step in a pattern.
@@ -174,6 +200,6 @@ void stopPlaying(Arranger *arranger);
  * @param arranger Pointer to the Arranger.
  * @param playMode Playback mode.
  */
-void startPlaying(Sequencer* sequencer, PatternList *patternList, Arranger *arranger, int playMode);
+void startPlaying(Sequencer *sequencer, PatternList *patternList, Arranger *arranger, int playMode);
 
 #endif

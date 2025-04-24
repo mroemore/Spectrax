@@ -50,11 +50,13 @@ typedef struct {
 	int spriteCount;
 	int spriteW;
 	int spriteH;
+	float scale;
+	Vector2 origin;
 	Rectangle spriteSize;
 } SpriteSheet;
 
 SpriteSheet *createSpriteSheet(char *imagePath, int sprite_w, int sprite_h);
-void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y);
+void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y, int w, int h);
 
 typedef struct {
 	DrawCallback draw;
@@ -202,6 +204,14 @@ typedef struct {
 	Shape shape;
 } InstrumentGui;
 
+typedef struct {
+	Graph *instrumentScreenGraphs[MAX_SEQUENCER_CHANNELS];
+	int instrumentCount;
+	int *selectedInstrument;
+	Shape shape;
+} ArrangerGraph;
+
+void createArrangerGraph(Arranger *a, PatternList *pl);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();
 EnvelopeContainer *createADEnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled);
@@ -242,7 +252,21 @@ EnvelopeGui *createEnvelopeGui(Envelope *env, int x, int y, int w, int h);
 OscilloscopeGui *createOscilloscopeGui(int x, int y, int w, int h);
 AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h);
 
+typedef struct {
+	GuiNode base;
+	Arranger *arranger;
+	PatternList *patternList;
+	int grid_padding;
+	int iconx;
+	int icony;
+	int border_size;
+} ArrangerGuiNode;
+
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
+ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
+void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
+void drawValueDisplay(int x, int y, int w, int h, char *text);
+void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
 void drawDialGuiNode(void *self);
 void drawBtnGuiNode(void *self);
 void drawWrapperNode(void *self);
@@ -273,6 +297,7 @@ void drawTransportGui(void *self);
 void drawSequencerGui(void *self);
 void drawGraphGui(void *self);
 void drawArrangerGui(void *self);
+void drawArrangerGuiNode(void *self);
 void drawSongMinimapGui(void *self);
 void drawEnvelopeGui(void *self);
 void drawAlgoGraphGui(void *self);

@@ -77,7 +77,12 @@ OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement
 	int shape = 0;
 	int sampleIndex = 0;
 	int loop = 0;
-
+	int detuneVoiceCount = getParameterValueAsInt(currentVoice->instrumentRef->detuneVoiceCount);
+	float detuneSpreadIncrement = getParameterValue(currentVoice->instrumentRef->detuneSpread) / detuneVoiceCount;
+	int detuneAmountIncrement = getParameterValueAsInt(currentVoice->instrumentRef->detuneRange) / detuneVoiceCount;
+	float detunePan = 50.0 - (detuneSpreadIncrement * (detuneVoiceCount / 2.0f));
+	float detuneFreqInc = detuneAmountIncrement * (frequency / 100.0);
+	float detuneFreq = frequency - (detuneAmountIncrement * (detuneVoiceCount / 2.0f));
 	switch(currentVoice->type) {
 		case VOICE_TYPE_BLEP:
 			shape = getParameterValueAsInt(currentVoice->instrumentRef->shape);
@@ -98,16 +103,23 @@ OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement
 			out = (OutVal){ L, L };
 			break;
 		case VOICE_TYPE_FM:
-			// L = sineFmAlgo(currentVoice->source.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
-			L = sine_fm(currentVoice->source.operators, 440.0f);
-			L = noblep_sine(currentVoice->leftPhase);
-
+			L = sineFmAlgo(currentVoice->source.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
 			out = (OutVal){ L, L };
+			// for(int i = 0; i < detuneVoiceCount; i++) {
+			// 	float dts = sineFmAlgo(currentVoice->source.operators, detuneFreq, getParameterValueAsInt(currentVoice->instrumentRef->selectedAlgorithm));
+			// 	detuneFreq += detuneFreqInc;
+			// 	out.L += dts * detunePan;
+			// 	out.R += dts * (1.0 - detunePan);
+			// 	detunePan += detuneSpreadIncrement;
+			// }
+			// out.L /= detuneVoiceCount;
+			// out.R /= detuneVoiceCount;
 			break;
 		case VOICE_TYPE_SAMPLE:
 			sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
 			loop = getParameterValueAsInt(currentVoice->instrumentRef->loopSample);
 			L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, loop);
+			L *= 0.5;
 			out = (OutVal){ L, L };
 			break;
 		case VOICE_TYPE_GRAIN:
@@ -214,6 +226,9 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 		  inst->envelopes[i]->stages[1].curvature,
 		  "ADp");
 	}
+	for(int i = 0; i < MAX_DETUNE; i++) {
+		voice->detunePhase[i] = 0.0f;
+	}
 
 	switch(voice->type) {
 		case VOICE_TYPE_BLEP:
@@ -233,9 +248,13 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			voice->source.operators[2] = createParamPointerOperator(voice->paramList, inst->ops[2]->feedbackAmount, inst->ops[2]->ratio, inst->ops[2]->level);
 			voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio, inst->ops[3]->level);
 			voice->samplePosition = 0.0f; // Initialize sample position
-			for(int i = 0; i < voice->envCount; i++) {
-				addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[i]->level, 1.0f, MO_MUL);
-			}
+			// for(int i = 0; i < voice->envCount; i++) {
+			// 	addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[0]->level, 1.0f, MO_MUL);
+			// }
+			addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[0]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[1]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[2]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[3]->outLevel, 1.0f, MO_MUL);
 			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 			break;
 		case VOICE_TYPE_GRAIN:
@@ -283,8 +302,11 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->lfoCount = 0;
 			(*instrument)->selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
 			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
-				(*instrument)->ops[i] = createOperator((*instrument)->paramList, (float)i + 1);
+				(*instrument)->ops[i] = createOperator((*instrument)->paramList, 1);
 			}
+			setParameterBaseValue((*instrument)->ops[1]->ratio, 2.0);
+			setParameterBaseValue((*instrument)->ops[2]->ratio, 3.0);
+			setParameterBaseValue((*instrument)->ops[3]->ratio, 4.0);
 			break;
 		case VOICE_TYPE_GRAIN:
 			(*instrument)->sample = samplePool->samples[2];
@@ -292,6 +314,9 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			break;
 	}
 	(*instrument)->panning = createParameterEx((*instrument)->paramList, "panning", 0.5f, 0.0f, 1.0f, 0.01f, 0.1f);
+	(*instrument)->detuneVoiceCount = createParameterEx((*instrument)->paramList, "detuneVoices", 4.0f, 0.0f, MAX_DETUNE, 1.0f, 1.0f);
+	(*instrument)->detuneRange = createParameterEx((*instrument)->paramList, "detuneAmt", 10.0f, 1.0f, 100.0f, 1.00f, 10.0f);
+	(*instrument)->detuneSpread = createParameterEx((*instrument)->paramList, "detuneSpread", 10.0f, 0.0f, 50.0f, 1.0f, 5.0f);
 
 	for(int i = 0; i < (*instrument)->envelopeCount; i++) {
 		(*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, 2.25f, "AD1");

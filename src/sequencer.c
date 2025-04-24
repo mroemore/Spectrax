@@ -33,6 +33,7 @@ Arranger *createArranger(Settings *settings) {
 	printf("set channels.\n");
 
 	arranger->beats_per_minute = 120;
+	arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
 	arranger->playing = 0;
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
@@ -47,9 +48,15 @@ Arranger *createArranger(Settings *settings) {
 		}
 	}
 	printf("initialised song structure.\n");
-
 	printf("\t-> DONE.\n");
 	return arranger;
+}
+
+void updateBpm(Arranger *arranger, int bpm) {
+	if(bpm > 1 && bpm < 800) {
+		arranger->beats_per_minute = bpm;
+		arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
+	}
 }
 
 void addChannel(Arranger *arranger, int channelIndex) {
@@ -138,6 +145,17 @@ int *getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex) {
 	return patternList->patterns[patternIndex].notes[noteIndex];
 }
 
+int findArrangerLoopIndex(Arranger *arranger, int sequencerId, int currentY) {
+	int loopIndex = currentY;
+	for(int i = currentY; i > 0; i--) {
+		if(arranger->song[sequencerId][i - 1] == -1) {
+			break;
+		}
+		loopIndex = i - 1;
+	}
+	return loopIndex;
+}
+
 int *selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell) {
 	printf("selectcell\n");
 	int newx, newy;
@@ -177,7 +195,16 @@ int selectStep(PatternList *patternList, int patternIndex, int selectedStep) {
 	return selectedStep;
 }
 
-int *editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
+bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteIndex) {
+	return OFF == patternList->patterns[patternIndex].notes[noteIndex][0];
+}
+
+void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
+	patternList->patterns[patternIndex].notes[noteIndex][0] = note[0];
+	patternList->patterns[patternIndex].notes[noteIndex][1] = note[1];
+}
+
+void editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	printf("editing...");
 	if(patternList->patterns[patternIndex].notes[noteIndex][0] == OFF) {
 		patternList->patterns[patternIndex].notes[noteIndex][0] = C;
@@ -188,7 +215,7 @@ int *editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, 
 	}
 }
 
-int *editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
+void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	int newNote[NOTE_INFO_SIZE] = {
 		patternList->patterns[patternIndex].notes[noteIndex][0] + note[0],
 		patternList->patterns[patternIndex].notes[noteIndex][1] + note[1]
@@ -227,7 +254,9 @@ void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger
 			} else {
 				if(arranger->loop) {
 					// printf("\n\t\tLoop. \n");
-					arranger->playhead_indices[i] = 0;
+					int loopIndex = findArrangerLoopIndex(arranger, i, nextRowIndex);
+					arranger->playhead_indices[i] = loopIndex;
+					sequencer->pattern_index[i] = arranger->song[i][loopIndex];
 				} else {
 					// printf("\n\t\tEnd. \n");
 					sequencer->running[i] = 0;

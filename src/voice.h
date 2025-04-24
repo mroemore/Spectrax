@@ -12,6 +12,7 @@
 #define MAX_LFOS 8
 #define MAX_ENVELOPES 6
 #define MAX_FM_OPERATORS 4
+#define MAX_DETUNE 16
 
 typedef enum {
 	VOICE_TYPE_SAMPLE,
@@ -64,6 +65,9 @@ typedef struct {
 	Parameter *selectedAlgorithm;
 	Parameter *sampleRate;
 	Parameter *loopSample;
+	Parameter *detuneVoiceCount;
+	Parameter *detuneRange;
+	Parameter *detuneSpread;
 	Parameter *bitDepth;
 	Parameter *sampleIndex;
 	Parameter *panning;
@@ -73,6 +77,7 @@ typedef struct {
 typedef struct {
 	float leftPhase;
 	float rightPhase;
+	float detunePhase[MAX_DETUNE];
 	int samplesElapsed;
 	int active;
 	ParamList *paramList;

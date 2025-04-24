@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
 #include "graph_gui.h"
@@ -22,6 +23,7 @@ DrawableList *instrumentScreenDrawableList;
 
 // Graph* instrumentScreenGraph[MAX_SEQUENCER_CHANNELS];
 InstrumentGui *igui;
+Graph *agui;
 
 Font textFont;
 Font symbolFont;
@@ -29,6 +31,8 @@ Font pixelFont;
 ColourScheme cs;
 SpriteSheet *instrumentIcons;
 Texture2D dial;
+Texture2D btnOn;
+Texture2D btnOff;
 
 void initCustomFont(Font *f, char *path, int charCount, int width, int height) {
 	*f = LoadFontEx(path, width, NULL, charCount);
@@ -43,18 +47,20 @@ SpriteSheet *createSpriteSheet(char *imagePath, int sprite_w, int sprite_h) {
 	SpriteSheet *sh = (SpriteSheet *)malloc(sizeof(SpriteSheet));
 	sh->sheet = LoadTexture(imagePath);
 	sh->spriteCount = (sh->sheet.width / sprite_w) * (sh->sheet.height / sprite_h);
+	sh->scale = 1.0;
 	printf("spriteCount %i\n", sh->spriteCount);
 	sh->spriteW = sprite_w;
 	printf("sW %i\n", sh->spriteW);
 	sh->spriteH = sprite_h;
 	printf("sH %i\n", sh->spriteH);
+	sh->origin = (Vector2){ sh->spriteW / 2.0, sh->spriteH / 2.0 };
 	sh->spriteSize = (Rectangle){ 0, 0, sprite_w, sprite_h };
 }
 
-void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y) {
+void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y, int w, int h) {
 	index = index > spriteSheet->spriteCount ? index % spriteSheet->spriteCount : index;
 	spriteSheet->spriteSize.x = index * spriteSheet->spriteW;
-	DrawTextureRec(spriteSheet->sheet, spriteSheet->spriteSize, (Vector2){ x, y }, WHITE);
+	DrawTexturePro(spriteSheet->sheet, spriteSheet->spriteSize, (Rectangle){ x + spriteSheet->spriteW / 2.0, y + spriteSheet->spriteW / 2.0, w, h }, spriteSheet->origin, 0.0, WHITE);
 	spriteSheet->spriteSize.x = 0;
 }
 
@@ -110,15 +116,20 @@ void InitGUI(void) {
 	globalDrawableList = create_drawable_list();
 
 	InitWindow(screenWidth, screenHeight, "Spectrax");
-
 	textFont = LoadFont("resources/fonts/setback.png");
 	// pixelFont = LoadFontEx("resources/fonts/04B_03__.TTF", 12, 0, 255);
 	pixelFont = LoadFontEx("resources/fonts/console.ttf", 9, 0, 255);
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
-	instrumentIcons = createSpriteSheet("resources/fonts/synthicons.png", 24, 24);
-	Image img = LoadImage("resources/images/dial2.png");
-	dial = LoadTextureFromImage(img);
-	UnloadImage(img);
+	instrumentIcons = createSpriteSheet("resources/images/synthicon_sheet.png", 64, 64);
+	Image dialimg = LoadImage("resources/images/dial2.png");
+	Image btnimg1 = LoadImage("resources/images/btn-on-s.png");
+	Image btnimg2 = LoadImage("resources/images/btn-off-s.png");
+	dial = LoadTextureFromImage(dialimg);
+	btnOn = LoadTextureFromImage(btnimg1);
+	btnOff = LoadTextureFromImage(btnimg2);
+	UnloadImage(dialimg);
+	UnloadImage(btnimg1);
+	UnloadImage(btnimg2);
 	SetTargetFPS(60);
 }
 
@@ -181,28 +192,28 @@ GraphGui *createGraphGui(float *target, char *name, float min, float max, int x,
 	return graphGui; // Return the created GraphGui object
 }
 
-ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList) {
-	ArrangerGui *arrangerGui = (ArrangerGui *)malloc(sizeof(ArrangerGui));
-	if(!arrangerGui) {
-		printf("could not allocate arranger GUI\n");
-		return NULL;
-	}
-	arrangerGui->base.draw = drawArrangerGui;
-	arrangerGui->arranger = arranger;
-	arrangerGui->patternList = patternList;
-	arrangerGui->base.enabled = true;
-	arrangerGui->grid_padding = 6;
-	arrangerGui->shape.w = 40;
-	arrangerGui->shape.h = 40;
-	arrangerGui->shape.x = (SCREEN_W / 2) - (arranger->enabledChannels * (arrangerGui->shape.w + arrangerGui->grid_padding)) / 2;
-	arrangerGui->shape.y = 40;
-	arrangerGui->iconx = arrangerGui->shape.x;
-	arrangerGui->icony = arrangerGui->shape.y - 30;
-	arrangerGui->cellColour = cs.defaultCell;
-	arrangerGui->border_size = 3;
+// ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList) {
+// 	ArrangerGui *arrangerGui = (ArrangerGui *)malloc(sizeof(ArrangerGui));
+// 	if(!arrangerGui) {
+// 		printf("could not allocate arranger GUI\n");
+// 		return NULL;
+// 	}
+// 	arrangerGui->base.draw = drawArrangerGui;
+// 	arrangerGui->arranger = arranger;
+// 	arrangerGui->patternList = patternList;
+// 	arrangerGui->base.enabled = true;
+// 	arrangerGui->grid_padding = 6;
+// 	arrangerGui->shape.w = 40;
+// 	arrangerGui->shape.h = 40;
+// 	arrangerGui->shape.x = (SCREEN_W / 2) - (arranger->enabledChannels * (arrangerGui->shape.w + arrangerGui->grid_padding)) / 2;
+// 	arrangerGui->shape.y = 40;
+// 	arrangerGui->iconx = arrangerGui->shape.x;
+// 	arrangerGui->icony = arrangerGui->shape.y - 30;
+// 	arrangerGui->cellColour = cs.defaultCell;
+// 	arrangerGui->border_size = 3;
 
-	return arrangerGui;
-}
+// 	return arrangerGui;
+// }
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y) {
 	SongMinimapGui *minimapGui = (SongMinimapGui *)malloc(sizeof(SongMinimapGui));
@@ -619,6 +630,19 @@ Graph *getSelectedInstGraph() {
 	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
 }
 
+void createArrangerGraph(Arranger *a, PatternList *pl) {
+	agui = createGraph(na_horizontal);
+	GuiNode *margin1 = createBlankGuiNode();
+	GuiNode *margin2 = createBlankGuiNode();
+	ArrangerGuiNode *agn = createArrangerGuiNode(0, 0, SCREEN_W * 0.75, SCREEN_H, 5, na_vertical, "arr", 1, a, pl);
+	GuiNode *gn = (GuiNode *)agn;
+
+	appendItem(agui->root, margin1, 1);
+	appendItem(agui->root, &agn->base, 4);
+	appendItem(agui->root, margin2, 1);
+	reflowCoordinates(agui->root);
+}
+
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p) {
 	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
 	if(gn == NULL) {
@@ -632,21 +656,63 @@ GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment
 	return gn;
 }
 
+ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList) {
+	ArrangerGuiNode *agn = malloc(sizeof(ArrangerGuiNode));
+	GuiNode *gn = (GuiNode *)agn;
+	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, 0)) {
+		printf("ArrangerGuiNode init problem, returning NULL.\n");
+		return NULL;
+	}
+	gn->draw = drawArrangerGuiNode;
+	gn->drawable = true;
+	agn->grid_padding = 5;
+	agn->arranger = arranger;
+	agn->patternList = patternList;
+	agn->border_size = 3;
+	agn->iconx = gn->x;
+	agn->icony = gn->y - 30;
+	return agn;
+}
+
+void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
+	DrawCircleSector((Vector2){ x + radius, y + radius }, radius + 2, startAngle, startAngle + offsetAngle, 32, RED);
+	DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 }, (Rectangle){ x + radius, y + radius, w, h }, (Vector2){ radius, radius }, startAngle + offsetAngle, WHITE);
+}
+
+void drawValueDisplay(int x, int y, int w, int h, char *text) {
+	DrawRectangle(x, y, w, h, (Color){ 50, 40, 40, 255 });
+	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, RED);
+}
+
+void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
+	DrawRectangleRounded((Rectangle){ x, y, w, h }, roundness, 12, (Color){ 80, 60, 60, 255 });
+	if(highlighted) {
+		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, cs.highlightedCell);
+	} else {
+		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, (Color){ 10, 0, 0, 255 });
+	}
+}
+
 void drawBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	char paramValue[50];
 	snprintf(paramValue, sizeof(paramValue), "%.2f", gn->p->currentValue);
+	int tmpx = gn->x;
+	int tmpy = gn->y;
+	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
 
-	DrawRectangleRounded((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 0.1f, 12, cs.secondaryFontColour);
-	if(gn->selected) {
-		DrawRectangleRoundedLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 0.125f, 12, 2.0f, cs.highlightedCell);
-		DrawTextEx(pixelFont, gn->p->name, (Vector2){ gn->x + gn->padding, gn->y + gn->padding }, 12, 1, cs.outlineColour);
-		DrawTextEx(pixelFont, paramValue, (Vector2){ gn->x + gn->padding, gn->y + 14 + gn->padding }, 12, 1, cs.outlineColour);
+	tmpx += gn->padding;
+	tmpy += gn->padding;
+	int paramInt = (int)gn->p->currentValue;
+	if(paramInt == 1) {
+		DrawRectangleRounded((Rectangle){ tmpx - 2, tmpy - 2, 37, 23 }, 0.3f, 12, (Color){ 205, 75, 0, 125 });
+		DrawTexturePro(btnOn, (Rectangle){ 0, 0, 33, 19 }, (Rectangle){ tmpx, tmpy, 33, 19 }, (Vector2){ 0, 0 }, 0, WHITE);
 	} else {
-		DrawRectangleRoundedLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 0.125f, 12, 2.0f, cs.outlineColour);
-		DrawTextEx(pixelFont, gn->p->name, (Vector2){ gn->x + gn->padding, gn->y + gn->padding }, 12, 1, cs.fontColour);
-		DrawTextEx(pixelFont, paramValue, (Vector2){ gn->x + gn->padding, gn->y + 14 + gn->padding }, 12, 1, cs.fontColour);
+		DrawRectangleRounded((Rectangle){ tmpx, tmpy, 37, 23 }, 0.3f, 12, (Color){ 40, 30, 30, 165 });
+		DrawTexturePro(btnOff, (Rectangle){ 0, 0, 33, 19 }, (Rectangle){ tmpx, tmpy, 33, 19 }, (Vector2){ 0, 0 }, 0, WHITE);
 	}
+
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx + 4, tmpy + 32 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
 void drawDialGuiNode(void *self) {
@@ -654,28 +720,51 @@ void drawDialGuiNode(void *self) {
 	char paramValue[50];
 	snprintf(paramValue, 50, "%05.2f", gn->p->currentValue);
 	float range = gn->p->maxValue - gn->p->minValue;
-	// printf("min: %f max: %f\n", gn->p->minValue, gn->p->maxValue);
 	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
 	int tmpx = gn->x;
 	int tmpy = gn->y;
-	DrawRectangleRounded((Rectangle){ tmpx, tmpy, gn->w, gn->h }, 0.1f, 12, (Color){ 80, 60, 60, 255 });
-	if(gn->selected) {
-		DrawRectangleRoundedLinesEx((Rectangle){ tmpx, tmpy, gn->w, gn->h }, 0.125f, 12, 2.0f, cs.highlightedCell);
-	} else {
-		DrawRectangleRoundedLinesEx((Rectangle){ tmpx, tmpy, gn->w, gn->h }, 0.125f, 12, 2.0f, (Color){ 10, 0, 0, 255 });
-	}
+	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
+	tmpx += gn->padding + 2;
+	tmpy += gn->padding;
+	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -225, angle);
+	tmpx += 28;
+	tmpy += 2;
+	drawValueDisplay(tmpx, tmpy, 38, 16, paramValue);
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 30 }, 9, 1, (Color){ 200, 180, 180, 255 });
+}
+
+void drawBipolarDialGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	char paramValue[50];
+	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
+	float range = gn->p->maxValue - gn->p->minValue;
+	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	int tmpx = gn->x;
+	int tmpy = gn->y;
+	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
 	tmpx += gn->padding;
 	tmpy += gn->padding;
+	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -90, angle);
+}
 
-	DrawCircleSector((Vector2){ tmpx + 12, tmpy + 12 }, 14, -225, -225 + angle, 32, RED);
-	DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 }, (Rectangle){ tmpx + 12, tmpy + 12, 24, 24 }, (Vector2){ 12, 12 }, -225 + angle, WHITE);
-	tmpx += 30;
-	DrawRectangle(tmpx, tmpy, 38, 16, (Color){ 50, 40, 40, 255 });
-	tmpx += 2;
-	tmpy += 2;
+void drawDiscreteDialGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	char paramValue[50];
+	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
+	float range = gn->p->maxValue - gn->p->minValue;
+	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	int tmpx = gn->x;
+	int tmpy = gn->y;
 
-	DrawTextEx(pixelFont, paramValue, (Vector2){ tmpx, tmpy }, 9, 1, RED);
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 14 }, 9, 1, (Color){ 200, 180, 180, 255 });
+	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
+	tmpx += gn->padding;
+	tmpy += gn->padding;
+	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -225, angle);
+	tmpx += 6;
+	tmpy += 5;
+	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
+
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 28 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
 void drawWrapperNode(void *self) {
@@ -694,18 +783,22 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 
 	GuiNode *rat1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO1", 1, incParameterBaseValue, inst->ops[0]->ratio);
 	GuiNode *fb1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK1", 0, incParameterBaseValue, inst->ops[0]->feedbackAmount);
+	GuiNode *lvl1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL1", 0, incParameterBaseValue, inst->ops[0]->level);
 	GuiNode *rat2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO2", 0, incParameterBaseValue, inst->ops[1]->ratio);
 	GuiNode *fb2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK2", 0, incParameterBaseValue, inst->ops[1]->feedbackAmount);
+	GuiNode *lvl2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL2", 0, incParameterBaseValue, inst->ops[1]->level);
 	GuiNode *rat3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO3", 0, incParameterBaseValue, inst->ops[2]->ratio);
 	GuiNode *fb3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK3", 0, incParameterBaseValue, inst->ops[2]->feedbackAmount);
+	GuiNode *lvl3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL3", 0, incParameterBaseValue, inst->ops[2]->level);
 	GuiNode *rat4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO4", 0, incParameterBaseValue, inst->ops[3]->ratio);
 	GuiNode *fb4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK4", 0, incParameterBaseValue, inst->ops[3]->feedbackAmount);
-	GuiNode *alg = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALGO", 0, incParameterBaseValue, inst->selectedAlgorithm);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PANNING", 0, incParameterBaseValue, inst->panning);
-
+	GuiNode *lvl4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL4", 0, incParameterBaseValue, inst->ops[3]->level);
+	GuiNode *alg = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->selectedAlgorithm);
+	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	alg->draw = drawDiscreteDialGuiNode;
+	pan->draw = drawDiscreteDialGuiNode;
 	if(selected) {
 		g->selected = rat1;
-		printf("YUERPO!\n");
 	}
 
 	GuiNode *sp1 = createBlankGuiNode();
@@ -714,21 +807,25 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *sp4 = createBlankGuiNode();
 	GuiNode *sp5 = createBlankGuiNode();
 
-	appendItem(btnrow1, rat1, 4);
-	appendItem(btnrow1, fb1, 4);
-	appendItem(btnrow1, sp1, 1);
-	appendItem(btnrow1, rat2, 4);
-	appendItem(btnrow1, fb2, 4);
-	appendItem(btnrow1, sp2, 1);
-	appendItem(btnrow1, pan, 4);
+	appendItem(btnrow1, rat1, 40);
+	appendItem(btnrow1, fb1, 40);
+	appendItem(btnrow1, lvl1, 40);
+	appendItem(btnrow1, sp1, 5);
+	appendItem(btnrow1, rat2, 40);
+	appendItem(btnrow1, fb2, 40);
+	appendItem(btnrow1, lvl2, 40);
+	appendItem(btnrow1, sp2, 5);
+	appendItem(btnrow1, pan, 20);
 
-	appendItem(btnrow2, rat3, 4);
-	appendItem(btnrow2, fb3, 4);
-	appendItem(btnrow2, sp4, 1);
-	appendItem(btnrow2, rat4, 4);
-	appendItem(btnrow2, fb4, 4);
-	appendItem(btnrow2, sp5, 1);
-	appendItem(btnrow2, alg, 4);
+	appendItem(btnrow2, rat3, 40);
+	appendItem(btnrow2, fb3, 40);
+	appendItem(btnrow2, lvl3, 40);
+	appendItem(btnrow2, sp4, 5);
+	appendItem(btnrow2, rat4, 40);
+	appendItem(btnrow2, fb4, 40);
+	appendItem(btnrow2, lvl4, 40);
+	appendItem(btnrow2, sp5, 5);
+	appendItem(btnrow2, alg, 20);
 
 	appendItem(btnwrap, btnrow1, 1);
 	appendItem(btnwrap, btnrow2, 1);
@@ -744,12 +841,13 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
 
-	GuiNode *sampleIndex = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", 1, incParameterBaseValue, inst->sampleIndex);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 1, incParameterBaseValue, inst->panning);
-	GuiNode *loop = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 1, incParameterBaseValue, inst->loopSample);
+	GuiNode *sampleIndex = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->sampleIndex);
+	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *loop = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->loopSample);
+	loop->draw = drawBtnGuiNode;
+	pan->draw = drawDiscreteDialGuiNode;
 
 	if(selected) {
-		printf("YARP!.\n\n\n");
 		g->selected = sampleIndex;
 	}
 
@@ -759,8 +857,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	appendItem(btnrow1, sampleIndex, 1);
 	appendItem(btnrow1, pan, 1);
 	appendItem(btnrow1, loop, 1);
-	appendItem(btnrow1, sp1, 6);
-
+	appendItem(btnrow1, sp1, 4);
 	appendItem(btnrow2, sp2, 1);
 
 	appendItem(btnwrap, btnrow1, 1);
@@ -777,11 +874,11 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
 
-	GuiNode *waveShape = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SHAPE", 1, incParameterBaseValue, inst->shape);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 1, incParameterBaseValue, inst->panning);
+	GuiNode *waveShape = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SHAPE", selected, incParameterBaseValue, inst->shape);
+	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	pan->draw = drawDiscreteDialGuiNode;
 
 	if(selected) {
-		printf("YARP!.\n\n\n");
 		g->selected = waveShape;
 	}
 
@@ -790,7 +887,7 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 	appendItem(btnrow1, waveShape, 1);
 	appendItem(btnrow1, pan, 1);
-	appendItem(btnrow1, sp1, 6);
+	appendItem(btnrow1, sp1, 4);
 
 	appendItem(btnrow2, sp2, 1);
 
@@ -865,7 +962,7 @@ void appendBlankNode(GuiNode *container, int weight) {
 }
 
 Graph *createInstGraph(Instrument *inst, bool selected) {
-	Graph *instGraph = createGraph();
+	Graph *instGraph = createGraph(na_horizontal);
 	GuiNode *margin1 = createBlankGuiNode();
 	GuiNode *margin2 = createBlankGuiNode();
 	GuiNode *pad1 = createBlankGuiNode();
@@ -933,22 +1030,6 @@ ContainerGroup *createInstrumentModulationGui(Instrument *inst, int x, int y, in
 	return cg;
 }
 
-// void updateInstrumentGui(InstrumentGui* ig){
-// 	for(int i = 0; i < ig->instrumentCount; i++){
-// 		int isSelected = *ig->selectedInstrument == i;
-// 		for(int r = 0; r < ig->instrumentControls[i]->rowCount; r++){
-// 			for(int c = 0; c < ig->instrumentControls[i]->columnCount[r]; c++){
-// 				for(int d = 0; d < ig->instrumentControls[i]->containerRefs[r][c]->otherDrawableCount; d++){
-// 					ig->instrumentControls[i]->containerRefs[r][c]->otherDrawables[d]->enabled = isSelected;
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-void removeContainerGroupFromScene(ContainerGroup *cg, int scene) {
-}
-
 AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h) {
 	AlgoGraphGui *agg = (AlgoGraphGui *)malloc(sizeof(AlgoGraphGui));
 	agg->algorithm = algorithm;
@@ -957,6 +1038,7 @@ AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int 
 	agg->graphColour = cs.reddish;
 	agg->base.draw = drawAlgoGraphGui;
 	agg->base.enabled = true;
+	return agg;
 }
 
 void drawAlgoGraphGui(void *self) {
@@ -1051,49 +1133,56 @@ void drawEnvelopeGui(void *self) {
 void drawTransportGui(void *self) {
 	Vector2 pos = (Vector2){ 600, 10 };
 	TransportGui *tg = (TransportGui *)self;
-	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y);
+	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y, 20, 20);
 }
-
-void drawArrangerGui(void *self) {
-	ArrangerGui *aGui = (ArrangerGui *)self;
+void drawArrangerGuiNode(void *self) {
+	ArrangerGuiNode *aGui = (ArrangerGuiNode *)self;
 	Arranger *arranger = (Arranger *)aGui->arranger;
 	char *cellText = malloc(sizeof(char) * 4);
-	int cursorx, cursory;
-	cursorx = aGui->shape.x + arranger->selected_x * (aGui->shape.w + aGui->grid_padding);
-	cursory = aGui->shape.y + arranger->selected_y * (aGui->shape.h + aGui->grid_padding);
+	GuiNode *gn = (GuiNode *)aGui;
+	int tmpx = gn->x;
+	int tmpy = gn->y;
+	int cellW = (gn->w - aGui->grid_padding * arranger->enabledChannels) / arranger->enabledChannels;
+	int cellH = cellW;
+	int cursorx = tmpx + arranger->selected_x * (cellW + aGui->grid_padding);
+	int cursory = tmpy + arranger->selected_y * (cellH + aGui->grid_padding);
 
 	for(int i = 0; i < arranger->enabledChannels; i++) {
 		switch(arranger->voiceTypes[i]) {
 			case VOICE_TYPE_BLEP:
-				drawSprite(instrumentIcons, 1, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 1, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;
 			case VOICE_TYPE_SAMPLE:
-				drawSprite(instrumentIcons, 0, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 0, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;
 			case VOICE_TYPE_FM:
-				drawSprite(instrumentIcons, 2, aGui->iconx + i * (aGui->shape.w + aGui->grid_padding), aGui->icony);
+				drawSprite(instrumentIcons, 2, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;
 			default:
 				break;
 		}
 	}
-	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, aGui->shape.w + (aGui->border_size * 2), aGui->shape.h + (aGui->border_size * 2), cs.outlineColour);
+
+	tmpy += cellH + aGui->grid_padding;
+	cursory += cellH + aGui->grid_padding;
+	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, cellW + (aGui->border_size * 2), cellH + (aGui->border_size * 2), cs.outlineColour);
+	int fontSize = cellW / 3;
 	for(int i = 0; i < arranger->enabledChannels; i++) {
 		// int px = i % arranger->enabledChannels;
-		int newx = aGui->shape.x + (i * (aGui->shape.w + aGui->grid_padding));
+		int newx = tmpx + (i * (cellW + aGui->grid_padding));
 		for(int j = 0; j < MAX_SONG_LENGTH; j++) {
-			int newy = aGui->shape.y + (j * (aGui->shape.h + aGui->grid_padding));
+			int newy = tmpy + (j * (cellH + aGui->grid_padding));
 			if(arranger->song[i][j] > -1) {
-				sprintf(cellText, "%i\0", arranger->song[i][j]);
+				sprintf(cellText, "%02i", arranger->song[i][j]);
 				if(arranger->playhead_indices[i] == j) {
-					DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, (Color){ 255, 0, 0, 255 });
+					DrawRectangle(newx, newy, cellW, cellH, (Color){ 255, 0, 0, 255 });
 				} else {
-					DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, cs.defaultCell);
+					DrawRectangle(newx, newy, cellW, cellH, cs.defaultCell);
 				}
-				DrawText(cellText, newx - 5 + aGui->shape.w / 2, newy - 5 + aGui->shape.h / 2, textFont.baseSize, cs.secondaryFontColour);
+				DrawTextEx(pixelFont, cellText, (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, (Color){ 200, 180, 180, 255 });
 			} else {
-				DrawRectangle(newx, newy, aGui->shape.w, aGui->shape.h, cs.blankCell);
-				DrawText("--", newx - 5 + aGui->shape.w / 2, newy - 5 + aGui->shape.h / 2, textFont.baseSize, cs.secondaryFontColour);
+				DrawRectangle(newx, newy, cellW, cellH, cs.blankCell);
+				DrawTextEx(pixelFont, "--", (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, (Color){ 200, 180, 180, 255 });
 			}
 		}
 	}
@@ -1251,9 +1340,10 @@ void drawInputsGui(void *self) {
 		}
 		DrawText(KEY_NAMES[i], iGui->x + i * 22, iGui->y, 10, BLACK);
 	}
-	for(int i = is->historyIndex; i > 0; i--) {
-		DrawText(KEY_NAMES[is->inputHistory[i]], SCREEN_W - 50, iGui->y - i * 11, 10, GRAY);
-	}
+	// TO-DO: FIX this code
+	//  for(int i = is->historyIndex; i > 0; i--) {
+	//  	DrawText(KEY_NAMES[is->inputHistory[i]], SCREEN_W - 50, iGui->y - i * 11, 10, GRAY);
+	//  }
 }
 
 DrawableList *create_drawable_list() {
@@ -1343,10 +1433,12 @@ void DrawGUI(int currentScene) {
 	switch(currentScene) {
 		case SCENE_ARRANGER:
 			// printf("a!");
-			for(int i = 0; i < arrangerScreenDrawableList->size; i++) {
-				arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
-			}
+			// for(int i = 0; i < arrangerScreenDrawableList->size; i++) {
+			// 	arrangerScreenDrawableList->drawables[i]->draw(arrangerScreenDrawableList->drawables[i]);
+			// }
 			// drawNode(arrangerGraph->root);
+			drawNode(agui->root);
+
 			break;
 		case SCENE_PATTERN:
 			// printf("p!");
@@ -1365,7 +1457,7 @@ void DrawGUI(int currentScene) {
 			break;
 	}
 	for(int i = 0; i < globalDrawableList->size; i++) {
-		globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
+		// globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
 	}
 	// drawNode(globalGraph->root);
 	// printf("\n");

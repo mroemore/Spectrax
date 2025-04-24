@@ -163,9 +163,9 @@ void drawNode(GuiNode *cont) {
 	}
 }
 
-Graph *createGraph() {
+Graph *createGraph(NodeAlignment na) {
 	Graph *g = (Graph *)malloc(sizeof(Graph));
-	g->root = createGuiNode(0, 0, SCREEN_W, SCREEN_H, 0, na_horizontal, "root", false, false);
+	g->root = createGuiNode(0, 0, SCREEN_W, SCREEN_H, 0, na, "root", false, false);
 	g->selected = NULL;
 	return g;
 }
