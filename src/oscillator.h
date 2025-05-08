@@ -23,6 +23,13 @@ typedef struct {
 } Oscillator;
 
 typedef struct {
+	float feedbackAmount;
+	float ratio;
+	float level;
+	float outLevel;
+} OperatorData;
+
+typedef struct {
 	float (*generate)(float phase, float increment);
 	int generated;
 	float phase;

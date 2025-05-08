@@ -15,6 +15,7 @@
 #define MAX_ENVELOPES 6
 #define MAX_FM_OPERATORS 4
 #define MAX_DETUNE 16
+#define MAX_PATCHES 255
 
 typedef enum {
 	VOICE_TYPE_SAMPLE,
@@ -63,8 +64,17 @@ typedef struct {
 } GranularInstrumentData;
 
 typedef struct {
+	int shape;
+} BlepPatch;
+
+typedef struct {
 	Parameter *shape;
 } BlepInstrumentData;
+
+typedef struct {
+	OperatorData ops[MAX_FM_OPERATORS];
+	int selectedAlgorithm;
+} FmPatch;
 
 typedef struct {
 	Operator *ops[MAX_FM_OPERATORS];
@@ -80,6 +90,16 @@ typedef struct {
 } SpectralInstrumentData;
 
 typedef struct {
+	int bitDepth;
+	int sampleRate;
+	bool loopSample;
+	int sampleIndex;
+	SamplePlaybackType playbackType;
+	int loopStartIndex;
+	int loopEndIndex;
+} SamplerPatch;
+
+typedef struct {
 	Sample *sample;
 	SamplePool *sp;
 	Parameter *bitDepth;
@@ -93,11 +113,26 @@ typedef struct {
 } SamplerInstrumentData;
 
 typedef struct {
+	VoiceType voiceType;
+	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+	union {
+		SamplerPatch sampler;
+		FmPatch fm;
+		BlepPatch blep;
+	} pd;
+} Preset;
+
+typedef struct {
+	Preset patches[MAX_PATCHES];
+} PresetBank;
+
+typedef struct {
 	ModList *modList;
 	ParamList *paramList;
 	Envelope *envelopes[MAX_ENVELOPES];
 	int envelopeCount;
 	int lfoCount;
+	int patchIndex;
 	float volumeAttenuation;
 	VoiceType voiceType;
 	Parameter *detuneVoiceCount;
@@ -190,15 +225,12 @@ void initVoiceManager(VoiceManager *vm, SamplePool *sp);
 void freeVoice(Voice *v);
 void freeVoiceManager(VoiceManager *vm);
 Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
-void changeVoiceType(VoiceManager *vm, int seqChannel, VoiceType type);
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
 
 void initialize_voice(Voice *voice, Instrument *inst);
-void initialize_voice_sample(Voice *voice, Sample sample, int voice_id, ModList *modList);
-void initialize_voice_blep(Voice *voice, int voice_id, ModList *modList);
-void initialize_voice_fm(Voice *voice, int voice_id, ModList *modList);
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool);
+void initInstrumentFromPreset(Instrument **instrument, SamplePool *samplePool, Preset p);
 void setSamplePlaybackFunction(void *instrument);
 void updateSampleReferences(void *instrument);
 #endif // VOICE_H

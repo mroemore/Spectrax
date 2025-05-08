@@ -294,6 +294,30 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 	voice->filter = createFilter(kTransposeCanonical, secondOrderLPF, 250.0f, 10.0f);
 }
 
+void initDefaultFmPreset(Preset *p) {
+	Preset p1 = (Preset){
+		.voiceType = VOICE_TYPE_FM,
+		.pd.fm.selectedAlgorithm = 0
+	};
+	for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+		p1.pd.fm.ops[i].feedbackAmount = 0.0;
+		p1.pd.fm.ops[i].level = 0.25;
+		p1.pd.fm.ops[i].outLevel = 1.0;
+		p1.pd.fm.ops[i].ratio = 1.0;
+	}
+	p1.pd.fm.ops[1].ratio = 2.0;
+	p1.pd.fm.ops[2].ratio = 3.0;
+	p1.pd.fm.ops[3].ratio = 5.0;
+
+	for(int i = 0; i < 4; i++) {
+		initADPresetData(&p1.modSettings[i], 0.1f, 4.5f, 0.75f, 0.75f);
+	}
+	*p = p1;
+}
+
+void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Preset p) {
+}
+
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool) {
 	// printf("init instrument\n");
 	*instrument = (Instrument *)malloc(sizeof(Instrument));
