@@ -84,13 +84,42 @@ void freeSample(Sample *sample) {
 	sample->sampleRate = 0;
 }
 
-float getSampleValue(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop) {
+float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType) {
 	// Validate the sample
 	if(!sample || !sample->data || sample->length <= 0) {
 		fprintf(stderr, "Invalid sample or data\n");
 		return 0.0f;
 	}
-	float adjusted_phase_increment = phaseIncrement * (paSr / (sample->sampleRate / sample->bit) * 2);
+	float adjusted_phase_increment = phaseIncrement * (paSr / ((float)sample->sampleRate / sample->bit) * 2);
+	*samplePosition += adjusted_phase_increment;
+
+	if(*samplePosition >= sample->length) {
+		if(loop) {
+			*samplePosition -= sample->length;
+		} else {
+			*samplePosition = sample->length - 1;
+		}
+	}
+	// Calculate the wavetable indices and interpolation fraction
+	int indexFloor = (int)*samplePosition;
+	int indexCeil = (indexFloor + 1) % sample->length; // Wrap around at the end
+	float frac = *samplePosition - indexFloor;
+
+	// Perform linear interpolation between indexFloor and indexCeil
+	float value = sample->data[indexFloor] * (1.0f - frac) + sample->data[indexCeil] * frac;
+	if(*samplePosition >= sample->length - 2) {
+		return 0;
+	}
+	return value;
+}
+
+float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType) {
+	// Validate the sample
+	if(!sample || !sample->data || sample->length <= 0) {
+		fprintf(stderr, "Invalid sample or data\n");
+		return 0.0f;
+	}
+	float adjusted_phase_increment = phaseIncrement * (paSr / ((float)sample->sampleRate / sample->bit) * 2);
 	*samplePosition += adjusted_phase_increment;
 
 	if(*samplePosition >= sample->length) {

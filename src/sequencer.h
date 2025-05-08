@@ -1,9 +1,18 @@
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 
+#include "modsystem.h"
 #include "settings.h"
+#include "appstate.h"
+
 #include "voice.h"
 
+typedef void (*AppstateSetter)(void *self, void *data);
+
+typedef struct {
+	AppstateSetter f;
+	void *appstateRef;
+} AppstateCallback;
 /**
  * @brief Represents a musical pattern containing a sequence of notes.
  * Each row is a note n your pattern, each column contains the octave and a note index from 0-12.
@@ -16,20 +25,34 @@ typedef struct {
 typedef struct {
 	int pattern_count;
 	Pattern patterns[MAX_PATTERNS];
+	int selectedPattern;
+	AppstateCallback onStepChange;
+	AppstateCallback onNoteSet;
 } PatternList;
 
+typedef struct
+{
+	bool loop;
+	int samplesPerOddStep;
+	int samplesPerEvenStep;
+	int currentSamplesPerStep;
+	int samplesElapsed;
+	bool swingStep;
+	Parameter *bpm;
+	Parameter *swing;
+} TempoSettings;
 typedef struct
 {
 	int playhead_indices[MAX_SEQUENCER_CHANNELS];
 	int enabledChannels;
 	int selected_x;
 	int selected_y;
-	int loop;
-	int beats_per_minute;
-	int samplesPerStep;
+	TempoSettings tempoSettings;
 	int playing;
 	int voiceTypes[MAX_SEQUENCER_CHANNELS];
 	int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
+	AppstateCallback onCellSelect;
+	AppstateCallback onPatternSelection;
 } Arranger;
 
 typedef struct
@@ -38,19 +61,20 @@ typedef struct
 	int playhead_index[MAX_SEQUENCER_CHANNELS];
 	int selected_index[MAX_SEQUENCER_CHANNELS];
 	int pattern_index[MAX_SEQUENCER_CHANNELS];
+
 } Sequencer;
 
 /**
  * @brief Creates a new PatternList.
  * @return A pointer to the newly created PatternList.
  */
-PatternList *createPatternList();
+PatternList *createPatternList(ApplicationState *appState);
 /**
  * @brief Creates a new Arranger with the given settings.
  * @param settings Pointer to the settings to initialize the Arranger.
  * @return A pointer to the newly created Arranger.
  */
-Arranger *createArranger(Settings *settings);
+Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamList *globalParamList);
 /**
  * @brief Adds a new channel to the Arranger at the specified index.
  * @param arranger Pointer to the Arranger.
@@ -123,7 +147,13 @@ int *getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex);
  * @param selectedArrangerCell Array to store the selected coordinates.
  * @return Pointer to the selected coordinates.
  */
-int *selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell);
+bool selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey);
+/**
+ * @brief Returns the pattern ID of the currently selected arranger Cell
+ * @param arranger Pointer to the Arranger.
+ * @return Pattern ID, for indexing PatternList.
+ */
+int getPatternIDfromArranger(Arranger *a);
 /**
  * @brief Returns the song index for the loop point for a given sequencerID and playhead index
  * @param arranger Pointer to the Arranger.

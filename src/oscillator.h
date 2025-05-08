@@ -12,9 +12,9 @@
 #define OP_COUNT 4
 
 typedef enum {
+	BLEP_SINE,
 	BLEP_SQUARE,
 	BLEP_RAMP,
-	BLEP_SINE,
 	BLEP_SHAPE_COUNT
 } BlepShape;
 

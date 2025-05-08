@@ -13,8 +13,10 @@ Settings *createSettings() {
 		settings->voiceTypes[i] = i % 3;
 		printf("V%i :%i\n", i, settings->voiceTypes[i]);
 	}
+	settings->voiceTypes[0] = 4;
 	settings->defaultSequenceLength = 16;
 	settings->enabledChannels = 8;
-	settings->defaultVoiceCount = 4;
+	settings->defaultVoiceCount = 1;
+	settings->defaultBPM = 120;
 	return settings;
 }

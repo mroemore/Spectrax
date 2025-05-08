@@ -7,8 +7,8 @@
 #define MAX_INPUT_HISTORY 128
 
 typedef enum {
-    INPUT_TYPE_KEYBOARD,
-    INPUT_TYPE_GAMEPAD
+	INPUT_TYPE_KEYBOARD,
+	INPUT_TYPE_GAMEPAD
 } InputDeviceType;
 
 typedef enum {
@@ -22,6 +22,7 @@ typedef enum {
 	KM_FUNCTION,
 	KM_NAV_LEFT,
 	KM_NAV_RIGHT,
+	KM_MOD_EXTRA,
 	KEY_MAPPING_COUNT
 } KeyMapping;
 
@@ -35,10 +36,11 @@ static const int KEYBOARD_MAP[] = {
 	KEY_Z,
 	KEY_X,
 	KEY_Q,
-	KEY_W
+	KEY_W,
+	KEY_LEFT_CONTROL
 };
 
-static const char* KEY_NAMES[] = {
+static const char *KEY_NAMES[] = {
 	"LEFT",
 	"RIGHT",
 	"UP",
@@ -48,7 +50,8 @@ static const char* KEY_NAMES[] = {
 	"EDIT",
 	"FUNC",
 	"SCN<",
-	"SCN>"
+	"SCN>",
+	"MOD"
 };
 
 static const int GAMEPAD_MAP[] = {
@@ -61,19 +64,20 @@ static const int GAMEPAD_MAP[] = {
 	GAMEPAD_BUTTON_RIGHT_FACE_DOWN,
 	GAMEPAD_BUTTON_RIGHT_FACE_LEFT,
 	GAMEPAD_BUTTON_LEFT_TRIGGER_1,
-	GAMEPAD_BUTTON_RIGHT_TRIGGER_1
+	GAMEPAD_BUTTON_RIGHT_TRIGGER_1,
+	GAMEPAD_BUTTON_LEFT_TRIGGER_2
 };
 
 typedef struct {
-    bool isPressed;
-    bool wasPressed;
+	bool isPressed;
+	bool wasPressed;
 } KeyState;
 
 typedef struct {
-    KeyState keys[KEY_MAPPING_COUNT];
-    InputDeviceType deviceType;
-    const int* currentMap;
-	int* inputHistory;
+	KeyState keys[KEY_MAPPING_COUNT];
+	InputDeviceType deviceType;
+	const int *currentMap;
+	int *inputHistory;
 	int historyIndex;
 } InputState;
 
@@ -81,12 +85,12 @@ typedef struct {
 	int thing;
 } AppStateData;
 
-typedef void (*SceneInputHandler)(InputState* input, AppStateData* data);
+typedef void (*SceneInputHandler)(InputState *input, AppStateData *data);
 
-InputState* createInputState(InputDeviceType type);
-bool isKeyHeld(InputState* state, KeyMapping keyCode);
-bool isKeyJustPressed(InputState* state, KeyMapping keyCode);
-void updateInputState(InputState* state);
-int getMappedKeyCode(InputState* state, KeyMapping key);
+InputState *createInputState(InputDeviceType type);
+bool isKeyHeld(InputState *state, KeyMapping keyCode);
+bool isKeyJustPressed(InputState *state, KeyMapping keyCode);
+void updateInputState(InputState *state);
+int getMappedKeyCode(InputState *state, KeyMapping key);
 
 #endif

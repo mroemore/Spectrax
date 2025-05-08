@@ -86,7 +86,8 @@ Parameter *createParameter(ParamList *paramList, const char *name, float initial
 		param->coarseIncrement = 0.10f;
 		param->modulators = NULL;
 		param->modulator_count = 0;
-		param->onChange = NULL;
+		param->onChange.cbData = NULL;
+		param->onChange.cbFunc = NULL;
 	}
 
 	addToParamList(paramList, param);
@@ -100,6 +101,15 @@ Parameter *createParameterEx(ParamList *paramList, const char *name, float initi
 	return p;
 }
 
+Parameter *createParameterPro(ParamList *paramList, const char *name, float initialValue, float minValue, float maxValue, float fineIncrement, float coarseIncrement, void *callbackData, CallbackFunction callbackFunction) {
+	Parameter *p = createParameter(paramList, name, initialValue, minValue, maxValue);
+	p->coarseIncrement = coarseIncrement;
+	p->fineIncrement = fineIncrement;
+	p->onChange.cbData = callbackData;
+	p->onChange.cbFunc = callbackFunction;
+	return p;
+}
+
 void addToParamList(ParamList *list, Parameter *param) {
 	if(list->count < MAX_PARAMS) {
 		list->params[list->count++] = param;
@@ -109,18 +119,36 @@ void addToParamList(ParamList *list, Parameter *param) {
 void setParameterValue(Parameter *param, float value) {
 	// DEBUG_LOG("set param");
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
+	float oldVal = param->currentValue;
 	param->currentValue = clamped;
-	if(param->onChange) {
-		param->onChange(param, clamped);
+	if(fabs(fabs(oldVal) - fabs(clamped)) > 0.001f) {
+		if(param->onChange.cbData != NULL && param->onChange.cbFunc != NULL) {
+			param->onChange.cbFunc(param->onChange.cbData);
+		}
 	}
 }
 
 void setParameterBaseValue(Parameter *param, float value) {
 	// DEBUG_LOG("set param");
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
+	float oldVal = param->baseValue;
 	param->baseValue = clamped;
-	if(param->onChange) {
-		param->onChange(param, clamped);
+	if(fabs(fabs(oldVal) - fabs(clamped)) > 0.001f) {
+		if(param->onChange.cbData != NULL && param->onChange.cbFunc != NULL) {
+			param->onChange.cbFunc(param->onChange.cbData);
+		}
+	}
+}
+
+void setParameterMinValue(Parameter *param, float min) {
+	if(min < param->maxValue) {
+		param->minValue = min;
+	}
+}
+
+void setParameterMaxValue(Parameter *param, float max) {
+	if(max < param->minValue) {
+		param->maxValue = max;
 	}
 }
 
@@ -336,6 +364,7 @@ float applyCurve(float x, float curvature) {
 void triggerEnvelope(Envelope *env) {
 	// DEBUG_LOG("triggering env");
 	env->currentStageIndex = 0;
+	env->currentTime = 0;
 	env->isTriggered = true;
 }
 

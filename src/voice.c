@@ -1,7 +1,11 @@
 #include "voice.h"
+#include "fft.h"
+#include "kiss_fft.h"
+#include "kiss_fftr.h"
 #include "notes.h"
 #include "blit_synth.h"
 #include "modsystem.h"
+#include "sample.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +33,6 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
 		vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
 	}
-	// printf("\t-> DONE.\n");
 	return vm;
 }
 
@@ -68,6 +71,57 @@ void freeVoice(Voice *v) { // TO-DO: free grain
 	}
 
 	free(v);
+}
+
+OutVal generateFM(Voice *currentVoice, float phaseIncrement, float frequency) {
+	OutVal out;
+	out.L = sineFmAlgo(currentVoice->vd.fm.operators, frequency, getParameterValueAsInt(currentVoice->instrumentRef->id.fm.selectedAlgorithm));
+	out.R = out.L;
+	return out;
+}
+
+OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency) {
+	OutVal out;
+	int sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->id.sample.sampleIndex);
+	bool loop = getParameterValueAsInt(currentVoice->instrumentRef->id.sample.loopSample);
+	out.L = getSampleValueFwd(currentVoice->vd.sample.samplePool->samples[sampleIndex], &currentVoice->vd.sample.samplePosition, phaseIncrement, SAMPLE_RATE, loop, SPT_FORWARD);
+	out.L *= 0.5;
+	out.R = out.L;
+	return out;
+}
+
+OutVal generateBlep(Voice *currentVoice, float phaseIncrement, float frequency) {
+	OutVal out;
+	int shape = getParameterValueAsInt(currentVoice->instrumentRef->id.blep.shape);
+	switch(shape) {
+		case BLEP_RAMP:
+			out.L = blep_saw(currentVoice->leftPhase, phaseIncrement);
+			out.L *= 0.025;
+			break;
+		case BLEP_SQUARE:
+			out.L = blep_square(currentVoice->leftPhase, phaseIncrement);
+			out.L *= 0.025;
+			break;
+		case BLEP_SINE:
+			out.L = noblep_sine(currentVoice->leftPhase);
+			out.L *= 0.5;
+			break;
+	}
+	out.R = out.L;
+	return out;
+}
+
+OutVal generateSpectral(Voice *currentVoice, float phaseIncrement, float frequency) {
+	OutVal out;
+	currentVoice->vd.spectral.samplePosition += phaseIncrement;
+	int spFloor = (int)currentVoice->vd.spectral.samplePosition;
+	int spCeil = spFloor + 1;
+	spCeil = spCeil > currentVoice->vd.spectral.spectralDataSize ? spFloor : spCeil;
+	float frac = currentVoice->vd.spectral.samplePosition - spFloor;
+	out.L = currentVoice->vd.spectral.spectralData[spFloor];
+	out.L *= 0.5;
+	out.R = out.L;
+	return out;
 }
 
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency) {
@@ -118,18 +172,26 @@ OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement
 		case VOICE_TYPE_SAMPLE:
 			sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->sampleIndex);
 			loop = getParameterValueAsInt(currentVoice->instrumentRef->loopSample);
-			L = getSampleValue(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, loop);
+			L = getSampleValueFwd(vm->samplePool->samples[sampleIndex], &currentVoice->samplePosition, phaseIncrement, SAMPLE_RATE, loop, SPT_FORWARD);
 			L *= 0.5;
 			out = (OutVal){ L, L };
 			break;
 		case VOICE_TYPE_GRAIN:
 			out = granularProcess(currentVoice->source.granularProcessor, phaseIncrement);
+		case VOICE_TYPE_SPECTRAL:
+			currentVoice->samplePosition += phaseIncrement;
+			int spFloor = (int)currentVoice->samplePosition;
+			int spCeil = spFloor + 1;
+			spCeil = spCeil > currentVoice->instrumentRef->spectralDataSize ? spFloor : spCeil;
+			float frac = currentVoice->samplePosition - spFloor;
+			L = currentVoice->instrumentRef->spectralData[spFloor];
+			L *= 0.5;
+			out = (OutVal){ L, L };
 		default:
 			break;
 	}
 	float pan = getParameterValue(currentVoice->instrumentRef->panning);
 	// out.L = currentVoice->filter->biquad->processSample(currentVoice->filter->biquad, out.L);
-	// out.R = out.L;
 	out.R *= pan;
 	out.L *= 1.0 - pan;
 	return out;
@@ -237,16 +299,16 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			break;
 
 		case VOICE_TYPE_SAMPLE:
-			voice->source.sample = inst->sample;
-			voice->samplePosition = 0.0f; // Initialize sample position
+			voice->vd.sample.sample = inst->sample;
+			voice->vd.sample.samplePosition = 0.0f; // Initialize sample position
 			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 			break;
 
 		case VOICE_TYPE_FM:
-			voice->source.operators[0] = createParamPointerOperator(voice->paramList, inst->ops[0]->feedbackAmount, inst->ops[0]->ratio, inst->ops[0]->level);
-			voice->source.operators[1] = createParamPointerOperator(voice->paramList, inst->ops[1]->feedbackAmount, inst->ops[1]->ratio, inst->ops[1]->level);
-			voice->source.operators[2] = createParamPointerOperator(voice->paramList, inst->ops[2]->feedbackAmount, inst->ops[2]->ratio, inst->ops[2]->level);
-			voice->source.operators[3] = createParamPointerOperator(voice->paramList, inst->ops[3]->feedbackAmount, inst->ops[3]->ratio, inst->ops[3]->level);
+			voice->vd.fm.operators[0] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[0]->feedbackAmount, inst->id.fm.ops[0]->ratio, inst->id.fm.ops[0]->level);
+			voice->vd.fm.operators[1] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[1]->feedbackAmount, inst->id.fm.ops[1]->ratio, inst->id.fm.ops[1]->level);
+			voice->vd.fm.operators[2] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[2]->feedbackAmount, inst->id.fm.ops[2]->ratio, inst->id.fm.ops[2]->level);
+			voice->vd.fm.operators[3] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[3]->feedbackAmount, inst->id.fm.ops[3]->ratio, inst->id.fm.ops[3]->level);
 			voice->samplePosition = 0.0f; // Initialize sample position
 			// for(int i = 0; i < voice->envCount; i++) {
 			// 	addModulation(voice->paramList, &voice->envelope[0]->base, voice->source.operators[0]->level, 1.0f, MO_MUL);
@@ -260,6 +322,10 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 		case VOICE_TYPE_GRAIN:
 			voice->source.granularProcessor = createGranularProcessor(inst->sample);
 			break;
+		case VOICE_TYPE_SPECTRAL:
+			voice->source.sample = inst->sample;
+			voice->samplePosition = 0.0f; // Initialize sample position
+			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 		default:
 			break;
 	}
@@ -291,11 +357,16 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 		case VOICE_TYPE_SAMPLE:
 			(*instrument)->envelopeCount = 1;
 			(*instrument)->lfoCount = 0;
+			(*instrument)->sp = samplePool;
 			(*instrument)->sample = samplePool->samples[0];
+			(*instrument)->getSample = getSampleValueFwd;
 			(*instrument)->bitDepth = createParameterEx((*instrument)->paramList, "bitdepth", 24.0f, 8.0f, 24.0f, 1.0f, 4.0f);
 			(*instrument)->sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 44100.0f, 2000.0f, 44100.0f, 100.0f, 1000.0f);
-			(*instrument)->sampleIndex = createParameterEx((*instrument)->paramList, "algo", 0, 0, (float)samplePool->sampleCount, 1.0f, 10.0f);
+			(*instrument)->sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)samplePool->sampleCount - 1, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
+			(*instrument)->playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
+			(*instrument)->loopStartIndex = createParameterEx((*instrument)->paramList, "loop start", 0, 0, (float)samplePool->samples[0]->length, 100.0f, 1000.0f);
+			(*instrument)->loopEndIndex = createParameterEx((*instrument)->paramList, "loop end", (float)samplePool->samples[0]->length - 1.0f, 1.0f, (float)samplePool->samples[0]->length, 100.0f, 1000.0f);
 			break;
 		case VOICE_TYPE_FM:
 			(*instrument)->envelopeCount = 4;
@@ -312,6 +383,30 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->sample = samplePool->samples[2];
 			(*instrument)->envelopeCount = 1;
 			break;
+		case VOICE_TYPE_SPECTRAL:
+			(*instrument)->envelopeCount = 1;
+			(*instrument)->lfoCount = 0;
+			(*instrument)->sample = samplePool->samples[1];
+			(*instrument)->playbackSpeed = createParameterEx((*instrument)->paramList, "playbackSpeed", 0.5f, 0.0f, 1.0f, 0.01f, 0.1f);
+			Fft fft;
+			int fftSize = 2048;
+			initFFT(&fft, fftSize, 256, 5, false, true);
+			float sampleFreq = 261.625;
+			float phaseInc = sampleFreq / SAMPLE_RATE;
+			for(int i = 0; i < samplePool->samples[0]->length; i++) {
+				float spos = (float)i;
+				float s = getSampleValueFwd(samplePool->samples[1], &spos, phaseInc, SAMPLE_RATE, 0, SPT_FORWARD);
+				s *= 0.5;
+				pushFrameToFFT(&fft, s);
+				processFFTData(&fft);
+			}
+			(*instrument)->spectralDataSize = fft.rowCount * fft.fftSize;
+			(*instrument)->spectralData = calloc(fft.rowCount * fft.fftSize / 4, sizeof(float));
+			kiss_fftr_cfg icfg = kiss_fftr_alloc(fftSize, 1, 0, 0);
+			for(int i = 0; i < fft.rowCount / 4; i++) {
+				kiss_fftri(icfg, &fft.cpxvals[i * fft.freqCount * 4], &(*instrument)->spectralData[i * fft.fftSize]);
+			}
+			break;
 	}
 	(*instrument)->panning = createParameterEx((*instrument)->paramList, "panning", 0.5f, 0.0f, 1.0f, 0.01f, 0.1f);
 	(*instrument)->detuneVoiceCount = createParameterEx((*instrument)->paramList, "detuneVoices", 4.0f, 0.0f, MAX_DETUNE, 1.0f, 1.0f);
@@ -319,10 +414,39 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	(*instrument)->detuneSpread = createParameterEx((*instrument)->paramList, "detuneSpread", 10.0f, 0.0f, 50.0f, 1.0f, 5.0f);
 
 	for(int i = 0; i < (*instrument)->envelopeCount; i++) {
-		(*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, 2.25f, "AD1");
+		(*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, 4.25f, "AD1");
 	}
 
 	(*instrument)->voiceType = vt;
+}
+
+void updateSampleReferences(void *instrument) {
+	Instrument *i = (Instrument *)instrument;
+	int spidx = getParameterValueAsInt(i->sampleIndex);
+	i->sample = i->sp->samples[spidx];
+	printf("UPD\n");
+	setParameterBaseValue(i->loopStartIndex, 0);
+	setParameterValue(i->loopStartIndex, 0);
+	setParameterMaxValue(i->loopStartIndex, i->sample->length);
+	setParameterMaxValue(i->loopEndIndex, i->sample->length);
+	setParameterBaseValue(i->loopEndIndex, i->sample->length - 1.0);
+	setParameterValue(i->loopEndIndex, i->sample->length - 1.0);
+}
+
+void setSamplePlaybackFunction(void *instrument) {
+	Instrument *i = (Instrument *)instrument;
+	int selectedPlaybackType = getParameterValueAsInt(i->playbackType);
+	switch(selectedPlaybackType) {
+		case SPT_REVERSE:
+		case SPT_REVERSE_PINGPONG:
+			i->getSample = getSampleValueRev;
+			break;
+		default:
+		case SPT_FORWARD:
+		case SPT_FORWARD_PINGPONG:
+			i->getSample = getSampleValueFwd;
+			break;
+	}
 }
 
 GranularProcessor *createGranularProcessor(Sample *s) {
@@ -349,8 +473,8 @@ GranularProcessor *createGranularProcessor(Sample *s) {
 		gp->windowIndex[i] = 0;
 	}
 	for(int i = 0; i < GRAIN_COUNT; i++) {
-		float startPos = rand() * GRANULAR_BUFFER_SIZE / 4;
-		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", rand() * GRANULAR_BUFFER_SIZE / 4, 0.0f, (float)GRANULAR_BUFFER_SIZE);
+		float startPos = rand() * GRANULAR_BUFFER_SIZE / 4.0;
+		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", rand() * GRANULAR_BUFFER_SIZE / 4.0, 0.0f, (float)GRANULAR_BUFFER_SIZE);
 		gp->grainReadPos[i] = startPos;
 	}
 

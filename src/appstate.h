@@ -1,8 +1,8 @@
 #ifndef APPSTATE_H
 #define APPSTATE_H
 
-#include "gui.h"
 #include "input.h"
+#include "settings.h"
 #include "notes.h"
 
 typedef struct {
@@ -17,7 +17,14 @@ typedef struct {
 
 void initApplicationState();
 ApplicationState *createApplicationState();
+
 void incrementScene(ApplicationState *appState);
 void decrementScene(ApplicationState *appState);
+
+void setCurrentPattern(void *self, void *patternID);
+void setSelectedPattern(void *self, void *patternID);
+void setSelectedStep(void *self, void *step);
+void setSelectedArrangerCell(void *self, void *cellCoordinates);
+void setLastUsedNote(void *self, void *octave);
 
 #endif

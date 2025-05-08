@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <stdlib.h>
 #include "portaudio.h"
 #include "raylib.h"
@@ -16,28 +17,24 @@
 #include "notes.h"
 #include "distortion.h"
 #include "graph_gui.h"
-
-#define NUM_SECONDS (28)
-#define NUM_NOTES 12
-#define NOTE_DURATION .5 // Duration of each note in seconds
-#define TEMPO_DEFAULT 120
-#define MAX_VOLUME 0.8f // Maximum volume to avoid clipping
-#define SAMPLE_COUNT 4
+#include "dataviz.h"
 
 typedef struct
 {
 	int sequence_index;
 	int samples_per_beat;
 	int samples_elapsed;
-	Sample samples[SAMPLE_COUNT];
 	int active_sequencer_index;
 	Arranger *arranger;
 	PatternList *patternList;
 	Sequencer *sequencer;
 	ModList *modList;
+	ParamList *globalParameters;
 	VoiceManager *voiceManager;
 	SamplePool *samplePool;
 	WavetablePool *wavetablePool;
+	Spectrogram spectrogram;
+	TimeGraph timeGraph;
 } paTestData;
 
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui);
@@ -53,10 +50,12 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	unsigned int j = 0;
 	float max_output = 0.0f;
 	(void)inputBuffer;
-
-	if(data->samples_elapsed >= data->arranger->samplesPerStep) {
-		// printf("checking... \n");
-		data->samples_elapsed = 0;
+	clock_t start, end;
+	double cpu_time_used;
+	start = clock();
+	int stepSamples = data->arranger->tempoSettings.swingStep ? data->arranger->tempoSettings.samplesPerOddStep : data->arranger->tempoSettings.samplesPerEvenStep;
+	if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
+		data->arranger->tempoSettings.samplesElapsed = 0;
 		if(data->arranger->playing) {
 			incrementSequencer(data->sequencer, data->patternList, data->arranger);
 		}
@@ -75,6 +74,8 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++) {
 		processModulations(data->voiceManager->instruments[j]->paramList, data->voiceManager->instruments[j]->modList, 1.0f / framesPerBuffer);
 	}
+	// process song-level param changes:
+	processModulations(data->globalParameters, data->modList, 1.0f / framesPerBuffer);
 
 	for(i = 0; i < framesPerBuffer; i++) {
 		float left_output = 0.0f;
@@ -114,7 +115,6 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 						// }
 						left_output += currentSample.L * getParameterValue(currentVoice->volume);
 						right_output += currentSample.R * getParameterValue(currentVoice->volume);
-
 						currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
 						currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
 
@@ -138,8 +138,12 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		*out++ = left_output;
 		*out++ = right_output;
 
-		data->samples_elapsed++;
+		pushFrameToFFT(&data->spectrogram.fft, left_output);
+
+		data->arranger->tempoSettings.samplesElapsed++;
 	}
+
+	processFFTData(&data->spectrogram.fft);
 
 	// Normalize the entire buffer to avoid clipping
 	//  if (max_output > MAX_VOLUME)
@@ -151,7 +155,9 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	//  		*out++ *= normalization_factor;
 	//  	}
 	//  }
-
+	end = clock();
+	cpu_time_used = (((double)(end - start)) / CLOCKS_PER_SEC) * 1000.0f;
+	pushTimeGraphMeasurement(&data->timeGraph, cpu_time_used);
 	return 0;
 }
 
@@ -160,7 +166,6 @@ int main(void) {
 	PaError err;
 	paTestData data;
 	ApplicationState *appState;
-
 	// loading screen
 
 	InitGUI();
@@ -194,11 +199,13 @@ int main(void) {
 	err = Pa_StartStream(stream);
 	if(err != paNoError)
 		goto error;
-
+	SetTraceLogLevel(LOG_WARNING);
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
 		BeginDrawing();
 		clearBg();
+		updateSpectrogramData(&data.spectrogram);
+		updateTimeGraphData(&data.timeGraph);
 		// printf("checking inputs...\n");
 		// Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)) {
@@ -221,26 +228,36 @@ int main(void) {
 					}
 				} else if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
-						printf("erasecell\n");
 						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
 					}
+				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
+					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+						arrangerGraphControlInput(KM_LEFT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+						arrangerGraphControlInput(KM_RIGHT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						arrangerGraphControlInput(KM_UP);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						arrangerGraphControlInput(KM_DOWN);
+					}
+				} else {
+					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+						navigateArrangerGraph(KM_LEFT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+						navigateArrangerGraph(KM_RIGHT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						navigateArrangerGraph(KM_UP);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						navigateArrangerGraph(KM_DOWN);
+					}
 				}
-				if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-					selectArrangerCell(data.arranger, 0, -1, 0, appState->selectedArrangerCell);
-					appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-				}
-				if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-					selectArrangerCell(data.arranger, 0, 1, 0, appState->selectedArrangerCell);
-					appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-				}
-				if(isKeyJustPressed(appState->inputState, KM_UP)) {
-					selectArrangerCell(data.arranger, 0, 0, -1, appState->selectedArrangerCell);
-					appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-				}
-				if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-					selectArrangerCell(data.arranger, 0, 0, 1, appState->selectedArrangerCell);
-					appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-				}
+
 				break;
 			case SCENE_PATTERN:
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
@@ -248,19 +265,19 @@ int main(void) {
 						editCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){ OFF, 0 }); // NOTE OFF
 					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						selectArrangerCell(data.arranger, 1, -1, 0, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 1, -1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						selectArrangerCell(data.arranger, 1, 1, 0, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 1, 1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						selectArrangerCell(data.arranger, 1, 0, -1, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 1, 0, -1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						selectArrangerCell(data.arranger, 1, 0, 1, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 1, 0, 1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
@@ -297,16 +314,15 @@ int main(void) {
 						appState->selectedStep = selectStep(data.patternList, appState->selectedPattern, appState->selectedStep + 4);
 					}
 				}
-
 				break;
 			case SCENE_INSTRUMENT:
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						selectArrangerCell(data.arranger, 0, -1, 0, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 0, -1, 0);
 						// updateInstrumentGui(instrumentGui);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						selectArrangerCell(data.arranger, 0, 1, 0, appState->selectedArrangerCell);
+						selectArrangerCell(data.arranger, 0, 1, 0);
 						// updateInstrumentGui(instrumentGui);
 					}
 				}
@@ -342,12 +358,31 @@ int main(void) {
 						navigateGraph(currentGraph, KM_DOWN);
 					}
 				}
-
+				break;
+			default:
 				break;
 		}
-
+		if(isKeyHeld(appState->inputState, KM_MOD_EXTRA)) {
+			if(isKeyJustPressed(appState->inputState, KM_START)) {
+				toggleSpectrogram(&data.spectrogram);
+				toggleSpectrogram(&data.timeGraph);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				incWindowFunc(&data.spectrogram.fft, true);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				incWindowFunc(&data.spectrogram.fft, false);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_SELECT)) {
+				printArrGraph();
+			}
+		}
 		// printf("drawing GUI... %i\n", appState->currentScene);
 		DrawGUI(appState->currentScene);
+
+		drawSpectrogram(&data.spectrogram);
+		drawTimeGraph(&data.timeGraph);
+		DrawFPS(SCREEN_W - 80, 5);
 		EndDrawing();
 	}
 	CloseWindow();
@@ -385,7 +420,9 @@ error:
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui) {
 	Settings *settings = createSettings();
 	loadColourSchemeTxt("colourscheme2.txt", getColorSchemeAsPointerArray(), 9);
-
+	initSpectrogram(&data->spectrogram, 4096, 256, 5, 1.0);
+	initTimeGraph(&data->timeGraph, 1024, 0, 640, 1024, 128);
+	data->globalParameters = createParamList();
 	*appState = createApplicationState();
 	if(!*appState) {
 		printf("AppState creation failed.\n");
@@ -403,12 +440,12 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("modList creation failed.\n");
 		return;
 	}
-	data->arranger = createArranger(settings);
+	data->arranger = createArranger(settings, *appState, data->globalParameters);
 	if(!data->arranger) {
 		printf("arranger creation failed.\n");
 		return;
 	}
-	data->patternList = createPatternList();
+	data->patternList = createPatternList(*appState);
 	if(!data->patternList) {
 		printf("patternList creation failed.\n");
 		return;
@@ -423,22 +460,22 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("voiceManager creation failed.\n");
 		return;
 	}
-	// int loadstate = loadSequencerState("s1.sng", data.arranger, data.patternList);
-	// printf("arranger/pattern load result: %i\n", loadstate);
+	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
+	printf("arranger/pattern load result: %i\n", loadstate);
 
 	data->sequencer = createSequencer(data->arranger);
 	if(!data->sequencer) {
 		printf("sequencer creation failed.\n");
 		return;
 	}
-	TransportGui *tsGui = createTransportGui(&data->arranger->playing, data->arranger, 10, 10);
-	add_drawable(&tsGui->base, GLOBAL);
+	// TransportGui *tsGui = createTransportGui(&data->arranger->playing, data->arranger, 10, 10);
+	// add_drawable(&tsGui->base, GLOBAL);
 	InputsGui *inputsGui = createInputsGui((*appState)->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
 	add_drawable(&inputsGui->base, GLOBAL);
 
 	data->active_sequencer_index = 0;
 	data->sequence_index = 0;
-	data->samples_per_beat = (int)(SAMPLE_RATE * 60) / (120 * 4);
+	data->samples_per_beat = (int)(PA_SR * 60) / (120 * 4);
 	data->samples_elapsed = 0;
 
 	printf("bpm yo: %i", data->samples_per_beat);

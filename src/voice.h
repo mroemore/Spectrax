@@ -1,6 +1,7 @@
 #ifndef VOICE_H
 #define VOICE_H
 #include <stdlib.h>
+#include "kiss_fft.h"
 #include "settings.h"
 #include "oscillator.h"
 #include "sample.h"
@@ -8,6 +9,7 @@
 #include "modsystem.h"
 #include "blit_synth.h"
 #include "filters.h"
+#include "fft.h"
 
 #define MAX_LFOS 8
 #define MAX_ENVELOPES 6
@@ -19,6 +21,7 @@ typedef enum {
 	VOICE_TYPE_FM,
 	VOICE_TYPE_BLEP,
 	VOICE_TYPE_GRAIN,
+	VOICE_TYPE_SPECTRAL,
 	VOICE_TYPE_COUNT
 } VoiceType;
 
@@ -30,6 +33,9 @@ typedef struct {
 #define GRANULAR_BUFFER_SIZE 441000 // 10 seconds
 #define GRAIN_COUNT 16
 #define GRAIN_WINDOW_SIZE 1024
+
+typedef struct Voice Voice;
+typedef float (*GenerateSample)(Voice *currentVoice, float phaseIncrement, float frequency);
 
 typedef struct {
 	ParamList *paramList;
@@ -49,8 +55,35 @@ typedef struct {
 
 } GranularProcessor;
 
-GranularProcessor *createGranularProcessor();
+GranularProcessor *createGranularProcessor(Sample *s);
 OutVal granularProcess(GranularProcessor *gp, float phaseIncrement);
+
+typedef struct {
+	Parameter *shape;
+} BlepInstrumentData;
+
+typedef struct {
+	Operator *ops[MAX_FM_OPERATORS];
+	Parameter *selectedAlgorithm;
+} FmInstrumentData;
+
+typedef struct {
+	Parameter *playbackSpeed;
+	SamplePool *sp;
+	float *spectralData;
+	int spectralDataSize;
+} SpectralInstrmentData;
+
+typedef struct {
+	Parameter *bitDepth;
+	Parameter *sampleRate;
+	Parameter *loopSample;
+	Parameter *sampleIndex;
+	Parameter *playbackType;
+	Parameter *loopStartIndex;
+	Parameter *loopEndIndex;
+	GetSampleFunc getSample;
+} SampleInstrumentData;
 
 typedef struct {
 	Sample *sample;
@@ -61,45 +94,69 @@ typedef struct {
 	int lfoCount;
 	float volumeAttenuation;
 	VoiceType voiceType;
-	Parameter *shape;
-	Parameter *selectedAlgorithm;
-	Parameter *sampleRate;
-	Parameter *loopSample;
 	Parameter *detuneVoiceCount;
 	Parameter *detuneRange;
 	Parameter *detuneSpread;
-	Parameter *bitDepth;
-	Parameter *sampleIndex;
 	Parameter *panning;
-	Operator *ops[MAX_FM_OPERATORS];
+	union {
+		SampleInstrumentData sample;
+		FmInstrumentData fm;
+		SpectralInstrmentData spectral;
+		BlepInstrumentData blep;
+	} id;
 } Instrument;
 
 typedef struct {
+	Oscillator oscillator;
+} BlepVoiceData;
+
+typedef struct {
+	Operator *operators[MAX_FM_OPERATORS];
+} FmVoiceData;
+
+typedef struct {
+	float *spectralData;
+	float samplePosition;
+	int spectralDataSize;
+} SpectralVoiceData;
+
+typedef struct {
+	Sample *sample;
+	float samplePosition; // Position in the sample data
+	GenerateSample generate;
+	SamplePool *samplePool;
+} SampleVoiceData;
+
+typedef struct {
+	GranularProcessor *granularProcessor;
+} GranularVoiceData;
+
+struct Voice {
+	VoiceType type;
 	float leftPhase;
 	float rightPhase;
 	float detunePhase[MAX_DETUNE];
+	int note[2];
 	int samplesElapsed;
 	int active;
 	ParamList *paramList;
 	ModList *modList;
-	Parameter *volume;
-	VoiceType type;
-	Instrument *instrumentRef;
-	union {
-		Oscillator oscillator;
-		Sample *sample;
-		Operator *operators[MAX_FM_OPERATORS];
-		GranularProcessor *granularProcessor;
-	} source;
-	float samplePosition; // Position in the sample data
-	int note[2];
-	Parameter *frequency;
 	int envCount;
 	int lfoCount;
 	Envelope *envelope[4];
 	LFO *lfo[2];
-	Filter *filter;
-} Voice;
+	Parameter *frequency;
+	Parameter *volume;
+	Instrument *instrumentRef;
+	union {
+		FmVoiceData fm;
+		BlepVoiceData blep;
+		SpectralVoiceData spectral;
+		SampleVoiceData sample;
+		GranularVoiceData granular;
+	} vd;
+	Filter filter;
+};
 
 typedef enum {
 	VA_FREE_OR_ZERO,
@@ -134,4 +191,6 @@ void initialize_voice_sample(Voice *voice, Sample sample, int voice_id, ModList 
 void initialize_voice_blep(Voice *voice, int voice_id, ModList *modList);
 void initialize_voice_fm(Voice *voice, int voice_id, ModList *modList);
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool);
+void setSamplePlaybackFunction(void *instrument);
+void updateSampleReferences(void *instrument);
 #endif // VOICE_H

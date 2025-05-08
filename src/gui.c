@@ -6,6 +6,7 @@
 #include "graph_gui.h"
 #include "input.h"
 #include "oscillator.h"
+#include "sample.h"
 #include "sequencer.h"
 #include "modsystem.h"
 #include "notes.h"
@@ -133,20 +134,20 @@ void InitGUI(void) {
 	SetTargetFPS(60);
 }
 
-TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y) {
-	TransportGui *tsGui = (TransportGui *)malloc(sizeof(TransportGui));
-	tsGui->base.draw = drawTransportGui;
-	tsGui->base.enabled = true;
-	tsGui->shape.x = x;
-	tsGui->shape.y = y;
-	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
-	tsGui->playing = playing;
-	tsGui->arranger = arranger;
-	tsGui->tempo = &arranger->beats_per_minute;
-	add_drawable(&tsGui->base, GLOBAL); // Add TransportGui to globalDrawableList
+// TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y) {
+// 	TransportGui *tsGui = (TransportGui *)malloc(sizeof(TransportGui));
+// 	tsGui->base.draw = drawTransportGui;
+// 	tsGui->base.enabled = true;
+// 	tsGui->shape.x = x;
+// 	tsGui->shape.y = y;
+// 	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
+// 	tsGui->playing = playing;
+// 	tsGui->arranger = arranger;
+// 	tsGui->tempo = &arranger->beats_per_minute;
+// 	add_drawable(&tsGui->base, GLOBAL); // Add TransportGui to globalDrawableList
 
-	return tsGui;
-}
+// 	return tsGui;
+// }
 
 SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedNote, int x, int y) {
 	SequencerGui *seqGui = (SequencerGui *)malloc(sizeof(SequencerGui));
@@ -492,127 +493,6 @@ void applyButtonCallback(void *self, float value) {
 	btnGui->base.onPress(btnGui->parameter, value);
 }
 
-ButtonGui *getSelectedInput(ContainerGroup *cg) {
-	InputContainer *ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-	return ic->buttonRefs[ic->selectedRow][ic->selectedColumn];
-}
-
-EnvelopeGui *createEnvelopeGui(Envelope *env, int x, int y, int w, int h) {
-	EnvelopeGui *envGui = (EnvelopeGui *)malloc(sizeof(EnvelopeGui));
-	envGui->base.draw = drawEnvelopeGui;
-	envGui->base.enabled = true;
-	envGui->env = env;
-	envGui->shape.x = x;
-	envGui->shape.y = y;
-	envGui->shape.w = w;
-	envGui->shape.h = h;
-	envGui->graphData = malloc(sizeof(int) * w);
-}
-
-EnvelopeContainer *createADEnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled) {
-	EnvelopeContainer *ec = (EnvelopeContainer *)malloc(sizeof(EnvelopeContainer));
-	ec->envelopeGui = createEnvelopeGui(env, x, y, w, h / 2);
-	ec->envInputs = createInputContainer();
-	int offsetY = y + h / 2 + ec->envInputs->inputPadding;
-	int offsetX = x;
-	int btnH = 25;
-	int btnW = 70;
-	ButtonGui *attackBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "ATK", env->stages[0].duration, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *attackCurveBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "A-CRV", env->stages[1].curvature, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *decayCurveBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "D-CRV", env->stages[1].curvature, incParameterBaseValue);
-	addButtonToContainer(attackBtn, ec->envInputs, 0, 0, scene, enabled);
-	addButtonToContainer(attackCurveBtn, ec->envInputs, 0, 1, scene, enabled);
-	addButtonToContainer(decayBtn, ec->envInputs, 0, 2, scene, enabled);
-	addButtonToContainer(decayCurveBtn, ec->envInputs, 0, 3, scene, enabled);
-	return ec;
-}
-
-EnvelopeContainer *createADSREnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled) {
-	EnvelopeContainer *ec = (EnvelopeContainer *)malloc(sizeof(EnvelopeContainer));
-	ec->envelopeGui = createEnvelopeGui(env, x, y, w, h / 2);
-	ec->envInputs = createInputContainer();
-	int offsetY = y + h / 2 + ec->envInputs->inputPadding;
-	int offsetX = x;
-	int btnH = 25;
-	int btnW = 70;
-	ButtonGui *attackBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "ATK", env->stages[0].duration, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *decayBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "DEC", env->stages[1].duration, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *sustainBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SUS", env->stages[2].duration, incParameterBaseValue);
-	offsetX += btnW + ec->envInputs->inputPadding;
-	ButtonGui *releaseBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "REL", env->stages[3].duration, incParameterBaseValue);
-	addButtonToContainer(attackBtn, ec->envInputs, 0, 0, scene, enabled);
-	addButtonToContainer(decayBtn, ec->envInputs, 0, 1, scene, enabled);
-	addButtonToContainer(sustainBtn, ec->envInputs, 0, 2, scene, enabled);
-	addButtonToContainer(releaseBtn, ec->envInputs, 0, 3, scene, enabled);
-	return ec;
-}
-
-InputContainer *createFmParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled) {
-	InputContainer *ic = createInputContainer();
-	int offsetY = y + ic->inputPadding;
-	int offsetX = x;
-	int btnH = 20;
-	int btnW = 60;
-	ButtonGui *ratioBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 1", inst->ops[0]->ratio, incParameterBaseValue);
-	offsetX += btnW + ic->inputPadding;
-	ButtonGui *fdbkBtn1 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 1", inst->ops[0]->feedbackAmount, incParameterBaseValue);
-	offsetX += btnW * 2 + ic->inputPadding;
-	ButtonGui *ratioBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 2", inst->ops[1]->ratio, incParameterBaseValue);
-	offsetX += btnW + ic->inputPadding;
-	ButtonGui *fdbkBtn2 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 2", inst->ops[1]->feedbackAmount, incParameterBaseValue);
-	offsetX = x;
-	offsetY += btnH + ic->inputPadding;
-	ButtonGui *ratioBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 3", inst->ops[2]->ratio, incParameterBaseValue);
-	offsetX += btnW + ic->inputPadding;
-	ButtonGui *fdbkBtn3 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 3", inst->ops[2]->feedbackAmount, incParameterBaseValue);
-	offsetX += btnW * 2 + ic->inputPadding;
-	ButtonGui *ratioBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "RAT 4", inst->ops[3]->ratio, incParameterBaseValue);
-	offsetX += btnW + ic->inputPadding;
-	ButtonGui *fdbkBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "FBK 4", inst->ops[3]->feedbackAmount, incParameterBaseValue);
-	offsetX += btnW + ic->inputPadding;
-	ButtonGui *algoBtn4 = createButtonGui(offsetX, offsetY, btnW, btnH, "ALGO", inst->selectedAlgorithm, incParameterBaseValue);
-	addButtonToContainer(ratioBtn1, ic, 0, 0, scene, enabled);
-	addButtonToContainer(fdbkBtn1, ic, 0, 1, scene, enabled);
-	addButtonToContainer(ratioBtn2, ic, 0, 2, scene, enabled);
-	addButtonToContainer(fdbkBtn2, ic, 0, 3, scene, enabled);
-	addButtonToContainer(ratioBtn3, ic, 1, 0, scene, enabled);
-	addButtonToContainer(fdbkBtn3, ic, 1, 1, scene, enabled);
-	addButtonToContainer(ratioBtn4, ic, 1, 2, scene, enabled);
-	addButtonToContainer(fdbkBtn4, ic, 1, 3, scene, enabled);
-	addButtonToContainer(algoBtn4, ic, 1, 4, scene, enabled);
-	AlgoGraphGui *agg = createAlgoGraphGui(inst->selectedAlgorithm, SCREEN_W - 110, 0, 100, 100);
-	addDrawableToContainer(ic, &agg->base);
-	return ic;
-}
-
-InputContainer *createSampleParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled) {
-	InputContainer *ic = createInputContainer();
-	int offsetY = y + ic->inputPadding;
-	int offsetX = x;
-	int btnH = 20;
-	int btnW = 60;
-	ButtonGui *sampleBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SAMPLE", inst->sampleIndex, incParameterBaseValue);
-	addButtonToContainer(sampleBtn, ic, 0, 0, scene, enabled);
-	return ic;
-}
-
-InputContainer *createBlepParamsContainer(Instrument *inst, int x, int y, int w, int h, int scene, int enabled) {
-	InputContainer *ic = createInputContainer();
-	int offsetY = y + ic->inputPadding;
-	int offsetX = x;
-	int btnH = 20;
-	int btnW = 60;
-	ButtonGui *shapeBtn = createButtonGui(offsetX, offsetY, btnW, btnH, "SHAPE", inst->shape, incParameterBaseValue);
-	addButtonToContainer(shapeBtn, ic, 0, 0, scene, enabled);
-	return ic;
-}
-
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	InstrumentGui *ig = (InstrumentGui *)malloc(sizeof(InstrumentGui));
 	if(!ig) return;
@@ -631,16 +511,54 @@ Graph *getSelectedInstGraph() {
 }
 
 void createArrangerGraph(Arranger *a, PatternList *pl) {
-	agui = createGraph(na_horizontal);
-	GuiNode *margin1 = createBlankGuiNode();
-	GuiNode *margin2 = createBlankGuiNode();
-	ArrangerGuiNode *agn = createArrangerGuiNode(0, 0, SCREEN_W * 0.75, SCREEN_H, 5, na_vertical, "arr", 1, a, pl);
-	GuiNode *gn = (GuiNode *)agn;
+	agui = createGraph(na_vertical);
+	GuiNode *arrWrap = createGuiNode(0, 0, 100, 100, 5, na_horizontal, "awrap", 0, 0);
+	GuiNode *songControls = createGuiNode(0, 0, 100, 100, 5, na_vertical, "song", 0, 0);
 
-	appendItem(agui->root, margin1, 1);
-	appendItem(agui->root, &agn->base, 4);
-	appendItem(agui->root, margin2, 1);
-	reflowCoordinates(agui->root);
+	GuiNode *pad0 = createNamedBlankGuiNode("pad00");
+	GuiNode *pad1 = createNamedBlankGuiNode("pad01");
+	GuiNode *bpm = createBtnGuiNode(0, 0, 100, 100, 5, na_vertical, "BPM", false, incParameterBaseValue, a->tempoSettings.bpm);
+	GuiNode *swing = createBtnGuiNode(0, 0, 100, 100, 5, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
+	GuiNode *pad2 = createNamedBlankGuiNode("pad02");
+	appendItem(songControls, pad0, 1);
+	appendItem(songControls, bpm, 1);
+	appendItem(songControls, swing, 1);
+	appendItem(songControls, pad2, 8);
+
+	GuiNode *margin2 = createNamedBlankGuiNode("Marge!");
+	ArrangerGuiNode *agn = createArrangerGuiNode(0, 0, SCREEN_W * 0.75, SCREEN_H, 5, na_vertical, "arr", true, a, pl);
+	GuiNode *gn = (GuiNode *)agn;
+	agui->selected = gn;
+	appendItem(agui->root, pad1, 1);
+
+	appendItem(arrWrap, songControls, 1);
+	appendItem(arrWrap, gn, 4);
+	appendItem(arrWrap, margin2, 1);
+	appendItem(agui->root, arrWrap, 20);
+	// reflowCoordinates(agui->root);
+}
+
+void navigateArrangerGraph(int keymapping) {
+	navigateGraph(agui, keymapping);
+}
+
+void arrangerGraphControlInput(int keymapping) {
+	switch(keymapping) {
+		case KM_LEFT:
+			agui->selected->callback(agui->selected->p, -0.1f);
+			break;
+		case KM_RIGHT:
+			agui->selected->callback(agui->selected->p, 0.1f);
+			break;
+		case KM_UP:
+			agui->selected->callback(agui->selected->p, 1.0f);
+			break;
+		case KM_DOWN:
+			agui->selected->callback(agui->selected->p, -1.0f);
+			break;
+		default:
+			break;
+	}
 }
 
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p) {
@@ -656,22 +574,96 @@ GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment
 	return gn;
 }
 
+void printArrGraph() {
+	printGraph(agui->root, 0);
+}
+
+SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd) {
+	SampleWaveformGuiNode *swgn = malloc(sizeof(SampleWaveformGuiNode));
+	GuiNode *gn = (GuiNode *)swgn;
+	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, selected)) {
+		printf("ArrangerGuiNode init problem, returning NULL.\n");
+		return NULL;
+	}
+
+	swgn->instrument = inst;
+	swgn->bgColour = (Color){ 0, 0, 0, 255 };
+	swgn->wfColour = (Color){ 255, 0, 0, 255 };
+	swgn->wfAltColour = (Color){ 0, 255, 0, 255 };
+	swgn->loopStart = loopStart;
+	swgn->loopEnd = loopEnd;
+
+	gn->drawable = true;
+	gn->draw = drawSampleWaveformGuiNode;
+	return swgn;
+}
+
+void drawSampleWaveformGuiNode(void *self) {
+	SampleWaveformGuiNode *swgn = (SampleWaveformGuiNode *)self;
+	GuiNode *gn = (GuiNode *)swgn;
+	int yOffset = gn->h / 2;
+	int sampleIndexRatio = swgn->instrument->sample->length / gn->w;
+	float phaseInc = 1.0 / gn->w;
+	DrawRectangle(gn->x, gn->y, gn->w, gn->h, swgn->bgColour);
+	for(int i = 0; i < gn->w; i++) {
+		float sp = i * sampleIndexRatio;
+		float s = getSampleValueFwd(swgn->instrument->sample, &sp, phaseInc, SAMPLE_RATE, 0, SPT_FORWARD);
+		s *= yOffset;
+		DrawLine(gn->x + i, gn->y + yOffset, gn->x + i, gn->y + yOffset + s, swgn->wfColour);
+	}
+
+	int loopStart = getParameterValueAsInt(swgn->loopStart);
+	int loopEnd = getParameterValueAsInt(swgn->loopEnd);
+
+	int nx = gn->x + loopStart / sampleIndexRatio;
+	DrawLine(nx, gn->y, nx, gn->y + gn->h, swgn->wfAltColour);
+	nx = gn->x + loopEnd / sampleIndexRatio;
+	DrawLine(nx, gn->y, nx, gn->y + gn->h, swgn->wfAltColour);
+
+	DrawTextEx(pixelFont, swgn->instrument->sample->name, (Vector2){ gn->x + gn->padding, gn->y + gn->padding }, 12, 2, swgn->wfAltColour);
+}
+
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList) {
 	ArrangerGuiNode *agn = malloc(sizeof(ArrangerGuiNode));
 	GuiNode *gn = (GuiNode *)agn;
-	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, 0)) {
+	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, selected)) {
 		printf("ArrangerGuiNode init problem, returning NULL.\n");
 		return NULL;
 	}
 	gn->draw = drawArrangerGuiNode;
 	gn->drawable = true;
+	gn->customNav = navigateArrangerGuiNode;
 	agn->grid_padding = 5;
 	agn->arranger = arranger;
+
 	agn->patternList = patternList;
 	agn->border_size = 3;
 	agn->iconx = gn->x;
 	agn->icony = gn->y - 30;
 	return agn;
+}
+
+bool navigateArrangerGuiNode(void *self, int keymapping) {
+	ArrangerGuiNode *agn = (ArrangerGuiNode *)self;
+
+	bool navSuccess = false;
+	switch(keymapping) {
+		case KM_LEFT:
+			navSuccess = selectArrangerCell(agn->arranger, 0, -1, 0);
+			break;
+		case KM_RIGHT:
+			navSuccess = selectArrangerCell(agn->arranger, 0, 1, 0);
+			break;
+		case KM_UP:
+			navSuccess = selectArrangerCell(agn->arranger, 0, 0, -1);
+			break;
+		case KM_DOWN:
+			navSuccess = selectArrangerCell(agn->arranger, 0, 0, 1);
+			break;
+		default:
+			break;
+	}
+	return navSuccess;
 }
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
@@ -846,7 +838,10 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	GuiNode *loop = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->loopSample);
 	loop->draw = drawBtnGuiNode;
 	pan->draw = drawDiscreteDialGuiNode;
-
+	GuiNode *loopStart = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, incParameterBaseValue, inst->loopStartIndex);
+	GuiNode *loopEnd = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, incParameterBaseValue, inst->loopEndIndex);
+	GuiNode *playbackType = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PLAYBACK", 0, incParameterBaseValue, inst->playbackType);
+	SampleWaveformGuiNode *swgn = createSampleWaveformGuiNode(0, 0, 100, 100, 5, na_vertical, "WFRM", 0, inst, inst->loopStartIndex, inst->loopEndIndex);
 	if(selected) {
 		g->selected = sampleIndex;
 	}
@@ -857,7 +852,12 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	appendItem(btnrow1, sampleIndex, 1);
 	appendItem(btnrow1, pan, 1);
 	appendItem(btnrow1, loop, 1);
-	appendItem(btnrow1, sp1, 4);
+	appendItem(btnrow1, loopStart, 1);
+	appendItem(btnrow1, loopEnd, 1);
+	appendItem(btnrow1, playbackType, 1);
+	appendItem(btnrow1, sp1, 2);
+
+	appendItem(btnrow2, (GuiNode *)swgn, 3);
 	appendItem(btnrow2, sp2, 1);
 
 	appendItem(btnwrap, btnrow1, 1);
@@ -1002,33 +1002,33 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	return instGraph;
 }
 
-ContainerGroup *createInstrumentModulationGui(Instrument *inst, int x, int y, int contW, int contH, int scene, int enabled) {
-	ContainerGroup *cg = createContainerGroup();
-	InputContainer *fmParams = NULL;
-	InputContainer *sampleParams = NULL;
-	InputContainer *blepParams = NULL;
-	switch(inst->voiceType) {
-		case VOICE_TYPE_FM:
-			fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
-			addContainerToGroup(cg, fmParams, 0, 0);
-			break;
-		case VOICE_TYPE_BLEP:
-			blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
-			addContainerToGroup(cg, blepParams, 0, 0);
-			break;
-		case VOICE_TYPE_SAMPLE:
-			sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
-			addContainerToGroup(cg, sampleParams, 0, 0);
-			break;
-		default:
-			break;
-	}
-	for(int i = 1; i < inst->envelopeCount + 1; i++) {
-		EnvelopeContainer *ic = createADEnvelopeContainer(inst->envelopes[i - 1], (i % 2) * contW, 200 + (i / 2) * (contH + 50), contW, contH, scene, enabled);
-		addContainerToGroup(cg, ic->envInputs, (int)(i) / 2, (int)(i) % 2);
-	}
-	return cg;
-}
+// ContainerGroup *createInstrumentModulationGui(Instrument *inst, int x, int y, int contW, int contH, int scene, int enabled) {
+// 	ContainerGroup *cg = createContainerGroup();
+// 	InputContainer *fmParams = NULL;
+// 	InputContainer *sampleParams = NULL;
+// 	InputContainer *blepParams = NULL;
+// 	switch(inst->voiceType) {
+// 		case VOICE_TYPE_FM:
+// 			fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
+// 			addContainerToGroup(cg, fmParams, 0, 0);
+// 			break;
+// 		case VOICE_TYPE_BLEP:
+// 			blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
+// 			addContainerToGroup(cg, blepParams, 0, 0);
+// 			break;
+// 		case VOICE_TYPE_SAMPLE:
+// 			sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
+// 			addContainerToGroup(cg, sampleParams, 0, 0);
+// 			break;
+// 		default:
+// 			break;
+// 	}
+// 	for(int i = 1; i < inst->envelopeCount + 1; i++) {
+// 		EnvelopeContainer *ic = createADEnvelopeContainer(inst->envelopes[i - 1], (i % 2) * contW, 200 + (i / 2) * (contH + 50), contW, contH, scene, enabled);
+// 		addContainerToGroup(cg, ic->envInputs, (int)(i) / 2, (int)(i) % 2);
+// 	}
+// 	return cg;
+// }
 
 AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h) {
 	AlgoGraphGui *agg = (AlgoGraphGui *)malloc(sizeof(AlgoGraphGui));
@@ -1130,11 +1130,11 @@ void drawEnvelopeGui(void *self) {
 	}
 }
 
-void drawTransportGui(void *self) {
-	Vector2 pos = (Vector2){ 600, 10 };
-	TransportGui *tg = (TransportGui *)self;
-	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y, 20, 20);
-}
+// void drawTransportGui(void *self) {
+// 	Vector2 pos = (Vector2){ 600, 10 };
+// 	TransportGui *tg = (TransportGui *)self;
+// 	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y, 20, 20);
+// }
 void drawArrangerGuiNode(void *self) {
 	ArrangerGuiNode *aGui = (ArrangerGuiNode *)self;
 	Arranger *arranger = (Arranger *)aGui->arranger;
@@ -1174,7 +1174,7 @@ void drawArrangerGuiNode(void *self) {
 			int newy = tmpy + (j * (cellH + aGui->grid_padding));
 			if(arranger->song[i][j] > -1) {
 				sprintf(cellText, "%02i", arranger->song[i][j]);
-				if(arranger->playhead_indices[i] == j) {
+				if(arranger->playhead_indices[i] == j && arranger->playing) {
 					DrawRectangle(newx, newy, cellW, cellH, (Color){ 255, 0, 0, 255 });
 				} else {
 					DrawRectangle(newx, newy, cellW, cellH, cs.defaultCell);

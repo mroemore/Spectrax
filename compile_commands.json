@@ -248,6 +248,38 @@
       "-g",
       "-O0",
       "-o",
+      "src/fft.o",
+      "src/fft.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/fft.c",
+    "output": "/home/krang/Spectrax/src/fft.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
+      "src/dataviz.o",
+      "src/dataviz.c"
+    ],
+    "directory": "/home/krang/Spectrax",
+    "file": "/home/krang/Spectrax/src/dataviz.c",
+    "output": "/home/krang/Spectrax/src/dataviz.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Iinclude",
+      "-DLINUX",
+      "-g",
+      "-O0",
+      "-o",
       "src/wavetable.o",
       "src/wavetable.c"
     ],

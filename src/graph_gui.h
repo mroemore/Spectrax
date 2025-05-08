@@ -1,6 +1,8 @@
 #ifndef GRAPH_GUI_H
 #define GRAPH_GUI_H
 
+#define DEBUG_GRAPH_DRAW
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <math.h>
@@ -16,6 +18,7 @@
 
 typedef void (*DrawCallback)(void *self);
 typedef void (*OnPressCallback)(Parameter *parameter, float value);
+typedef bool (*CustomNavFunc)(void *self, int keymapping);
 
 typedef struct GuiNode GuiNode;
 
@@ -44,12 +47,14 @@ struct GuiNode {
 	bool selected;
 	bool resizeable;
 	bool drawable;
+	bool navOverride;
 	uint8_t nodeAlignment;
 	uint16_t x;
 	uint16_t y;
 	uint16_t w;
 	uint16_t h;
 	uint16_t padding;
+	CustomNavFunc customNav;
 };
 
 typedef struct {
@@ -60,6 +65,8 @@ typedef struct {
 bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
 GuiNode *createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
 GuiNode *createBlankGuiNode();
+GuiNode *createNamedBlankGuiNode(char *name);
+void printGraph(GuiNode *root, int depth);
 
 void reflowCoordinates(GuiNode *n);
 void appendItem(GuiNode *parent, GuiNode *child, int weight);

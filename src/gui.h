@@ -2,12 +2,14 @@
 #define GUI_H
 
 #include <stdbool.h>
+#include "sample.h"
 #include "sequencer.h"
 #include "modsystem.h"
 #include "settings.h"
 #include "raylib.h"
 #include "input.h"
 #include "graph_gui.h"
+#include "voice.h"
 
 #define MAX_GRAPH_HISTORY 25
 #define MAX_BUTTON_ROWS 64
@@ -15,14 +17,6 @@
 #define MAX_BUTTON_CONTAINER_ROWS 64
 #define MAX_BUTTON_CONTAINER_COLS 64
 #define OSCILLOSCOPE_HISTORY 1024
-
-typedef enum {
-	GLOBAL,
-	SCENE_ARRANGER,
-	SCENE_PATTERN,
-	SCENE_INSTRUMENT,
-	SCENE_COUNT
-} Scene;
 
 typedef void (*CallbackApplicator)(void *self, float value);
 
@@ -212,6 +206,8 @@ typedef struct {
 } ArrangerGraph;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
+void navigateArrangerGraph(int keymapping);
+void arrangerGraphControlInput(int keymapping);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();
 EnvelopeContainer *createADEnvelopeContainer(Envelope *env, int x, int y, int w, int h, int scene, int enabled);
@@ -243,7 +239,7 @@ void free_drawable_list(DrawableList *list);
 void add_drawable(Drawable *drawable, int scene);
 void removeDrawable(Drawable *drawable, int scene);
 
-TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y);
+// TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y);
 SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedNote, int x, int y);
 GraphGui *createGraphGui(float *target, char *name, float min, float max, int x, int y, int h, int size);
 ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList);
@@ -262,8 +258,23 @@ typedef struct {
 	int border_size;
 } ArrangerGuiNode;
 
+typedef struct {
+	GuiNode base;
+	Instrument *instrument;
+	Parameter *loopStart;
+	Parameter *loopEnd;
+	Color bgColour;
+	Color wfColour;
+	Color wfAltColour;
+	Image wfImage;
+} SampleWaveformGuiNode;
+
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
+void printArrGraph();
+SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
+void drawSampleWaveformGuiNode(void *self);
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
+bool navigateArrangerGuiNode(void *self, int keymapping);
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 void drawValueDisplay(int x, int y, int w, int h, char *text);
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);

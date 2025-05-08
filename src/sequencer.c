@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "appstate.h"
+#include "modsystem.h"
 #include "settings.h"
 #include "sequencer.h"
 #include "notes.h"
 
-PatternList *createPatternList() {
+PatternList *createPatternList(ApplicationState *appState) {
 	// printf("creating patternList\n");
 
 	PatternList *patternList = (PatternList *)malloc(sizeof(PatternList));
@@ -14,11 +16,38 @@ PatternList *createPatternList() {
 		return NULL;
 	}
 	patternList->pattern_count = 0;
+	patternList->selectedPattern = -1;
+
+	patternList->onStepChange.f = setSelectedStep;
+	patternList->onStepChange.appstateRef = appState;
+	patternList->onNoteSet.f = setLastUsedNote;
+	patternList->onNoteSet.appstateRef = appState;
 	printf("\t-> DONE.\n");
 	return patternList;
 }
 
-Arranger *createArranger(Settings *settings) {
+static int intBpmToSamplesPerStep(int bpm) {
+	return (PA_SR * 60) / (bpm * 4.0f);
+}
+
+static float floatBpmToSamplesPerStep(float bpm) {
+	return (PA_SR * 60.0f) / (bpm * 4.0f);
+}
+
+static void applyTempoSettings(TempoSettings *ts) {
+	int swingEven = getParameterValueAsInt(ts->swing);
+	int swingOdd = 100 - swingEven;
+	float samplesPerStepCent = floatBpmToSamplesPerStep(getParameterValue(ts->bpm)) / 50.0f;
+	ts->samplesPerEvenStep = samplesPerStepCent * swingEven;
+	ts->samplesPerOddStep = samplesPerStepCent * swingOdd;
+}
+
+void cb_applyBpmParam(void *tempoSettings) {
+	TempoSettings *ts = (TempoSettings *)tempoSettings;
+	applyTempoSettings(ts);
+}
+
+Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamList *globalParamList) {
 	printf("create arranger.\n");
 
 	Arranger *arranger = (Arranger *)malloc(sizeof(Arranger));
@@ -28,12 +57,19 @@ Arranger *createArranger(Settings *settings) {
 	}
 	arranger->selected_x = 0;
 	arranger->selected_y = 0;
-	arranger->loop = 1;
+	arranger->tempoSettings = (TempoSettings){
+		.bpm = createParameterPro(globalParamList, "BPM", settings->defaultBPM, 1.0, 1000.0, 1.0, 10.0, &arranger->tempoSettings, cb_applyBpmParam),
+		.loop = true,
+		.swingStep = false,
+		.samplesPerEvenStep = intBpmToSamplesPerStep(settings->defaultBPM),
+		.samplesPerOddStep = intBpmToSamplesPerStep(settings->defaultBPM),
+		.swing = createParameterPro(globalParamList, "Swing", 50.0, 1.0, 99.0, 1.0, 10.0, &arranger->tempoSettings, cb_applyBpmParam),
+		.currentSamplesPerStep = intBpmToSamplesPerStep(settings->defaultBPM),
+		.samplesElapsed = 0
+	};
 	arranger->enabledChannels = settings->enabledChannels;
 	printf("set channels.\n");
 
-	arranger->beats_per_minute = 120;
-	arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
 	arranger->playing = 0;
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
@@ -49,15 +85,20 @@ Arranger *createArranger(Settings *settings) {
 	}
 	printf("initialised song structure.\n");
 	printf("\t-> DONE.\n");
+	arranger->onCellSelect.appstateRef = appState;
+	arranger->onCellSelect.f = setSelectedArrangerCell;
+
+	arranger->onPatternSelection.appstateRef = appState;
+	arranger->onPatternSelection.f = setSelectedPattern;
 	return arranger;
 }
 
-void updateBpm(Arranger *arranger, int bpm) {
-	if(bpm > 1 && bpm < 800) {
-		arranger->beats_per_minute = bpm;
-		arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
-	}
-}
+// void updateBpm(Arranger *arranger, int bpm) {
+// 	if(bpm > 1 && bpm < 800) {
+// 		arranger->beats_per_minute = bpm;
+// 		arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
+// 	}
+// }
 
 void addChannel(Arranger *arranger, int channelIndex) {
 	if(arranger->enabledChannels < MAX_SEQUENCER_CHANNELS && channelIndex >= 0) {
@@ -156,9 +197,10 @@ int findArrangerLoopIndex(Arranger *arranger, int sequencerId, int currentY) {
 	return loopIndex;
 }
 
-int *selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey, int *selectedArrangerCell) {
+bool selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex, int relativey) {
 	printf("selectcell\n");
 	int newx, newy;
+	bool navSuccess = false;
 	newx = arranger->selected_x + relativex;
 	newy = arranger->selected_y + relativey;
 	if(newx > arranger->enabledChannels - 1) {
@@ -174,13 +216,24 @@ int *selectArrangerCell(Arranger *arranger, int checkBlankPattern, int relativex
 		newy = 0;
 	}
 	if(arranger->song[newx][newy] != -1 || !checkBlankPattern) {
+		if(arranger->selected_x != newx || arranger->selected_y != newy) {
+			navSuccess = true;
+		}
 		arranger->selected_x = newx;
 		arranger->selected_y = newy;
 	}
+	int selectedArrangerCell[2];
 	selectedArrangerCell[0] = arranger->selected_x;
 	selectedArrangerCell[1] = arranger->selected_y;
-	printf("SELECTED: %i,%i\n", selectedArrangerCell[0], selectedArrangerCell[1]);
-	return selectedArrangerCell;
+	int patternIndex = arranger->song[arranger->selected_x][arranger->selected_y];
+	arranger->onCellSelect.f(arranger->onCellSelect.appstateRef, selectedArrangerCell);
+	arranger->onPatternSelection.f(arranger->onPatternSelection.appstateRef, &patternIndex);
+	// printf("SELECTED: %i,%i\n", selectedArrangerCell[0], selectedArrangerCell[1]);
+	return navSuccess;
+}
+
+int getPatternIDfromArranger(Arranger *a) {
+	return a->song[a->selected_x][a->selected_y];
 }
 
 int selectStep(PatternList *patternList, int patternIndex, int selectedStep) {
@@ -191,7 +244,7 @@ int selectStep(PatternList *patternList, int patternIndex, int selectedStep) {
 	if(selectedStep < 0) {
 		selectedStep = 0;
 	}
-
+	patternList->onStepChange.f(patternList->onStepChange.appstateRef, &selectedStep);
 	return selectedStep;
 }
 
@@ -202,17 +255,16 @@ bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteInde
 void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	patternList->patterns[patternIndex].notes[noteIndex][0] = note[0];
 	patternList->patterns[patternIndex].notes[noteIndex][1] = note[1];
+	patternList->onNoteSet.f(patternList->onNoteSet.appstateRef, &note);
 }
 
 void editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	printf("editing...");
 	if(patternList->patterns[patternIndex].notes[noteIndex][0] == OFF) {
-		patternList->patterns[patternIndex].notes[noteIndex][0] = C;
-		patternList->patterns[patternIndex].notes[noteIndex][1] = 3;
-	} else {
-		patternList->patterns[patternIndex].notes[noteIndex][0] = note[0];
-		patternList->patterns[patternIndex].notes[noteIndex][1] = note[1];
+		note[0] = C;
+		note[1] = 3;
 	}
+	setCurrentNote(patternList, patternIndex, noteIndex, note);
 }
 
 void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
@@ -237,11 +289,14 @@ void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int not
 		newNote[1] = 0;
 	}
 
-	patternList->patterns[patternIndex].notes[noteIndex][0] = newNote[0];
-	patternList->patterns[patternIndex].notes[noteIndex][1] = newNote[1];
+	setCurrentNote(patternList, patternIndex, noteIndex, newNote);
+
+	// patternList->patterns[patternIndex].notes[noteIndex][0] = newNote[0];
+	// patternList->patterns[patternIndex].notes[noteIndex][1] = newNote[1];
 }
 
 void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger *arranger) { // TO-DO: add pattern mode func
+	arranger->tempoSettings.swingStep = !arranger->tempoSettings.swingStep;
 	for(int i = 0; i < arranger->enabledChannels; i++) {
 		int patternSize = patternList->patterns[sequencer->pattern_index[i]].pattern_size;
 		if(sequencer->playhead_index[i] + 1 > patternSize - 1) {
@@ -252,7 +307,7 @@ void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger
 				arranger->playhead_indices[i]++;
 				sequencer->pattern_index[i] = arranger->song[i][nextRowIndex];
 			} else {
-				if(arranger->loop) {
+				if(arranger->tempoSettings.loop) {
 					// printf("\n\t\tLoop. \n");
 					int loopIndex = findArrangerLoopIndex(arranger, i, nextRowIndex);
 					arranger->playhead_indices[i] = loopIndex;
