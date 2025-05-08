@@ -59,6 +59,10 @@ GranularProcessor *createGranularProcessor(Sample *s);
 OutVal granularProcess(GranularProcessor *gp, float phaseIncrement);
 
 typedef struct {
+	Sample *sample;
+} GranularInstrumentData;
+
+typedef struct {
 	Parameter *shape;
 } BlepInstrumentData;
 
@@ -68,13 +72,16 @@ typedef struct {
 } FmInstrumentData;
 
 typedef struct {
+	Sample *sample;
 	Parameter *playbackSpeed;
 	SamplePool *sp;
 	float *spectralData;
 	int spectralDataSize;
-} SpectralInstrmentData;
+} SpectralInstrumentData;
 
 typedef struct {
+	Sample *sample;
+	SamplePool *sp;
 	Parameter *bitDepth;
 	Parameter *sampleRate;
 	Parameter *loopSample;
@@ -83,10 +90,9 @@ typedef struct {
 	Parameter *loopStartIndex;
 	Parameter *loopEndIndex;
 	GetSampleFunc getSample;
-} SampleInstrumentData;
+} SamplerInstrumentData;
 
 typedef struct {
-	Sample *sample;
 	ModList *modList;
 	ParamList *paramList;
 	Envelope *envelopes[MAX_ENVELOPES];
@@ -99,10 +105,11 @@ typedef struct {
 	Parameter *detuneSpread;
 	Parameter *panning;
 	union {
-		SampleInstrumentData sample;
+		SamplerInstrumentData sampler;
 		FmInstrumentData fm;
-		SpectralInstrmentData spectral;
+		SpectralInstrumentData spectral;
 		BlepInstrumentData blep;
+		GranularInstrumentData granular;
 	} id;
 } Instrument;
 
@@ -115,6 +122,7 @@ typedef struct {
 } FmVoiceData;
 
 typedef struct {
+	Sample *sample;
 	float *spectralData;
 	float samplePosition;
 	int spectralDataSize;
@@ -125,7 +133,7 @@ typedef struct {
 	float samplePosition; // Position in the sample data
 	GenerateSample generate;
 	SamplePool *samplePool;
-} SampleVoiceData;
+} SamplerVoiceData;
 
 typedef struct {
 	GranularProcessor *granularProcessor;
@@ -152,10 +160,10 @@ struct Voice {
 		FmVoiceData fm;
 		BlepVoiceData blep;
 		SpectralVoiceData spectral;
-		SampleVoiceData sample;
+		SamplerVoiceData sampler;
 		GranularVoiceData granular;
 	} vd;
-	Filter filter;
+	Filter *filter;
 };
 
 typedef enum {

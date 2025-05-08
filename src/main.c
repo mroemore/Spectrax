@@ -93,7 +93,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 						currentVoice->active = 0;
 						// printf("%i not triggered...", j);
 						if(currentVoice->type == VOICE_TYPE_SAMPLE) {
-							currentVoice->samplePosition = 0.0f;
+							currentVoice->vd.sampler.samplePosition = 0.0f;
 						}
 					}
 
