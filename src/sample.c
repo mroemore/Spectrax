@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include "settings.h"
 
 SamplePool *createSamplePool() {
 	// printf("creating sample pool.\n");
@@ -84,13 +85,13 @@ void freeSample(Sample *sample) {
 	sample->sampleRate = 0;
 }
 
-float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType) {
+float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int loop) {
 	// Validate the sample
 	if(!sample || !sample->data || sample->length <= 0) {
 		fprintf(stderr, "Invalid sample or data\n");
 		return 0.0f;
 	}
-	float adjusted_phase_increment = phaseIncrement * (paSr / ((float)sample->sampleRate / sample->bit) * 2);
+	float adjusted_phase_increment = phaseIncrement * (PA_SR / ((float)sample->sampleRate / sample->bit) * 2);
 	*samplePosition += adjusted_phase_increment;
 
 	if(*samplePosition >= sample->length) {
@@ -113,13 +114,13 @@ float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrem
 	return value;
 }
 
-float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType) {
+float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int loop) {
 	// Validate the sample
 	if(!sample || !sample->data || sample->length <= 0) {
 		fprintf(stderr, "Invalid sample or data\n");
 		return 0.0f;
 	}
-	float adjusted_phase_increment = phaseIncrement * (paSr / ((float)sample->sampleRate / sample->bit) * 2);
+	float adjusted_phase_increment = phaseIncrement * (PA_SR / ((float)sample->sampleRate / sample->bit) * 2);
 	*samplePosition += adjusted_phase_increment;
 
 	if(*samplePosition >= sample->length) {

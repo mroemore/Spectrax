@@ -42,7 +42,7 @@ typedef struct {
 	int bit;
 } Sample;
 
-typedef float (*GetSampleFunc)(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType);
+typedef float (*GetSampleFunc)(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
 
 typedef struct {
 	char *sampleData;
@@ -56,7 +56,7 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 SamplePool *createSamplePool();
 void freeSamplePool(SamplePool *sp);
 void freeSample(Sample *sample);
-float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType);
-float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int paSr, int loop, SamplePlaybackType playbackType);
+float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
+float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
 
 #endif

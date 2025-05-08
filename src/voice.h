@@ -35,7 +35,7 @@ typedef struct {
 #define GRAIN_WINDOW_SIZE 1024
 
 typedef struct Voice Voice;
-typedef float (*GenerateSample)(Voice *currentVoice, float phaseIncrement, float frequency);
+typedef OutVal (*GenerateSample)(Voice *currentVoice, float phaseIncrement, float frequency);
 
 typedef struct {
 	ParamList *paramList;
@@ -89,7 +89,7 @@ typedef struct {
 	Parameter *playbackType;
 	Parameter *loopStartIndex;
 	Parameter *loopEndIndex;
-	GetSampleFunc getSample;
+	GetSampleFunc getSampleValue;
 } SamplerInstrumentData;
 
 typedef struct {
@@ -131,7 +131,6 @@ typedef struct {
 typedef struct {
 	Sample *sample;
 	float samplePosition; // Position in the sample data
-	GenerateSample generate;
 	SamplePool *samplePool;
 } SamplerVoiceData;
 
@@ -156,6 +155,7 @@ struct Voice {
 	Parameter *frequency;
 	Parameter *volume;
 	Instrument *instrumentRef;
+	GenerateSample generate;
 	union {
 		FmVoiceData fm;
 		BlepVoiceData blep;

@@ -1,7 +1,7 @@
 #ifndef GRAPH_GUI_H
 #define GRAPH_GUI_H
 
-#define DEBUG_GRAPH_DRAW
+// #define DEBUG_GRAPH_DRAW
 
 #include <stdbool.h>
 #include <stdint.h>

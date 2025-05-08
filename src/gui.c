@@ -607,7 +607,7 @@ void drawSampleWaveformGuiNode(void *self) {
 	DrawRectangle(gn->x, gn->y, gn->w, gn->h, swgn->bgColour);
 	for(int i = 0; i < gn->w; i++) {
 		float sp = i * sampleIndexRatio;
-		float s = getSampleValueFwd(swgn->instrument->id.sampler.sample, &sp, phaseInc, SAMPLE_RATE, 0, SPT_FORWARD);
+		float s = getSampleValueFwd(swgn->instrument->id.sampler.sample, &sp, phaseInc, 0);
 		s *= yOffset;
 		DrawLine(gn->x + i, gn->y + yOffset, gn->x + i, gn->y + yOffset + s, swgn->wfColour);
 	}
@@ -1150,10 +1150,10 @@ void drawArrangerGuiNode(void *self) {
 	for(int i = 0; i < arranger->enabledChannels; i++) {
 		switch(arranger->voiceTypes[i]) {
 			case VOICE_TYPE_BLEP:
-				drawSprite(instrumentIcons, 1, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
+				drawSprite(instrumentIcons, 0, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;
 			case VOICE_TYPE_SAMPLE:
-				drawSprite(instrumentIcons, 0, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
+				drawSprite(instrumentIcons, 1, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;
 			case VOICE_TYPE_FM:
 				drawSprite(instrumentIcons, 2, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
