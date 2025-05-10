@@ -1148,7 +1148,7 @@ void drawArrangerGuiNode(void *self) {
 	int cursory = tmpy + arranger->selected_y * (cellH + aGui->grid_padding);
 
 	for(int i = 0; i < arranger->enabledChannels; i++) {
-		switch(arranger->voiceTypes[i]) {
+		switch(arranger->vm->instruments[i]->voiceType) {
 			case VOICE_TYPE_BLEP:
 				drawSprite(instrumentIcons, 0, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
 				break;

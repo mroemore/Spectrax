@@ -202,11 +202,11 @@ Envelope *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter
 void initADPresetData(ModPreset *mp, float aDuration, float dDuration, float aCurve, float dCurve);
 void initLfoPresetData(ModPreset *mp, LfoShape shape, float rate, float phase);
 void initRandPresetData(ModPreset *mp, LfoShape shape, float rate, float phase);
-void loadEnvPreset(EnvPresetData *epd, Envelope *e, ParamList *paramList, ModList *modlist);
+void initEnvelopeFromPreset(ModPreset *mp, Envelope *e, ParamList *paramList, ModList *modlist);
 void saveEnvPreset(EnvPresetData *epd, Envelope *e);
-void loadLfoPreset(LfoPresetData *epd, LFO *e, ParamList *paramList, ModList *modlist);
+void initLfoFromPreset(LfoPresetData *epd, LFO *e, ParamList *paramList, ModList *modlist);
 void saveLfoPreset(LfoPresetData *epd, LFO *e);
-void loadRandPreset(RandPresetData *epd, Random *e, ParamList *paramList, ModList *modlist);
+void initRandFromPreset(RandPresetData *epd, Random *e, ParamList *paramList, ModList *modlist);
 void saveRandPreset(RandPresetData *epd, Random *e);
 
 void generateCurve(float *data, size_t length, float curve, int steepnessFactor);

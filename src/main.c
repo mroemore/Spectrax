@@ -440,11 +440,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("modList creation failed.\n");
 		return;
 	}
-	data->arranger = createArranger(settings, *appState, data->globalParameters);
-	if(!data->arranger) {
-		printf("arranger creation failed.\n");
-		return;
-	}
+
 	data->patternList = createPatternList(*appState);
 	if(!data->patternList) {
 		printf("patternList creation failed.\n");
@@ -458,6 +454,11 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool);
 	if(!data->voiceManager) {
 		printf("voiceManager creation failed.\n");
+		return;
+	}
+	data->arranger = createArranger(settings, data->voiceManager, *appState, data->globalParameters);
+	if(!data->arranger) {
+		printf("arranger creation failed.\n");
 		return;
 	}
 	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);

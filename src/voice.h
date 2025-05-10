@@ -115,6 +115,7 @@ typedef struct {
 typedef struct {
 	VoiceType voiceType;
 	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+	int modSettingsCount;
 	union {
 		SamplerPatch sampler;
 		FmPatch fm;
@@ -228,7 +229,11 @@ Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
 
+void initDefaultFmPreset(Preset *p);
+void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Preset p);
+
 void initialize_voice(Voice *voice, Instrument *inst);
+void initInstDefaults(Instrument *i);
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool);
 void initInstrumentFromPreset(Instrument **instrument, SamplePool *samplePool, Preset p);
 void setSamplePlaybackFunction(void *instrument);

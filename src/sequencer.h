@@ -49,10 +49,10 @@ typedef struct
 	int selected_y;
 	TempoSettings tempoSettings;
 	int playing;
-	int voiceTypes[MAX_SEQUENCER_CHANNELS];
 	int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
 	AppstateCallback onCellSelect;
 	AppstateCallback onPatternSelection;
+	VoiceManager *vm;
 } Arranger;
 
 typedef struct
@@ -74,7 +74,7 @@ PatternList *createPatternList(ApplicationState *appState);
  * @param settings Pointer to the settings to initialize the Arranger.
  * @return A pointer to the newly created Arranger.
  */
-Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamList *globalParamList);
+Arranger *createArranger(Settings *settings, VoiceManager *vm, ApplicationState *appState, ParamList *globalParamList);
 /**
  * @brief Adds a new channel to the Arranger at the specified index.
  * @param arranger Pointer to the Arranger.

@@ -71,9 +71,9 @@ void clearParamList(ParamList *list) {
 		printf("WARNING: clearParamList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	for(int i = 0; i < list->count; i++) {
-		freeParameter(list->params[i]);
-	}
+	// for(int i = 0; i < list->count; i++) {
+	// 	freeParameter(list->params[i]);
+	// }
 	list->count = 0;
 }
 
@@ -86,9 +86,9 @@ void clearModList(ModList *list) {
 		printf("WARNING: clearModList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	for(int i = 0; i < list->count; i++) {
-		freeMod(list->mods[i]);
-	}
+	// for(int i = 0; i < list->count; i++) {
+	// 	freeMod(list->mods[i]);
+	// }
 	list->count = 0;
 }
 
@@ -559,6 +559,7 @@ void initADPresetData(ModPreset *mp, float aDuration, float dDuration, float aCu
 		.loop = false,
 		.stageCount = 2
 	};
+
 	mp->md.env.stages[0] = (EnvStagePresetData){
 		.duration = aDuration,
 		.curvature = aCurve,
@@ -592,12 +593,17 @@ void initRandPresetData(ModPreset *mp, LfoShape shape, float rate, float phase) 
 		.shape = shape
 	};
 }
-void initEnvelopeFromPreset(EnvPresetData *epd, Envelope *e, ParamList *paramList, ModList *modlist) {
-	if(!epd || !e || !paramList) {
+void initEnvelopeFromPreset(ModPreset *mp, Envelope *e, ParamList *paramList, ModList *modlist) {
+	if(!mp || !e || !paramList) {
 		printf("ERROR: NULL passed to envelope preset init.\n");
 		return;
 	}
+	mp->type = MT_ENV;
+	EnvPresetData *epd = &mp->md.env;
+
+	initMod((Mod *)e, paramList, "env", MT_ENV, generateEnvelope);
 	initEnvelopeDefaults(e);
+
 	e->loop = epd->loop;
 	e->stageCount = epd->stageCount;
 	for(int i = 0; i < e->stageCount; i++) {

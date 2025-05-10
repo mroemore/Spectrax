@@ -350,7 +350,7 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 	int bpm = getParameterValueAsInt(arranger->tempoSettings.bpm);
 	fwrite(&bpm, sizeof(int), 1, file);
 	fwrite(&arranger->playing, sizeof(int), 1, file);
-	fwrite(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
+	// fwrite(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
 	fwrite(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file);
 
 	fclose(file);
@@ -437,11 +437,11 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 		printf("error ply\n");
 		return SEQ_ERROR_READ;
 	}
-	if(fread(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
-		fclose(file);
-		printf("error voicetypes\n");
-		return SEQ_ERROR_READ;
-	}
+	// if(fread(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
+	// 	fclose(file);
+	// 	printf("error voicetypes\n");
+	// 	return SEQ_ERROR_READ;
+	// }
 	if(fread(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file) != MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH) {
 		fclose(file);
 		printf("error reading arranger data.\n");

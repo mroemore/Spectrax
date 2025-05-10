@@ -28,8 +28,12 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 		vm->voiceCount[i] = 0;
 	}
 
+	Preset fmPreset;
+	initDefaultFmPreset(&fmPreset);
+
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-		init_instrument(&vm->instruments[i], settings->voiceTypes[i], sp);
+		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp);
+		applyInstrumentPreset(vm->instruments[i], sp, fmPreset);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
 		vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
 	}
@@ -297,7 +301,8 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 void initDefaultFmPreset(Preset *p) {
 	Preset p1 = (Preset){
 		.voiceType = VOICE_TYPE_FM,
-		.pd.fm.selectedAlgorithm = 0
+		.pd.fm.selectedAlgorithm = 0,
+		.modSettingsCount = 4
 	};
 	for(int i = 0; i < MAX_FM_OPERATORS; i++) {
 		p1.pd.fm.ops[i].feedbackAmount = 0.0;
@@ -309,13 +314,48 @@ void initDefaultFmPreset(Preset *p) {
 	p1.pd.fm.ops[2].ratio = 3.0;
 	p1.pd.fm.ops[3].ratio = 5.0;
 
-	for(int i = 0; i < 4; i++) {
+	for(int i = 0; i < p1.modSettingsCount; i++) {
 		initADPresetData(&p1.modSettings[i], 0.1f, 4.5f, 0.75f, 0.75f);
 	}
 	*p = p1;
 }
 
 void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Preset p) {
+	clearModList(instrument->modList);
+	clearParamList(instrument->paramList);
+	instrument->voiceType = p.voiceType;
+	switch(p.voiceType) {
+		default:
+		case VOICE_TYPE_FM:
+			instrument->envelopeCount = 4;
+			instrument->lfoCount = 0;
+			instrument->id.fm.selectedAlgorithm = createParameterEx(instrument->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
+			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+				instrument->id.fm.ops[i] = createOperator(instrument->paramList, 1);
+			}
+			setParameterBaseValue(instrument->id.fm.ops[1]->ratio, 2.0);
+			setParameterBaseValue(instrument->id.fm.ops[2]->ratio, 3.0);
+			setParameterBaseValue(instrument->id.fm.ops[3]->ratio, 4.0);
+			break;
+	}
+	instrument->envelopeCount = 0;
+	instrument->lfoCount = 0;
+	for(int i = 0; i < p.modSettingsCount; i++) {
+		switch(p.modSettings[i].type) {
+			case MT_ENV:
+				instrument->envelopes[instrument->envelopeCount] = malloc(sizeof(Envelope));
+				initEnvelopeFromPreset(&p.modSettings[i], instrument->envelopes[instrument->envelopeCount], instrument->paramList, instrument->modList);
+				instrument->envelopeCount++;
+				break;
+			case MT_LFO:
+				instrument->lfoCount++;
+				break;
+			case MT_RND:
+				break;
+			default:
+				break;
+		}
+	}
 }
 
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool) {

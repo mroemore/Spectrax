@@ -6,6 +6,7 @@
 #include "settings.h"
 #include "sequencer.h"
 #include "notes.h"
+#include "voice.h"
 
 PatternList *createPatternList(ApplicationState *appState) {
 	// printf("creating patternList\n");
@@ -47,7 +48,7 @@ void cb_applyBpmParam(void *tempoSettings) {
 	applyTempoSettings(ts);
 }
 
-Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamList *globalParamList) {
+Arranger *createArranger(Settings *settings, VoiceManager *vm, ApplicationState *appState, ParamList *globalParamList) {
 	printf("create arranger.\n");
 
 	Arranger *arranger = (Arranger *)malloc(sizeof(Arranger));
@@ -67,6 +68,7 @@ Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamLi
 		.currentSamplesPerStep = intBpmToSamplesPerStep(settings->defaultBPM),
 		.samplesElapsed = 0
 	};
+	arranger->vm = vm;
 	arranger->enabledChannels = settings->enabledChannels;
 	printf("set channels.\n");
 
@@ -74,7 +76,6 @@ Arranger *createArranger(Settings *settings, ApplicationState *appState, ParamLi
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		arranger->playhead_indices[i] = 0;
-		arranger->voiceTypes[i] = settings->voiceTypes[i];
 	}
 	printf("set playhead indices.\n");
 
@@ -105,7 +106,6 @@ void addChannel(Arranger *arranger, int channelIndex) {
 		if(channelIndex < arranger->enabledChannels) { // copy all subsequent channels to the right
 			memmove(arranger->song[channelIndex + 1], arranger->song[channelIndex], (MAX_SEQUENCER_CHANNELS - channelIndex) * MAX_SONG_LENGTH * sizeof(int));
 		}
-		arranger->voiceTypes[channelIndex] = 0;
 		for(int i = 0; i < MAX_SONG_LENGTH; i++) { // init with empty pattern refs
 			arranger->song[channelIndex][i] = -1;
 		}
