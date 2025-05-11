@@ -316,7 +316,7 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 	if(!file) return SEQ_ERROR_OPEN;
 
 	// Write file header
-	if(!writeChunkHeader(file, MAGIC_HEADER)) {
+	if(!writeChunkHeader(file, SEQ_MAGIC_HEADER)) {
 		fclose(file);
 		return SEQ_ERROR_WRITE;
 	}
@@ -361,7 +361,7 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 	FILE *file = fopen(filename, "rb");
 	if(!file) return SEQ_ERROR_OPEN;
 
-	if(!readAndVerifyChunkHeader(file, MAGIC_HEADER)) {
+	if(!readAndVerifyChunkHeader(file, SEQ_MAGIC_HEADER)) {
 		fclose(file);
 		return SEQ_ERROR_FORMAT;
 	}
@@ -451,4 +451,38 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 
 	fclose(file);
 	return SEQ_OK;
+}
+
+PresetFileResult savePresetFile(const char *filename, Preset *preset) {
+	FILE *file = fopen(filename, "wb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+
+	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER)) {
+		fclose(file);
+		return PRESET_ERROR_WRITE;
+	}
+	fwrite(preset, sizeof(Preset), 1, file);
+	fclose(file);
+	return PRESET_OK;
+}
+
+PresetFileResult loadPresetFile(const char *filename, Preset *preset) {
+	FILE *file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+
+	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER)) {
+		fclose(file);
+		return PRESET_ERROR_FORMAT;
+	}
+
+	if(fread(preset, sizeof(Preset), 1, file) != 1) {
+		fclose(file);
+		return PRESET_ERROR_READ;
+	}
+	fclose(file);
+	return PRESET_OK;
 }

@@ -451,7 +451,15 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("wavetablePool creation failed.\n");
 		return;
 	}
-	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool);
+	Preset p;
+	// initDefaultFmPreset(&p);
+	// int save_preset_result = savePresetFile("data/instrument_presets/fm1.ipb", &p);
+	// printf("\n\nPRESET SAVE: %i\n\n", save_preset_result);
+
+	p.modSettingsCount = -1;
+	int load_preset_result = loadPresetFile("data/instrument_presets/fm1.ipb", &p);
+	printf("\n\nPRESET LOAD: %i\n\n", load_preset_result);
+	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool, p);
 	if(!data->voiceManager) {
 		printf("voiceManager creation failed.\n");
 		return;

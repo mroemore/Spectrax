@@ -8,10 +8,10 @@
 #include "sequencer.h"
 #include "sample.h"
 
-#define MAGIC_HEADER "SEQ1"
+#define SEQ_MAGIC_HEADER "SEQ1"
 #define PATTERN_SECTION "PATT"
 #define ARRANGER_SECTION "ARRG"
-
+#define PRESET_MAGIC_HEADER "IPBH"
 
 #ifdef _WIN32
 #define CloseWindow RLCloseWindow
@@ -26,36 +26,44 @@
 #endif
 
 typedef struct {
-    char **file_paths;
-    size_t count;
+	char **file_paths;
+	size_t count;
 } DirectoryList;
 
 // File operation results
 typedef enum {
-    FILE_OK,
-    FILE_ERROR_OPEN,
-    FILE_ERROR_READ,
-    FILE_ERROR_WRITE,
-    FILE_ERROR_FORMAT
+	FILE_OK,
+	FILE_ERROR_OPEN,
+	FILE_ERROR_READ,
+	FILE_ERROR_WRITE,
+	FILE_ERROR_FORMAT
 } FileResult;
 
 typedef enum {
-    SEQ_OK,
-    SEQ_ERROR_OPEN,
-    SEQ_ERROR_READ,
-    SEQ_ERROR_WRITE,
-    SEQ_ERROR_FORMAT,
-    SEQ_ERROR_MEMORY
+	SEQ_OK,
+	SEQ_ERROR_OPEN,
+	SEQ_ERROR_READ,
+	SEQ_ERROR_WRITE,
+	SEQ_ERROR_FORMAT,
+	SEQ_ERROR_MEMORY
 } SequencerFileResult;
 
+typedef enum {
+	PRESET_OK,
+	PRESET_ERROR_OPEN,
+	PRESET_ERROR_READ,
+	PRESET_ERROR_WRITE,
+	PRESET_ERROR_FORMAT,
+	PRESET_ERROR_MEMORY
+} PresetFileResult;
 
-DirectoryList* createDirectoryList();
+DirectoryList *createDirectoryList();
 void freeDirectoryList(DirectoryList *list);
-void populateDirectoryList(DirectoryList *list,const char* dirPath);
-void loadSamplesfromDirectory(const char* path, SamplePool* sp);
+void populateDirectoryList(DirectoryList *list, const char *dirPath);
+void loadSamplesfromDirectory(const char *path, SamplePool *sp);
 
-//Sample load_raw_sample(const char *filename, int sample_rate);
-void load_wav_sample(const char *filename, SamplePool* sp);
+// Sample load_raw_sample(const char *filename, int sample_rate);
+void load_wav_sample(const char *filename, SamplePool *sp);
 /**
  * @brief Saves a colour scheme to a binary file
  * @param filename Path to save the colour scheme file
@@ -63,7 +71,7 @@ void load_wav_sample(const char *filename, SamplePool* sp);
  * @return FileResult indicating success (FILE_OK) or specific error codes:
  *         - FILE_ERROR_OPEN if file cannot be created/opened for writing
  */
-FileResult saveColourScheme(const char* filename, ColourScheme* colourScheme);
+FileResult saveColourScheme(const char *filename, ColourScheme *colourScheme);
 /**
  * @brief Loads a colour scheme from a binary file
  * @param filename Path to the colour scheme file to load
@@ -73,7 +81,7 @@ FileResult saveColourScheme(const char* filename, ColourScheme* colourScheme);
  *         - FILE_ERROR_FORMAT if file has invalid magic number
  *         - FILE_ERROR_READ if reading colour scheme data fails
  */
-FileResult loadColourScheme(const char* filename, ColourScheme* colourScheme);
+FileResult loadColourScheme(const char *filename, ColourScheme *colourScheme);
 /**
  * @brief Loads a colour scheme from a text file format
  * @param filename Path to the text-based colour scheme file
@@ -83,7 +91,7 @@ FileResult loadColourScheme(const char* filename, ColourScheme* colourScheme);
  *         - FILE_ERROR_FORMAT if file format is invalid
  *         - FILE_ERROR_READ if reading colour data fails
  */
-FileResult loadColourSchemeTxt(const char* filename, Color* colourArray[], int arraySize);
+FileResult loadColourSchemeTxt(const char *filename, Color *colourArray[], int arraySize);
 /**
  * @brief Loads the complete sequencer state from a binary file
  * @param filename Path to the sequencer state file to load
@@ -93,7 +101,7 @@ FileResult loadColourSchemeTxt(const char* filename, Color* colourArray[], int a
  *         - SEQ_ERROR_OPEN if file cannot be opened
  *         - SEQ_ERROR_FORMAT if file format or section headers are invalid
  */
-SequencerFileResult saveSequencerState(const char* filename, Arranger* arranger, PatternList* patterns);
+SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns);
 /**
  * @brief Loads the complete sequencer state from a binary file
  * @param filename Path to the sequencer state file to load
@@ -103,7 +111,7 @@ SequencerFileResult saveSequencerState(const char* filename, Arranger* arranger,
  *         - SEQ_ERROR_OPEN if file cannot be opened
  *         - SEQ_ERROR_FORMAT if file format or section headers are invalid
  */
-SequencerFileResult loadSequencerState(const char* filename, Arranger* arranger, PatternList* patterns);
+SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger, PatternList *patterns);
 /**
  * @brief Saves application settings to a binary file
  * @param filename Path to save the settings file
@@ -111,7 +119,7 @@ SequencerFileResult loadSequencerState(const char* filename, Arranger* arranger,
  * @return FileResult indicating success (FILE_OK) or specific error codes:
  *         - FILE_ERROR_OPEN if file cannot be created/opened for writing
  */
-FileResult saveSettings(const char* filename, Settings* settings);
+FileResult saveSettings(const char *filename, Settings *settings);
 /**
  * @brief Loads application settings from a binary file
  * @param filename Path to the settings file to load
@@ -121,6 +129,8 @@ FileResult saveSettings(const char* filename, Settings* settings);
  *         - FILE_ERROR_FORMAT if file has invalid magic number
  *         - FILE_ERROR_READ if reading settings data fails
  */
-FileResult loadSettings(const char* filename, Settings* settings);
+FileResult loadSettings(const char *filename, Settings *settings);
 
+PresetFileResult savePresetFile(const char *filename, Preset *preset);
+PresetFileResult loadPresetFile(const char *filename, Preset *preset);
 #endif

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp) {
+VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, Preset p) {
 	// printf("creating voiceManager.\n");
 
 	VoiceManager *vm = (VoiceManager *)malloc(sizeof(VoiceManager));
@@ -29,7 +29,11 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 	}
 
 	Preset fmPreset;
-	initDefaultFmPreset(&fmPreset);
+	if(p.modSettingsCount == -1) {
+		initDefaultFmPreset(&fmPreset);
+	} else {
+		fmPreset = p;
+	}
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp);

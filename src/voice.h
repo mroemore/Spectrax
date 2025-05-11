@@ -220,7 +220,7 @@ typedef struct {
 	AllocationBehaviour voiceAllocation[MAX_SEQUENCER_CHANNELS];
 } VoiceManager;
 
-VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp);
+VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, Preset p);
 void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrument *inst);
 void initVoiceManager(VoiceManager *vm, SamplePool *sp);
 void freeVoice(Voice *v);
