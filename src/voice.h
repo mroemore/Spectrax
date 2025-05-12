@@ -125,6 +125,7 @@ typedef struct {
 
 typedef struct {
 	Preset patches[MAX_PATCHES];
+	int presetCount;
 } PresetBank;
 
 typedef struct {
@@ -140,6 +141,8 @@ typedef struct {
 	Parameter *detuneRange;
 	Parameter *detuneSpread;
 	Parameter *panning;
+	PresetBank *presetBank;
+	Parameter *selectedPresetIndex;
 	union {
 		SamplerInstrumentData sampler;
 		FmInstrumentData fm;
@@ -220,7 +223,7 @@ typedef struct {
 	AllocationBehaviour voiceAllocation[MAX_SEQUENCER_CHANNELS];
 } VoiceManager;
 
-VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, Preset p);
+VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, PresetBank *pb);
 void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrument *inst);
 void initVoiceManager(VoiceManager *vm, SamplePool *sp);
 void freeVoice(Voice *v);
@@ -230,11 +233,14 @@ void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
 
 void initDefaultFmPreset(Preset *p);
-void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Preset p);
+void applyInstrumentPreset(Instrument *instrument, Preset p);
+void cb_setInstrumentPreset(void *instrument);
+void initPresetBank(PresetBank *pb);
+void addPresetToBank(PresetBank *pb, Preset p);
 
 void initialize_voice(Voice *voice, Instrument *inst);
 void initInstDefaults(Instrument *i);
-void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool);
+void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool, PresetBank *pb);
 void initInstrumentFromPreset(Instrument **instrument, SamplePool *samplePool, Preset p);
 void setSamplePlaybackFunction(void *instrument);
 void updateSampleReferences(void *instrument);

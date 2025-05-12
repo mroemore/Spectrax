@@ -60,6 +60,13 @@ typedef enum {
 DirectoryList *createDirectoryList();
 void freeDirectoryList(DirectoryList *list);
 void populateDirectoryList(DirectoryList *list, const char *dirPath);
+
+void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb);
+
+PresetFileResult savePresetFile(const char *filename, Preset *preset);
+
+PresetFileResult loadPresetFile(const char *filename, PresetBank *pb);
+
 void loadSamplesfromDirectory(const char *path, SamplePool *sp);
 
 // Sample load_raw_sample(const char *filename, int sample_rate);
@@ -130,7 +137,4 @@ FileResult saveSettings(const char *filename, Settings *settings);
  *         - FILE_ERROR_READ if reading settings data fails
  */
 FileResult loadSettings(const char *filename, Settings *settings);
-
-PresetFileResult savePresetFile(const char *filename, Preset *preset);
-PresetFileResult loadPresetFile(const char *filename, Preset *preset);
 #endif

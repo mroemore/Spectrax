@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, Preset p) {
+VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, PresetBank *pb) {
 	// printf("creating voiceManager.\n");
 
 	VoiceManager *vm = (VoiceManager *)malloc(sizeof(VoiceManager));
@@ -28,16 +28,9 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 		vm->voiceCount[i] = 0;
 	}
 
-	Preset fmPreset;
-	if(p.modSettingsCount == -1) {
-		initDefaultFmPreset(&fmPreset);
-	} else {
-		fmPreset = p;
-	}
-
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp);
-		applyInstrumentPreset(vm->instruments[i], sp, fmPreset);
+		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp, pb);
+		applyInstrumentPreset(vm->instruments[i], pb->patches[0]);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
 		vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
 	}
@@ -324,7 +317,7 @@ void initDefaultFmPreset(Preset *p) {
 	*p = p1;
 }
 
-void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Preset p) {
+void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	clearModList(instrument->modList);
 	clearParamList(instrument->paramList);
 	instrument->voiceType = p.voiceType;
@@ -362,8 +355,27 @@ void applyInstrumentPreset(Instrument *instrument, SamplePool *samplePool, Prese
 	}
 }
 
-void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool) {
-	// printf("init instrument\n");
+void cb_setInstrumentPreset(void *instrument) {
+	Instrument *i = (Instrument *)instrument;
+	int presetIndex = getParameterValueAsInt(i->selectedPresetIndex);
+	applyInstrumentPreset(i, i->presetBank->patches[presetIndex]);
+}
+
+void initPresetBank(PresetBank *pb) {
+	pb->presetCount = 0;
+}
+
+void addPresetToBank(PresetBank *pb, Preset p) {
+	printf("adding preset.\n");
+	if(pb->presetCount < MAX_PATCHES) {
+		pb->patches[pb->presetCount] = p;
+		pb->presetCount++;
+	} else {
+		printf("WARNING: Max patches reached, not adding patch.\n");
+	}
+}
+
+void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool, PresetBank *pb) {
 	*instrument = (Instrument *)malloc(sizeof(Instrument));
 	if(!*instrument) {
 		printf("could not allocate memory for instrument in init_instrument.\n");
@@ -378,6 +390,9 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	if(!(*instrument)->paramList) {
 		printf("paramList creation failed in init_instrument.\n");
 	}
+
+	(*instrument)->presetBank = pb;
+	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (*instrument)->presetBank->presetCount - 1, 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
 	switch(vt) {
 		case VOICE_TYPE_BLEP:
 			(*instrument)->envelopeCount = 2;

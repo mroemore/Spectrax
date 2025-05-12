@@ -765,6 +765,21 @@ void drawWrapperNode(void *self) {
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, (Color){ 10, 5, 5, 255 });
 }
 
+void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
+	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "PRESET_CONTROLS", 0, 0);
+	GuiNode *presetIndex = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
+	GuiNode *pad1 = createBlankGuiNode();
+	// GuiNode *savePreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
+	// GuiNode *loadPreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
+	//
+	appendItem(btnwrap, presetIndex, 1);
+	appendItem(btnwrap, pad1, 7);
+	appendItem(container, btnwrap, weight);
+	if(selected) {
+		g->selected = presetIndex;
+	}
+}
+
 void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "FM_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
@@ -965,11 +980,13 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	Graph *instGraph = createGraph(na_horizontal);
 	GuiNode *margin1 = createBlankGuiNode();
 	GuiNode *margin2 = createBlankGuiNode();
-	GuiNode *pad1 = createBlankGuiNode();
+	GuiNode *presetWrap = createGuiNode(0, 0, 100, 100, 2, na_vertical, "presetwrappa", 0, 0);
+	appendPresetControlNode(instGraph, presetWrap, "presetz", 1, 0, inst);
+	// GuiNode *pad1 = createBlankGuiNode();
 	GuiNode *pad2 = createBlankGuiNode();
 
 	GuiNode *instwrap = createGuiNode(0, 0, 100, 100, 5, na_vertical, "inst_wrap", 0, 0);
-	appendItem(instwrap, pad1, 1);
+	appendItem(instwrap, presetWrap, 1);
 	switch(inst->voiceType) {
 		case VOICE_TYPE_FM:
 			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 8, true, inst);
@@ -1001,34 +1018,6 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	appendItem(instGraph->root, margin2, 1);
 	return instGraph;
 }
-
-// ContainerGroup *createInstrumentModulationGui(Instrument *inst, int x, int y, int contW, int contH, int scene, int enabled) {
-// 	ContainerGroup *cg = createContainerGroup();
-// 	InputContainer *fmParams = NULL;
-// 	InputContainer *sampleParams = NULL;
-// 	InputContainer *blepParams = NULL;
-// 	switch(inst->voiceType) {
-// 		case VOICE_TYPE_FM:
-// 			fmParams = createFmParamsContainer(inst, x, y, contW, contH, scene, enabled);
-// 			addContainerToGroup(cg, fmParams, 0, 0);
-// 			break;
-// 		case VOICE_TYPE_BLEP:
-// 			blepParams = createBlepParamsContainer(inst, x, y, contW, contH, scene, enabled);
-// 			addContainerToGroup(cg, blepParams, 0, 0);
-// 			break;
-// 		case VOICE_TYPE_SAMPLE:
-// 			sampleParams = createSampleParamsContainer(inst, x, y, contW, contH, scene, enabled);
-// 			addContainerToGroup(cg, sampleParams, 0, 0);
-// 			break;
-// 		default:
-// 			break;
-// 	}
-// 	for(int i = 1; i < inst->envelopeCount + 1; i++) {
-// 		EnvelopeContainer *ic = createADEnvelopeContainer(inst->envelopes[i - 1], (i % 2) * contW, 200 + (i / 2) * (contH + 50), contW, contH, scene, enabled);
-// 		addContainerToGroup(cg, ic->envInputs, (int)(i) / 2, (int)(i) % 2);
-// 	}
-// 	return cg;
-// }
 
 AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h) {
 	AlgoGraphGui *agg = (AlgoGraphGui *)malloc(sizeof(AlgoGraphGui));
@@ -1130,11 +1119,6 @@ void drawEnvelopeGui(void *self) {
 	}
 }
 
-// void drawTransportGui(void *self) {
-// 	Vector2 pos = (Vector2){ 600, 10 };
-// 	TransportGui *tg = (TransportGui *)self;
-// 	drawSprite(tg->icons, 0, tg->shape.x, tg->shape.y, 20, 20);
-// }
 void drawArrangerGuiNode(void *self) {
 	ArrangerGuiNode *aGui = (ArrangerGuiNode *)self;
 	Arranger *arranger = (Arranger *)aGui->arranger;

@@ -3,6 +3,16 @@
 #include "io.h"
 #include "modsystem.h"
 
+static int writeChunkHeader(FILE *file, const char *id) {
+	return fwrite(id, 1, 4, file) == 4;
+}
+
+static int readAndVerifyChunkHeader(FILE *file, const char *expected) {
+	char header[4];
+	if(fread(header, 1, 4, file) != 4) return 0;
+	return memcmp(header, expected, 4) == 0;
+}
+
 DirectoryList *createDirectoryList() {
 	DirectoryList *list = (DirectoryList *)malloc(sizeof(DirectoryList));
 	list->file_paths = NULL;
@@ -103,6 +113,54 @@ void populateDirectoryList(DirectoryList *list, const char *dirPath) {
 
 	closedir(dir);
 #endif
+}
+
+void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb) {
+	DirectoryList *dirList = createDirectoryList();
+	populateDirectoryList(dirList, dirPath);
+
+	for(int i = 0; i < dirList->count; i++) {
+		loadPresetFile(dirList->file_paths[i], pb);
+	}
+
+	freeDirectoryList(dirList);
+}
+
+PresetFileResult savePresetFile(const char *filename, Preset *preset) {
+	FILE *file = fopen(filename, "wb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+
+	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER)) {
+		fclose(file);
+		return PRESET_ERROR_WRITE;
+	}
+	fwrite(preset, sizeof(Preset), 1, file);
+	fclose(file);
+	return PRESET_OK;
+}
+
+PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
+	Preset preset;
+	FILE *file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+
+	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER)) {
+		fclose(file);
+		return PRESET_ERROR_FORMAT;
+	}
+
+	if(fread(&preset, sizeof(Preset), 1, file) != 1) {
+		fclose(file);
+		return PRESET_ERROR_READ;
+	}
+	fclose(file);
+
+	addPresetToBank(pb, preset);
+	return PRESET_OK;
 }
 
 void loadSamplesfromDirectory(const char *path, SamplePool *sp) {
@@ -301,16 +359,6 @@ FileResult loadColourSchemeTxt(const char *filename, Color *colourArray[], int a
 	return FILE_OK;
 }
 
-static int writeChunkHeader(FILE *file, const char *id) {
-	return fwrite(id, 1, 4, file) == 4;
-}
-
-static int readAndVerifyChunkHeader(FILE *file, const char *expected) {
-	char header[4];
-	if(fread(header, 1, 4, file) != 4) return 0;
-	return memcmp(header, expected, 4) == 0;
-}
-
 SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns) {
 	FILE *file = fopen(filename, "wb");
 	if(!file) return SEQ_ERROR_OPEN;
@@ -451,38 +499,4 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 
 	fclose(file);
 	return SEQ_OK;
-}
-
-PresetFileResult savePresetFile(const char *filename, Preset *preset) {
-	FILE *file = fopen(filename, "wb");
-	if(!file) {
-		return PRESET_ERROR_OPEN;
-	}
-
-	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER)) {
-		fclose(file);
-		return PRESET_ERROR_WRITE;
-	}
-	fwrite(preset, sizeof(Preset), 1, file);
-	fclose(file);
-	return PRESET_OK;
-}
-
-PresetFileResult loadPresetFile(const char *filename, Preset *preset) {
-	FILE *file = fopen(filename, "rb");
-	if(!file) {
-		return PRESET_ERROR_OPEN;
-	}
-
-	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER)) {
-		fclose(file);
-		return PRESET_ERROR_FORMAT;
-	}
-
-	if(fread(preset, sizeof(Preset), 1, file) != 1) {
-		fclose(file);
-		return PRESET_ERROR_READ;
-	}
-	fclose(file);
-	return PRESET_OK;
 }
