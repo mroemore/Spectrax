@@ -766,7 +766,9 @@ void drawWrapperNode(void *self) {
 }
 
 void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
-	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "PRESET_CONTROLS", 0, 0);
+	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
+	btnwrap->draw = drawWrapperNode;
+	btnwrap->drawable = true;
 	GuiNode *presetIndex = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
 	GuiNode *pad1 = createBlankGuiNode();
 	// GuiNode *savePreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
@@ -986,7 +988,7 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	GuiNode *pad2 = createBlankGuiNode();
 
 	GuiNode *instwrap = createGuiNode(0, 0, 100, 100, 5, na_vertical, "inst_wrap", 0, 0);
-	appendItem(instwrap, presetWrap, 1);
+	appendItem(instwrap, presetWrap, 5);
 	switch(inst->voiceType) {
 		case VOICE_TYPE_FM:
 			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 8, true, inst);

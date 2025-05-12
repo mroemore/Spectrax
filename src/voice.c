@@ -392,6 +392,9 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->presetBank = pb;
+
+	printf("\n\nPreset count at inst creation time: %i\n\n", (*instrument)->presetBank->presetCount);
+
 	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (*instrument)->presetBank->presetCount - 1, 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
 	switch(vt) {
 		case VOICE_TYPE_BLEP:
