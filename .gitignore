@@ -3,3 +3,4 @@ src/*.o
 .clang-format
 rg35xx-copy.sh
 TODO.md
+compile_commands.json
