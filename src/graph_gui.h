@@ -66,6 +66,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 GuiNode *createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
 GuiNode *createBlankGuiNode();
 GuiNode *createNamedBlankGuiNode(char *name);
+void freeGuiNode(GuiNode *gn);
 void printGraph(GuiNode *root, int depth);
 
 void reflowCoordinates(GuiNode *n);

@@ -75,6 +75,19 @@ GuiNode *createNamedBlankGuiNode(char *name) {
 	return gn;
 }
 
+void freeGuiNode(GuiNode *gn) {
+	if(gn->itemCount > 0) {
+		ListElement *current = gn->items->head;
+		for(int i = 0; i < gn->itemCount; i++) {
+			GuiNode *cn = *(GuiNode **)current->data;
+			freeGuiNode(cn);
+			current = current->next;
+		}
+	}
+
+	free(gn);
+}
+
 void printGraph(GuiNode *root, int depth) {
 	if(root == NULL) {
 		printf("\nNULL NODE!\n");

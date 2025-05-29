@@ -48,24 +48,9 @@ typedef enum {
 	SEQ_ERROR_MEMORY
 } SequencerFileResult;
 
-typedef enum {
-	PRESET_OK,
-	PRESET_ERROR_OPEN,
-	PRESET_ERROR_READ,
-	PRESET_ERROR_WRITE,
-	PRESET_ERROR_FORMAT,
-	PRESET_ERROR_MEMORY
-} PresetFileResult;
-
 DirectoryList *createDirectoryList();
 void freeDirectoryList(DirectoryList *list);
 void populateDirectoryList(DirectoryList *list, const char *dirPath);
-
-void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb);
-
-PresetFileResult savePresetFile(const char *filename, Preset *preset);
-
-PresetFileResult loadPresetFile(const char *filename, PresetBank *pb);
 
 void loadSamplesfromDirectory(const char *path, SamplePool *sp);
 

@@ -1,0 +1,98 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "main.o",
+      "main.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/tools/sample_analyser/main.c",
+    "output": "/home/krang/Spectrax/src/tools/sample_analyser/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "../../input.o",
+      "../../input.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/input.c",
+    "output": "/home/krang/Spectrax/src/input.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "../../io.o",
+      "../../io.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/io.c",
+    "output": "/home/krang/Spectrax/src/io.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "../../sample.o",
+      "../../sample.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/sample.c",
+    "output": "/home/krang/Spectrax/src/sample.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "../../fft.o",
+      "../../fft.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/fft.c",
+    "output": "/home/krang/Spectrax/src/fft.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "../../dataviz.o",
+      "../../dataviz.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/dataviz.c",
+    "output": "/home/krang/Spectrax/src/dataviz.o"
+  }
+]

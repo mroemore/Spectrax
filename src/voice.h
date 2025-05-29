@@ -26,6 +26,15 @@ typedef enum {
 	VOICE_TYPE_COUNT
 } VoiceType;
 
+typedef enum {
+	PRESET_OK,
+	PRESET_ERROR_OPEN,
+	PRESET_ERROR_READ,
+	PRESET_ERROR_WRITE,
+	PRESET_ERROR_FORMAT,
+	PRESET_ERROR_MEMORY
+} PresetFileResult;
+
 typedef struct {
 	float L;
 	float R;
