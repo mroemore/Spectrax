@@ -96,6 +96,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 			unsigned int mask = (1 << m_src);
 			if((data->generated_flags & mask) == 0) {
 				data->generated_flags &= mask;
+				data->phases[m_src] += data->phase_inc[m_src];
 			}
 			for(int m_dest = m_src - 1; m_dest >= 0; m_dest--) {
 				if(data->mod_map[(m_dest * SA_OP_C) + m_src] > 0.0) {
