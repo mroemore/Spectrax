@@ -26,6 +26,7 @@
 #define SA_HIST_C 16
 
 typedef struct DrawBufferCollection DrawBufferCollection;
+typedef struct Clickable Clickable;
 typedef struct TestData TestData;
 typedef struct Ops Ops;
 
