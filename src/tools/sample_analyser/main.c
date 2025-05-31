@@ -16,6 +16,7 @@
 #define SA_SCREEN_H 480 // 480
 #define SA_PI 3.1415926535897932
 #define SA_2PI 6.2831853071795864
+#define SA_MAX_CLICKABLES 128
 
 #define SA_BUF_S 256
 #define SA_SR 44100
@@ -25,10 +26,41 @@
 #define SA_HIST_LEN 512
 #define SA_HIST_C 16
 
+typedef void (*ClickCB)(void *self);
+typedef void (*DrawCB)(void *self);
+
 typedef struct DrawBufferCollection DrawBufferCollection;
-typedef struct Clickable Clickable;
+typedef struct ClickItem ClickItem;
+typedef struct DrawItem DrawItem;
 typedef struct TestData TestData;
 typedef struct Ops Ops;
+
+ClickItem *clickable_list[SA_MAX_CLICKABLES];
+unsigned int clickable_count;
+
+struct DrawItem {
+	DrawCB draw;
+};
+
+struct ClickItem {
+	DrawCB draw;
+	bool visible;
+	ClickCB on_click;
+	ClickCB on_release;
+	bool click_held;
+	Rectangle hitbox;
+};
+
+void init_clickable_list() {
+	clickable_count = 0;
+}
+
+void register_clickable(ClickItem *c) {
+	if(clickable_count < SA_MAX_CLICKABLES) {
+		clickable_list[clickable_count] = c;
+		clickable_count++;
+	}
+}
 
 struct DrawBufferCollection {
 	unsigned int buffer_write_indx[SA_HIST_C];
@@ -138,7 +170,12 @@ void draw_buffer(DrawBufferCollection *dbc, int buffer_id, Rectangle bounds, Col
 	}
 }
 
-void draw_mod_matrix(Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
+typedef struct D_ModMatrix D_ModMatrix;
+
+struct D_ModMatrix {
+}
+
+draw_mod_matrix(Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
 	float grid_cell_w = bounds.width / SA_OP_C;
 	float grid_cell_h = bounds.height / SA_OP_C;
 	for(int grid_x = SA_OP_C; grid_x >= 0; grid_x--) {
@@ -189,6 +226,12 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 
 void handle_input(Vector2 *mouse_xy) {
 	*mouse_xy = GetMousePosition();
+
+	for(int i = 0; i < clickable_count; i++) {
+		if(CheckCollisionPointRec(*mouse_xy, clickable_list[i]->hitbox)) {
+			clickable_list[i]->on_click(clickable_list[i]);
+		}
+	}
 }
 
 int main(void) {
