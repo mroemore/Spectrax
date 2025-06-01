@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 #include <time.h>
 
 #include "oscillator.h"
@@ -16,7 +17,7 @@
 #define SA_SCREEN_H 480 // 480
 #define SA_PI 3.1415926535897932
 #define SA_2PI 6.2831853071795864
-#define SA_MAX_CLICKABLES 128
+#define SA_MAX_GUI_ELEMENTS 1024
 
 #define SA_BUF_S 256
 #define SA_SR 44100
@@ -30,36 +31,65 @@ typedef void (*ClickCB)(void *self);
 typedef void (*DrawCB)(void *self);
 
 typedef struct DrawBufferCollection DrawBufferCollection;
-typedef struct ClickItem ClickItem;
-typedef struct DrawItem DrawItem;
 typedef struct TestData TestData;
 typedef struct Ops Ops;
 
-ClickItem *clickable_list[SA_MAX_CLICKABLES];
-unsigned int clickable_count;
+typedef struct GuiElement GuiElement;
+typedef struct GuiElementList GuiElementList;
 
-struct DrawItem {
-	DrawCB draw;
-};
+typedef struct GE_ModMatrix GE_ModMatrix;
 
-struct ClickItem {
-	DrawCB draw;
+struct GuiElement {
 	bool visible;
+	bool clickable;
+	DrawCB draw;
 	ClickCB on_click;
 	ClickCB on_release;
 	bool click_held;
 	Rectangle hitbox;
 };
 
-void init_clickable_list() {
-	clickable_count = 0;
+struct GuiElementList {
+	GuiElement *list[SA_MAX_GUI_ELEMENTS];
+	unsigned int active_count;
+	unsigned int removed_item_indicies[SA_MAX_GUI_ELEMENTS];
+	unsigned int removed_item_count;
+};
+
+void init_gui_element_list(GuiElementList *l) {
+	for(int i = 0; i < SA_MAX_GUI_ELEMENTS; i++) {
+		l->list[i] = NULL;
+		l->removed_item_indicies[i] = -1;
+	}
+	l->active_count = 0;
+	l->removed_item_count = 0;
 }
 
-void register_clickable(ClickItem *c) {
-	if(clickable_count < SA_MAX_CLICKABLES) {
-		clickable_list[clickable_count] = c;
-		clickable_count++;
+void add_gui_element_to_list(GuiElementList *l, GuiElement *e) {
+	if(!l || !e) {
+		printf("Error: NULL arg to %s\n", __func__);
 	}
+	if(l->removed_item_count > 0) {
+		l->removed_item_count--;
+		l->list[l->removed_item_indicies[l->removed_item_count]] = e;
+	} else if(l->active_count < SA_MAX_GUI_ELEMENTS) {
+		l->list[l->active_count] = e;
+		l->active_count++;
+	} else {
+		printf("Error: Invalid ElementList state [active: %i, removed: %i] in %s\n", l->active_count, l->removed_item_count, __func__);
+	}
+}
+
+void p_remove_gui_element_from_list(GuiElementList *l, GuiElement *e) {
+	printf("Error: Invalid index in %s\n", __func__);
+}
+void i_remove_gui_element_from_list(GuiElementList *l, unsigned int index) {
+	if(index < 0 || index >= SA_MAX_GUI_ELEMENTS) {
+		printf("Error: Invalid ElementList state [active: %i, removed: %i] in ``%s``\n", l->active_count, l->removed_item_count, __func__);
+	}
+	l->list[index] = NULL;
+	l->removed_item_indicies[l->removed_item_count] = index;
+	l->removed_item_count++;
 }
 
 struct DrawBufferCollection {
@@ -170,36 +200,65 @@ void draw_buffer(DrawBufferCollection *dbc, int buffer_id, Rectangle bounds, Col
 	}
 }
 
-typedef struct D_ModMatrix D_ModMatrix;
+struct GE_ModMatrix {
+	GuiElement base;
+	Ops *fm;
+	Rectangle grid_bounds;
+	Rectangle cell_bounds;
+	Color c_grid1;
+	Color c_grid2;
+	Color c_diff;
+	Color c_txt;
+};
 
-struct D_ModMatrix {
+void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
+	d_mm->grid_bounds = bounds;
+	d_mm->cell_bounds = (Rectangle){ 0, 0, bounds.width / SA_OP_C, bounds.height / SA_OP_C };
+	d_mm->c_grid1 = c_grid1;
+	d_mm->c_grid2 = c_grid2;
+	d_mm->c_diff = (Color){
+		c_grid1.r - c_grid2.r,
+		c_grid1.g - c_grid2.g,
+		c_grid1.b - c_grid2.b,
+		255,
+	};
+	d_mm->c_txt = c_txt;
 }
 
-draw_mod_matrix(Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
-	float grid_cell_w = bounds.width / SA_OP_C;
-	float grid_cell_h = bounds.height / SA_OP_C;
+void mod_matrix_draw(void *self) {
+	GE_ModMatrix *d_mm = (GE_ModMatrix *)self;
+
 	for(int grid_x = SA_OP_C; grid_x >= 0; grid_x--) {
 		for(int grid_y = SA_OP_C; grid_y >= 0; grid_y--) {
 			Color shade = (Color){
-				c_grid1.r + (int)((c_grid1.r - c_grid2.r) * (log10(1 - fm->mod_map[grid_x][grid_y]))),
-				c_grid1.g + (int)((c_grid1.g - c_grid2.g) * (log10(1 - fm->mod_map[grid_x][grid_y]))),
-				c_grid1.b + (int)((c_grid1.b - c_grid2.b) * (log10(1 - fm->mod_map[grid_x][grid_y]))),
+				d_mm->c_grid1.r + (int)((d_mm->c_diff.r) * (log10(1 - d_mm->fm->mod_map[grid_x][grid_y]))),
+				d_mm->c_grid1.g + (int)((d_mm->c_diff.g) * (log10(1 - d_mm->fm->mod_map[grid_x][grid_y]))),
+				d_mm->c_grid1.b + (int)((d_mm->c_diff.b) * (log10(1 - d_mm->fm->mod_map[grid_x][grid_y]))),
 				255
 			};
-			DrawRectangle(bounds.x + (SA_OP_C - grid_x) * grid_cell_w, bounds.y + (SA_OP_C - grid_y) * grid_cell_h, grid_cell_w, grid_cell_h, shade);
+
+			DrawRectangle(
+			  d_mm->grid_bounds.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
+			  d_mm->grid_bounds.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
+			  d_mm->cell_bounds.width,
+			  d_mm->cell_bounds.height,
+			  shade);
+
 			char mod_amount_txt[10];
-			snprintf(mod_amount_txt, 10, "%0.2f", fm->mod_map[grid_x][grid_y]);
+
+			snprintf(mod_amount_txt, 10, "%0.2f", d_mm->fm->mod_map[grid_x][grid_y]);
 			DrawText(mod_amount_txt,
-			         bounds.x + (int)(grid_cell_w * 0.125 + (SA_OP_C - grid_x) * grid_cell_w),
-			         bounds.y + (int)(grid_cell_w * 0.125 + (SA_OP_C - grid_y) * grid_cell_h),
-			         (int)grid_cell_w * 0.125,
-			         c_txt);
+			         d_mm->grid_bounds.x + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_x) * d_mm->cell_bounds.width),
+			         d_mm->grid_bounds.y + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_y) * d_mm->cell_bounds.height),
+			         (int)d_mm->cell_bounds.width * 0.125,
+			         d_mm->c_txt);
+
 			DrawRectangleLines(
-			  bounds.x + (SA_OP_C - grid_x) * grid_cell_w,
-			  bounds.y + (SA_OP_C - grid_y) * grid_cell_h,
-			  grid_cell_w,
-			  grid_cell_h,
-			  c_txt);
+			  d_mm->grid_bounds.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
+			  d_mm->grid_bounds.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
+			  d_mm->cell_bounds.width,
+			  d_mm->cell_bounds.height,
+			  d_mm->c_txt);
 		}
 	}
 }
