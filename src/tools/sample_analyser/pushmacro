@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [[ "$#" < 1 || "$#" > 2 ]]; then
+	echo "Useage:\t$0 [-h | --help] (YOU ARE HERE)" 
+	echo "\t$0 -m \"commit message\""
+
+    exit 1
+fi
+
+commit_message=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -m)
+            git add .
+	    git commit -m "$2"
+	    git push
+            shift 2  # Shift past argument and value
+            ;;
+        -h|--help)
+            verbose=true
+            shift
+            ;;
+        *)
+            # Handle unexpected arguments
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
