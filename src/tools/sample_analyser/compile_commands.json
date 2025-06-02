@@ -24,6 +24,38 @@
       "-g",
       "-O0",
       "-o",
+      "sa_gui.o",
+      "sa_gui.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/tools/sample_analyser/sa_gui.c",
+    "output": "/home/krang/Spectrax/src/tools/sample_analyser/sa_gui.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
+      "sa_audio.o",
+      "sa_audio.c"
+    ],
+    "directory": "/home/krang/Spectrax/src/tools/sample_analyser",
+    "file": "/home/krang/Spectrax/src/tools/sample_analyser/sa_audio.c",
+    "output": "/home/krang/Spectrax/src/tools/sample_analyser/sa_audio.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-I../../../include",
+      "-I../..",
+      "-g",
+      "-O0",
+      "-o",
       "../../input.o",
       "../../input.c"
     ],
