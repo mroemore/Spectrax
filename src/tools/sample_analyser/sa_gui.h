@@ -12,6 +12,7 @@
 typedef struct GuiElement GuiElement;
 typedef struct GuiElementList GuiElementList;
 typedef struct GE_ModMatrix GE_ModMatrix;
+typedef struct GE_FaderControl GE_FaderControl;
 typedef struct DrawBufferCollection DrawBufferCollection;
 
 typedef void (*ClickCB)(void *self, Vector2 mouse_xy);
@@ -51,24 +52,27 @@ struct GE_ModMatrix {
 };
 
 struct GE_FaderControl {
-    GuiElement base;
-    void* data_ref;
+	GuiElement base;
+	float min_value;
+	float max_value;
+	float *data_ref;
+	bool horizontal;
 };
 
 void gui_setup();
-void add_click_element(GuiElement* ge);
-void add_draw_element(GuiElement* ge);
+void add_click_element(GuiElement *ge);
+void add_draw_element(GuiElement *ge);
+void add_drawclick_element(GuiElement *ge);
 
 void handle_input(Vector2 *mouse_xy);
 void draw_elements();
 
-void init_ge_defaults(GuiElement* ge);
+void init_ge_defaults(GuiElement *ge);
 
 void init_gui_element_list(GuiElementList *l);
 void add_gui_element_to_list(GuiElementList *l, GuiElement *e);
 void p_remove_gui_element_from_list(GuiElementList *l, GuiElement *e);
 void i_remove_gui_element_from_list(GuiElementList *l, unsigned int index);
-
 
 void push_frame_to_history(float frame, DrawBufferCollection *dbc, int buffer_id);
 void draw_buffer(DrawBufferCollection *dbc, int buffer_id, Rectangle bounds, Color c);
@@ -77,4 +81,7 @@ void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid
 void draw_mod_matrix(void *self);
 void on_click_mod_matrix(void *self, Vector2 mouse_xy);
 
+void init_fader_control(GE_FaderControl *fc, Rectangle r, float *data_ref, float min, float max);
+void on_click_fader_control(void *self, Vector2 mouse_xy);
+void draw_fader_control(void *self);
 #endif

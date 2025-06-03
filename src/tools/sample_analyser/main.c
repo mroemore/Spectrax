@@ -27,7 +27,7 @@
 typedef struct TestData TestData;
 typedef struct WaveShaper WaveShaper;
 
-typedef float (*ApplyWS)(WaveShaper *ws, float sample, float amount);
+typedef float (*ApplyWS)(WaveShaper *ws, float sample);
 
 typedef struct PerfMeasure PerfMeasure;
 #define SA_MAX_MEASUREMENTS 4096
@@ -68,9 +68,10 @@ void process_average(PerfMeasure *pm) {
 struct WaveShaper {
 	float lookup_table[2048];
 	ApplyWS apply;
+	float amount;
 };
 
-float shape_wave(WaveShaper *s, float sample, float amount) {
+float shape_wave(WaveShaper *s, float sample) {
 	float scaled = 2048 * ((sample + 1.0f) / 2.0f);
 	int index_a = (int)scaled;
 	int index_b = (int)(scaled + 1.0f);
@@ -78,13 +79,13 @@ float shape_wave(WaveShaper *s, float sample, float amount) {
 	float integral_a = 0;
 	float frac_a = modff(scaled, &integral_a);
 	float frac_b = 1.0f - frac_a;
-	float wet = (s->lookup_table[index_a] * frac_a + s->lookup_table[index_b] * frac_b) * amount;
-	return ((sample * (1.0f - amount) + wet)) / 2.0f;
+	float wet = (s->lookup_table[index_a] * frac_a + s->lookup_table[index_b] * frac_b) * s->amount;
+	return ((sample * (1.0f - s->amount) + wet)) / 2.0f;
 }
 
-float fold_wave(WaveShaper *s, float sample, float amount) {
+float fold_wave(WaveShaper *s, float sample) {
 	float abs_samp = fabsf(sample);
-	float a = 1.0 - amount;
+	float a = 1.0 - s->amount;
 	float diff = abs_samp - a;
 	float out = 0;
 	if(abs_samp > a) {
@@ -104,6 +105,7 @@ void init_sine_shaper(WaveShaper *s) {
 		float phase = (float)i * (1.0f / 2048.0f);
 		s->lookup_table[i] = cos(SA_PI * phase) * -1;
 	}
+	s->amount = 0.2;
 	s->apply = shape_wave;
 }
 
@@ -199,7 +201,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		float right_output = 0.0f;
 
 		left_output = get_fm_sample(&data->fm, false);
-		left_output = data->shaper.apply(&data->shaper, left_output, 0.3);
+		left_output = data->shaper.apply(&data->shaper, left_output);
 		push_frame_to_history(left_output, &data->dbc, 0);
 		left_output *= 0.2;
 		right_output = left_output;
@@ -232,8 +234,11 @@ int main(void) {
 	pa_data_init(&data);
 	GE_ModMatrix ge_mm;
 	init_mod_matrix(&ge_mm, &data.fm, (Rectangle){ 25, 95, 150, 150 }, BLACK, RED, WHITE);
-	add_click_element((GuiElement *)&ge_mm);
-	add_draw_element((GuiElement *)&ge_mm);
+	add_drawclick_element((GuiElement *)&ge_mm);
+
+	GE_FaderControl fader;
+	init_fader_control(&fader, (Rectangle){ 400, 300, 25, 95 }, &data.shaper.amount, 0.0f, 1.0f);
+	add_drawclick_element((GuiElement *)&fader);
 
 	// struct timespec start, end;
 	//  double elapsed;
@@ -280,7 +285,7 @@ int main(void) {
 			for(int i = 0; i < SA_HIST_LEN; i++) {
 				float s = get_fm_sample(&fmcpy, false);
 				push_frame_to_history(s, &data.dbc, 2);
-				s = data.shaper.apply(&data.shaper, s, 0.3);
+				s = data.shaper.apply(&data.shaper, s);
 				push_frame_to_history(s, &data.dbc, 1);
 			}
 			BeginDrawing();

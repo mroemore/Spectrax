@@ -20,6 +20,11 @@ void add_draw_element(GuiElement *ge) {
 	add_gui_element_to_list(&drawable_list, (GuiElement *)ge);
 }
 
+void add_drawclick_element(GuiElement *ge) {
+	add_gui_element_to_list(&drawable_list, (GuiElement *)ge);
+	add_gui_element_to_list(&clickable_list, (GuiElement *)ge);
+}
+
 void handle_input(Vector2 *mouse_xy) {
 	*mouse_xy = GetMousePosition();
 	if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -41,7 +46,7 @@ void draw_elements() {
 
 void init_ge_defaults(GuiElement *ge) {
 	ge->clickable = false;
-	ge->visible = false;
+	ge->visible = true;
 	ge->click_held = false;
 	ge->on_click = NULL;
 	ge->on_release = NULL;
@@ -189,4 +194,31 @@ void on_click_mod_matrix(void *self, Vector2 mouse_xy) {
 	int x_index = floor((mouse_xy.x - d_mm->grid_bounds.x) / d_mm->cell_bounds.width) + 1;
 	int y_index = floor((mouse_xy.y - d_mm->grid_bounds.y) / d_mm->cell_bounds.height) + 1;
 	printf("ON CLICK: matrix cell [%i, %i] has value %0.4f\n", x_index, y_index, d_mm->fm->mod_map[x_index][y_index]);
+}
+
+void init_fader_control(GE_FaderControl *fc, Rectangle r, float *data_ref, float min, float max) {
+	init_ge_defaults((GuiElement *)fc);
+	fc->base.hitbox = r;
+	fc->data_ref = data_ref;
+	fc->min_value = min;
+	fc->max_value = max;
+	fc->base.on_click = on_click_fader_control;
+	fc->base.draw = draw_fader_control;
+	fc->base.clickable = true;
+}
+
+void on_click_fader_control(void *self, Vector2 mouse_xy) {
+	GE_FaderControl *fc = (GE_FaderControl *)self;
+	float offset = mouse_xy.y - fc->base.hitbox.y;
+	float scaled = offset / fc->base.hitbox.height;
+	*fc->data_ref = fc->min_value + scaled * (fc->max_value - fc->min_value);
+}
+
+void draw_fader_control(void *self) {
+	GE_FaderControl *fc = (GE_FaderControl *)self;
+	Rectangle r = fc->base.hitbox;
+	DrawRectangle(r.x, r.y, r.width, r.height, GRAY);
+	float current_offet = *fc->data_ref - fc->min_value / (fc->max_value - fc->min_value);
+	DrawRectangle(r.x, r.y + r.height * current_offet, r.width, r.height - r.height * current_offet, GREEN);
+	DrawRectangleLines(r.x, r.y, r.width, r.height, BLACK);
 }
