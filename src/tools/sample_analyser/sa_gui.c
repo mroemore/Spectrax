@@ -1,9 +1,11 @@
 #include "sa_gui.h"
 #include "raylib.h"
+#include "tools/sample_analyser/sa_audio.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 GuiElementList clickable_list;
 GuiElementList drawable_list;
@@ -132,9 +134,11 @@ void draw_buffer(DrawBufferCollection *dbc, int buffer_id, Rectangle bounds, Col
 }
 
 void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
+	bool draw_legend = true;
 	d_mm->fm = fm;
-	d_mm->grid_bounds = bounds;
-	d_mm->cell_bounds = (Rectangle){ 0, 0, bounds.width / SA_OP_C, bounds.height / SA_OP_C };
+	d_mm->base.hitbox = bounds;
+	int cell_count = draw_legend ? SA_OP_C + 1 : SA_OP_C;
+	d_mm->cell_bounds = (Rectangle){ 0, 0, bounds.width / cell_count, bounds.height / cell_count };
 	d_mm->c_grid1 = c_grid1;
 	d_mm->c_grid2 = c_grid2;
 	d_mm->c_diff = (Color){
@@ -153,9 +157,12 @@ void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid
 
 void draw_mod_matrix(void *self) {
 	GE_ModMatrix *d_mm = (GE_ModMatrix *)self;
+	int scaled_fontsize = (int)d_mm->cell_bounds.width * 0.125;
 
-	for(int grid_x = SA_OP_C; grid_x >= 0; grid_x--) {
-		for(int grid_y = SA_OP_C; grid_y >= 0; grid_y--) {
+	for(int grid_x = SA_OP_C - 1; grid_x >= 0; grid_x--) {
+		char legend_text[MAX_CELL_TEXT_LENGTH];
+
+		for(int grid_y = SA_OP_C - 1; grid_y >= 0; grid_y--) {
 			Color shade = (Color){
 				d_mm->c_grid1.r + (int)((d_mm->c_diff.r) * (log10(1 - d_mm->fm->mod_map[grid_x][grid_y]))),
 				d_mm->c_grid1.g + (int)((d_mm->c_diff.g) * (log10(1 - d_mm->fm->mod_map[grid_x][grid_y]))),
@@ -164,47 +171,66 @@ void draw_mod_matrix(void *self) {
 			};
 
 			DrawRectangle(
-			  d_mm->grid_bounds.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
-			  d_mm->grid_bounds.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
+			  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
+			  d_mm->base.hitbox.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
 			  d_mm->cell_bounds.width,
 			  d_mm->cell_bounds.height,
 			  shade);
 
-			char mod_amount_txt[10];
+			char mod_amount_txt[MAX_CELL_TEXT_LENGTH];
 
-			snprintf(mod_amount_txt, 10, "%0.2f", d_mm->fm->mod_map[grid_x][grid_y]);
+			snprintf(mod_amount_txt, MAX_CELL_TEXT_LENGTH, "%0.2f", d_mm->fm->mod_map[grid_x][grid_y]);
 			DrawText(mod_amount_txt,
-			         d_mm->grid_bounds.x + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_x) * d_mm->cell_bounds.width),
-			         d_mm->grid_bounds.y + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_y) * d_mm->cell_bounds.height),
-			         (int)d_mm->cell_bounds.width * 0.125,
+			         d_mm->base.hitbox.x + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_x) * d_mm->cell_bounds.width),
+			         d_mm->base.hitbox.y + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_y) * d_mm->cell_bounds.height),
+			         scaled_fontsize,
 			         d_mm->c_txt);
 
 			DrawRectangleLines(
-			  d_mm->grid_bounds.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
-			  d_mm->grid_bounds.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
+			  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
+			  d_mm->base.hitbox.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.height,
 			  d_mm->cell_bounds.width,
 			  d_mm->cell_bounds.height,
 			  d_mm->c_txt);
+
+			snprintf(legend_text, MAX_CELL_TEXT_LENGTH, "%d", grid_y + 1);
+			DrawText(
+			  legend_text,
+			  d_mm->base.hitbox.x,
+			  d_mm->base.hitbox.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.width,
+			  scaled_fontsize,
+			  RED);
 		}
+
+		snprintf(legend_text, MAX_CELL_TEXT_LENGTH, "%d", grid_x + 1);
+		DrawText(
+		  legend_text,
+		  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
+		  d_mm->base.hitbox.y,
+		  scaled_fontsize,
+		  RED);
 	}
 }
 
 void on_click_mod_matrix(void *self, Vector2 mouse_xy) {
 	GE_ModMatrix *d_mm = (GE_ModMatrix *)self;
-	int x_index = floor((mouse_xy.x - d_mm->grid_bounds.x) / d_mm->cell_bounds.width) + 1;
-	int y_index = floor((mouse_xy.y - d_mm->grid_bounds.y) / d_mm->cell_bounds.height) + 1;
+	int x_index = SA_OP_C - floor((mouse_xy.x - d_mm->base.hitbox.x) / d_mm->cell_bounds.width) + 1;
+	int y_index = SA_OP_C - floor((mouse_xy.y - d_mm->base.hitbox.y) / d_mm->cell_bounds.height) + 1;
 	printf("ON CLICK: matrix cell [%i, %i] has value %0.4f\n", x_index, y_index, d_mm->fm->mod_map[x_index][y_index]);
 }
 
-void init_fader_control(GE_FaderControl *fc, Rectangle r, float *data_ref, float min, float max) {
+void init_fader_control(GE_FaderControl *fc, Rectangle r, char label[], float *data_ref, float min, float max, GE_FaderOpts options) {
 	init_ge_defaults((GuiElement *)fc);
+	strncpy(fc->label, label, 128);
 	fc->base.hitbox = r;
 	fc->data_ref = data_ref;
 	fc->min_value = min;
 	fc->max_value = max;
+	snprintf(fc->fader_value_string, 16, "%0.4f", *data_ref);
 	fc->base.on_click = on_click_fader_control;
 	fc->base.draw = draw_fader_control;
 	fc->base.clickable = true;
+	fc->options = options;
 }
 
 void on_click_fader_control(void *self, Vector2 mouse_xy) {
@@ -212,6 +238,8 @@ void on_click_fader_control(void *self, Vector2 mouse_xy) {
 	float offset = mouse_xy.y - fc->base.hitbox.y;
 	float scaled = offset / fc->base.hitbox.height;
 	*fc->data_ref = fc->min_value + scaled * (fc->max_value - fc->min_value);
+	snprintf(fc->fader_value_string, 16, "%0.4f", *fc->data_ref);
+	printf("%s\n", fc->fader_value_string);
 }
 
 void draw_fader_control(void *self) {
@@ -221,4 +249,8 @@ void draw_fader_control(void *self) {
 	float current_offet = *fc->data_ref - fc->min_value / (fc->max_value - fc->min_value);
 	DrawRectangle(r.x, r.y + r.height * current_offet, r.width, r.height - r.height * current_offet, GREEN);
 	DrawRectangleLines(r.x, r.y, r.width, r.height, BLACK);
+	if(fc->options & GEF_OPT_SHOW_LABEL) {
+		DrawText(fc->label, r.x, r.y + r.height, 10, GREEN);
+		DrawText(fc->fader_value_string, r.x, r.y + r.height + 12, 10, GREEN);
+	}
 }

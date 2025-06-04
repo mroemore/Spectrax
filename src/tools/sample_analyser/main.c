@@ -69,18 +69,21 @@ struct WaveShaper {
 	float lookup_table[2048];
 	ApplyWS apply;
 	float amount;
+	float midpoint_x;
+	float midpoint_y;
+	float activation_area;
 };
 
-float shape_wave(WaveShaper *s, float sample) {
-	float scaled = 2048 * ((sample + 1.0f) / 2.0f);
+float default_wt_lookup(WaveShaper *s, float sample) {
+	float scaled = 2047 * ((sample + 1.0f) * 0.5f);
 	int index_a = (int)scaled;
 	int index_b = (int)(scaled + 1.0f);
-	index_b = index_b >= 2048 ? 2048 : index_b;
-	float integral_a = 0;
+	index_b = index_b >= 2048 ? 2047 : index_b;
+	float integral_a = 1;
 	float frac_a = modff(scaled, &integral_a);
 	float frac_b = 1.0f - frac_a;
-	float wet = (s->lookup_table[index_a] * frac_a + s->lookup_table[index_b] * frac_b) * s->amount;
-	return ((sample * (1.0f - s->amount) + wet)) / 2.0f;
+	float wet = (s->lookup_table[index_a] * frac_a + s->lookup_table[index_b] * frac_b);
+	return ((sample * (1.0f - s->amount) + wet * s->amount));
 }
 
 float fold_wave(WaveShaper *s, float sample) {
@@ -100,13 +103,50 @@ float fold_wave(WaveShaper *s, float sample) {
 	return out;
 }
 
+float wrap_wave(WaveShaper *s, float sample) {
+	float abs_samp = fabsf(sample);
+	float a = 1.0 - s->amount;
+	float diff = abs_samp - a;
+	float out = 0;
+	if(abs_samp > a) {
+		if(sample < 0) {
+			out = 1.0f - diff;
+		} else {
+			out = -1.0f + diff;
+		}
+	} else {
+		out = sample;
+	}
+	return out;
+}
+
 void init_sine_shaper(WaveShaper *s) {
 	for(int i = 0; i < 2048; i++) {
-		float phase = (float)i * (1.0f / 2048.0f);
-		s->lookup_table[i] = cos(SA_PI * phase) * -1;
+		float phase = (float)i * (2.0f / 2048.0f);
+		s->lookup_table[i] = sin(SA_2PI * phase) * -1;
 	}
 	s->amount = 0.2;
-	s->apply = shape_wave;
+	s->apply = default_wt_lookup;
+}
+
+void init_hardclip_shaper(WaveShaper *s) {
+	s->activation_area = 0.7f;
+	s->midpoint_x = 0.5;
+	int activation_samples = 2048 * s->activation_area;
+	for(int i = 0; i < 2048; i++) {
+		// float phase = (float)i * (1.0f / 2048.0f);
+		if(i < activation_samples / 2) {
+			s->lookup_table[i] = 0;
+		} else if(i > 2048 - (activation_samples / 2)) {
+			s->lookup_table[i] = 0;
+		} else {
+			float ramp = (i - activation_samples / 2.0f) / (2048 - activation_samples);
+			ramp = (ramp * 2.0f) - 1.0f;
+			s->lookup_table[i] = ramp;
+		}
+	}
+	s->amount = 0.2;
+	s->apply = default_wt_lookup;
 }
 
 void init_fold_shaper(WaveShaper *s) {
@@ -114,6 +154,13 @@ void init_fold_shaper(WaveShaper *s) {
 		s->lookup_table[i] = 0;
 	}
 	s->apply = fold_wave;
+}
+
+void init_wrap_shaper(WaveShaper *s) {
+	for(int i = 0; i < 2048; i++) {
+		s->lookup_table[i] = 0;
+	}
+	s->apply = wrap_wave;
 }
 
 static float get_sin_samp(float phase) {
@@ -187,7 +234,11 @@ static void pa_data_init(TestData *td) {
 			td->dbc.buffer[i * SA_HIST_C + j] = 0.0f;
 		}
 	}
-	init_sine_shaper(&td->shaper);
+	// init_sine_shaper(&td->shaper);
+	// init_fold_shaper(&td->shaper);
+	// init_wrap_shaper(&td->shaper);
+
+	init_hardclip_shaper(&td->shaper);
 	init_ops(&td->fm);
 }
 
@@ -237,23 +288,14 @@ int main(void) {
 	add_drawclick_element((GuiElement *)&ge_mm);
 
 	GE_FaderControl fader;
-	init_fader_control(&fader, (Rectangle){ 400, 300, 25, 95 }, &data.shaper.amount, 0.0f, 1.0f);
+	init_fader_control(&fader, (Rectangle){ 400, 300, 10, 95 }, "WS Amt", &data.shaper.amount, 0.0f, 1.0f, 1 & GEF_OPT_SHOW_LABEL);
 	add_drawclick_element((GuiElement *)&fader);
 
-	// struct timespec start, end;
-	//  double elapsed;
-	//  double sum = 0;
-	//  clock_gettime(CLOCK_MONOTONIC, &start);
-	//  for(int i = 0; i < 200000; i++) {
-	//  	sum += get_fm_sample(&data.fm, false);
-	//  }
-	//  clock_gettime(CLOCK_MONOTONIC, &end);
-
-	// elapsed = (end.tv_sec - start.tv_sec) +
-	//           (end.tv_nsec - start.tv_nsec) / 1e9;
-	// printf("\n\n\n\n");
-	// printf("Elapsed time: %.9f seconds\n", elapsed);
-	// printf("\n\n\n\n");
+	for(int i = 0; i < SA_HIST_LEN; i++) {
+		float index = 1.0 - ((2.0f / SA_HIST_LEN) * i);
+		float wts = data.shaper.apply(&data.shaper, index);
+		push_frame_to_history(wts, &data.dbc, 3);
+	}
 
 	err = Pa_Initialize();
 	if(err == paNoError) {
@@ -294,6 +336,7 @@ int main(void) {
 			draw_buffer(&data.dbc, 0, (Rectangle){ 25, 25, 600, 60 }, RED);
 			draw_buffer(&data.dbc, 2, (Rectangle){ 25, 225, 600, 100 }, RAYWHITE);
 			draw_buffer(&data.dbc, 1, (Rectangle){ 25, 225, 600, 100 }, GREEN);
+			draw_buffer(&data.dbc, 3, (Rectangle){ 25, 345, 128, 128 }, PURPLE);
 
 			draw_elements();
 			DrawFPS(5, 5);
@@ -301,4 +344,6 @@ int main(void) {
 			EndDrawing();
 		}
 	}
+	Pa_Terminate();
+	CloseWindow();
 }

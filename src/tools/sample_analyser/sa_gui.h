@@ -3,26 +3,23 @@
 
 #include "raylib.h"
 #include "sa_audio.h"
+#include <stdint.h>
 
 #define SA_MAX_GUI_ELEMENTS 1024
 
 #define SA_HIST_LEN 512
 #define SA_HIST_C 16
 
-typedef struct GuiElement GuiElement;
-typedef struct GuiElementList GuiElementList;
-typedef struct GE_ModMatrix GE_ModMatrix;
-typedef struct GE_FaderControl GE_FaderControl;
-typedef struct DrawBufferCollection DrawBufferCollection;
-
 typedef void (*ClickCB)(void *self, Vector2 mouse_xy);
 typedef void (*DrawCB)(void *self);
 
+typedef struct DrawBufferCollection DrawBufferCollection;
 struct DrawBufferCollection {
 	unsigned int buffer_write_indx[SA_HIST_C];
 	float buffer[SA_HIST_LEN * SA_HIST_C];
 };
 
+typedef struct GuiElement GuiElement;
 struct GuiElement {
 	bool visible;
 	bool clickable;
@@ -33,6 +30,7 @@ struct GuiElement {
 	Rectangle hitbox;
 };
 
+typedef struct GuiElementList GuiElementList;
 struct GuiElementList {
 	GuiElement *list[SA_MAX_GUI_ELEMENTS];
 	unsigned int active_count;
@@ -40,6 +38,8 @@ struct GuiElementList {
 	unsigned int removed_item_count;
 };
 
+#define MAX_CELL_TEXT_LENGTH 5
+typedef struct GE_ModMatrix GE_ModMatrix;
 struct GE_ModMatrix {
 	GuiElement base;
 	Ops *fm;
@@ -51,12 +51,24 @@ struct GE_ModMatrix {
 	Color c_txt;
 };
 
+typedef enum GE_FaderOpts GE_FaderOpts;
+enum GE_FaderOpts {
+    GEF_OPT_SHOW_LABEL = 1,
+    GEF_OPT_SHOW_VALUE = 2,
+    GEF_OPT_HIDE_LABEL_EXCEPT_HOVER = 4,
+    GEF_OPT_HIDE_VALUE_EXCEPT_HOVER = 8,
+    GEF_OPT_HORIZONTAL_MODE = 16
+};
+
+typedef struct GE_FaderControl GE_FaderControl;
 struct GE_FaderControl {
 	GuiElement base;
+	char label[128];
+	char fader_value_string[16];
 	float min_value;
 	float max_value;
 	float *data_ref;
-	bool horizontal;
+	uint64_t options;
 };
 
 void gui_setup();
@@ -81,7 +93,7 @@ void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid
 void draw_mod_matrix(void *self);
 void on_click_mod_matrix(void *self, Vector2 mouse_xy);
 
-void init_fader_control(GE_FaderControl *fc, Rectangle r, float *data_ref, float min, float max);
+void init_fader_control(GE_FaderControl *fc, Rectangle r, char label[], float *data_ref, float min, float max, GE_FaderOpts options);
 void on_click_fader_control(void *self, Vector2 mouse_xy);
 void draw_fader_control(void *self);
 #endif
