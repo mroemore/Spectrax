@@ -9,10 +9,16 @@
 
 GuiElementList clickable_list;
 GuiElementList drawable_list;
+Font customFont;
 
 void gui_setup() {
 	init_gui_element_list(&clickable_list);
 	init_gui_element_list(&drawable_list);
+	customFont = LoadFont("themevck-text.ttf");
+}
+
+void draw_text_cf(const char *text, int posX, int posY, int fontSize, Color color) {
+	DrawTextEx(customFont, text, (Vector2){ posX, posY }, fontSize, 1, color);
 }
 
 void add_click_element(GuiElement *ge) {
@@ -136,6 +142,7 @@ void draw_buffer(DrawBufferCollection *dbc, int buffer_id, Rectangle bounds, Col
 void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid1, Color c_grid2, Color c_txt) {
 	bool draw_legend = true;
 	d_mm->fm = fm;
+	d_mm->font_size = 10;
 	d_mm->base.hitbox = bounds;
 	int cell_count = draw_legend ? SA_OP_C + 1 : SA_OP_C;
 	d_mm->cell_bounds = (Rectangle){ 0, 0, bounds.width / cell_count, bounds.height / cell_count };
@@ -157,7 +164,6 @@ void init_mod_matrix(GE_ModMatrix *d_mm, Ops *fm, Rectangle bounds, Color c_grid
 
 void draw_mod_matrix(void *self) {
 	GE_ModMatrix *d_mm = (GE_ModMatrix *)self;
-	int scaled_fontsize = (int)d_mm->cell_bounds.width * 0.125;
 
 	for(int grid_x = SA_OP_C - 1; grid_x >= 0; grid_x--) {
 		char legend_text[MAX_CELL_TEXT_LENGTH];
@@ -180,11 +186,12 @@ void draw_mod_matrix(void *self) {
 			char mod_amount_txt[MAX_CELL_TEXT_LENGTH];
 
 			snprintf(mod_amount_txt, MAX_CELL_TEXT_LENGTH, "%0.2f", d_mm->fm->mod_map[grid_x][grid_y]);
-			DrawText(mod_amount_txt,
-			         d_mm->base.hitbox.x + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_x) * d_mm->cell_bounds.width),
-			         d_mm->base.hitbox.y + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_y) * d_mm->cell_bounds.height),
-			         scaled_fontsize,
-			         d_mm->c_txt);
+
+			draw_text_cf(mod_amount_txt,
+			             d_mm->base.hitbox.x + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_x) * d_mm->cell_bounds.width),
+			             d_mm->base.hitbox.y + (int)(d_mm->cell_bounds.width * 0.125 + (SA_OP_C - grid_y) * d_mm->cell_bounds.height),
+			             d_mm->font_size,
+			             d_mm->c_txt);
 
 			DrawRectangleLines(
 			  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
@@ -194,20 +201,20 @@ void draw_mod_matrix(void *self) {
 			  d_mm->c_txt);
 
 			snprintf(legend_text, MAX_CELL_TEXT_LENGTH, "%d", grid_y + 1);
-			DrawText(
+			draw_text_cf(
 			  legend_text,
-			  d_mm->base.hitbox.x,
-			  d_mm->base.hitbox.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.width,
-			  scaled_fontsize,
+			  d_mm->base.hitbox.x + d_mm->cell_bounds.width * 0.6,
+			  d_mm->base.hitbox.y + (SA_OP_C - grid_y) * d_mm->cell_bounds.width + d_mm->cell_bounds.width * 0.25,
+			  d_mm->font_size,
 			  RED);
 		}
 
 		snprintf(legend_text, MAX_CELL_TEXT_LENGTH, "%d", grid_x + 1);
-		DrawText(
+		draw_text_cf(
 		  legend_text,
-		  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width,
-		  d_mm->base.hitbox.y,
-		  scaled_fontsize,
+		  d_mm->base.hitbox.x + (SA_OP_C - grid_x) * d_mm->cell_bounds.width + d_mm->cell_bounds.width * 0.25,
+		  d_mm->base.hitbox.y + d_mm->cell_bounds.height * 0.5,
+		  d_mm->font_size,
 		  RED);
 	}
 }
@@ -226,6 +233,7 @@ void init_fader_control(GE_FaderControl *fc, Rectangle r, char label[], float *d
 	fc->data_ref = data_ref;
 	fc->min_value = min;
 	fc->max_value = max;
+	fc->font_size = 10;
 	snprintf(fc->fader_value_string, 16, "%0.4f", *data_ref);
 	fc->base.on_click = on_click_fader_control;
 	fc->base.draw = draw_fader_control;
@@ -250,7 +258,7 @@ void draw_fader_control(void *self) {
 	DrawRectangle(r.x, r.y + r.height * current_offet, r.width, r.height - r.height * current_offet, GREEN);
 	DrawRectangleLines(r.x, r.y, r.width, r.height, BLACK);
 	if(fc->options & GEF_OPT_SHOW_LABEL) {
-		DrawText(fc->label, r.x, r.y + r.height, 10, GREEN);
-		DrawText(fc->fader_value_string, r.x, r.y + r.height + 12, 10, GREEN);
+		draw_text_cf(fc->label, r.x, r.y + r.height, fc->font_size, GREEN);
+		draw_text_cf(fc->fader_value_string, r.x, r.y + r.height + 12, fc->font_size, GREEN);
 	}
 }

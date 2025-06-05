@@ -136,9 +136,9 @@ void init_hardclip_shaper(WaveShaper *s) {
 	for(int i = 0; i < 2048; i++) {
 		// float phase = (float)i * (1.0f / 2048.0f);
 		if(i < activation_samples / 2) {
-			s->lookup_table[i] = 0;
+			s->lookup_table[i] = -1;
 		} else if(i > 2048 - (activation_samples / 2)) {
-			s->lookup_table[i] = 0;
+			s->lookup_table[i] = 1;
 		} else {
 			float ramp = (i - activation_samples / 2.0f) / (2048 - activation_samples);
 			ramp = (ramp * 2.0f) - 1.0f;
@@ -234,11 +234,11 @@ static void pa_data_init(TestData *td) {
 			td->dbc.buffer[i * SA_HIST_C + j] = 0.0f;
 		}
 	}
-	// init_sine_shaper(&td->shaper);
+	init_sine_shaper(&td->shaper);
 	// init_fold_shaper(&td->shaper);
 	// init_wrap_shaper(&td->shaper);
 
-	init_hardclip_shaper(&td->shaper);
+	// init_hardclip_shaper(&td->shaper);
 	init_ops(&td->fm);
 }
 
@@ -284,18 +284,16 @@ int main(void) {
 	TestData data;
 	pa_data_init(&data);
 	GE_ModMatrix ge_mm;
-	init_mod_matrix(&ge_mm, &data.fm, (Rectangle){ 25, 95, 150, 150 }, BLACK, RED, WHITE);
+	init_mod_matrix(&ge_mm, &data.fm, (Rectangle){ 25, 95, 200, 200 }, BLACK, RED, WHITE);
 	add_drawclick_element((GuiElement *)&ge_mm);
 
 	GE_FaderControl fader;
+	GE_FaderControl fader2;
+	GE_FaderControl fader3;
 	init_fader_control(&fader, (Rectangle){ 400, 300, 10, 95 }, "WS Amt", &data.shaper.amount, 0.0f, 1.0f, 1 & GEF_OPT_SHOW_LABEL);
 	add_drawclick_element((GuiElement *)&fader);
-
-	for(int i = 0; i < SA_HIST_LEN; i++) {
-		float index = 1.0 - ((2.0f / SA_HIST_LEN) * i);
-		float wts = data.shaper.apply(&data.shaper, index);
-		push_frame_to_history(wts, &data.dbc, 3);
-	}
+	// init_fader_control(&fader2, (Rectangle){ 400, 300, 10, 95 }, "WS Amt", &data.shaper.amount, 0.0f, 1.0f, 1 & GEF_OPT_SHOW_LABEL);
+	// add_drawclick_element((GuiElement *)&fader2);
 
 	err = Pa_Initialize();
 	if(err == paNoError) {
@@ -318,6 +316,15 @@ int main(void) {
 	if(err == paNoError) {
 		while(!WindowShouldClose()) {
 			handle_input(&mouse_position);
+
+			float tmp_amount = data.shaper.amount;
+			data.shaper.amount = 1.0;
+			for(int i = 0; i < SA_HIST_LEN; i++) {
+				float index = 1.0 - ((2.0f / SA_HIST_LEN) * i);
+				float wts = data.shaper.apply(&data.shaper, index);
+				push_frame_to_history(wts, &data.dbc, 3);
+			}
+			data.shaper.amount = tmp_amount;
 			Ops fmcpy = data.fm;
 			// fmcpy.sample_rate = SA_HIST_LEN;
 			fmcpy.base_freq = 86.0f;

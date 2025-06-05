@@ -43,6 +43,7 @@ typedef struct GE_ModMatrix GE_ModMatrix;
 struct GE_ModMatrix {
 	GuiElement base;
 	Ops *fm;
+	int font_size;
 	Rectangle grid_bounds;
 	Rectangle cell_bounds;
 	Color c_grid1;
@@ -53,11 +54,11 @@ struct GE_ModMatrix {
 
 typedef enum GE_FaderOpts GE_FaderOpts;
 enum GE_FaderOpts {
-    GEF_OPT_SHOW_LABEL = 1,
-    GEF_OPT_SHOW_VALUE = 2,
-    GEF_OPT_HIDE_LABEL_EXCEPT_HOVER = 4,
-    GEF_OPT_HIDE_VALUE_EXCEPT_HOVER = 8,
-    GEF_OPT_HORIZONTAL_MODE = 16
+	GEF_OPT_SHOW_LABEL = 1,
+	GEF_OPT_SHOW_VALUE = 2,
+	GEF_OPT_HIDE_LABEL_EXCEPT_HOVER = 4,
+	GEF_OPT_HIDE_VALUE_EXCEPT_HOVER = 8,
+	GEF_OPT_HORIZONTAL_MODE = 16
 };
 
 typedef struct GE_FaderControl GE_FaderControl;
@@ -69,9 +70,11 @@ struct GE_FaderControl {
 	float max_value;
 	float *data_ref;
 	uint64_t options;
+	int font_size;
 };
 
 void gui_setup();
+void draw_text_cf(const char *text, int posX, int posY, int fontSize, Color color);
 void add_click_element(GuiElement *ge);
 void add_draw_element(GuiElement *ge);
 void add_drawclick_element(GuiElement *ge);
