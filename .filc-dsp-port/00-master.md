@@ -19,7 +19,7 @@ baseline. Massively expand test coverage along the way.
 |---|---------|--------|-------|
 | 1 | **Foundation & build pipeline** | ✅ done | fil-c-friendly build system, stub main, render-to-WAV skeleton |
 | 2 | **Math, notes, FFT** | ✅ done | Pure math layer — notes.c, fft.c, kissfft rebuild. 2 pre-existing bugs found in fft.c window functions (logged). |
-| 3 | **Core DSP primitives** | ⬜ pending | oscillator, wavetable, blit_synth, distortion, filters |
+| 3 | **Core DSP primitives** | ✅ done | oscillator, wavetable, blit_synth, distortion, filters. 60 new tests, 8 pre-existing bugs logged. |
 | 4 | **Voice & modulation** | ⬜ pending | voice.c (envelope), modsystem (LFO routing) |
 | 5 | **Sequencing & full render** | ⬜ pending | sequencer.c, preset_io, full pipeline → WAV |
 
@@ -40,6 +40,17 @@ baseline. Massively expand test coverage along the way.
   in `02-section-math-fft.md`) in `triangularWindow` and `hammingWindow`.
   Not fil-c related — they're upstream issues. If Section 4/5 ends up
   relying on the visualizer path, fix them then.
+- **(3 → 4):** BUG-BLIT-2 and BUG-OSC-1 (unimplemented functions) may
+  block Section 4 if `voice.c` references `init_blit`, `blit_synth`,
+  `band_limited_sawtooth`, or `band_limited_square`. Need to verify at
+  start of Section 4.
+- **(3 → 4):** BUG-DIST-1 (fold asymmetry) only matters if voice path
+  uses distortion. Verify at Section 4 start.
+- **(3 → 4):** BUG-FILT-2 (memory leak in `createFilter` error path)
+  only matters if voice code triggers invalid FilterType. Likely fine.
+- **(3 → 5):** BUG-WT-1 (wavetable overflow guard off-by-one) — if
+  Section 5 loads >128 wavetables during a sequence render, fil-c will
+  panic. Verify the test sequence stays under the cap.
 
 ## How to read this folder
 

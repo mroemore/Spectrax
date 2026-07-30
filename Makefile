@@ -21,7 +21,7 @@ FILC_CFLAGS  = -O2 -g -Iinclude -Isrc -Ithird_party/kissfft
 FILC_DSP_DIR = dsp
 FILC_KISSFFT_DIR = third_party/kissfft
 FILC_TARGET  = spectrax_filc
-FILC_TESTS   = test_wav_writer test_notes test_fft
+FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters
 
 UNAME_S := $(shell uname -s)
 
@@ -142,6 +142,24 @@ $(OUT_DIR)/test_notes: tests/dsp/test_notes.o $(FILC_DSP_DIR)/src_notes.o | $(OU
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
 $(OUT_DIR)/test_fft: tests/dsp/test_fft.o $(FILC_DSP_DIR)/src_fft.o $(FILC_KISSFFT_OBJS) | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+# Section 3 tests — DSP primitives. Each test links its own src/<name>.o
+# plus any src/ dependencies the header chain pulls in.
+
+$(OUT_DIR)/test_oscillator: tests/dsp/test_oscillator.o $(FILC_DSP_DIR)/src_oscillator.o $(FILC_DSP_DIR)/src_modsystem.o $(FILC_DSP_DIR)/src_wavetable.o $(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_wavetable: tests/dsp/test_wavetable.o $(FILC_DSP_DIR)/src_wavetable.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_blit_synth: tests/dsp/test_blit_synth.o $(FILC_DSP_DIR)/src_blit_synth.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_distortion: tests/dsp/test_distortion.o $(FILC_DSP_DIR)/src_distortion.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_filters: tests/dsp/test_filters.o $(FILC_DSP_DIR)/src_filters.o | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
 tests/dsp/%.o: tests/dsp/%.c

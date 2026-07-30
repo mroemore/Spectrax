@@ -16,7 +16,7 @@ tests under `tests/dsp/` for the fil-c build.
 |---------|-----------|--------------|--------|--------|
 | 1 | none — wrote directly | — | n/a | n/a |
 | 2 | none — wrote directly (2 small test files; subagent overhead > payoff) | — | n/a | n/a |
-| 3 | **planned:** 5 parallel subagents (oscillator, wavetable, blit_synth, distortion, filters) | — | not yet | — |
+| 3 | **dispatched:** 5 parallel subagents (oscillator, wavetable, blit_synth, distortion, filters) | tests/dsp/test_{oscillator,wavetable,blit_synth,distortion,filters}.c | done | 60 tests, 60 pass, 8 pre-existing bugs found |
 | 4 | — | — | — | — |
 | 5 | — | — | — | — |
 
@@ -29,7 +29,7 @@ to verify against, build/test commands, return format.)
 |---------|-------------|------|------|---------|
 | 1 | 2 (test_empty_wav, test_with_samples) | 2 | 0 | 0 |
 | 2 | 10 (notes: 4, fft: 6) | 10 | 0 | 0 |
-| 3 | — | — | — | — |
+| 3 | 60 (osc: 15, wt: 8, blit: 10, dist: 14, filt: 13) | 60 | 0 | 0 |
 | 4 | — | — | — | — |
 | 5 | — | — | — | — |
 
@@ -37,7 +37,11 @@ to verify against, build/test commands, return format.)
 
 > Anything that should have a test but doesn't (yet). Capture as we go.
 
-(Empty.)
+- **Section 3:** `init_blit()` and `blit_synth()` from blit_synth.h are
+  unimplemented in `src/blit_synth.c` — tests can't be written until
+  someone implements them. Same for `band_limited_sawtooth` /
+  `band_limited_square` from oscillator.h. These are pre-existing bugs,
+  not a coverage choice.
 
 ## Test execution
 
