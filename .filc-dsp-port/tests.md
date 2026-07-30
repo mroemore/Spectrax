@@ -14,9 +14,9 @@ tests under `tests/dsp/` for the fil-c build.
 
 | Section | Agent task | Test file(s) | Status | Result |
 |---------|-----------|--------------|--------|--------|
-| 1 | — | — | — | — |
-| 2 | — | — | — | — |
-| 3 | — | — | — | — |
+| 1 | none — wrote directly | — | n/a | n/a |
+| 2 | none — wrote directly (2 small test files; subagent overhead > payoff) | — | n/a | n/a |
+| 3 | **planned:** 5 parallel subagents (oscillator, wavetable, blit_synth, distortion, filters) | — | not yet | — |
 | 4 | — | — | — | — |
 | 5 | — | — | — | — |
 
@@ -28,7 +28,7 @@ to verify against, build/test commands, return format.)
 | Section | Tests added | Pass | Fail | Skipped |
 |---------|-------------|------|------|---------|
 | 1 | 2 (test_empty_wav, test_with_samples) | 2 | 0 | 0 |
-| 2 | — | — | — | — |
+| 2 | 10 (notes: 4, fft: 6) | 10 | 0 | 0 |
 | 3 | — | — | — | — |
 | 4 | — | — | — | — |
 | 5 | — | — | — | — |

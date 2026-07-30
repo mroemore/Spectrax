@@ -4,3 +4,6 @@ src/*.o
 rg35xx-copy.sh
 TODO.md
 compile_commands.json
+third_party/kissfft/*.o
+tests/dsp/*.o
+dsp/src_*.o

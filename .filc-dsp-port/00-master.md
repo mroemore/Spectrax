@@ -18,7 +18,7 @@ baseline. Massively expand test coverage along the way.
 | # | Section | Status | Notes |
 |---|---------|--------|-------|
 | 1 | **Foundation & build pipeline** | ✅ done | fil-c-friendly build system, stub main, render-to-WAV skeleton |
-| 2 | **Math, notes, FFT** | ⬜ pending | Pure math layer — notes.c, fft.c, kissfft rebuild |
+| 2 | **Math, notes, FFT** | ✅ done | Pure math layer — notes.c, fft.c, kissfft rebuild. 2 pre-existing bugs found in fft.c window functions (logged). |
 | 3 | **Core DSP primitives** | ⬜ pending | oscillator, wavetable, blit_synth, distortion, filters |
 | 4 | **Voice & modulation** | ⬜ pending | voice.c (envelope), modsystem (LFO routing) |
 | 5 | **Sequencing & full render** | ⬜ pending | sequencer.c, preset_io, full pipeline → WAV |
@@ -36,7 +36,10 @@ baseline. Massively expand test coverage along the way.
 > note it here with the (M → N) relationship. Used to spot architectural debt
 > early.
 
-(Empty.)
+- **(2 → TBD):** `src/fft.c` has 2 pre-existing bugs (BUG-FFT-1, BUG-FFT-2
+  in `02-section-math-fft.md`) in `triangularWindow` and `hammingWindow`.
+  Not fil-c related — they're upstream issues. If Section 4/5 ends up
+  relying on the visualizer path, fix them then.
 
 ## How to read this folder
 

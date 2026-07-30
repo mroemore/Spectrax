@@ -17,10 +17,11 @@ TARGET = spectrax
 
 # --- fil-c build (DSP-only, no GUI/audio backends) ---
 FILC_CC      = /usr/local/bin/clang
-FILC_CFLAGS  = -O2 -g -Iinclude
+FILC_CFLAGS  = -O2 -g -Iinclude -Isrc -Ithird_party/kissfft
 FILC_DSP_DIR = dsp
+FILC_KISSFFT_DIR = third_party/kissfft
 FILC_TARGET  = spectrax_filc
-FILC_TEST    = test_wav_writer
+FILC_TESTS   = test_wav_writer test_notes test_fft
 
 UNAME_S := $(shell uname -s)
 
@@ -121,10 +122,30 @@ $(OUT_DIR)/$(FILC_TARGET): $(FILC_DSP_DIR)/dsp_main.o $(FILC_DSP_DIR)/wav_writer
 $(FILC_DSP_DIR)/%.o: $(FILC_DSP_DIR)/%.c
 	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
 
-filc-test: $(OUT_DIR)/$(FILC_TEST)
+# kissfft objects — built once, linked into the fft test binary
+$(FILC_KISSFFT_DIR)/%.o: $(FILC_KISSFFT_DIR)/%.c
+	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
 
-$(OUT_DIR)/$(FILC_TEST): $(FILC_DSP_DIR)/test_wav_writer.o $(FILC_DSP_DIR)/wav_writer.o | $(OUT_DIR)
+# src/*.o for fil-c — separate dir to avoid clobbering gcc builds
+$(FILC_DSP_DIR)/src_%.o: src/%.c
+	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
+
+FILC_SRC_OBJS = $(FILC_DSP_DIR)/src_notes.o $(FILC_DSP_DIR)/src_fft.o
+FILC_KISSFFT_OBJS = $(FILC_KISSFFT_DIR)/kiss_fft.o $(FILC_KISSFFT_DIR)/kiss_fftr.o
+
+filc-test: $(addprefix $(OUT_DIR)/,$(FILC_TESTS))
+
+$(OUT_DIR)/test_wav_writer: $(FILC_DSP_DIR)/test_wav_writer.o $(FILC_DSP_DIR)/wav_writer.o | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
+$(OUT_DIR)/test_notes: tests/dsp/test_notes.o $(FILC_DSP_DIR)/src_notes.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_fft: tests/dsp/test_fft.o $(FILC_DSP_DIR)/src_fft.o $(FILC_KISSFFT_OBJS) | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+tests/dsp/%.o: tests/dsp/%.c
+	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
+
 filc-clean:
-	rm -f $(FILC_DSP_DIR)/*.o $(OUT_DIR)/$(FILC_TARGET) $(OUT_DIR)/$(FILC_TEST)
+	rm -f $(FILC_DSP_DIR)/*.o $(FILC_KISSFFT_DIR)/*.o tests/dsp/*.o $(OUT_DIR)/$(FILC_TARGET) $(addprefix $(OUT_DIR)/,$(FILC_TESTS))
