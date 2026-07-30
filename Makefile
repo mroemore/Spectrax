@@ -15,6 +15,13 @@ OUT_DIR = bin
 
 TARGET = spectrax
 
+# --- fil-c build (DSP-only, no GUI/audio backends) ---
+FILC_CC      = /usr/local/bin/clang
+FILC_CFLAGS  = -O2 -g -Iinclude
+FILC_DSP_DIR = dsp
+FILC_TARGET  = spectrax_filc
+FILC_TEST    = test_wav_writer
+
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S), Linux)
@@ -47,7 +54,11 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/dataviz.c \
 		$(SRC_DIR)/wavetable.c \
 		$(SRC_DIR)/filters.c \
-		$(SRC_DIR)/sequencer.c
+		$(SRC_DIR)/sequencer.c \
+		$(SRC_DIR)/io/gui_io.c \
+		$(SRC_DIR)/io/preset_io.c \
+		$(SRC_DIR)/io/sequencer_io.c \
+		$(SRC_DIR)/io/settings_io.c \
 
 # Generate object files in the src directory
 OBJS = $(SRCS:.c=.o)
@@ -97,3 +108,23 @@ $(OUT_DIR):
 # Clean up object files in the src directory and the target binary
 clean:
 	rm -f $(OBJS) $(OUT_DIR)/$(TARGET)
+
+# --- fil-c targets ---
+.PHONY: filc filc-test filc-clean
+
+filc: CFLAGS = $(FILC_CFLAGS)
+filc: $(OUT_DIR)/$(FILC_TARGET)
+
+$(OUT_DIR)/$(FILC_TARGET): $(FILC_DSP_DIR)/dsp_main.o $(FILC_DSP_DIR)/wav_writer.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(FILC_DSP_DIR)/%.o: $(FILC_DSP_DIR)/%.c
+	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
+
+filc-test: $(OUT_DIR)/$(FILC_TEST)
+
+$(OUT_DIR)/$(FILC_TEST): $(FILC_DSP_DIR)/test_wav_writer.o $(FILC_DSP_DIR)/wav_writer.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+filc-clean:
+	rm -f $(FILC_DSP_DIR)/*.o $(OUT_DIR)/$(FILC_TARGET) $(OUT_DIR)/$(FILC_TEST)
