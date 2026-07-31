@@ -21,7 +21,7 @@ FILC_CFLAGS  = -O2 -g -Iinclude -Isrc -Ithird_party/kissfft
 FILC_DSP_DIR = dsp
 FILC_KISSFFT_DIR = third_party/kissfft
 FILC_TARGET  = spectrax_filc
-FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters
+FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters test_modsystem test_voice
 
 UNAME_S := $(shell uname -s)
 
@@ -160,6 +160,26 @@ $(OUT_DIR)/test_distortion: tests/dsp/test_distortion.o $(FILC_DSP_DIR)/src_dist
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
 $(OUT_DIR)/test_filters: tests/dsp/test_filters.o $(FILC_DSP_DIR)/src_filters.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+# Section 4 tests — voice + modulation. Heavy dependency chains.
+
+$(OUT_DIR)/test_modsystem: tests/dsp/test_modsystem.o $(FILC_DSP_DIR)/src_modsystem.o $(FILC_DSP_DIR)/src_wavetable.o $(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+# voice pulls in nearly everything via voice.h
+$(OUT_DIR)/test_voice: tests/dsp/test_voice.o \
+	$(FILC_DSP_DIR)/src_voice.o \
+	$(FILC_DSP_DIR)/src_modsystem.o \
+	$(FILC_DSP_DIR)/src_oscillator.o \
+	$(FILC_DSP_DIR)/src_wavetable.o \
+	$(FILC_DSP_DIR)/src_dstruct.o \
+	$(FILC_DSP_DIR)/src_blit_synth.o \
+	$(FILC_DSP_DIR)/src_filters.o \
+	$(FILC_DSP_DIR)/src_fft.o \
+	$(FILC_DSP_DIR)/src_notes.o \
+	$(FILC_DSP_DIR)/src_sample.o \
+	$(FILC_KISSFFT_OBJS) | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
 tests/dsp/%.o: tests/dsp/%.c

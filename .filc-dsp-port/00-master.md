@@ -20,7 +20,7 @@ baseline. Massively expand test coverage along the way.
 | 1 | **Foundation & build pipeline** | ✅ done | fil-c-friendly build system, stub main, render-to-WAV skeleton |
 | 2 | **Math, notes, FFT** | ✅ done | Pure math layer — notes.c, fft.c, kissfft rebuild. 2 pre-existing bugs found in fft.c window functions (logged). |
 | 3 | **Core DSP primitives** | ✅ done | oscillator, wavetable, blit_synth, distortion, filters. 60 new tests, 8 pre-existing bugs logged. |
-| 4 | **Voice & modulation** | ⬜ pending | voice.c (envelope), modsystem (LFO routing) |
+| 4 | **Voice & modulation** | ✅ done | voice.c, modsystem.c. 53 new tests, **17 pre-existing bugs found** including **CRITICAL double-free in freeVoice** that fil-c caught at runtime. |
 | 5 | **Sequencing & full render** | ⬜ pending | sequencer.c, preset_io, full pipeline → WAV |
 
 ## Plan-change log

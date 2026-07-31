@@ -30,7 +30,7 @@ to verify against, build/test commands, return format.)
 | 1 | 2 (test_empty_wav, test_with_samples) | 2 | 0 | 0 |
 | 2 | 10 (notes: 4, fft: 6) | 10 | 0 | 0 |
 | 3 | 60 (osc: 15, wt: 8, blit: 10, dist: 14, filt: 13) | 60 | 0 | 0 |
-| 4 | — | — | — | — |
+| 4 | 53 (mod: 42, voice: 11) | 53 | 0 | 0 |
 | 5 | — | — | — | — |
 
 ## Coverage gaps
