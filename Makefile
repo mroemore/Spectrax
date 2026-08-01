@@ -21,7 +21,7 @@ FILC_CFLAGS  = -O2 -g -Iinclude -Isrc -Ithird_party/kissfft
 FILC_DSP_DIR = dsp
 FILC_KISSFFT_DIR = third_party/kissfft
 FILC_TARGET  = spectrax_filc
-FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters test_modsystem test_voice
+FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters test_modsystem test_voice test_io test_sequencer
 
 UNAME_S := $(shell uname -s)
 
@@ -130,6 +130,10 @@ $(FILC_KISSFFT_DIR)/%.o: $(FILC_KISSFFT_DIR)/%.c
 $(FILC_DSP_DIR)/src_%.o: src/%.c
 	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
 
+# src/io/*.o for fil-c — nested dir, prefix pattern
+$(FILC_DSP_DIR)/src_io_%.o: src/io/%.c
+	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
+
 FILC_SRC_OBJS = $(FILC_DSP_DIR)/src_notes.o $(FILC_DSP_DIR)/src_fft.o
 FILC_KISSFFT_OBJS = $(FILC_KISSFFT_DIR)/kiss_fft.o $(FILC_KISSFFT_DIR)/kiss_fftr.o
 
@@ -182,8 +186,66 @@ $(OUT_DIR)/test_voice: tests/dsp/test_voice.o \
 	$(FILC_KISSFFT_OBJS) | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
+# Section 5 file I/O — preset / sequencer / settings. io.c + io/*.c pull in
+# voice + modsystem via the io.h/sequencer.h header chain.
+$(OUT_DIR)/test_io: tests/dsp/test_io.o \
+	$(FILC_DSP_DIR)/src_io.o \
+	$(FILC_DSP_DIR)/src_io_preset_io.o \
+	$(FILC_DSP_DIR)/src_io_sequencer_io.o \
+	$(FILC_DSP_DIR)/src_io_settings_io.o \
+	$(FILC_DSP_DIR)/src_voice.o \
+	$(FILC_DSP_DIR)/src_modsystem.o \
+	$(FILC_DSP_DIR)/src_oscillator.o \
+	$(FILC_DSP_DIR)/src_wavetable.o \
+	$(FILC_DSP_DIR)/src_dstruct.o \
+	$(FILC_DSP_DIR)/src_blit_synth.o \
+	$(FILC_DSP_DIR)/src_filters.o \
+	$(FILC_DSP_DIR)/src_fft.o \
+	$(FILC_DSP_DIR)/src_notes.o \
+	$(FILC_DSP_DIR)/src_sample.o \
+	$(FILC_KISSFFT_OBJS) | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+# sequencer needs only modsystem's param plumbing (BPM/swing params); the
+# appstate setters are stubbed in the test and the VoiceManager* passed to
+# createArranger is never dereferenced, so no voice/sample/wavetable chain
+# is linked.
+$(OUT_DIR)/test_sequencer: tests/dsp/test_sequencer.o \
+	$(FILC_DSP_DIR)/src_sequencer.o \
+	$(FILC_DSP_DIR)/src_modsystem.o \
+	$(FILC_DSP_DIR)/src_wavetable.o \
+	$(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
 tests/dsp/%.o: tests/dsp/%.c
 	$(FILC_CC) -c $< -o $@ $(FILC_CFLAGS)
 
+# --- Section 5 integration render ---
+# Same source (dsp/render.c + dsp/wav_writer.c + src/oscillator.c) compiled
+# under both fil-c and gcc. Output WAVs must be byte-identical.
+
+FILC_RENDER_TARGET = spectrax_filc_render
+GCC_RENDER_TARGET  = spectrax_gcc_render
+
+$(OUT_DIR)/$(FILC_RENDER_TARGET): dsp/render.o $(FILC_DSP_DIR)/wav_writer.o $(FILC_DSP_DIR)/src_oscillator.o $(FILC_DSP_DIR)/src_modsystem.o $(FILC_DSP_DIR)/src_wavetable.o $(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+# gcc versions of every object — same source, system compiler.
+dsp/%_gcc.o: dsp/%.c
+	gcc -c $< -o $@ $(FILC_CFLAGS)
+
+dsp/src_%_gcc.o: src/%.c
+	gcc -c $< -o $@ $(FILC_CFLAGS)
+
+$(OUT_DIR)/$(GCC_RENDER_TARGET): dsp/render_gcc.o dsp/wav_writer_gcc.o dsp/src_oscillator_gcc.o dsp/src_modsystem_gcc.o dsp/src_wavetable_gcc.o dsp/src_dstruct_gcc.o | $(OUT_DIR)
+	gcc -o $@ $^ -lm $(FILC_CFLAGS)
+
+.PHONY: render-both
+render-both: $(OUT_DIR)/$(FILC_RENDER_TARGET) $(OUT_DIR)/$(GCC_RENDER_TARGET)
+	@echo "=== fil-c render ===" && $(OUT_DIR)/$(FILC_RENDER_TARGET) /tmp/.filc_render.wav
+	@echo "=== gcc render ==="   && $(OUT_DIR)/$(GCC_RENDER_TARGET)  /tmp/.gcc_render.wav
+	@echo "=== diff ===" && cmp /tmp/.filc_render.wav /tmp/.gcc_render.wav && echo "BYTE-IDENTICAL" || echo "DIFFER"
+	@echo "=== sha256 ===" && sha256sum /tmp/.filc_render.wav /tmp/.gcc_render.wav
+
 filc-clean:
-	rm -f $(FILC_DSP_DIR)/*.o $(FILC_KISSFFT_DIR)/*.o tests/dsp/*.o $(OUT_DIR)/$(FILC_TARGET) $(addprefix $(OUT_DIR)/,$(FILC_TESTS))
+	rm -f $(FILC_DSP_DIR)/*.o $(FILC_KISSFFT_DIR)/*.o tests/dsp/*.o $(OUT_DIR)/$(FILC_TARGET) $(addprefix $(OUT_DIR)/,$(FILC_TESTS)) $(OUT_DIR)/$(FILC_RENDER_TARGET) $(OUT_DIR)/$(GCC_RENDER_TARGET)

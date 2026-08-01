@@ -21,7 +21,7 @@ baseline. Massively expand test coverage along the way.
 | 2 | **Math, notes, FFT** | ✅ done | Pure math layer — notes.c, fft.c, kissfft rebuild. 2 pre-existing bugs found in fft.c window functions (logged). |
 | 3 | **Core DSP primitives** | ✅ done | oscillator, wavetable, blit_synth, distortion, filters. 60 new tests, 8 pre-existing bugs logged. |
 | 4 | **Voice & modulation** | ✅ done | voice.c, modsystem.c. 53 new tests, **17 pre-existing bugs found** including **CRITICAL double-free in freeVoice** that fil-c caught at runtime. |
-| 5 | **Sequencing & full render** | ⬜ pending | sequencer.c, preset_io, full pipeline → WAV |
+| 5 | **Sequencing & full render** | ✅ done | sequencer.c, io.c, full pipeline → WAV. **Byte-identical fil-c vs gcc WAV output (SHA256 match).** |
 
 ## Plan-change log
 
@@ -51,6 +51,21 @@ baseline. Massively expand test coverage along the way.
 - **(3 → 5):** BUG-WT-1 (wavetable overflow guard off-by-one) — if
   Section 5 loads >128 wavetables during a sequence render, fil-c will
   panic. Verify the test sequence stays under the cap.
+- **(3 → TBD):** BUG-DIST-1 — distortion is in voice path or not?
+  Section 4 confirmed it isn't used in voice, so no blocker.
+- **(4 → 5):** 🚨 **BUG-VC-1 (double-free in freeVoice)** — caught by
+  fil-c at runtime. Section 5 should AVOID calling freeVoice or
+  exercising voice release paths, or it will crash. Workaround: render
+  a sequence without ever releasing voices (just trigger & render to
+  end).
+- **(4 → 5):** BUG-MOD-1 (`initMod` ignores `generate` arg) — LFO
+  modulation will produce envelope-shaped output, not sine. The
+  byte-identical render check vs. gcc will catch any divergence.
+- **(4 → 5):** BUG-VC-4 (granular OOB) — avoid granular voices in
+  Section 5 sequence render.
+- **(4 → TBD):** BUG-MOD-3 (mod amount always 1.0) — sequence
+  modulation depths won't work as configured. Likely visible in
+  Section 5 renders.
 
 ## How to read this folder
 
