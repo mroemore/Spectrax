@@ -39,7 +39,7 @@ void initFFT(Fft *fft, int fftSize, int framesPerBuffer, int toAverage, bool rem
 	fft->navg = toAverage;
 	fft->removeDc = removeDC;
 
-	fft->rowCount = 0;
+  fft->rowCount = 0;
 	fft->prevRowCount = 0;
 	fft->maxRows = 128;
 

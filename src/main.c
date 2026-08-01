@@ -13,6 +13,8 @@
 #include "sample.h"
 #include "gui.h"
 #include "io.h"
+#include "io/gui_io.h"
+#include "io/sequencer_io.h"
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"
@@ -454,7 +456,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	}
 
 	initPresetBank(&data->presetBank);
-	loadPresetsFromDirectory("data/instrument_presets/", &data->presetBank);
+	// loadPresetsFromDirectory("data/instrument_presets/", &data->presetBank);
 	printf("\n\nPRESETS LOADED: %i\n\n", data->presetBank.presetCount);
 	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool, &data->presetBank);
 	if(!data->voiceManager) {

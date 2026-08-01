@@ -1,13 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "io.h"
-#include "modsystem.h"
 
-static int writeChunkHeader(FILE *file, const char *id) {
+int writeChunkHeader(FILE *file, const char *id) {
 	return fwrite(id, 1, 4, file) == 4;
 }
 
-static int readAndVerifyChunkHeader(FILE *file, const char *expected) {
+int readAndVerifyChunkHeader(FILE *file, const char *expected) {
 	char header[4];
 	if(fread(header, 1, 4, file) != 4) return 0;
 	return memcmp(header, expected, 4) == 0;

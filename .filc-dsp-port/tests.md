@@ -45,6 +45,12 @@ to verify against, build/test commands, return format.)
   someone implements them. Same for `band_limited_sawtooth` /
   `band_limited_square` from oscillator.h. These are pre-existing bugs,
   not a coverage choice.
+- **Section 6 audit:** Full per-function matrix in
+  `coverage-audit.md`. Highlights:
+  - `dstruct.c`: 15/15 public functions have zero direct tests
+  - `initVoiceManager`, `initInstDefaults`, `initInstrumentFromPreset`,
+    `initApplicationState`: declared, unimplemented, untested
+  - 5 cross-module gaps (sequencer→voice, preset-io→instrument, etc.)
 
 ## Test execution
 
