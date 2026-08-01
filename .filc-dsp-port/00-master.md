@@ -22,6 +22,7 @@ baseline. Massively expand test coverage along the way.
 | 3 | **Core DSP primitives** | ✅ done | oscillator, wavetable, blit_synth, distortion, filters. 60 new tests, 8 pre-existing bugs logged. |
 | 4 | **Voice & modulation** | ✅ done | voice.c, modsystem.c. 53 new tests, **17 pre-existing bugs found** including **CRITICAL double-free in freeVoice** that fil-c caught at runtime. |
 | 5 | **Sequencing & full render** | ✅ done | sequencer.c, io.c, full pipeline → WAV. **Byte-identical fil-c vs gcc WAV output (SHA256 match).** |
+| 6 | **Post-section-5 followup** | ✅ done | test_sample (21 tests), test_fm_synth (23 tests), coverage audit (455 lines). 9 new pre-existing bugs found. |
 
 ## Plan-change log
 

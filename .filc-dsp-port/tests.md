@@ -18,7 +18,8 @@ tests under `tests/dsp/` for the fil-c build.
 | 2 | none — wrote directly (2 small test files; subagent overhead > payoff) | — | n/a | n/a |
 | 3 | **dispatched:** 5 parallel subagents (oscillator, wavetable, blit_synth, distortion, filters) | tests/dsp/test_{oscillator,wavetable,blit_synth,distortion,filters}.c | done | 60 tests, 60 pass, 8 pre-existing bugs found |
 | 4 | **dispatched:** 2 parallel subagents (modsystem, voice) | tests/dsp/test_{modsystem,voice}.c | done | 53 tests, 53 pass, ~17 pre-existing bugs (incl. CRITICAL double-free) |
-| 5 | — | — | — | — |
+| 5 | **dispatched:** 2 parallel subagents (sequencer, io) + integration render harness built by main agent | tests/dsp/test_{sequencer,io}.c + dsp/render.c | done | 37 unit tests + 1 integration. **byte-identical WAV vs gcc.** |
+| 6 | **dispatched:** 3 parallel subagents (sample, fm_synth, audit) | tests/dsp/test_{sample,fm_synth}.c + coverage-audit.md | done | 44 tests + audit report. **2 more critical bugs surfaced.** |
 
 (Each subagent gets: source files to read, API summary, expected outputs
 to verify against, build/test commands, return format.)
@@ -32,7 +33,8 @@ to verify against, build/test commands, return format.)
 | 3 | 60 (osc: 15, wt: 8, blit: 10, dist: 14, filt: 13) | 60 | 0 | 0 |
 | 4 | 53 (mod: 42, voice: 11) | 53 | 0 | 0 |
 | 5 | 37 (sequencer: 23, io: 14) | 37 | 0 | 0 |
-| **Total** | **162 unit + 1 integration render** | **163** | **0** | **0** |
+| 6 | 44 (sample: 21, fm_synth: 23) | 41 | 0 | 3 (documented-crash SKIPs) |
+| **Total** | **206 unit + 1 integration render** | **205** | **0** | **3** |
 
 ## Coverage gaps
 

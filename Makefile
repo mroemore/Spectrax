@@ -21,7 +21,7 @@ FILC_CFLAGS  = -O2 -g -Iinclude -Isrc -Ithird_party/kissfft
 FILC_DSP_DIR = dsp
 FILC_KISSFFT_DIR = third_party/kissfft
 FILC_TARGET  = spectrax_filc
-FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters test_modsystem test_voice test_io test_sequencer
+FILC_TESTS   = test_wav_writer test_notes test_fft test_oscillator test_wavetable test_blit_synth test_distortion test_filters test_modsystem test_voice test_io test_sequencer test_sample test_fm_synth
 
 UNAME_S := $(shell uname -s)
 
@@ -145,6 +145,9 @@ $(OUT_DIR)/test_wav_writer: $(FILC_DSP_DIR)/test_wav_writer.o $(FILC_DSP_DIR)/wa
 $(OUT_DIR)/test_notes: tests/dsp/test_notes.o $(FILC_DSP_DIR)/src_notes.o | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
+$(OUT_DIR)/test_sample: tests/dsp/test_sample.o $(FILC_DSP_DIR)/src_sample.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
 $(OUT_DIR)/test_fft: tests/dsp/test_fft.o $(FILC_DSP_DIR)/src_fft.o $(FILC_KISSFFT_OBJS) | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
@@ -152,6 +155,13 @@ $(OUT_DIR)/test_fft: tests/dsp/test_fft.o $(FILC_DSP_DIR)/src_fft.o $(FILC_KISSF
 # plus any src/ dependencies the header chain pulls in.
 
 $(OUT_DIR)/test_oscillator: tests/dsp/test_oscillator.o $(FILC_DSP_DIR)/src_oscillator.o $(FILC_DSP_DIR)/src_modsystem.o $(FILC_DSP_DIR)/src_wavetable.o $(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
+	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
+
+$(OUT_DIR)/test_fm_synth: tests/dsp/test_fm_synth.o \
+	$(FILC_DSP_DIR)/src_oscillator.o \
+	$(FILC_DSP_DIR)/src_modsystem.o \
+	$(FILC_DSP_DIR)/src_wavetable.o \
+	$(FILC_DSP_DIR)/src_dstruct.o | $(OUT_DIR)
 	$(FILC_CC) -o $@ $^ $(FILC_CFLAGS)
 
 $(OUT_DIR)/test_wavetable: tests/dsp/test_wavetable.o $(FILC_DSP_DIR)/src_wavetable.o | $(OUT_DIR)
