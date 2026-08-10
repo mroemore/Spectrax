@@ -48,25 +48,31 @@ void freeVoiceManager(VoiceManager *vm) {
 }
 
 void freeVoice(Voice *v) { // TO-DO: free grain
-	freeModList(v->modList);
+	// Ownership: v->paramList owns ALL parameters (frequency, volume,
+	// mod outputs, LFO rate/phase, operator outLevels). v->modList owns
+	// the mod structs (Envelope/LFO embed Mod base as their first member,
+	// so freeing &base frees the whole struct). FM operator ratio/level
+	// params are instrument-owned (createParamPointerOperator) and the
+	// sample is pool-owned; neither is freed here.
+
+	// Free mod structs only — their output params are owned by paramList.
+	for(int i = 0; i < v->modList->count; i++) {
+		free(v->modList->mods[i]);
+	}
+	free(v->modList);
+
+	// Free all remaining params (frequency, volume, mod outputs, LFO
+	// rate/phase, operator outLevels) exactly once.
 	freeParamList(v->paramList);
-	freeParameter(v->volume);
-	for(int i = 0; i < v->envCount; i++) {
-		freeEnvelope(v->envelope[i]);
-	}
-	for(int i = 0; i < v->lfoCount; i++) {
-		freeLFO(v->lfo[i]);
-	}
+
+	// Free operator structs only — feedbackAmount/ratio/level are
+	// instrument-owned, outLevel is owned by paramList (already freed).
 	switch(v->type) {
 		case VOICE_TYPE_FM:
 			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
-				freeOperator(v->vd.fm.operators[i]);
+				free(v->vd.fm.operators[i]);
 			}
 			break;
-		case VOICE_TYPE_SAMPLE:
-			freeSample(v->vd.sampler.sample);
-			break;
-		case VOICE_TYPE_BLEP:
 		default:
 			break;
 	}
@@ -375,54 +381,6 @@ void addPresetToBank(PresetBank *pb, Preset p) {
 	} else {
 		printf("WARNING: Max patches reached, not adding patch.\n");
 	}
-}
-
-void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb) {
-	DirectoryList *dirList = createDirectoryList();
-	populateDirectoryList(dirList, dirPath);
-
-	for(int i = 0; i < dirList->count; i++) {
-		loadPresetFile(dirList->file_paths[i], pb);
-	}
-
-	freeDirectoryList(dirList);
-}
-
-PresetFileResult savePresetFile(const char *filename, Preset *preset) {
-	FILE *file = fopen(filename, "wb");
-	if(!file) {
-		return PRESET_ERROR_OPEN;
-	}
-
-	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER)) {
-		fclose(file);
-		return PRESET_ERROR_WRITE;
-	}
-	fwrite(preset, sizeof(Preset), 1, file);
-	fclose(file);
-	return PRESET_OK;
-}
-
-PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
-	Preset preset;
-	FILE *file = fopen(filename, "rb");
-	if(!file) {
-		return PRESET_ERROR_OPEN;
-	}
-
-	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER)) {
-		fclose(file);
-		return PRESET_ERROR_FORMAT;
-	}
-
-	if(fread(&preset, sizeof(Preset), 1, file) != 1) {
-		fclose(file);
-		return PRESET_ERROR_READ;
-	}
-	fclose(file);
-
-	addPresetToBank(pb, preset);
-	return PRESET_OK;
 }
 
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool, PresetBank *pb) {

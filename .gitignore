@@ -1,5 +1,12 @@
 docs/*
 src/*.o
+src/io/*.o
+tests/obj/
+tests/test_io
+tests/test_voice
+tests/dsp/*.o
+.tmp_files/
+third_party/
 .clang-format
 rg35xx-copy.sh
 TODO.md

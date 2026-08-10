@@ -13,6 +13,7 @@
 #include "sample.h"
 #include "gui.h"
 #include "io.h"
+#include "io/preset_io.h"
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"

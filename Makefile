@@ -39,6 +39,10 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/gui.c \
 		$(SRC_DIR)/notes.c \
 		$(SRC_DIR)/io.c \
+		$(SRC_DIR)/io/gui_io.c \
+		$(SRC_DIR)/io/preset_io.c \
+		$(SRC_DIR)/io/sequencer_io.c \
+		$(SRC_DIR)/io/settings_io.c \
 		$(SRC_DIR)/settings.c \
 		$(SRC_DIR)/appstate.c \
 		$(SRC_DIR)/oscillator.c \

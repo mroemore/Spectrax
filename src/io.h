@@ -48,6 +48,9 @@ typedef enum {
 	SEQ_ERROR_MEMORY
 } SequencerFileResult;
 
+int writeChunkHeader(FILE *file, const char *id);
+int readAndVerifyChunkHeader(FILE *file, const char *expected);
+
 DirectoryList *createDirectoryList();
 void freeDirectoryList(DirectoryList *list);
 void populateDirectoryList(DirectoryList *list, const char *dirPath);
