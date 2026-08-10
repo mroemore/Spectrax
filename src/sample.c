@@ -121,13 +121,13 @@ float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrem
 		return 0.0f;
 	}
 	float adjusted_phase_increment = phaseIncrement * (PA_SR / ((float)sample->sampleRate / sample->bit) * 2);
-	*samplePosition += adjusted_phase_increment;
+	*samplePosition -= adjusted_phase_increment;
 
-	if(*samplePosition >= sample->length) {
+	if(*samplePosition < 0) {
 		if(loop) {
-			*samplePosition -= sample->length;
+			*samplePosition += sample->length;
 		} else {
-			*samplePosition = sample->length - 1;
+			*samplePosition = 0;
 		}
 	}
 	// Calculate the wavetable indices and interpolation fraction
@@ -136,9 +136,5 @@ float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrem
 	float frac = *samplePosition - indexFloor;
 
 	// Perform linear interpolation between indexFloor and indexCeil
-	float value = sample->data[indexFloor] * (1.0f - frac) + sample->data[indexCeil] * frac;
-	if(*samplePosition >= sample->length - 2) {
-		return 0;
-	}
-	return value;
+	return sample->data[indexFloor] * (1.0f - frac) + sample->data[indexCeil] * frac;
 }

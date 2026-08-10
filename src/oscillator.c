@@ -73,6 +73,8 @@ Operator *createOperator(ParamList *paramList, float ratio) {
 	op->feedbackAmount = createParameterEx(paramList, "feedback", 0.0f, 0.0f, 1.0f, 0.01f, 0.10f);
 	op->ratio = createParameterEx(paramList, "ratio", ratio, 0.25f, 30.0f, 0.01f, 1.0f);
 	op->level = createParameter(paramList, "level", 0.1f, 0.0f, 1.0f);
+	op->outLevel = createParameter(paramList, "outLevel", 0.5f, 0.0f, 1.0f);
+	op->generate = sine_wave;
 	return op;
 }
 
