@@ -12,19 +12,10 @@
 #include "notes.h"
 #include "voice.h"
 
-// Graph* globalGraph;
-// Graph* patternGraph;
-// Graph* arrangerGraph;
-// Graph* instrumentGraph;
-
-DrawableList *patternScreenDrawableList;
-DrawableList *globalDrawableList;
-DrawableList *arrangerScreenDrawableList;
-DrawableList *instrumentScreenDrawableList;
-
-// Graph* instrumentScreenGraph[MAX_SEQUENCER_CHANNELS];
 InstrumentGui *igui;
 Graph *agui;
+static Graph *patternGraph;
+static SongMinimapGui *smgui;
 
 Font textFont;
 Font symbolFont;
@@ -111,11 +102,6 @@ void InitGUI(void) {
 
 	initDefaultColourScheme(&cs);
 
-	patternScreenDrawableList = create_drawable_list();
-	arrangerScreenDrawableList = create_drawable_list();
-	instrumentScreenDrawableList = create_drawable_list();
-	globalDrawableList = create_drawable_list();
-
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	textFont = LoadFont("resources/fonts/setback.png");
 	// pixelFont = LoadFontEx("resources/fonts/04B_03__.TTF", 12, 0, 255);
@@ -133,88 +119,6 @@ void InitGUI(void) {
 	UnloadImage(btnimg2);
 	SetTargetFPS(60);
 }
-
-// TransportGui *createTransportGui(int *playing, Arranger *arranger, int x, int y) {
-// 	TransportGui *tsGui = (TransportGui *)malloc(sizeof(TransportGui));
-// 	tsGui->base.draw = drawTransportGui;
-// 	tsGui->base.enabled = true;
-// 	tsGui->shape.x = x;
-// 	tsGui->shape.y = y;
-// 	tsGui->icons = createSpriteSheet("resources/fonts/iconzfin.png", 10, 12);
-// 	tsGui->playing = playing;
-// 	tsGui->arranger = arranger;
-// 	tsGui->tempo = &arranger->beats_per_minute;
-// 	add_drawable(&tsGui->base, GLOBAL); // Add TransportGui to globalDrawableList
-
-// 	return tsGui;
-// }
-
-SequencerGui *createSequencerGui(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedNote, int x, int y) {
-	SequencerGui *seqGui = (SequencerGui *)malloc(sizeof(SequencerGui));
-	seqGui->base.draw = drawSequencerGui;
-	seqGui->base.enabled = true;
-	seqGui->sequencer = sequencer;
-	seqGui->pattern_list = pl;
-	seqGui->shape.x = x;
-	seqGui->shape.y = y;
-	seqGui->shape.w = 50;
-	seqGui->shape.h = 50;
-	seqGui->pads_per_col = 4;
-	seqGui->padding = 10;
-	seqGui->border_size = 3;
-	seqGui->selected_pattern_index = selectedPattern;
-	seqGui->selected_note_index = selectedNote;
-	seqGui->outline_colour = cs.outlineColour;
-	seqGui->default_fill_colour = cs.defaultCell;
-	seqGui->playing_fill_colour = cs.highlightedCell;
-
-	return seqGui;
-}
-
-GraphGui *createGraphGui(float *target, char *name, float min, float max, int x, int y, int h, int size) {
-	GraphGui *graphGui = (GraphGui *)malloc(sizeof(GraphGui));
-	graphGui->base.draw = drawGraphGui;
-	graphGui->base.enabled = true;
-	graphGui->target = target;
-	graphGui->name = name;
-	graphGui->index = 0;
-	graphGui->shape.x = x;
-	graphGui->shape.y = y;
-	graphGui->shape.w = size;
-	graphGui->shape.h = 20;
-	graphGui->padding = 1;
-	graphGui->margin = 2;
-	graphGui->min = min;
-	graphGui->max = max;
-	graphGui->history_size = size;
-	for(int i = 0; i < graphGui->history_size; i++) {
-		graphGui->history[i] = 0;
-	}
-	return graphGui; // Return the created GraphGui object
-}
-
-// ArrangerGui *createArrangerGui(Arranger *arranger, PatternList *patternList) {
-// 	ArrangerGui *arrangerGui = (ArrangerGui *)malloc(sizeof(ArrangerGui));
-// 	if(!arrangerGui) {
-// 		printf("could not allocate arranger GUI\n");
-// 		return NULL;
-// 	}
-// 	arrangerGui->base.draw = drawArrangerGui;
-// 	arrangerGui->arranger = arranger;
-// 	arrangerGui->patternList = patternList;
-// 	arrangerGui->base.enabled = true;
-// 	arrangerGui->grid_padding = 6;
-// 	arrangerGui->shape.w = 40;
-// 	arrangerGui->shape.h = 40;
-// 	arrangerGui->shape.x = (SCREEN_W / 2) - (arranger->enabledChannels * (arrangerGui->shape.w + arrangerGui->grid_padding)) / 2;
-// 	arrangerGui->shape.y = 40;
-// 	arrangerGui->iconx = arrangerGui->shape.x;
-// 	arrangerGui->icony = arrangerGui->shape.y - 30;
-// 	arrangerGui->cellColour = cs.defaultCell;
-// 	arrangerGui->border_size = 3;
-
-// 	return arrangerGui;
-// }
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y) {
 	SongMinimapGui *minimapGui = (SongMinimapGui *)malloc(sizeof(SongMinimapGui));
@@ -235,263 +139,6 @@ SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, 
 	return minimapGui;
 }
 
-InputContainer *createInputContainer() {
-	InputContainer *btnCont = (InputContainer *)malloc(sizeof(InputContainer));
-	btnCont->rowCount = 0;
-	for(int i = 0; i < MAX_BUTTON_ROWS; i++) {
-		btnCont->columnCount[i] = 0;
-	}
-	btnCont->containerBounds = (Shape){ SCREEN_W, SCREEN_H, 0, 0 };
-	btnCont->inputCount = 0;
-	btnCont->otherDrawableCount = 0;
-	btnCont->inputPadding = 2;
-	btnCont->selectedRow = 0;
-	btnCont->selectedColumn = 0;
-	return btnCont;
-}
-
-void addDrawableToContainer(InputContainer *ic, Drawable *d) {
-	ic->otherDrawables[ic->otherDrawableCount] = d;
-	ic->otherDrawableCount++;
-}
-
-ContainerGroup *createContainerGroup() {
-	ContainerGroup *cg = (ContainerGroup *)malloc(sizeof(ContainerGroup));
-	cg->rowCount = 0;
-	for(int i = 0; i < MAX_BUTTON_CONTAINER_ROWS; i++) {
-		cg->columnCount[i] = 0;
-	}
-	cg->selectedRow = 0;
-	cg->selectedColumn = 0;
-	return cg;
-}
-
-void containerGroupNavigate(ContainerGroup *cg, int rowInc, int colInc) {
-	// printf("NAV GRP: %i, %i inc: %i, %i\n", cg->selectedRow, cg->selectedColumn, rowInc, colInc);
-	InputContainer *ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-	ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = false;
-	// printf("NAV CONT: %i, %i\n", ic->selectedRow, ic->selectedColumn);
-	int newRow = ic->selectedRow + rowInc;
-	int newCol = ic->selectedColumn + colInc;
-	if(newRow >= ic->rowCount) {
-		// printf("newcol > inputcontainer rowcount\n");
-
-		if(cg->selectedRow < cg->rowCount - 1) {
-			printf("containergroup selectedrow %i < rowcount %i\n", cg->selectedRow, cg->rowCount);
-
-			cg->selectedRow++;
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-			ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-			ic->selectedRow = 0;
-			if(ic->selectedColumn >= ic->columnCount[ic->selectedRow]) {
-				ic->selectedColumn = ic->columnCount[ic->selectedRow] - 1;
-			}
-			printf("\t\tcontrowinc%i,%i, ic selected: %i, %i\n", cg->selectedRow, cg->selectedColumn, ic->selectedRow, ic->selectedColumn);
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-		}
-	} else if(newRow < 0) {
-		printf("newrow < 0\n");
-
-		if(cg->selectedRow > 0) {
-			printf("selectedrow > 0\n");
-
-			cg->selectedRow--;
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-			ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-			ic->selectedRow = ic->rowCount - 1;
-			printf("\t\tcontrowdec%i,%i, ic selected: %i, %i\n", cg->selectedRow, cg->selectedColumn, ic->selectedRow, ic->selectedColumn);
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-		}
-	} else {
-		printf("newrow in range: %i\n", newRow);
-
-		ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-		ic->selectedRow = newRow;
-		ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-	}
-	ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-	if(newCol >= ic->columnCount[ic->selectedRow]) {
-		printf("newcol > inputconainer colCount\n");
-
-		if(cg->selectedColumn < cg->columnCount[cg->selectedRow] - 1) {
-			printf("sectedcolum < containergroup colCount\n");
-
-			cg->selectedColumn++;
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-			ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-			ic->selectedColumn = 0;
-			printf("\t\tcontcolinc%i,%i, ic selected: %i, %i\n", cg->selectedRow, cg->selectedColumn, ic->selectedRow, ic->selectedColumn);
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-		}
-	} else if(newCol < 0) {
-		printf("newcol < 0");
-		if(cg->selectedColumn > 0) {
-			printf("containergroup selectedcolumn > 0\n");
-
-			cg->selectedColumn--;
-
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-			ic = (InputContainer *)cg->containerRefs[cg->selectedRow][cg->selectedColumn];
-			ic->selectedColumn = ic->columnCount[ic->selectedRow] - 1;
-			printf("\t\tcontcoldec%i,%i, ic selected: %i, %i\n", cg->selectedRow, cg->selectedColumn, ic->selectedRow, ic->selectedColumn);
-
-			ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-		}
-	} else {
-		printf("newcol in range\n");
-
-		ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 0;
-		ic->selectedColumn = newCol;
-		ic->buttonRefs[ic->selectedRow][ic->selectedColumn]->selected = 1;
-	}
-	printf("\tnew group coords: %i, %i\n", cg->selectedRow, cg->selectedColumn);
-	printf("\tnew container coords: %i, %i\n", newCol, newRow);
-}
-
-void addContainerToGroup(ContainerGroup *cg, InputContainer *ic, int row, int col) {
-	if(row < 0 || col < 0 || row > MAX_BUTTON_CONTAINER_ROWS - 1 || col > MAX_BUTTON_CONTAINER_COLS - 1) {
-		printf("attempting out-of-bounds group insertion.\n");
-		return;
-	}
-	printf("GROUP:count before add:%i,%i adding ", cg->rowCount, cg->columnCount[row]);
-
-	int insertRow = 0, insertCol = 0;
-	if(row >= cg->rowCount) {
-		insertRow = cg->rowCount;
-		cg->rowCount++;
-		printf(" [ir, ");
-
-	} else {
-		insertRow = row;
-		printf(" [nir, ");
-	}
-	if(col >= cg->columnCount[insertRow]) {
-		insertCol = cg->columnCount[insertRow];
-		cg->columnCount[insertRow]++;
-		printf("ic] ");
-
-	} else {
-		insertCol = col;
-		printf("nic] ");
-	}
-	printf(" at %i, %i\n", insertRow, insertCol);
-
-	cg->containerRefs[insertRow][insertCol] = ic;
-}
-
-void removeButtonFromContainer(ButtonGui *btnGui, InputContainer *btnCont, Scene scene) {
-	for(int row = 0; row < btnCont->rowCount; row++) {
-		for(int col = 0; col < btnCont->columnCount[row]; col++) {
-			if(btnCont->buttonRefs[row][col] == btnGui) {
-				// Shift remaining buttons left
-				for(int j = col; j < btnCont->columnCount[row] - 1; j++) {
-					btnCont->buttonRefs[row][j] = btnCont->buttonRefs[row][j + 1];
-				}
-				btnCont->columnCount[row]--; // This needs to happen after finding the button
-				removeDrawable(&btnGui->base, scene);
-				return;
-			}
-		}
-	}
-}
-
-void moveContainer(InputContainer *ic, int deltax, int deltay) {
-	for(int row = 0; row < ic->rowCount; row++) {
-		for(int col = 0; col < ic->columnCount[row]; col++) {
-			ic->buttonRefs[row][col]->shape.x += deltax;
-			ic->buttonRefs[row][col]->shape.y += deltay;
-		}
-	}
-}
-
-void addButtonToContainer(ButtonGui *btnGui, InputContainer *ic, int row, int col, int scene, int enabled) {
-	if(row < 0 || col < 0 || row > MAX_BUTTON_CONTAINER_ROWS - 1 || col > MAX_BUTTON_CONTAINER_COLS - 1) {
-		printf("attempting out-of-bounds btn container insertion.\n");
-		return;
-	}
-	int insertRow = 0, insertCol = 0;
-	printf("CONTAINER:count before add:%i,%i adding ", ic->rowCount, ic->columnCount[row]);
-
-	if(row >= ic->rowCount) {
-		insertRow = ic->rowCount;
-		ic->rowCount++;
-		printf(" [ir, ");
-	} else {
-		insertRow = row;
-		printf(" [nir, ");
-	}
-
-	if(col >= ic->columnCount[insertRow]) {
-		insertCol = ic->columnCount[insertRow];
-		ic->columnCount[insertRow]++;
-		printf("ic] ");
-
-	} else {
-		printf("nic] ");
-
-		insertCol = col;
-	}
-	printf(btnGui->buttonText);
-	printf(" at %i, %i\n", insertRow, insertCol);
-
-	if(btnGui->shape.x < ic->containerBounds.x) {
-		ic->containerBounds.x = btnGui->shape.x;
-	}
-	if(btnGui->shape.y < ic->containerBounds.y) {
-		ic->containerBounds.y = btnGui->shape.y;
-	}
-	int btnEndX = btnGui->shape.x + btnGui->shape.w;
-	if(btnEndX > ic->containerBounds.x + ic->containerBounds.w) {
-		ic->containerBounds.h = btnEndX - ic->containerBounds.x;
-	}
-	int btnEndY = btnGui->shape.y + btnGui->shape.h;
-	if(btnEndY > ic->containerBounds.y + ic->containerBounds.h) {
-		ic->containerBounds.w = btnEndY - ic->containerBounds.y;
-	}
-	ic->buttonRefs[insertRow][insertCol] = btnGui;
-	ic->inputCount++;
-
-	// add the button to the drawable list and track it in the container's drawable reference array.
-	btnGui->base.enabled = enabled;
-	add_drawable(&btnGui->base, scene);
-	addDrawableToContainer(ic, &btnGui->base);
-}
-
-ButtonGui *createButtonGui(int x, int y, int w, int h, char *buttonText, Parameter *param, void *callback) {
-	ButtonGui *btnGui = (ButtonGui *)malloc(sizeof(ButtonGui));
-	btnGui->base.draw = drawButtonGui;
-	btnGui->base.onPress = callback;
-	btnGui->base.enabled = true;
-	btnGui->shape.x = x;
-	btnGui->shape.y = y;
-	btnGui->shape.w = w;
-	btnGui->shape.h = h;
-	btnGui->buttonText = buttonText;
-	btnGui->backgroundColour = RED;
-	btnGui->selectedColour = BROWN;
-	btnGui->textColour = BLACK;
-	btnGui->selected = 0;
-	btnGui->parameter = param;
-	btnGui->applyCallback = applyButtonCallback;
-	return btnGui;
-}
-
-void drawButtonGui(void *self) {
-	ButtonGui *btnGui = (ButtonGui *)self;
-	if(btnGui->selected) {
-		DrawRectangle(btnGui->shape.x - 2, btnGui->shape.y - 2, btnGui->shape.w + 4, btnGui->shape.h + 4, btnGui->selectedColour);
-	}
-	DrawRectangle(btnGui->shape.x, btnGui->shape.y, btnGui->shape.w, btnGui->shape.h, btnGui->backgroundColour);
-	DrawText(btnGui->buttonText, btnGui->shape.x, btnGui->shape.y + btnGui->shape.h / 2, 10, btnGui->textColour);
-	char valueStr[32];
-	snprintf(valueStr, sizeof(valueStr), "%.2f", btnGui->parameter->baseValue);
-	DrawText(valueStr, btnGui->shape.x + MeasureText(btnGui->buttonText, 10) + 5, btnGui->shape.y + btnGui->shape.h / 2, 12, btnGui->textColour);
-}
-
-void applyButtonCallback(void *self, float value) {
-	ButtonGui *btnGui = (ButtonGui *)self;
-	btnGui->base.onPress(btnGui->parameter, value);
-}
 
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	InstrumentGui *ig = (InstrumentGui *)malloc(sizeof(InstrumentGui));
@@ -535,7 +182,139 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	appendItem(arrWrap, gn, 4);
 	appendItem(arrWrap, margin2, 1);
 	appendItem(agui->root, arrWrap, 20);
-	// reflowCoordinates(agui->root);
+}
+
+typedef struct {
+	PatternList *pl;
+	Sequencer *seq;
+	int patternIndex;
+	int stepIndex;
+	int *selectedStepPtr;
+} StepNodeData;
+
+#define PATTERN_STEPS_PER_ROW 4
+
+static StepNodeData stepData[MAX_SEQUENCE_LENGTH];
+static GuiNode *stepNodes[MAX_SEQUENCE_LENGTH];
+static PatternList *patternPl;
+static Sequencer *patternSeq;
+static int *patternSelectedPatternPtr;
+static int *patternSelectedStepPtr;
+
+static GuiNode *createStepNode(PatternList *pl, Sequencer *seq, int patternIndex, int stepIndex, int *selectedStepPtr) {
+	GuiNode *step = createGuiNode(0, 0, 50, 50, 4, na_vertical, "step", 1, 0);
+	stepData[stepIndex].pl = pl;
+	stepData[stepIndex].seq = seq;
+	stepData[stepIndex].patternIndex = patternIndex;
+	stepData[stepIndex].stepIndex = stepIndex;
+	stepData[stepIndex].selectedStepPtr = selectedStepPtr;
+	step->p = (Parameter *)&stepData[stepIndex];
+	step->drawable = true;
+	step->draw = drawStepGuiNode;
+	stepNodes[stepIndex] = step;
+	return step;
+}
+
+void drawStepGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	StepNodeData *d = (StepNodeData *)gn->p;
+	int currentlyPlaying = -1;
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+		if(d->seq->pattern_index[i] == d->patternIndex) {
+			currentlyPlaying = i;
+			break;
+		}
+	}
+	Rectangle cell = (Rectangle){ gn->x, gn->y, gn->w, gn->h };
+	if(*d->selectedStepPtr == d->stepIndex) {
+		DrawRectangle(gn->x - 3, gn->y - 3, gn->w + 6, gn->h + 6, cs.outlineColour);
+	}
+	if(currentlyPlaying > -1 && d->seq->playhead_index[currentlyPlaying] == d->stepIndex) {
+		DrawRectangleRec(cell, cs.highlightedCell);
+	} else {
+		DrawRectangleRec(cell, cs.defaultCell);
+	}
+	int *note = getStep(d->pl, d->patternIndex, d->stepIndex);
+	char *noteString = getNoteString(note[0], note[1]);
+	DrawTextEx(textFont, noteString, (Vector2){ gn->x + 4, gn->y + 4 }, textFont.baseSize, 4, cs.fontColour);
+}
+
+void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep) {
+	patternPl = pl;
+	patternSeq = sequencer;
+	patternSelectedPatternPtr = selectedPattern;
+	patternSelectedStepPtr = selectedStep;
+
+	patternGraph = createGraph(na_vertical);
+	int patternIndex = *selectedPattern;
+	int size = 0;
+	if(patternIndex >= 0 && patternIndex < pl->pattern_count) {
+		size = pl->patterns[patternIndex].pattern_size;
+	}
+	int rows = (size + PATTERN_STEPS_PER_ROW - 1) / PATTERN_STEPS_PER_ROW;
+	GuiNode *gridWrap = createGuiNode(10, 10, 230, 460, 6, na_vertical, "grid", 0, 0);
+	for(int r = 0; r < rows; r++) {
+		GuiNode *row = createGuiNode(0, 0, 100, 50, 4, na_horizontal, "row", 0, 0);
+		for(int c = 0; c < PATTERN_STEPS_PER_ROW; c++) {
+			int i = r * PATTERN_STEPS_PER_ROW + c;
+			if(i >= size) {
+				break;
+			}
+			appendItem(row, createStepNode(pl, sequencer, patternIndex, i, selectedStep), 1);
+		}
+		appendItem(gridWrap, row, 1);
+	}
+	appendItem(patternGraph->root, gridWrap, 20);
+	if(size > 0) {
+		int current = *selectedStep;
+		if(current < 0) {
+			current = 0;
+		}
+		if(current >= size) {
+			current = size - 1;
+		}
+		changeGraphSelection(patternGraph, stepNodes[current]);
+	}
+}
+
+void navigatePatternGraph(int keymapping) {
+	if(!patternGraph || !patternGraph->selected) {
+		return;
+	}
+	StepNodeData *d = (StepNodeData *)patternGraph->selected->p;
+	int next = *d->selectedStepPtr;
+	switch(keymapping) {
+		case KM_LEFT:
+			next = selectStep(d->pl, d->patternIndex, *d->selectedStepPtr - 1);
+			break;
+		case KM_RIGHT:
+			next = selectStep(d->pl, d->patternIndex, *d->selectedStepPtr + 1);
+			break;
+		case KM_UP:
+			next = selectStep(d->pl, d->patternIndex, *d->selectedStepPtr - PATTERN_STEPS_PER_ROW);
+			break;
+		case KM_DOWN:
+			next = selectStep(d->pl, d->patternIndex, *d->selectedStepPtr + PATTERN_STEPS_PER_ROW);
+			break;
+		default:
+			return;
+	}
+	*d->selectedStepPtr = next;
+	changeGraphSelection(patternGraph, stepNodes[next]);
+}
+
+void rebuildPatternGraph() {
+	if(!patternPl || !patternSeq) {
+		return;
+	}
+	freeGuiNode(patternGraph->root);
+	free(patternGraph);
+	patternGraph = NULL;
+	createPatternGraph(patternSeq, patternPl, patternSelectedPatternPtr, patternSelectedStepPtr);
+}
+
+void setSongMinimapGui(SongMinimapGui *smg) {
+	smgui = smg;
 }
 
 void navigateArrangerGraph(int keymapping) {
@@ -1021,106 +800,6 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	return instGraph;
 }
 
-AlgoGraphGui *createAlgoGraphGui(Parameter *algorithm, int x, int y, int w, int h) {
-	AlgoGraphGui *agg = (AlgoGraphGui *)malloc(sizeof(AlgoGraphGui));
-	agg->algorithm = algorithm;
-	agg->shape = (Shape){ x, y, w, h };
-	agg->backgroundColour = cs.outlineColour;
-	agg->graphColour = cs.reddish;
-	agg->base.draw = drawAlgoGraphGui;
-	agg->base.enabled = true;
-	return agg;
-}
-
-void drawAlgoGraphGui(void *self) {
-	AlgoGraphGui *agg = (AlgoGraphGui *)self;
-	int opSize = agg->shape.w / 5;
-	int padding = 16;
-	DrawRectangleLines(agg->shape.x, agg->shape.y, agg->shape.w, agg->shape.h, agg->backgroundColour);
-
-	DrawRectangleLines(agg->shape.x + padding, agg->shape.y + padding, opSize, opSize, agg->graphColour);
-	DrawText("1", agg->shape.x + padding + opSize / 2, agg->shape.y + padding + opSize / 2, 10, agg->graphColour);
-
-	DrawRectangleLines(agg->shape.x + opSize + padding * 2, agg->shape.y + padding, opSize, opSize, agg->graphColour);
-	DrawText("2", agg->shape.x + padding + opSize / 2, agg->shape.y + padding + opSize / 2, 10, agg->graphColour);
-
-	DrawRectangleLines(agg->shape.x + opSize + padding * 2, agg->shape.y + opSize + padding * 2, opSize, opSize, agg->graphColour);
-	DrawText("3", agg->shape.x + opSize + padding * 2 + opSize / 2, agg->shape.y + padding + opSize / 2, 10, agg->graphColour);
-
-	DrawRectangleLines(agg->shape.x + padding, agg->shape.y + opSize + padding * 2, opSize, opSize, agg->graphColour);
-	DrawText("4", agg->shape.x + opSize + padding * 2 + opSize / 2, agg->shape.y + opSize + padding * 2 + opSize / 2, 10, agg->graphColour);
-
-	int alg = getParameterValueAsInt(agg->algorithm);
-	int algOffset = alg * ALGO_SIZE;
-
-	for(int i = algOffset; i < algOffset + ALGO_SIZE; i++) {
-		int srcIndex = 4 - fm_algorithm[i][0];
-		int dstIndex = 4 - fm_algorithm[i][1];
-
-		if(dstIndex != -1) {
-			DrawLine(
-			  agg->shape.x + (opSize / 2) + (opSize * (srcIndex / 2)),
-			  agg->shape.y + opSize + padding + padding + (opSize * (int)(srcIndex % 2)),
-			  agg->shape.x + (opSize / 2) + (opSize * (dstIndex / 2)),
-			  agg->shape.y + opSize + padding + padding + (opSize * (int)(dstIndex % 2)),
-			  agg->graphColour);
-		} else {
-			DrawLine(
-			  agg->shape.x + (opSize / 2) + padding + (opSize * (srcIndex % 2)),
-			  agg->shape.y + opSize + padding + padding + (opSize * (int)(srcIndex / 2)),
-			  agg->shape.x + (opSize / 2) + (padding + opSize) * 5,
-			  agg->shape.y + opSize + padding + padding + (padding + opSize) * 5,
-			  agg->graphColour);
-		}
-	}
-}
-
-void freeEnvelopeContainer(EnvelopeContainer *ec) {
-	free(ec->envelopeGui);
-	free(ec->envInputs);
-	free(ec);
-}
-
-void drawEnvelopeGui(void *self) {
-	EnvelopeGui *eg = (EnvelopeGui *)self;
-	int stageIndex = 0;
-	float totalDuration = 0.0f;
-	float currentTime = 0.0f;
-	float currentLevel = 0.0f;
-	float previousLevel = 0.0f;
-	DrawRectangle(eg->shape.x, eg->shape.y, eg->shape.w, eg->shape.h, BLACK);
-	for(int s = 0; s < eg->env->stageCount; s++) {
-		totalDuration += eg->env->stages[s].duration->currentValue;
-	}
-	float basicIncrement = totalDuration / eg->shape.w;
-	for(int w = 0; w < eg->shape.w; w++) {
-		float t = currentTime / eg->env->stages[stageIndex].duration->currentValue;
-		float shapedT = applyCurve(t, eg->env->stages[stageIndex].curvature->currentValue);
-
-		float startLevel = (stageIndex > 0) ? eg->env->stages[stageIndex - 1].targetLevel : 0.0f;
-		currentLevel = startLevel + (eg->env->stages[stageIndex].targetLevel - startLevel) * shapedT;
-		DrawLineEx((Vector2){ eg->shape.x + w, eg->shape.y + eg->shape.h - (previousLevel * eg->shape.h) }, (Vector2){ eg->shape.x + w + 1, eg->shape.y + eg->shape.h - (currentLevel * eg->shape.h) }, 2.0f, RED);
-		// DrawRectangle(eg->x + w, eg->y + eg->h - (currentLevel * eg->h), 2, 2, RED);
-
-		currentTime += basicIncrement;
-		if(currentTime >= 1.0f) {
-			currentTime = 0.0f;
-
-			if(stageIndex < eg->env->stageCount - 1) {
-				DrawLine(eg->shape.x + w, eg->shape.y, eg->shape.x + w, eg->shape.y + eg->shape.h, GREEN);
-				stageIndex++;
-			}
-		}
-		if(eg->env->isTriggered) {
-			int currentInc = (eg->shape.w * (eg->env->totalElapsedTime / totalDuration));
-			if((int)(currentInc) == w) {
-				DrawLine(eg->shape.x + w, eg->shape.y, eg->shape.x + w, eg->shape.y + eg->shape.h, PURPLE);
-			}
-		}
-		previousLevel = currentLevel;
-	}
-}
-
 void drawArrangerGuiNode(void *self) {
 	ArrangerGuiNode *aGui = (ArrangerGuiNode *)self;
 	Arranger *arranger = (Arranger *)aGui->arranger;
@@ -1174,112 +853,6 @@ void drawArrangerGuiNode(void *self) {
 	}
 }
 
-OscilloscopeGui *createOscilloscopeGui(int x, int y, int w, int h) {
-	OscilloscopeGui *og = (OscilloscopeGui *)malloc(sizeof(OscilloscopeGui));
-	og->base.draw = drawOscilloscopeGui;
-	og->base.enabled = true;
-	og->shape.x = x;
-	og->shape.y = y;
-	og->shape.w = w < OSCILLOSCOPE_HISTORY ? w : OSCILLOSCOPE_HISTORY;
-	og->shape.h = h;
-	og->updateIndex = 0;
-	og->backgroundColour = &cs.highlightedCell;
-	og->waveformColour = &cs.backgroundColor;
-	og->lineColour = &cs.fontColour;
-	return og;
-}
-
-void drawOscilloscopeGui(void *self) {
-	OscilloscopeGui *og = (OscilloscopeGui *)self;
-
-	// Draw background
-	DrawRectangle(og->shape.x, og->shape.y, og->shape.w, og->shape.h, (Color){ 255, 0, 0, 255 });
-	// draw center line
-	DrawLine(og->shape.x, og->shape.y + og->shape.h / 2, og->shape.x + og->shape.w, og->shape.y + og->shape.h / 2, (Color){ 255, 255, 0, 255 });
-	for(int i = 0; i < og->shape.w - 1; i++) {
-		DrawLine(og->shape.x + i, (og->shape.y + og->shape.h / 2) + og->data[i], og->shape.x + i + 1, (og->shape.y + og->shape.h / 2) + og->data[i + 1], (Color){ 0, 0, 255, 255 });
-	}
-}
-
-void updateOscilloscopeGui(OscilloscopeGui *og, float *data, int length) {
-	for(int i = 0; i < length; i++) {
-		og->data[og->updateIndex] = data[i];
-		og->updateIndex++;
-		og->updateIndex %= og->shape.w;
-	}
-}
-
-void updateGraphGui(GraphGui *graphGui) {
-	graphGui->history[graphGui->index] = (int)(*graphGui->target * (graphGui->shape.h - (graphGui->padding * 2))); // Cast float to int
-	graphGui->index++;
-	graphGui->index %= MAX_GRAPH_HISTORY - 1;
-}
-
-void drawGraphGui(void *self) {
-	GraphGui *graphGui = (GraphGui *)self;
-	DrawRectangle(graphGui->shape.x + graphGui->margin, graphGui->shape.y + graphGui->margin, graphGui->shape.w, graphGui->shape.h, (Color){ (int)(*graphGui->target * 255), 255, 255, 255 });
-	for(int gi = 0; gi < graphGui->history_size; gi++) {
-		int offset = (int)((float)graphGui->history[gi] / (float)graphGui->max);
-		DrawRectangle(graphGui->shape.x + gi, graphGui->shape.y + graphGui->padding + offset, 1, 1, BLACK);
-	}
-	DrawText(graphGui->name, graphGui->shape.x, graphGui->shape.y, textFont.baseSize, RED);
-}
-
-ContainerGroup *createModMappingGroup(ParamList *paramList, Mod *mod, int x, int y, int scene, int enabled) {
-	ContainerGroup *cg = createContainerGroup();
-	for(int i = 0; i < paramList->count; i++) {
-		ModConnection *conn = paramList->params[i]->modulators;
-		int connectionCount = 0;
-		while(conn != NULL) {
-			if(conn->source == mod) {
-				InputContainer *ic = createInputContainer();
-				ButtonGui *amountBtn = createButtonGui(x, y, 45, 30, conn->amount->name, conn->amount, incParameterBaseValue);
-				add_drawable(&amountBtn->base, scene);
-				ButtonGui *typeBtn = createButtonGui(x + 47, y, 45, 30, conn->type->name, conn->amount, incParameterBaseValue);
-				add_drawable(&typeBtn->base, scene);
-				addButtonToContainer(amountBtn, ic, 0, 0, scene, enabled);
-				addButtonToContainer(typeBtn, ic, 0, 1, scene, enabled);
-				addContainerToGroup(cg, ic, 0, 0);
-			}
-			conn = conn->next;
-		}
-	}
-
-	return cg;
-}
-
-void drawSequencerGui(void *self) {
-	SequencerGui *seqGui = (SequencerGui *)self;
-	Sequencer *seq = (Sequencer *)seqGui->sequencer;
-	PatternList *pl = (PatternList *)seqGui->pattern_list;
-	int patternIndex = *seqGui->selected_pattern_index;
-	int currentNoteIndex = *seqGui->selected_note_index;
-	int currentlyPlaying = -1;
-
-	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-		if(seq->pattern_index[i] == patternIndex) {
-			currentlyPlaying = i;
-			break;
-		}
-	}
-	for(int i = 0; i < pl->patterns[patternIndex].pattern_size; i++) {
-		int ix = (i % seqGui->pads_per_col);
-		int j = (int)(i / seqGui->pads_per_col);
-		int *note = getStep(pl, patternIndex, i);
-
-		if(currentNoteIndex == i) {
-			DrawRectangle((seqGui->shape.x + seqGui->padding * ix + (ix * (seqGui->shape.w))) - (seqGui->border_size), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j) - (seqGui->border_size), seqGui->shape.w + seqGui->border_size * 2, seqGui->shape.h + seqGui->border_size * 2, seqGui->outline_colour);
-		}
-		if(currentlyPlaying > -1 && seq->playhead_index[currentlyPlaying] == i) {
-			DrawRectangle(seqGui->shape.x + seqGui->padding * ix + (ix * seqGui->shape.w), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j), seqGui->shape.w, seqGui->shape.h, seqGui->playing_fill_colour);
-		} else {
-			DrawRectangle(seqGui->shape.x + seqGui->padding * ix + (ix * seqGui->shape.w), seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j), seqGui->shape.w, seqGui->shape.h, seqGui->default_fill_colour);
-		}
-		Vector2 textPosition = (Vector2){ (float)(seqGui->shape.x + (ix * seqGui->shape.w) + (seqGui->padding * ix)), (float)(seqGui->shape.y + seqGui->padding * j + ((seqGui->shape.h) * j)) };
-		DrawTextEx(textFont, getNoteString(note[0], note[1]), textPosition, textFont.baseSize, 4, cs.fontColour);
-	}
-}
-
 void drawSongMinimapGui(void *self) {
 	SongMinimapGui *smGui = (SongMinimapGui *)self;
 	Arranger *arranger = (Arranger *)smGui->arranger;
@@ -1305,116 +878,6 @@ void drawSongMinimapGui(void *self) {
 	}
 }
 
-InputsGui *createInputsGui(InputState *inputState, int x, int y) {
-	InputsGui *iGui = (InputsGui *)malloc(sizeof(InputsGui));
-	iGui->base.draw = drawInputsGui;
-	iGui->base.enabled = true;
-	iGui->x = x;
-	iGui->y = y;
-	iGui->inputState = inputState;
-	return iGui;
-}
-
-void drawInputsGui(void *self) {
-	InputsGui *iGui = (InputsGui *)self;
-	InputState *is = (InputState *)iGui->inputState;
-	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
-		if(is->keys[i].isPressed) {
-			DrawRectangle(iGui->x + i * 22, iGui->y, 20, 20, GREEN);
-		} else {
-			DrawRectangle(iGui->x + i * 22, iGui->y, 20, 20, RED);
-		}
-		DrawText(KEY_NAMES[i], iGui->x + i * 22, iGui->y, 10, BLACK);
-	}
-	// TO-DO: FIX this code
-	//  for(int i = is->historyIndex; i > 0; i--) {
-	//  	DrawText(KEY_NAMES[is->inputHistory[i]], SCREEN_W - 50, iGui->y - i * 11, 10, GRAY);
-	//  }
-}
-
-DrawableList *create_drawable_list() {
-	DrawableList *drawableList = (DrawableList *)malloc(sizeof(DrawableList));
-	drawableList->size = 0;
-	drawableList->capacity = 32;
-	drawableList->drawables = (Drawable **)malloc(sizeof(Drawable) * drawableList->capacity);
-
-	return drawableList;
-}
-
-void free_drawable_list(DrawableList *list) {
-	if(!list) {
-		printf("no list\n");
-		return;
-	}
-	free(list->drawables);
-	free(list);
-}
-
-void removeDrawable(Drawable *drawable, int scene) {
-	DrawableList *list;
-	switch(scene) {
-		case GLOBAL:
-			list = globalDrawableList;
-			break;
-		case SCENE_ARRANGER:
-			list = arrangerScreenDrawableList;
-			break;
-		case SCENE_PATTERN:
-			list = patternScreenDrawableList;
-			break;
-		case SCENE_INSTRUMENT:
-			list = instrumentScreenDrawableList;
-			break;
-		default:
-			printf("invalid scene, nothing removed.\n");
-			return;
-			break;
-	}
-
-	int addressMatch = 0;
-	int matchIndex = 0;
-	for(int i = 0; i < list->size; i++) {
-		if(list->drawables[i] == drawable) {
-			// Shift remaining elements left
-			for(; i < list->size - 1; i++) {
-				list->drawables[i] = list->drawables[i + 1];
-			}
-			list->size--;
-			return;
-		}
-	}
-	// printf("drawable DONE\n");
-}
-
-void add_drawable(Drawable *drawable, int scene) {
-	DrawableList *list;
-	switch(scene) {
-		case GLOBAL:
-			list = globalDrawableList;
-			break;
-		case SCENE_ARRANGER:
-			list = arrangerScreenDrawableList;
-			break;
-		case SCENE_PATTERN:
-			list = patternScreenDrawableList;
-			break;
-		case SCENE_INSTRUMENT:
-			list = instrumentScreenDrawableList;
-			break;
-		default:
-			printf("invalid scene, drawable not added.\n");
-			return;
-			break;
-	}
-
-	if(list->size == list->capacity) {
-		list->capacity += 16;
-		list->drawables = (Drawable **)realloc(list->drawables, sizeof(Drawable *) * list->capacity);
-	}
-
-	list->drawables[list->size++] = drawable;
-}
-
 void DrawGUI(int currentScene) {
 	switch(currentScene) {
 		case SCENE_ARRANGER:
@@ -1427,10 +890,9 @@ void DrawGUI(int currentScene) {
 
 			break;
 		case SCENE_PATTERN:
-			// printf("p!");
-			// drawNode(patternGraph->root);
-			for(int i = 0; i < patternScreenDrawableList->size; i++) {
-				patternScreenDrawableList->drawables[i]->draw(patternScreenDrawableList->drawables[i]);
+			drawNode(patternGraph->root);
+			if(smgui) {
+				drawSongMinimapGui(smgui);
 			}
 			break;
 		case SCENE_INSTRUMENT:
@@ -1442,21 +904,5 @@ void DrawGUI(int currentScene) {
 			printf("Invalid scene, nothing to draw\n");
 			break;
 	}
-	for(int i = 0; i < globalDrawableList->size; i++) {
-		// globalDrawableList->drawables[i]->draw(globalDrawableList->drawables[i]);
-	}
-	// drawNode(globalGraph->root);
-	// printf("\n");
 }
 
-void CleanupGUI(void) {
-	printf("freeing drawables 1...");
-	free_drawable_list(globalDrawableList);
-	printf("freeing drawables 2...");
-	free_drawable_list(instrumentScreenDrawableList);
-	printf("freeing drawables 3...");
-	free_drawable_list(patternScreenDrawableList);
-	printf("freeing drawables 4...");
-	free_drawable_list(arrangerScreenDrawableList);
-	printf("freeing drawables 5...");
-}

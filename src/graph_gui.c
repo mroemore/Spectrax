@@ -15,8 +15,8 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	gn->w = w;
 	gn->h = h;
 	gn->resizeable = true;
-	gn->items = createList(16);
-	gn->itemWeights = createList(16);
+	gn->items = createList(MAX_NODE_CHILDREN);
+	gn->itemWeights = createList(MAX_NODE_CHILDREN);
 	const char *defaultName = "unnamed";
 	const char *actualName = (name && strlen(name) > 0) ? name : defaultName;
 	gn->name = malloc(strlen(actualName) + 1);
@@ -42,7 +42,6 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	}
 	gn->nodeAlignment = na;
 	gn->customNav = NULL;
-	printf("NA: %i, ", gn->nodeAlignment);
 	return success;
 }
 
@@ -84,7 +83,9 @@ void freeGuiNode(GuiNode *gn) {
 			current = current->next;
 		}
 	}
-
+	freeList(gn->items);
+	freeList(gn->itemWeights);
+	free(gn->name);
 	free(gn);
 }
 
@@ -141,17 +142,26 @@ void reflowCoordinates(GuiNode *n) {
 		cn->h = n->h - n->padding * 2;
 
 		switch(n->nodeAlignment) {
-			case na_vertical:
+			case na_vertical: {
 				y_scalar = (n->h / n->totalItemWeights);
 				cn->y = n->y + (y_scalar * weightsAccumlator) + (n->padding);
-				cn->h =
-				  (y_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
+				int ch = (y_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
+				if(ch < (int)cn->padding * 2 + 4) {
+					ch = (int)cn->padding * 2 + 4;
+				}
+				cn->h = (uint16_t)ch;
 				break;
-			case na_horizontal:
+			}
+			case na_horizontal: {
 				x_scalar = (n->w / n->totalItemWeights);
 				cn->x = n->x + (x_scalar * weightsAccumlator) + (n->padding);
-				cn->w = (x_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
+				int cw = (x_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
+				if(cw < (int)cn->padding * 2 + 4) {
+					cw = (int)cn->padding * 2 + 4;
+				}
+				cn->w = (uint16_t)cw;
 				break;
+			}
 		}
 
 		weightsAccumlator += *(int *)cn->weightRef->data;
@@ -184,7 +194,8 @@ void appendItem(GuiNode *parent, GuiNode *child, int weight) {
 void drawNode(GuiNode *cont) {
 #ifdef DEBUG_GRAPH_DRAW
 	if(cont->selected) {
-		DrawRectangleLinesEx((Rectangle){ cont->x, cont->y, cont->w, cont->h }, 4, WHITE);
+		DrawRectangleRec((Rectangle){ cont->x, cont->y, cont->w, cont->h }, (Color){ 220, 40, 40, 170 });
+		DrawRectangleLinesEx((Rectangle){ cont->x, cont->y, cont->w, cont->h }, 6, RED);
 	} else if(cont->selectable) {
 		DrawRectangleLinesEx((Rectangle){ cont->x, cont->y, cont->w, cont->h }, 2, RED);
 	} else if(cont->hasSelectableItems) {
@@ -198,7 +209,7 @@ void drawNode(GuiNode *cont) {
 	  (Rectangle){ cont->x + cont->padding, cont->y + cont->padding, cont->w - cont->padding * 2, cont->h - cont->padding * 2 },
 	  2,
 	  GRAY);
-	DrawText(cont->name, cont->x + cont->padding, cont->y + cont->padding, 12, WHITE);
+	DrawText(cont->name, cont->x + cont->padding, cont->y + cont->padding, 16, WHITE);
 #endif
 	if(cont->drawable) {
 		cont->draw(cont);
@@ -221,10 +232,8 @@ Graph *createGraph(NodeAlignment na) {
 }
 
 void navigateGraph(Graph *g, int keymapping) {
-	printf("----------\nNEW INPUT: %s\n----------\n\n", KEY_NAMES[keymapping]);
 	if(g->selected->customNav) {
 		bool navSuccess = g->selected->customNav(g->selected, keymapping);
-		printf("CUSTOM! %i\n", navSuccess);
 		if(navSuccess) {
 			return;
 		}
@@ -263,19 +272,13 @@ void navigateGraph(Graph *g, int keymapping) {
 				case KM_UP:
 					r = searchUpwardsByAlignment(g->selected, na_vertical, true);
 					if(r != NULL) {
-						printf("using adjacent node [ %s ]\n", r->name);
 						selectLeaf(g, r, false);
-					} else {
-						printf("parents prev is null\n");
 					}
 					break;
 				case KM_DOWN:
 					r = searchUpwardsByAlignment(g->selected, na_vertical, false);
 					if(r != NULL) {
-						printf("using adjacent node [ %s ]\n", r->name);
 						selectLeaf(g, r, true);
-					} else {
-						printf("parents next is null\n");
 					}
 					break;
 				case KM_LEFT:
@@ -290,18 +293,13 @@ void navigateGraph(Graph *g, int keymapping) {
 }
 
 bool selectLeaf(Graph *g, GuiNode *n, bool head) {
-	printf("[SL] leaf search... \n");
 	if(n == NULL) {
-		printf("[SL] leaf null... \n");
 		return false;
 	}
 	if(n->selectable) {
-		printf("[SL] picking leaf... \n");
-
 		changeGraphSelection(g, n);
 		return true;
 	} else if(n->hasSelectableItems) {
-		printf("[SL] iterating items... \n");
 		ListElement *l;
 		if(head) {
 			l = n->items->head;
@@ -315,9 +313,7 @@ bool selectLeaf(Graph *g, GuiNode *n, bool head) {
 		}
 		while(n != NULL) {
 			if(n != NULL) {
-				printf("[SL] trying [ %s ]... ", n->name);
 				if(selectLeaf(g, n, head)) {
-					printf("[SL] leaf selectable... \n");
 					return true;
 				}
 			} else {
@@ -326,46 +322,29 @@ bool selectLeaf(Graph *g, GuiNode *n, bool head) {
 			n = getAdjacentNode(n, !head);
 		}
 	} else {
-		printf("[SL] leaf not found... \n");
 		return false;
 	}
+	return false;
 }
 
 GuiNode *searchUpwardsByAlignment(GuiNode *n, NodeAlignment na, bool prev) {
-	printf("searching up...\n");
-
 	GuiNode *result = NULL;
 	n = n->container;
 	while(n->container != NULL) {
-		if(n != NULL) {
-			printf("[SU] trying [ %s ], ", n->name);
-		}
-
 		if(n->container->nodeAlignment == na) {
-			printf("\n[SU]found correct alignment. CONTAINER: [ %s ] RETURN: [ %s ]\n", n->container->name, n->name);
 			GuiNode *adjacent = getAdjacentNode(n, prev);
 			while(adjacent != NULL) {
 				if(adjacent->hasSelectableItems || adjacent->selectable) {
 					result = adjacent;
 					break;
-				} else {
-					printf("adjacent node ['%s'] has no selectable items and is not selectable.\n", adjacent->name);
 				}
 				adjacent = getAdjacentNode(adjacent, prev);
 			}
 			if(result != NULL) {
 				break;
-			} else {
-				printf("no adjacent node within container.\n");
 			}
 		}
 		n = n->container;
-	}
-	if(n == NULL) {
-		printf("no container of alignment [%i] found with adjacent item in "
-		       "direction [%i]",
-		       na,
-		       prev);
 	}
 	return result;
 }
@@ -373,28 +352,22 @@ GuiNode *searchUpwardsByAlignment(GuiNode *n, NodeAlignment na, bool prev) {
 GuiNode *getAdjacentNode(GuiNode *c, bool prev) {
 	ListElement *l;
 	if(prev) {
-		printf("[%s] PREV ", c->name);
 		l = c->itemListRef->prev;
 	} else {
-		printf("[%s] NEXT ", c->name);
 		l = c->itemListRef->next;
 	}
 	if(l == NULL) {
-		printf("adj was null, returning [%s]\n", c->name);
 		c = NULL;
 	} else {
 		c = *(GuiNode **)l->data;
-		printf("adj [%s] found.\n", c->name);
 	}
 	return c;
 }
 
 GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev) {
-	printf("selecting...\n");
 	GuiNode *result = getAdjacentNode(c, prev);
 	while(result != NULL) {
 		if(result->selectable) {
-			printf("found adjacent selectable: %s\n", result->name);
 			changeGraphSelection(g, result);
 			break;
 		}
@@ -409,12 +382,9 @@ GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev) {
 }
 
 void changeGraphSelection(Graph *g, GuiNode *new) {
-	printf("de-selecting: %s \n", g->selected->name);
-
 	g->selected->selected = 0;
 	g->selected = new;
 	g->selected->selected = 1;
-	printf("selected: %s \n", g->selected->name);
 }
 
 void navAdjacent(Graph *g, GuiNode *n, NodeAlignment na, bool prev, bool head) {
@@ -422,17 +392,7 @@ void navAdjacent(Graph *g, GuiNode *n, NodeAlignment na, bool prev, bool head) {
 	if(res == NULL) {
 		res = searchUpwardsByAlignment(g->selected, na, prev);
 		if(res != NULL) {
-			// if(na_horizontal != na)res = res->container; //fix this hack
-			// res = getAdjacentNode(res, prev);
-			if(selectLeaf(g, res, head)) {
-				printf("gotit.\n");
-			} else {
-				printf("leaf selection fail.\n");
-			}
-		} else {
-			printf("upnav fail.\n");
+			selectLeaf(g, res, head);
 		}
-	} else {
-		printf("adjacent nav fail.\n");
 	}
 }

@@ -11,3 +11,5 @@ third_party/
 rg35xx-copy.sh
 TODO.md
 compile_commands.json
+src/tools/nav_harness/nav_harness
+src/tools/nav_harness/*.o

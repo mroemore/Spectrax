@@ -14,8 +14,6 @@
 #include "raylib.h"
 #include "input.h"
 
-#define MAX_GRAPH_ITEMS sizeof(uint8_t)
-
 typedef void (*DrawCallback)(void *self);
 typedef void (*OnPressCallback)(Parameter *parameter, float value);
 typedef bool (*CustomNavFunc)(void *self, int keymapping);

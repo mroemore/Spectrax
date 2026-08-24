@@ -269,18 +269,22 @@ int main(void) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 1, -1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 						selectArrangerCell(data.arranger, 1, 1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
 						selectArrangerCell(data.arranger, 1, 0, -1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 						selectArrangerCell(data.arranger, 1, 0, 1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+						rebuildPatternGraph();
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
@@ -304,16 +308,16 @@ int main(void) {
 					}
 				} else {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						appState->selectedStep = selectStep(data.patternList, appState->selectedPattern, appState->selectedStep - 1);
+						navigatePatternGraph(KM_LEFT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						appState->selectedStep = selectStep(data.patternList, appState->selectedPattern, appState->selectedStep + 1);
+						navigatePatternGraph(KM_RIGHT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						appState->selectedStep = selectStep(data.patternList, appState->selectedPattern, appState->selectedStep - 4);
+						navigatePatternGraph(KM_UP);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						appState->selectedStep = selectStep(data.patternList, appState->selectedPattern, appState->selectedStep + 4);
+						navigatePatternGraph(KM_DOWN);
 					}
 				}
 				break;
@@ -388,7 +392,6 @@ int main(void) {
 		EndDrawing();
 	}
 	CloseWindow();
-	CleanupGUI();
 	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);
 	saveColourScheme("CLR.dat", getColourScheme());
 	printf("song save attempt result: %i", saveResult);
@@ -475,10 +478,6 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("sequencer creation failed.\n");
 		return;
 	}
-	// TransportGui *tsGui = createTransportGui(&data->arranger->playing, data->arranger, 10, 10);
-	// add_drawable(&tsGui->base, GLOBAL);
-	InputsGui *inputsGui = createInputsGui((*appState)->inputState, SCREEN_W - 22 * KEY_MAPPING_COUNT, SCREEN_H - 30);
-	add_drawable(&inputsGui->base, GLOBAL);
 
 	data->active_sequencer_index = 0;
 	data->sequence_index = 0;
@@ -487,11 +486,10 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 
 	printf("bpm yo: %i", data->samples_per_beat);
 
-	SequencerGui *seqGui = createSequencerGui(data->sequencer, data->patternList, &(*appState)->selectedPattern, &(*appState)->selectedStep, 10, 10);
-	add_drawable(&seqGui->base, SCENE_PATTERN);
+	createPatternGraph(data->sequencer, data->patternList, &(*appState)->selectedPattern, &(*appState)->selectedStep);
 
 	SongMinimapGui *songMinimapGui = createSongMinimapGui(data->arranger, (*appState)->selectedArrangerCell, 400, 10);
-	add_drawable(&songMinimapGui->base, SCENE_PATTERN);
+	setSongMinimapGui(songMinimapGui);
 
 	createArrangerGraph(data->arranger, data->patternList);
 	createInstrumentGui(data->voiceManager, &(*appState)->selectedArrangerCell[0], SCENE_INSTRUMENT);

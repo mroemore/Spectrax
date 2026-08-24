@@ -34,7 +34,7 @@ void incrementScene(ApplicationState *appState) {
 
 void decrementScene(ApplicationState *appState) {
 	// printf("\n\n\nDECREMENT SCENE\n\n\n");
-	if(appState->currentScene > 1) {
+	if(appState->currentScene > 0) {
 		appState->currentScene--;
 	}
 }
