@@ -385,6 +385,38 @@ static int test_remove_modulation(void) {
     return 0;
 }
 
+/* Pins the wiring contract of removeModulationsForSource: walks every
+ * param in the list, removes ALL connections whose source is the
+ * given mod, returns the count of connections removed. The two-pass
+ * design unlinks+orphans amount/type params in pass 1, then drops
+ * them from the paramList in pass 2 so that removing-from-list
+ * doesn't disturb the in-progress iteration.
+ *
+ * Verifies:
+ *   - returns 2 when one env is connected to two destinations
+ *   - each destination is left with modulator_count == 0
+ *   - pl->count drops by 4 (2 connections x (amount+type))
+ *   - a second call returns 0 (idempotent / no-op when nothing matches)
+ */
+static int test_remove_modulations_for_source(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
+    Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
+    addModulation(pl, &env->base, d1, 1.0f, MO_ADD);
+    addModulation(pl, &env->base, d2, 1.0f, MO_MUL);
+    int before = pl->count;
+    ASSERT_EQ(removeModulationsForSource(pl, &env->base), 2, "two connections removed");
+    ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
+    ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
+    ASSERT_EQ(pl->count, before - 4, "four amount/type params removed");
+    ASSERT_EQ(removeModulationsForSource(pl, &env->base), 0, "none left");
+    teardown(pl, ml);
+    printf("PASS test_remove_modulations_for_source\n");
+    return 0;
+}
+
 static int test_remove_from_modlist(void) {
     ModList *ml = createModList();
     ParamList *pl = createParamList();
@@ -435,6 +467,7 @@ int main(void) {
     fails += test_remove_from_modlist();
     fails += test_remove_from_paramlist();
     fails += test_remove_modulation();
+    fails += test_remove_modulations_for_source();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

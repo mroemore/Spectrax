@@ -279,6 +279,54 @@ bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
 	}
 	return false;
 }
+int removeModulationsForSource(ParamList *list, Mod *source) {
+	if(!list || !source) {
+		return 0;
+	}
+	int removed = 0;
+	/* We cannot remove params from the list while iterating it by index, so
+	 * unlink+free connections now and drop their amount/type params in a
+	 * second pass. */
+	Parameter *orphans[MAX_PARAMS];
+	int orphanCount = 0;
+	for(int i = 0; i < list->count; i++) {
+		Parameter *p = list->params[i];
+		if(!p) {
+			continue;
+		}
+		ModConnection *conn = p->modulators;
+		while(conn != NULL) {
+			ModConnection *next = conn->next;
+			if(conn->source == source) {
+				if(conn->previous) {
+					conn->previous->next = conn->next;
+				} else {
+					p->modulators = conn->next;
+				}
+				if(conn->next) {
+					conn->next->previous = conn->previous;
+				}
+				p->modulator_count--;
+				if(orphanCount < MAX_PARAMS && conn->amount) {
+					orphans[orphanCount++] = conn->amount;
+				}
+				if(orphanCount < MAX_PARAMS && conn->type) {
+					orphans[orphanCount++] = conn->type;
+				}
+				free(conn);
+				removed++;
+			}
+			conn = next;
+		}
+	}
+	for(int k = 0; k < orphanCount; k++) {
+		if(orphans[k]) {
+			removeFromParamList(list, orphans[k]);
+			freeParameter(orphans[k]);
+		}
+	}
+	return removed;
+}
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
 	rnd->lastPhase = 0.0f;
 	rnd->lastRandom = 0.0f;
