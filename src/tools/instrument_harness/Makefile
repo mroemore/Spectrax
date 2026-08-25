@@ -47,6 +47,7 @@ APP_OBJS = $(SRC)/voice.o \
 OBJS    = instrument_harness.o main_harness.o $(APP_OBJS)
 
 BINDIR  = ../../../bin
+FIXTURE ?= fixtures/add_route_delete.txt
 
 all: instrument_harness
 
@@ -78,8 +79,15 @@ install: instrument_harness
 run: install
 	cd $(BINDIR) && timeout 4s xvfb-run -a ./instrument_harness || true
 
+# Scripted (Xvfb) UI run -- drives the harness with the given fixture
+# (default: fixtures/add_route_delete.txt) via run_scripted.sh. Exits
+# non-zero on any FAIL. The script engine synthesises key events into
+# the InputState directly; raylib does not receive keys under Xvfb.
+run-scripted: install
+	./run_scripted.sh $(FIXTURE)
+
 clean:
 	rm -f instrument_harness instrument_harness.o main_harness.o
 	@# leave $(SRC)/*.o alone -- they may be needed by the app build
 
-.PHONY: all clean install run
+.PHONY: all clean install run run-scripted

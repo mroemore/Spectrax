@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
@@ -151,6 +152,7 @@ SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, 
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	InstrumentGui *ig = (InstrumentGui *)malloc(sizeof(InstrumentGui));
 	if(!ig) return;
+	memset(ig, 0, sizeof(InstrumentGui));
 	ig->vm = vm;
 	ig->selectedInstrument = selectedInstrument;
 
