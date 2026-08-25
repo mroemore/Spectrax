@@ -71,9 +71,9 @@ void clearParamList(ParamList *list) {
 		printf("WARNING: clearParamList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	// for(int i = 0; i < list->count; i++) {
-	// 	freeParameter(list->params[i]);
-	// }
+	for(int i = 0; i < list->count; i++) {
+		freeParameter(list->params[i]);
+	}
 	list->count = 0;
 }
 
@@ -86,9 +86,16 @@ void clearModList(ModList *list) {
 		printf("WARNING: clearModList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	// for(int i = 0; i < list->count; i++) {
-	// 	freeMod(list->mods[i]);
-	// }
+	for(int i = 0; i < list->count; i++) {
+		/* Mod structs may be ENVs (heap-allocated as Envelope), generic Mods
+		 * (heap-allocated as Mod), or detached params promoted to mods.
+		 * mod->output / envelope stage duration+curvature Params are added
+		 * to a ParamList by initMod / addEnvelopeStage and are owned by that
+		 * ParamList — freeing them here would leave the ParamList with
+		 * dangling pointers. clearParamList owns the Param lifecycle; we
+		 * only free the Mod struct itself. */
+		free(list->mods[i]);
+	}
 	list->count = 0;
 }
 

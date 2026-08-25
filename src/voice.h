@@ -137,11 +137,16 @@ typedef struct {
 	int presetCount;
 } PresetBank;
 
+/* Forward-declare VoiceManager so Instrument can hold a back-pointer;
+ * the full definition appears further down. */
+typedef struct VoiceManager VoiceManager;
+
 typedef struct {
 	ModList *modList;
 	ParamList *paramList;
 	Envelope *envelopes[MAX_ENVELOPES];
 	int envelopeCount;
+	int coreEnvelopeCount;
 	int lfoCount;
 	int patchIndex;
 	float volumeAttenuation;
@@ -152,6 +157,7 @@ typedef struct {
 	Parameter *panning;
 	PresetBank *presetBank;
 	Parameter *selectedPresetIndex;
+	VoiceManager *vm;
 	union {
 		SamplerInstrumentData sampler;
 		FmInstrumentData fm;
@@ -221,7 +227,7 @@ typedef enum {
 	VA_RANDOM
 } AllocationBehaviour;
 
-typedef struct {
+typedef struct VoiceManager {
 	Voice *voicePools[MAX_SEQUENCER_CHANNELS][MAX_VOICES_PER_CHANNEL];
 	Instrument *instruments[MAX_SEQUENCER_CHANNELS];
 	VoiceType voiceTypes[MAX_SEQUENCER_CHANNELS];
@@ -237,6 +243,11 @@ void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrumen
 void initVoiceManager(VoiceManager *vm, SamplePool *sp);
 void freeVoice(Voice *v);
 void freeVoiceManager(VoiceManager *vm);
+/* Re-run createVoice / createParamPointerAD for every live voice on
+ * `vm`'s channels whose instrument matches `inst`, so that envelope
+ * stage params and FM operator params alias the new instrument's
+ * freshly-allocated Param structs after a runtime preset change. */
+void rebuildVoicesForInstrument(VoiceManager *vm, Instrument *inst);
 Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);

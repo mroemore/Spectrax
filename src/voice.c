@@ -30,6 +30,7 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp, pb);
+		vm->instruments[i]->vm = vm;
 		applyInstrumentPreset(vm->instruments[i], pb->patches[0]);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
 		vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
@@ -323,6 +324,32 @@ void initDefaultFmPreset(Preset *p) {
 	*p = p1;
 }
 
+/* Re-initialize every voice on the channel that owns `instrument`,
+ * so that voice envelope/FM-param aliases point at the NEW instrument
+ * params (not freed ones). Used after applyInstrumentPreset at runtime.
+ * Frees each voice with freeVoice and re-runs initialize_voice on a
+ * fresh malloc'd Voice struct — matches freeVoice's ownership model. */
+void rebuildVoicesForInstrument(VoiceManager *vm, Instrument *instrument) {
+	if(!vm || !instrument) {
+		return;
+	}
+	for(int ch = 0; ch < vm->enabledChannels; ch++) {
+		if(vm->instruments[ch] != instrument) {
+			continue;
+		}
+		for(int i = 0; i < vm->voiceCount[ch]; i++) {
+			Voice *v = vm->voicePools[ch][i];
+			freeVoice(v);
+			v = (Voice *)malloc(sizeof(Voice));
+			vm->voicePools[ch][i] = v;
+			if(v) {
+				initialize_voice(v, instrument);
+			}
+		}
+		return;
+	}
+}
+
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	clearModList(instrument->modList);
 	clearParamList(instrument->paramList);
@@ -359,14 +386,22 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 				break;
 		}
 	}
+	/* coreEnvelopeCount locks in the post-preset envelope count so
+	 * rebuildVoicesForInstrument / downstream layout code can rely on
+	 * the same value the preset set up. */
+	instrument->coreEnvelopeCount = instrument->envelopeCount;
 }
 
 void cb_setInstrumentPreset(void *instrument) {
 	Instrument *i = (Instrument *)instrument;
-	printf("Callback called!\n");
 	int presetIndex = getParameterValueAsInt(i->selectedPresetIndex);
 	applyInstrumentPreset(i, i->presetBank->patches[presetIndex]);
-	printf("Callback called! Index:%i\n", presetIndex);
+	/* applyInstrumentPreset freed and rebuilt i's paramList/envelope/operator
+	 * params via clearParamList; voices that previously aliased those Param
+	 * structs must be rebuilt so their pointers track the new ones. */
+	if(i->vm) {
+		rebuildVoicesForInstrument(i->vm, i);
+	}
 }
 
 void initPresetBank(PresetBank *pb) {
@@ -400,8 +435,6 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->presetBank = pb;
-
-	printf("\n\nPreset count at inst creation time: %i\n\n", (*instrument)->presetBank->presetCount);
 
 	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (*instrument)->presetBank->presetCount - 1, 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
 	switch(vt) {
@@ -474,6 +507,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->voiceType = vt;
+	(*instrument)->coreEnvelopeCount = (*instrument)->envelopeCount;
 }
 
 void updateSampleReferences(void *instrument) {
