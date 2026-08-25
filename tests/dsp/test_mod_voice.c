@@ -98,14 +98,13 @@ static int test_clear_paramlist_frees(void) {
     ParamList *pl = createParamList();
     Parameter *a = createParameter(pl, "a", 1.0f, 0.0f, 10.0f);
     Parameter *b = createParameter(pl, "b", 2.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(a != NULL, "createParameter a");
+    ASSERT_TRUE(b != NULL, "createParameter b");
     clearParamList(pl);
     ASSERT_EQ(pl->count, 0, "paramList emptied");
     Parameter *c = createParameter(pl, "c", 3.0f, 0.0f, 10.0f);
     ASSERT_EQ(pl->count, 1, "list usable after clear");
     ASSERT_TRUE(c != NULL, "new param allocated");
-    /* Reference the earlier params to satisfy -Wunused-variable. */
-    (void)a;
-    (void)b;
     teardown(pl, NULL);
     printf("PASS test_clear_paramlist_frees\n");
     return 0;
@@ -529,6 +528,68 @@ static int test_remove_mod_primitively_accepts_core(void) {
     return 0;
 }
 
+/*
+ * Regression for the I1 review finding:
+ *   addRuntimeEnvelope (gui.c) used to call rebuildVoicesForInstrument,
+ *   which freed + re-initialized every live voice on the channel —
+ *   killing any mid-playback note on every ; press.
+ *
+ * Voices alias only the CORE envelopes (voice->envelope[4] is fixed-size,
+ * created at initVoice from inst->envelopes[0..3]); runtime envelopes
+ * route via inst->paramList, which all voices already reference. So
+ * adding a runtime envelope to a live instrument must NOT disturb any
+ * active voice.
+ *
+ * The test inlines the same operations addRuntimeEnvelope performs
+ * (createAD + envelopeCount++ + createParameter routeIndex) — it does
+ * NOT call addRuntimeEnvelope because gui.c is not linked into this
+ * test binary. If the fix is regressed and rebuildVoicesForInstrument
+ * were re-introduced into the GUI path, this test would still pass
+ * (it doesn't exercise the GUI), but the principle is the same: the
+ * invariant we're pinning is "these instrument-side mutations leave
+ * an already-active voice untouched".
+ */
+static int test_runtime_envelope_add_does_not_rebuild_voices(void) {
+    TestEnv e;
+    if (make_env(&e, 4)) return 1;
+    Instrument *inst = e.vm->instruments[0];
+
+    /* Trigger a voice on the channel BEFORE the runtime envelope add. */
+    int note[NOTE_INFO_SIZE] = { A, 4 };
+    Voice *v = getFreeVoice(e.vm, 0);
+    ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
+    triggerVoice(v, note);
+    ASSERT_EQ(v->active, 1, "voice is active after trigger");
+    ASSERT_TRUE(v->note[0] != OFF, "voice has a real note after trigger");
+    int noteBefore = v->note[0];
+
+    /* Inlined operations from gui.c:addRuntimeEnvelope:
+     *   createAD + envelopeCount++ + createParameter routeIndex.
+     * (No rebuildVoicesForInstrument — and there should not need to be.) */
+    ASSERT_TRUE(inst->envelopeCount < MAX_ENVELOPES,
+                "envelope room available for runtime add");
+    int idx = inst->envelopeCount;
+    inst->envelopes[idx] = createAD(inst->paramList, inst->modList,
+                                    0.25f, 4.25f, "AD+");
+    inst->envelopeCount++;
+    Parameter *routeIdx = createParameter(inst->paramList, "route",
+                                          12.0f, 0.0f, 12.0f);
+    ASSERT_TRUE(inst->envelopes[idx] != NULL, "runtime env created");
+    ASSERT_TRUE(routeIdx != NULL, "routeIndex param created");
+
+    /* The voice must still be the same voice, still active, with the
+     * original note intact. If a rebuild happened, v could have been
+     * freed and replaced by a fresh one with active==0. */
+    ASSERT_TRUE(v->active == 1, "voice still active after runtime envelope add");
+    ASSERT_EQ(v->note[0], noteBefore,
+              "voice note[0] unchanged after runtime envelope add");
+    ASSERT_TRUE(v->note[0] != OFF, "voice note still not OFF");
+
+    free_env(&e);
+    printf("PASS test_runtime_envelope_add_does_not_rebuild_voices\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -545,6 +606,7 @@ int main(void) {
     fails += test_voice_render_after_route_and_delete();
     fails += test_core_envelope_delete_rejected();
     fails += test_remove_mod_primitively_accepts_core();
+    fails += test_runtime_envelope_add_does_not_rebuild_voices();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

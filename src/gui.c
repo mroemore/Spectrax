@@ -774,9 +774,8 @@ void addRuntimeEnvelope(Instrument *inst) {
 	runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
 	inst->envelopeCount++;
 	rebuildInstrumentGraph();
-	if(igui && igui->vm) {
-		rebuildVoicesForInstrument(igui->vm, inst);
-	}
+	/* voices alias core envelopes only; runtime envelopes route via
+	 * inst->paramList which all voices share; no rebuild needed */
 }
 
 void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
@@ -793,10 +792,10 @@ void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
 		runtimeRoutes[j] = runtimeRoutes[j + 1];
 	}
 	inst->envelopeCount--;
+	memset(&runtimeRoutes[inst->envelopeCount], 0, sizeof(RouteState));
 	rebuildInstrumentGraph();
-	if(igui && igui->vm) {
-		rebuildVoicesForInstrument(igui->vm, inst);
-	}
+	/* voices alias core envelopes only; runtime envelopes route via
+	 * inst->paramList which all voices share; no rebuild needed */
 }
 
 void rebuildInstrumentGraph(void) {
@@ -816,6 +815,9 @@ void rebuildInstrumentGraph(void) {
 }
 
 void removeSelectedEnvelope(void) {
+	if(!igui || !igui->vm || !igui->selectedInstrument) {
+		return;
+	}
 	GuiNode *sel = getSelectedInstGraph()->selected;
 	if(!sel) {
 		return;

@@ -4,7 +4,7 @@
 # and data/ resolve correctly. Exits non-zero on any FAIL.
 #
 # Usage: run_scripted.sh [fixture]     (default: fixtures/add_route_delete.txt)
-set -e
+set -euo pipefail
 
 FIXTURE="${1:-fixtures/add_route_delete.txt}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,5 +32,5 @@ if [[ ! -x "${BIN}/instrument_harness" ]]; then
 fi
 
 cd "${BIN}"
-xvfb-run -a -s "-screen 0 1280x720x24" \
+xvfb-run -a -s "-screen 0 1280x800x24" \
 	"${BIN}/instrument_harness" --script "${FIXTURE_PATH}"
