@@ -382,6 +382,9 @@ GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev) {
 }
 
 void changeGraphSelection(Graph *g, GuiNode *new) {
+	if(!g || !g->selected || !new) {
+		return;
+	}
 	g->selected->selected = 0;
 	g->selected = new;
 	g->selected->selected = 1;

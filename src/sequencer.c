@@ -298,7 +298,14 @@ void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int not
 void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger *arranger) { // TO-DO: add pattern mode func
 	arranger->tempoSettings.swingStep = !arranger->tempoSettings.swingStep;
 	for(int i = 0; i < arranger->enabledChannels; i++) {
-		int patternSize = patternList->patterns[sequencer->pattern_index[i]].pattern_size;
+		int patternIndex = sequencer->pattern_index[i];
+		int patternSize = 0;
+		if(patternIndex >= 0 && patternIndex < patternList->pattern_count) {
+			patternSize = patternList->patterns[patternIndex].pattern_size;
+		}
+		if(patternSize <= 0) {
+			continue;
+		}
 		if(sequencer->playhead_index[i] + 1 > patternSize - 1) {
 			// printf("\n\tEOP. ");
 			int nextRowIndex = arranger->playhead_indices[i] + 1;

@@ -273,7 +273,8 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 		if(current >= size) {
 			current = size - 1;
 		}
-		changeGraphSelection(patternGraph, stepNodes[current]);
+		patternGraph->selected = stepNodes[current];
+		stepNodes[current]->selected = 1;
 	}
 }
 
@@ -304,7 +305,7 @@ void navigatePatternGraph(int keymapping) {
 }
 
 void rebuildPatternGraph() {
-	if(!patternPl || !patternSeq) {
+	if(!patternPl || !patternSeq || !patternGraph) {
 		return;
 	}
 	freeGuiNode(patternGraph->root);

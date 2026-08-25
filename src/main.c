@@ -269,22 +269,18 @@ int main(void) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 1, -1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 						selectArrangerCell(data.arranger, 1, 1, 0);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
 						selectArrangerCell(data.arranger, 1, 0, -1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-						rebuildPatternGraph();
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 						selectArrangerCell(data.arranger, 1, 0, 1);
 						appState->selectedPattern = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
-						rebuildPatternGraph();
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

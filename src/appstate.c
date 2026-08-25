@@ -46,7 +46,7 @@ void setCurrentPattern(void *self, void *patternID) {
 void setSelectedPattern(void *self, void *patternID) {
 	ApplicationState *as = (ApplicationState *)self;
 	as->selectedPattern = *(int *)patternID;
-	// printf("\n\n Pattern: %i \n\n", as->selectedPattern);
+	rebuildPatternGraph();
 }
 void setSelectedStep(void *self, void *step) {
 	ApplicationState *as = (ApplicationState *)self;
