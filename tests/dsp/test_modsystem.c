@@ -402,6 +402,41 @@ static int test_lfo_phase_wrap(void) {
     return 0;
 }
 
+static int test_remove_from_modlist(void) {
+    ModList *ml = createModList();
+    ParamList *pl = createParamList();
+    Envelope *a = createAD(pl, ml, 0.1f, 0.2f, "A");
+    Envelope *b = createAD(pl, ml, 0.1f, 0.2f, "B");
+    Envelope *c = createAD(pl, ml, 0.1f, 0.2f, "C");
+    ASSERT_EQ(ml->count, 3, "3 mods");
+    ASSERT_TRUE(removeFromModList(ml, &b->base), "remove middle");
+    ASSERT_EQ(ml->count, 2, "count 2 after remove");
+    ASSERT_EQ(ml->mods[0], &a->base, "a first");
+    ASSERT_EQ(ml->mods[1], &c->base, "c shifted down");
+    ASSERT_TRUE(removeFromModList(ml, &a->base), "remove first");
+    ASSERT_TRUE(removeFromModList(ml, &c->base), "remove last");
+    ASSERT_EQ(ml->count, 0, "empty");
+    ASSERT_TRUE(!removeFromModList(ml, &b->base), "absent returns false");
+    teardown(pl, ml);
+    printf("PASS test_remove_from_modlist\n");
+    return 0;
+}
+
+static int test_remove_from_paramlist(void) {
+    ParamList *pl = createParamList();
+    Parameter *a = createParameter(pl, "a", 1.0f, 0.0f, 10.0f);
+    Parameter *b = createParameter(pl, "b", 1.0f, 0.0f, 10.0f);
+    Parameter *c = createParameter(pl, "c", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(removeFromParamList(pl, b), "remove middle");
+    ASSERT_EQ(pl->count, 2, "count 2");
+    ASSERT_EQ(pl->params[0], a, "a first");
+    ASSERT_EQ(pl->params[1], c, "c shifted down");
+    ASSERT_TRUE(!removeFromParamList(pl, b), "already removed");
+    teardown(pl, NULL);
+    printf("PASS test_remove_from_paramlist\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -414,6 +449,8 @@ int main(void) {
     fails += test_set_base_value_syncs_current();
     fails += test_empty_process_modulations();
     fails += test_lfo_phase_wrap();
+    fails += test_remove_from_modlist();
+    fails += test_remove_from_paramlist();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

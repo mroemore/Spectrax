@@ -180,6 +180,8 @@ void clearParamList(ParamList *list);
 void clearModList(ModList *list);
 void addToModList(ModList *list, Mod *mod);
 void addToParamList(ParamList *list, Parameter *param);
+bool removeFromModList(ModList *list, Mod *mod);
+bool removeFromParamList(ParamList *list, Parameter *param);
 bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, float amount, ModulationOperation type);
 void updateMod(Mod *mod, float deltaTime);
 void processModulations(ParamList *paramList, ModList *modList, float deltaTime);

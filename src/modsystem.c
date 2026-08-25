@@ -140,6 +140,38 @@ void addToParamList(ParamList *list, Parameter *param) {
 	}
 }
 
+bool removeFromModList(ModList *list, Mod *mod) {
+	if(!list || !mod) {
+		return false;
+	}
+	for(int i = 0; i < list->count; i++) {
+		if(list->mods[i] == mod) {
+			for(int j = i; j < list->count - 1; j++) {
+				list->mods[j] = list->mods[j + 1];
+			}
+			list->count--;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool removeFromParamList(ParamList *list, Parameter *param) {
+	if(!list || !param) {
+		return false;
+	}
+	for(int i = 0; i < list->count; i++) {
+		if(list->params[i] == param) {
+			for(int j = i; j < list->count - 1; j++) {
+				list->params[j] = list->params[j + 1];
+			}
+			list->count--;
+			return true;
+		}
+	}
+	return false;
+}
+
 void setParameterValue(Parameter *param, float value) {
 	// DEBUG_LOG("set param");
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
