@@ -13,3 +13,6 @@ TODO.md
 compile_commands.json
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o
+src/tools/instrument_harness/instrument_harness
+src/tools/instrument_harness/*.o
+bin/instrument_harness
