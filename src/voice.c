@@ -390,6 +390,15 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * rebuildVoicesForInstrument / downstream layout code can rely on
 	 * the same value the preset set up. */
 	instrument->coreEnvelopeCount = instrument->envelopeCount;
+
+	/* Re-create the persistent instrument params (panning, detune
+	 * controls) that clearParamList just freed along with the preset
+	 * params. init_instrument creates them once; without this they dangle
+	 * and generateVoice's detuneVoiceCount division crashes. */
+	instrument->panning = createParameterEx(instrument->paramList, "panning", 0.5f, 0.0f, 1.0f, 0.01f, 0.1f);
+	instrument->detuneVoiceCount = createParameterEx(instrument->paramList, "detuneVoices", 4.0f, 0.0f, MAX_DETUNE, 1.0f, 1.0f);
+	instrument->detuneRange = createParameterEx(instrument->paramList, "detuneAmt", 10.0f, 1.0f, 100.0f, 1.00f, 10.0f);
+	instrument->detuneSpread = createParameterEx(instrument->paramList, "detuneSpread", 10.0f, 0.0f, 50.0f, 1.0f, 5.0f);
 }
 
 void cb_setInstrumentPreset(void *instrument) {
