@@ -452,6 +452,48 @@ static int test_remove_from_paramlist(void) {
     return 0;
 }
 
+/* Pins the wiring contract of rewireModulation: walks destination's
+ * modulator list and reassigns conn->source to newSource on the first
+ * connection whose source matches oldSource. Returns false if no match
+ * is found. The `list` parameter is part of the signature for symmetry
+ * with addModulation/removeModulation but is intentionally unused —
+ * rewiring is purely a destination->modulators operation. */
+static int test_rewire_modulation(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *e1 = createAD(pl, ml, 0.1f, 0.2f, "E1");
+    Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    addModulation(pl, &e1->base, dest, 1.0f, MO_ADD);
+    ASSERT_TRUE(rewireModulation(pl, dest, &e1->base, &e2->base), "rewired");
+    ASSERT_TRUE(dest->modulators->source == &e2->base, "source now e2");
+    ASSERT_TRUE(!rewireModulation(pl, dest, &e1->base, &e2->base),
+                "old source absent -> false");
+    teardown(pl, ml);
+    printf("PASS test_rewire_modulation\n");
+    return 0;
+}
+
+/* Pins the discrete-wrap contract of wrapIncrementParameter: adds step
+ * to baseValue and wraps discretely within [min, max] using
+ * count = max - min + 1. Routes through setParameterBaseValue so that
+ * currentValue (what dials read) stays in sync. Test pins 12+1->0 and
+ * 0-1->12 for a 0..12 param, plus a within-range +3. */
+static int test_wrap_increment(void) {
+    ParamList *pl = createParamList();
+    Parameter *p = createParameter(pl, "route", 12.0f, 0.0f, 12.0f);
+    wrapIncrementParameter(p, 1.0f);
+    ASSERT_NEAR(p->baseValue, 0.0f, 0.0001f, "12 + 1 wraps to 0");
+    ASSERT_NEAR(p->currentValue, 0.0f, 0.0001f, "currentValue synced");
+    wrapIncrementParameter(p, -1.0f);
+    ASSERT_NEAR(p->baseValue, 12.0f, 0.0001f, "0 - 1 wraps to 12");
+    wrapIncrementParameter(p, 3.0f);
+    ASSERT_NEAR(p->baseValue, 3.0f, 0.0001f, "0 + 3 = 3");
+    teardown(pl, NULL);
+    printf("PASS test_wrap_increment\n");
+    return 0;
+}
+
 static int test_remove_mod(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
@@ -508,6 +550,8 @@ int main(void) {
     fails += test_remove_from_paramlist();
     fails += test_remove_modulation();
     fails += test_remove_modulations_for_source();
+    fails += test_rewire_modulation();
+    fails += test_wrap_increment();
     fails += test_remove_mod();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);

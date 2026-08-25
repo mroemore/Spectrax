@@ -386,6 +386,40 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 	}
 	return true;
 }
+bool rewireModulation(ParamList *list, Parameter *destination, Mod *oldSource, Mod *newSource) {
+	(void)list;
+	if(!destination || !newSource) {
+		return false;
+	}
+	ModConnection *conn = destination->modulators;
+	while(conn != NULL) {
+		if(conn->source == oldSource) {
+			conn->source = newSource;
+			return true;
+		}
+		conn = conn->next;
+	}
+	return false;
+}
+
+void wrapIncrementParameter(Parameter *p, float step) {
+	if(!p) {
+		return;
+	}
+	float count = p->maxValue - p->minValue + 1.0f;
+	if(count <= 0.0f) {
+		setParameterBaseValue(p, p->minValue);
+		return;
+	}
+	float v = p->baseValue + step;
+	while(v > p->maxValue) {
+		v -= count;
+	}
+	while(v < p->minValue) {
+		v += count;
+	}
+	setParameterBaseValue(p, v);
+}
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
 	rnd->lastPhase = 0.0f;
 	rnd->lastRandom = 0.0f;
