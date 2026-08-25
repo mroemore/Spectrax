@@ -157,6 +157,7 @@ void setParameterBaseValue(Parameter *param, float value) {
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
 	float oldVal = param->baseValue;
 	param->baseValue = clamped;
+	param->currentValue = clamped; /* keep unmodulated value in sync (dials read currentValue) */
 	if(fabs(fabs(oldVal) - fabs(clamped)) > 0.001f) {
 		if(param->onChange.cbData != NULL && param->onChange.cbFunc != NULL) {
 			param->onChange.cbFunc(param->onChange.cbData);

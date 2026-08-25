@@ -350,6 +350,24 @@ static int test_param_clamp(void) {
     return 0;
 }
 
+/* Pins that setParameterBaseValue keeps currentValue in sync with
+ * baseValue. Dials read currentValue (see Dial widget), so a stale
+ * currentValue would make unmodulated dials show the wrong number
+ * after a baseValue edit. processModulations recomputes currentValue
+ * every pass when there ARE modulators, so syncing inside the setter
+ * is safe: it only matters for the unmodulated case (where no
+ * processModulations pass runs to update it). */
+static int test_set_base_value_syncs_current(void) {
+    ParamList *pl = createParamList();
+    Parameter *p = createParameter(pl, "p", 5.0f, 0.0f, 10.0f);
+    setParameterBaseValue(p, 7.0f);
+    ASSERT_NEAR(p->baseValue, 7.0f, 0.0001f, "baseValue updated");
+    ASSERT_NEAR(p->currentValue, 7.0f, 0.0001f, "currentValue synced");
+    teardown(pl, NULL);
+    printf("PASS test_set_base_value_syncs_current\n");
+    return 0;
+}
+
 /* Pins that processModulations is a no-op on empty lists (no crash,
  * no spurious writes). */
 static int test_empty_process_modulations(void) {
@@ -393,6 +411,7 @@ int main(void) {
     fails += test_multiple_modulators_apply_in_order();
     fails += test_envelope_create_and_stage_overflow();
     fails += test_param_clamp();
+    fails += test_set_base_value_syncs_current();
     fails += test_empty_process_modulations();
     fails += test_lfo_phase_wrap();
     if (fails) {
