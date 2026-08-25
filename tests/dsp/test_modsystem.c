@@ -487,8 +487,9 @@ static int test_wrap_increment(void) {
     ASSERT_NEAR(p->currentValue, 0.0f, 0.0001f, "currentValue synced");
     wrapIncrementParameter(p, -1.0f);
     ASSERT_NEAR(p->baseValue, 12.0f, 0.0001f, "0 - 1 wraps to 12");
+    setParameterBaseValue(p, 0.0f);
     wrapIncrementParameter(p, 3.0f);
-    ASSERT_NEAR(p->baseValue, 3.0f, 0.0001f, "0 + 3 = 3");
+    ASSERT_NEAR(p->baseValue, 3.0f, 0.0001f, "0 + 3 = 3 (reset to 0 first)");
     teardown(pl, NULL);
     printf("PASS test_wrap_increment\n");
     return 0;
