@@ -452,6 +452,46 @@ static int test_remove_from_paramlist(void) {
     return 0;
 }
 
+static int test_remove_mod(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    addModulation(pl, &env->base, dest, 1.0f, MO_ADD);
+    int before = pl->count;   /* 5 env params + dest + amount + type = 8 */
+    int modBefore = ml->count; /* 1 */
+    ASSERT_TRUE(removeMod(ml, pl, &env->base), "removeMod succeeds");
+    ASSERT_EQ(ml->count, modBefore - 1, "mod gone from modList");
+    /* Brief originally wrote before-2 here; that's only the connection's
+     * amount+type. Full teardown also drops 4 env-stage params
+     * (2 stages * (duration + curvature)) + 1 output = 7 params removed
+     * total, leaving only dest. Aligned with the spec's documented
+     * "remove the mod's own params" + freeEnvelope flow. */
+    ASSERT_EQ(pl->count, before - 7, "amount+type+env params gone from paramList");
+    ASSERT_EQ(pl->count, 1, "only dest remains");
+    ASSERT_EQ(pl->params[0], dest, "dest survives at index 0");
+    ASSERT_EQ(dest->modulator_count, 0, "dest unmodulated");
+    processModulations(pl, ml, 0.016f); /* no dangling deref */
+
+    /* absent mod in a fresh list returns false. The brief's verbatim
+     * code created an envelope via createAD for the "absent" case, but
+     * createAD adds the mod to the list — so removeFromModList would
+     * succeed and removeMod would return true. To actually test the
+     * absent path we hand removeMod a stack-allocated Mod that's never
+     * registered in ml2. */
+    ParamList *pl2 = createParamList();
+    ModList *ml2 = createModList();
+    Envelope *other = createAD(pl2, ml2, 0.1f, 0.2f, "OTHER");
+    Mod ghost = {0};
+    ASSERT_TRUE(!removeMod(ml2, pl2, &ghost), "not in this list");
+    ASSERT_EQ(ml2->count, 1, "nothing removed");
+    (void)other;
+    teardown(pl2, ml2);
+    teardown(pl, ml);
+    printf("PASS test_remove_mod\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -468,6 +508,7 @@ int main(void) {
     fails += test_remove_from_paramlist();
     fails += test_remove_modulation();
     fails += test_remove_modulations_for_source();
+    fails += test_remove_mod();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

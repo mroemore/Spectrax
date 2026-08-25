@@ -185,6 +185,7 @@ bool removeFromParamList(ParamList *list, Parameter *param);
 bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, float amount, ModulationOperation type);
 bool removeModulation(ParamList *list, Parameter *destination, Mod *source);
 int removeModulationsForSource(ParamList *list, Mod *source);
+bool removeMod(ModList *modList, ParamList *paramList, Mod *mod);
 void updateMod(Mod *mod, float deltaTime);
 void processModulations(ParamList *paramList, ModList *modList, float deltaTime);
 

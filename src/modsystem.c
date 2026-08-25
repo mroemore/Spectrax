@@ -327,6 +327,65 @@ int removeModulationsForSource(ParamList *list, Mod *source) {
 	}
 	return removed;
 }
+bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
+	if(!modList || !paramList || !mod) {
+		return false;
+	}
+	if(!removeFromModList(modList, mod)) {
+		return false;
+	}
+	removeModulationsForSource(paramList, mod);
+	/* Remove the mod's own params from the list (owned by paramList). */
+	switch(mod->type) {
+		case MT_LFO: {
+			LFO *lfo = (LFO *)mod;
+			if(lfo->rate) removeFromParamList(paramList, lfo->rate);
+			if(lfo->phase) removeFromParamList(paramList, lfo->phase);
+			break;
+		}
+		case MT_RND: {
+			Random *rnd = (Random *)mod;
+			if(rnd->rate) removeFromParamList(paramList, rnd->rate);
+			if(rnd->phase) removeFromParamList(paramList, rnd->phase);
+			break;
+		}
+		case MT_ENV: {
+			Envelope *env = (Envelope *)mod;
+			for(int i = 0; i < env->stageCount; i++) {
+				if(env->stages[i].duration) {
+					removeFromParamList(paramList, env->stages[i].duration);
+				}
+				if(env->stages[i].curvature) {
+					removeFromParamList(paramList, env->stages[i].curvature);
+				}
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	if(mod->output) {
+		removeFromParamList(paramList, mod->output);
+	}
+	/* Params are no longer referenced by the list; free struct by type.
+	 * (freeEnvelope/freeLFO/freeRandom free their params again — safe now
+	 * because the list no longer holds those pointers.) */
+	switch(mod->type) {
+		case MT_LFO:
+			freeLFO((LFO *)mod);
+			break;
+		case MT_RND:
+			freeRandom((Random *)mod);
+			break;
+		case MT_ENV:
+			freeEnvelope((Envelope *)mod);
+			break;
+		default:
+			freeMod(mod);
+			break;
+	}
+	return true;
+}
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
 	rnd->lastPhase = 0.0f;
 	rnd->lastRandom = 0.0f;
