@@ -318,6 +318,15 @@ int main(void) {
 				}
 				break;
 			case SCENE_INSTRUMENT:
+				if(isKeyJustPressed(appState->inputState, KM_ADD)) {
+					Instrument *inst = getSelectedInstInstrument();
+					if(inst->voiceType == VOICE_TYPE_FM) {
+						addRuntimeEnvelope(inst);
+					}
+				}
+				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
+					removeSelectedEnvelope();
+				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 0, -1, 0);
