@@ -247,6 +247,38 @@ bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, fl
 
 	return true;
 }
+bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
+	if(!list || !destination || !source) {
+		return false;
+	}
+	ModConnection *conn = destination->modulators;
+	while(conn != NULL) {
+		ModConnection *next = conn->next;
+		if(conn->source == source) {
+			if(conn->previous) {
+				conn->previous->next = conn->next;
+			} else {
+				destination->modulators = conn->next;
+			}
+			if(conn->next) {
+				conn->next->previous = conn->previous;
+			}
+			destination->modulator_count--;
+			if(conn->amount) {
+				removeFromParamList(list, conn->amount);
+				freeParameter(conn->amount);
+			}
+			if(conn->type) {
+				removeFromParamList(list, conn->type);
+				freeParameter(conn->type);
+			}
+			free(conn);
+			return true;
+		}
+		conn = next;
+	}
+	return false;
+}
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
 	rnd->lastPhase = 0.0f;
 	rnd->lastRandom = 0.0f;

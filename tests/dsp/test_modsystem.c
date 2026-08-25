@@ -1,12 +1,11 @@
 /* test_modsystem.c — modsystem unit tests: creation, processing, and the
  * dynamic add/remove/rewire primitives. Pure modsystem, no raylib.
  *
- * NOTE on removeModulation_test() below: the SP-C spec adds a
- * removeModulation() primitive to modsystem.c, but it has not been
- * implemented yet. This task pins *current* behavior, so we provide a
- * local in-test helper that mimics the obvious "unlink one connection"
- * semantics required to exercise the four MO_* operations. When
- * removeModulation() lands in src/, this helper goes away.
+ * NOTE: removeModulation() now lives in src/modsystem.c (Task 5). The
+ * earlier test-local helper of the same name has been removed; tests
+ * call the real primitive directly. freeParamList still owns all
+ * amount/type params left over from live connections, so the teardown
+ * below is unchanged.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,10 +70,10 @@
 
 /* Teardown: params owned by paramList (freeParamList frees them all,
  * including mod output params and connection amount/type params);
- * mod structs owned by modList, freed with bare free(). The
- * removeModulation_test() helper above removes a connection's
- * amount/type params from the paramList before freeing them, so
- * freeParamList in this teardown never double-frees them. */
+ * mod structs owned by modList, freed with bare free(). The real
+ * removeModulation() primitive removes a connection's amount/type
+ * params from the paramList before freeing them, so freeParamList in
+ * this teardown never double-frees them. */
 static void teardown(ParamList *pl, ModList *ml) {
     if (ml) {
         for (int i = 0; i < ml->count; i++) {
@@ -85,57 +84,6 @@ static void teardown(ParamList *pl, ModList *ml) {
     if (pl) {
         freeParamList(pl);
     }
-}
-
-/* removeParamFromList: pull `p` out of `pl->params[]` and shift tail down so
- * the index stays contiguous. Used by the test-only removeModulation
- * helper below to keep the paramList in sync before freeParamList runs. */
-static void removeParamFromList(ParamList *pl, Parameter *p) {
-    if (!pl || !p) return;
-    for (int i = 0; i < pl->count; i++) {
-        if (pl->params[i] == p) {
-            for (int j = i; j < pl->count - 1; j++) {
-                pl->params[j] = pl->params[j + 1];
-            }
-            pl->count--;
-            pl->params[pl->count] = NULL;
-            return;
-        }
-    }
-}
-
-/* removeModulation_test: test-local stand-in for the SP-C primitive.
- * Unlinks the (destination, source) connection from destination's
- * modulator linked list, removes its amount/type params from the
- * paramList, frees the params and the connection struct, and
- * decrements destination->modulator_count. Returns true if a matching
- * connection was found. */
-static bool removeModulation_test(ParamList *pl, Parameter *destination, Mod *source) {
-    if (!destination) return false;
-    ModConnection *prev = NULL;
-    ModConnection *cur = destination->modulators;
-    while (cur) {
-        if (cur->source == source) {
-            if (prev) {
-                prev->next = cur->next;
-            } else {
-                destination->modulators = cur->next;
-            }
-            if (cur->next) {
-                cur->next->previous = prev;
-            }
-            Parameter *amount = cur->amount;
-            Parameter *type = cur->type;
-            free(cur);
-            destination->modulator_count--;
-            if (amount) { removeParamFromList(pl, amount); freeParameter(amount); }
-            if (type)   { removeParamFromList(pl, type);   freeParameter(type); }
-            return true;
-        }
-        prev = cur;
-        cur = cur->next;
-    }
-    return false;
 }
 
 static int test_create_lists(void) {
@@ -233,19 +181,19 @@ static int test_process_modulation_arithmetic(void) {
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "ADD: env output resets to 0, dest=baseValue");
 
-    removeModulation_test(pl, dest, &env->base);
+    removeModulation(pl, dest, &env->base);
     addModulation(pl, &env->base, dest, 0.5f, MO_MUL);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 0.0f, 0.0001f,
                 "MUL: baseValue*0 = 0 when env output resets to 0");
 
-    removeModulation_test(pl, dest, &env->base);
+    removeModulation(pl, dest, &env->base);
     addModulation(pl, &env->base, dest, 0.5f, MO_SUB);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "SUB: env output resets to 0, dest=baseValue");
 
-    removeModulation_test(pl, dest, &env->base);
+    removeModulation(pl, dest, &env->base);
     addModulation(pl, &env->base, dest, 0.5f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
@@ -259,7 +207,7 @@ static int test_process_modulation_arithmetic(void) {
      * than dividing by zero and producing NaN/Inf). */
     Envelope *env2 = createAD(pl, ml, 0.1f, 0.2f, "AD2");
     setParameterValue(env2->base.output, 0.0f);
-    removeModulation_test(pl, dest, &env->base);
+    removeModulation(pl, dest, &env->base);
     addModulation(pl, &env2->base, dest, 1.0f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
@@ -402,6 +350,41 @@ static int test_lfo_phase_wrap(void) {
     return 0;
 }
 
+/* Pins the wiring contract of removeModulation:
+ *   - it returns true and clears destination's modulator list when the
+ *     matching (dest, source) connection is found, leaving count=0
+ *   - it removes BOTH the amount and type params from the paramList
+ *     (count drops by exactly 2) and frees them
+ *   - returning false when the connection is absent
+ *   - in a two-modulator list, removing the head leaves the tail
+ *     intact (linked-list unlink, not just a count decrement)
+ */
+static int test_remove_modulation(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    addModulation(pl, &env->base, dest, 0.5f, MO_ADD);
+    int before = pl->count;
+    ASSERT_TRUE(removeModulation(pl, dest, &env->base), "removed");
+    ASSERT_EQ(dest->modulator_count, 0, "no modulators left");
+    ASSERT_TRUE(dest->modulators == NULL, "list empty");
+    ASSERT_EQ(pl->count, before - 2, "amount+type params removed from list");
+    ASSERT_TRUE(!removeModulation(pl, dest, &env->base), "absent returns false");
+
+    /* mid-list: two modulators, remove the head */
+    Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
+    addModulation(pl, &env->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, &e2->base, dest, 1.0f, MO_ADD);
+    ASSERT_EQ(dest->modulator_count, 2, "two modulators");
+    ASSERT_TRUE(removeModulation(pl, dest, &e2->base), "remove head");
+    ASSERT_EQ(dest->modulator_count, 1, "one left");
+    ASSERT_EQ(dest->modulators->source, &env->base, "tail survives");
+    teardown(pl, ml);
+    printf("PASS test_remove_modulation\n");
+    return 0;
+}
+
 static int test_remove_from_modlist(void) {
     ModList *ml = createModList();
     ParamList *pl = createParamList();
@@ -451,6 +434,7 @@ int main(void) {
     fails += test_lfo_phase_wrap();
     fails += test_remove_from_modlist();
     fails += test_remove_from_paramlist();
+    fails += test_remove_modulation();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;
