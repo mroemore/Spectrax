@@ -62,11 +62,14 @@ typedef struct {
 	Color playingCellColour;
 } SongMinimapGui;
 
+struct VoiceManager;
+
 typedef struct {
 	Graph *instrumentScreenGraphs[MAX_SEQUENCER_CHANNELS];
 	int instrumentCount;
 	int *selectedInstrument;
 	Shape shape;
+	struct VoiceManager *vm;
 } InstrumentGui;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
@@ -126,6 +129,11 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
 void appendBlankNode(GuiNode *container, int weight);
 Graph *createInstGraph(Instrument *inst, bool selected);
+void addRuntimeEnvelope(Instrument *inst);
+void removeRuntimeEnvelope(Instrument *inst, int envIndex);
+void rebuildInstrumentGraph(void);
+void removeSelectedEnvelope(void);
+Instrument *getSelectedInstInstrument(void);
 
 void clearBg();
 void drawArrangerGuiNode(void *self);
