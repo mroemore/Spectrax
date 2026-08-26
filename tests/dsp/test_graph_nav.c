@@ -68,8 +68,15 @@ static void teardown_graph(Graph *g) {
     free(g);
 }
 
-/* Two-column graph: left col A/B, right col C/D. Rect numbers come
- * from the plan and exercise appendItem/reflowCoordinates. */
+/* Two-column graph: left col A/B, right col C/D. Container rects are
+ * explicit at createGuiNode time, but appendItem triggers
+ * reflowCoordinates which overwrites the leaf rects from parent
+ * geometry + weights. After all wiring, the leaves are forced to the
+ * explicit (x,y,w,h) the geometric nav expects:
+ *   A: 10,10 / 40x20   (top-left)
+ *   B: 10,40 / 40x20   (bottom-left)
+ *   C: 100,10 / 40x20  (top-right)
+ *   D: 100,40 / 40x20  (bottom-right) */
 static Graph *build_2col_graph(void) {
     Graph *g = createGraph(na_vertical);
     /* left column: A (top), B (bottom) */
@@ -87,6 +94,11 @@ static Graph *build_2col_graph(void) {
     appendItem(colR, d, 1);
     appendItem(g->root, colL, 1);
     appendItem(g->root, colR, 1);
+    /* explicit geometry — appendItem reflows, so set leaf rects AFTER wiring */
+    a->x = 10; a->y = 10; a->w = 40; a->h = 20;
+    b->x = 10; b->y = 40; b->w = 40; b->h = 20;
+    c->x = 100; c->y = 10; c->w = 40; c->h = 20;
+    d->x = 100; d->y = 40; d->w = 40; d->h = 20;
     return g;
 }
 
@@ -105,31 +117,162 @@ static int test_trivial_rect_wiring(void) {
     GuiNode *a = *(GuiNode **)colL->items->head->data;
     ASSERT_TRUE(a->selectable, "A is selectable");
     ASSERT_TRUE(strcmp(a->name, "A") == 0, "first leaf is named A");
-    /* appendItem + reflowCoordinates overwrite a's explicit
-     * createGuiNode rect with values derived from colL's layout.
-     * a's rect is whatever the layout produced — it just must be
-     * non-zero and sane. (Exact values are pinned later when the
-     * reflow scheme is reviewed; here we only pin that wiring ran.) */
-    ASSERT_TRUE(a->w > 0, "A has nonzero width");
-    ASSERT_TRUE(a->h > 0, "A has nonzero height");
+    /* Task 2 adaptation: build_2col_graph now sets explicit rects
+     * AFTER all appendItem calls (because appendItem reflows and
+     * would otherwise overwrite them). The rects now persist, so we
+     * pin exact values used by the geometric nav. */
+    ASSERT_EQ(a->x, 10);
+    ASSERT_EQ(a->y, 10);
+    ASSERT_EQ(a->w, 40);
+    ASSERT_EQ(a->h, 20);
     /* Names match across the helper so navigation tests in Task 2
      * can rely on them. */
     GuiNode *b = *(GuiNode **)colL->items->head->next->data;
     ASSERT_TRUE(strcmp(b->name, "B") == 0, "second leaf in colL is B");
+    ASSERT_EQ(b->x, 10);
+    ASSERT_EQ(b->y, 40);
+    ASSERT_EQ(b->w, 40);
+    ASSERT_EQ(b->h, 20);
     GuiNode *colR = *(GuiNode **)g->root->items->head->next->data;
     ASSERT_TRUE(strcmp(colR->name, "colR") == 0, "second root child is colR");
     GuiNode *c = *(GuiNode **)colR->items->head->data;
     ASSERT_TRUE(strcmp(c->name, "C") == 0, "first leaf in colR is C");
+    ASSERT_EQ(c->x, 100);
+    ASSERT_EQ(c->y, 10);
+    ASSERT_EQ(c->w, 40);
+    ASSERT_EQ(c->h, 20);
     GuiNode *d = *(GuiNode **)colR->items->head->next->data;
     ASSERT_TRUE(strcmp(d->name, "D") == 0, "second leaf in colR is D");
+    ASSERT_EQ(d->x, 100);
+    ASSERT_EQ(d->y, 40);
+    ASSERT_EQ(d->w, 40);
+    ASSERT_EQ(d->h, 20);
     teardown_graph(g);
     printf("PASS test_trivial_rect_wiring\n");
+    return 0;
+}
+
+/* ----- Task 2: navigateGraphRefined + changeGraphSelection fix ----- */
+
+/* customNav on a node intercepts the key and returns true -> geometry skipped */
+static bool interceptNav(void *self, int keymapping) {
+    (void)self; (void)keymapping;
+    return true;
+}
+/* customNav returning false falls through to geometry */
+static bool passthroughNav(void *self, int keymapping) {
+    (void)self; (void)keymapping;
+    return false;
+}
+
+static int test_first_selection(void) {
+    Graph *g = build_2col_graph();
+    ASSERT_TRUE(g->selected == NULL, "no selection initially");
+    navigateGraphRefined(g, KM_DOWN);
+    ASSERT_TRUE(g->selected != NULL, "first selection established");
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "head-most leaf selected");
+    teardown_graph(g);
+    printf("PASS test_first_selection\n");
+    return 0;
+}
+
+static int test_col_up_down(void) {
+    Graph *g = build_2col_graph();
+    navigateGraphRefined(g, KM_DOWN); /* selects A */
+    navigateGraphRefined(g, KM_DOWN);
+    ASSERT_TRUE(strcmp(g->selected->name, "B") == 0, "down moves to B in the column");
+    navigateGraphRefined(g, KM_UP);
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "up moves back to A");
+    teardown_graph(g);
+    printf("PASS test_col_up_down\n");
+    return 0;
+}
+
+static int test_row_left_right(void) {
+    Graph *g = build_2col_graph();
+    navigateGraphRefined(g, KM_DOWN); /* A */
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(strcmp(g->selected->name, "C") == 0, "right moves to C");
+    navigateGraphRefined(g, KM_LEFT);
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "left moves back to A");
+    teardown_graph(g);
+    printf("PASS test_row_left_right\n");
+    return 0;
+}
+
+static int test_boundary_no_move(void) {
+    Graph *g = build_2col_graph();
+    navigateGraphRefined(g, KM_DOWN); /* A */
+    navigateGraphRefined(g, KM_UP);   /* top boundary: no move */
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "no move at top edge");
+    navigateGraphRefined(g, KM_LEFT); /* left edge: no move */
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "no move at left edge");
+    teardown_graph(g);
+    printf("PASS test_boundary_no_move\n");
+    return 0;
+}
+
+static int test_cross_section_jump(void) {
+    /* from B (left column bottom), RIGHT must pick D (nearest right-column
+     * node by center alignment), not C */
+    Graph *g = build_2col_graph();
+    navigateGraphRefined(g, KM_DOWN);
+    navigateGraphRefined(g, KM_DOWN); /* B */
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(strcmp(g->selected->name, "D") == 0, "right from B lands on D (center-aligned)");
+    teardown_graph(g);
+    printf("PASS test_cross_section_jump\n");
+    return 0;
+}
+
+static int test_custom_nav_precedence(void) {
+    Graph *g = build_2col_graph();
+    GuiNode *colL = *(GuiNode **)g->root->items->head->data;
+    GuiNode *a = *(GuiNode **)colL->items->head->data;
+    a->customNav = interceptNav;
+    navigateGraphRefined(g, KM_DOWN); /* selects A (first selection) */
+    navigateGraphRefined(g, KM_DOWN); /* interceptNav returns true -> no move */
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "customNav intercepts down");
+    teardown_graph(g);
+    printf("PASS test_custom_nav_precedence\n");
+    return 0;
+}
+
+static int test_custom_nav_fallthrough(void) {
+    Graph *g = build_2col_graph();
+    GuiNode *colL = *(GuiNode **)g->root->items->head->data;
+    GuiNode *a = *(GuiNode **)colL->items->head->data;
+    a->customNav = passthroughNav;
+    navigateGraphRefined(g, KM_DOWN);
+    navigateGraphRefined(g, KM_DOWN); /* passthrough -> geometry moves to B */
+    ASSERT_TRUE(strcmp(g->selected->name, "B") == 0, "passthrough falls through to geometry");
+    teardown_graph(g);
+    printf("PASS test_custom_nav_fallthrough\n");
+    return 0;
+}
+
+static int test_null_safety(void) {
+    navigateGraphRefined(NULL, KM_DOWN);           /* no crash */
+    Graph *g = build_2col_graph();
+    g->selected = NULL;
+    navigateGraphRefined(g, KM_DOWN);              /* establishes first selection, no crash */
+    ASSERT_TRUE(g->selected != NULL, "null-selection recovers");
+    teardown_graph(g);
+    printf("PASS test_null_safety\n");
     return 0;
 }
 
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
+    fails += test_first_selection();
+    fails += test_col_up_down();
+    fails += test_row_left_right();
+    fails += test_boundary_no_move();
+    fails += test_cross_section_jump();
+    fails += test_custom_nav_precedence();
+    fails += test_custom_nav_fallthrough();
+    fails += test_null_safety();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;
