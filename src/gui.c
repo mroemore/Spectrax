@@ -240,7 +240,7 @@ void drawStepGuiNode(void *self) {
 	if(*d->selectedStepPtr == d->stepIndex) {
 		DrawRectangle(gn->x - 3, gn->y - 3, gn->w + 6, gn->h + 6, cs.outlineColour);
 	}
-	if(currentlyPlaying > -1 && d->seq->playhead_index[currentlyPlaying] == d->stepIndex) {
+	if(currentlyPlaying > -1 && d->seq->running[currentlyPlaying] && d->seq->playhead_index[currentlyPlaying] == d->stepIndex) {
 		DrawRectangleRec(cell, cs.highlightedCell);
 	} else {
 		DrawRectangleRec(cell, cs.defaultCell);

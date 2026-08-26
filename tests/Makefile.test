@@ -29,7 +29,16 @@ APP_SRCS = \
 
 APP_OBJS = $(patsubst $(SRC)/%.c,$(OBJDIR)/%.o,$(APP_SRCS))
 
-TESTS = test_io test_voice test_modsystem test_mod_voice test_graph_nav
+# Sequencer/appstate sources are only linked into test_sequencer: appstate.o
+# references rebuildPatternGraph() (a gui.c symbol) which test_sequencer stubs.
+SEQ_SRCS = \
+	$(SRC)/sequencer.c \
+	$(SRC)/appstate.c \
+	$(SRC)/input.c \
+	$(SRC)/settings.c
+SEQ_OBJS = $(patsubst $(SRC)/%.c,$(OBJDIR)/%.o,$(SEQ_SRCS))
+
+TESTS = test_io test_voice test_modsystem test_mod_voice test_graph_nav test_sequencer
 
 all: $(TESTS)
 
@@ -60,14 +69,18 @@ test_mod_voice: $(OBJDIR)/test_mod_voice.o $(APP_OBJS)
 test_graph_nav: $(OBJDIR)/test_graph_nav.o $(APP_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+test_sequencer: $(OBJDIR)/test_sequencer.o $(APP_OBJS) $(SEQ_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 run: all
 	./test_io
 	./test_voice
 	./test_modsystem
 	./test_mod_voice
 	./test_graph_nav
+	./test_sequencer
 
 clean:
-	rm -rf $(OBJDIR) test_io test_voice test_modsystem test_mod_voice test_graph_nav
+	rm -rf $(OBJDIR) test_io test_voice test_modsystem test_mod_voice test_graph_nav test_sequencer
 
 .PHONY: all run clean

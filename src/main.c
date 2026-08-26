@@ -459,6 +459,15 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	}
 	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
 	printf("arranger/pattern load result: %i\n", loadstate);
+	/* Seed a valid selected pattern so Shift+Right reaches the pattern
+	 * screen immediately at startup (incrementScene requires
+	 * selectedPattern != -1, which is otherwise only set when the user
+	 * selects an arranger cell). setSelectedPattern also rebuilds the
+	 * pattern graph once it exists (it is a no-op before createPatternGraph
+	 * because patternPl/patternSeq are still NULL). */
+	if((*appState)->selectedPattern < 0 && data->arranger->song[0][0] >= 0) {
+		setSelectedPattern(*appState, &data->arranger->song[0][0]);
+	}
 
 	data->sequencer = createSequencer(data->arranger);
 	if(!data->sequencer) {

@@ -325,7 +325,7 @@ void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger
 				}
 			}
 		}
-		if(sequencer->pattern_index[i] > -1) {
+		if(sequencer->pattern_index[i] > -1 && sequencer->running[i]) {
 			sequencer->playhead_index[i] = (sequencer->playhead_index[i] + 1) % patternList->patterns[sequencer->pattern_index[i]].pattern_size;
 		}
 	}
