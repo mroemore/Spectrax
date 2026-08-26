@@ -338,16 +338,16 @@ int main(void) {
 					Graph *currentGraph = getSelectedInstGraph();
 
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						navigateGraph(currentGraph, KM_LEFT);
+						navigateGraphRefined(currentGraph, KM_LEFT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						navigateGraph(currentGraph, KM_RIGHT);
+						navigateGraphRefined(currentGraph, KM_RIGHT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						navigateGraph(currentGraph, KM_UP);
+						navigateGraphRefined(currentGraph, KM_UP);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						navigateGraph(currentGraph, KM_DOWN);
+						navigateGraphRefined(currentGraph, KM_DOWN);
 					}
 				}
 				break;

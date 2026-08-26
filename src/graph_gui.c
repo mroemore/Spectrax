@@ -292,6 +292,11 @@ void navigateGraph(Graph *g, int keymapping) {
 	}
 }
 
+/* Soft cap on candidates gathered by collectSelectables. The buffer silently
+ * truncates beyond this, which is acceptable: the FM instrument graph only
+ * carries ~tens of selectable nodes. */
+#define NAV_CAND_CAP 256
+
 static void collectSelectables(GuiNode *node, GuiNode **out, int *count, int cap) {
 	if(!node || !out || !count || *count >= cap) {
 		return;
@@ -375,9 +380,9 @@ void navigateGraphRefined(Graph *g, int keymapping) {
 		return;
 	}
 	if(!g->selected) {
-		GuiNode *cands[256];
+		GuiNode *cands[NAV_CAND_CAP];
 		int count = 0;
-		collectSelectables(g->root, cands, &count, 256);
+		collectSelectables(g->root, cands, &count, NAV_CAND_CAP);
 		if(count > 0) {
 			changeGraphSelection(g, cands[0]);
 		}
@@ -388,9 +393,9 @@ void navigateGraphRefined(Graph *g, int keymapping) {
 			return;
 		}
 	}
-	GuiNode *cands[256];
+	GuiNode *cands[NAV_CAND_CAP];
 	int count = 0;
-	collectSelectables(g->root, cands, &count, 256);
+	collectSelectables(g->root, cands, &count, NAV_CAND_CAP);
 	GuiNode *best = bestInDirection(g->selected, cands, count, keymapping);
 	if(best) {
 		changeGraphSelection(g, best);
