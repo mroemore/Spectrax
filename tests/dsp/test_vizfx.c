@@ -199,6 +199,56 @@ static int test_push_gain_from_window_peak(void) {
 	return 0;
 }
 
+static int test_mix_ring_read_order(void) {
+	MixRing r;
+	initMixRing(&r);
+	for(int i = 0; i < MIX_RING_LEN; i++) {
+		pushMixRingSample(&r, (float)i);
+	}
+	ASSERT_TRUE(r.count == MIX_RING_LEN);
+	for(int k = 0; k < MIX_RING_LEN; k++) {
+		float s = r.samples[(r.writeIndex + k) % MIX_RING_LEN];
+		ASSERT_TRUE(fabsf(s - (float)k) < 0.001f);
+	}
+	printf("PASS test_mix_ring_read_order\n");
+	return 0;
+}
+
+static int test_mix_ring_wrap_drops_oldest(void) {
+	MixRing r;
+	initMixRing(&r);
+	for(int i = 0; i < MIX_RING_LEN + 100; i++) {
+		pushMixRingSample(&r, (float)i);
+	}
+	ASSERT_TRUE(r.count == MIX_RING_LEN);
+	for(int k = 0; k < MIX_RING_LEN; k++) {
+		float s = r.samples[(r.writeIndex + k) % MIX_RING_LEN];
+		ASSERT_TRUE(fabsf(s - (float)(k + 100)) < 0.001f);
+	}
+	printf("PASS test_mix_ring_wrap_drops_oldest\n");
+	return 0;
+}
+
+static int test_mix_ring_partial_count(void) {
+	MixRing r;
+	initMixRing(&r);
+	for(int i = 0; i < 50; i++) {
+		pushMixRingSample(&r, (float)i);
+	}
+	ASSERT_TRUE(r.count == 50);
+	int tailStart = MIX_RING_LEN - 50;
+	for(int k = 0; k < tailStart; k++) {
+		float s = r.samples[(r.writeIndex + k) % MIX_RING_LEN];
+		ASSERT_TRUE(fabsf(s) < 0.001f);
+	}
+	for(int k = tailStart; k < MIX_RING_LEN; k++) {
+		float s = r.samples[(r.writeIndex + k) % MIX_RING_LEN];
+		ASSERT_TRUE(fabsf(s - (float)(k - tailStart)) < 0.001f);
+	}
+	printf("PASS test_mix_ring_partial_count\n");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_silence_collapses_to_middle_row();
@@ -212,8 +262,11 @@ int main(void) {
 	failed |= test_collapse_log_scales_low_amplitude();
 	failed |= test_collapse_gain_scales_to_full_scale();
 	failed |= test_push_gain_from_window_peak();
+	failed |= test_mix_ring_read_order();
+	failed |= test_mix_ring_wrap_drops_oldest();
+	failed |= test_mix_ring_partial_count();
 
-	printf("\n%s (11 tests, %s)\n",
+	printf("\n%s (14 tests, %s)\n",
 	       failed ? "FAILED" : "PASSED", failed ? ">=1 failed" : "all passed");
 	return failed;
 }

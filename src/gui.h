@@ -81,6 +81,7 @@ void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setSongMinimapGui(SongMinimapGui *smg);
 void setPatternBufferScroller(BufferScroller *bs);
+void setArrangerMixRing(MixRing *r);
 void drawStepGuiNode(void *self);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();

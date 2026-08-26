@@ -264,3 +264,63 @@ void freeModStrip(ModStrip *ms) {
 	UnloadRenderTexture(ms->ping);
 	UnloadRenderTexture(ms->pong);
 }
+
+void initMixRing(MixRing *r) {
+	for(int i = 0; i < MIX_RING_LEN; i++) {
+		r->samples[i] = 0.0f;
+	}
+	r->writeIndex = 0;
+	r->count = 0;
+}
+
+void pushMixRingSample(MixRing *r, float sample) {
+	r->samples[r->writeIndex] = sample;
+	r->writeIndex = (r->writeIndex + 1) % MIX_RING_LEN;
+	if(r->count < MIX_RING_LEN) {
+		r->count++;
+	}
+}
+
+static float mixRingRead(const MixRing *r, int k) {
+	return r->samples[(r->writeIndex + k) % MIX_RING_LEN];
+}
+
+static float mixRingClamped(const MixRing *r, int k) {
+	float s = mixRingRead(r, k);
+	if(s < -1.0f) {
+		s = -1.0f;
+	}
+	if(s > 1.0f) {
+		s = 1.0f;
+	}
+	return s;
+}
+
+void drawSampleWaveLines(const MixRing *r, Rectangle dest) {
+	int w = (int)dest.width;
+	int h = (int)dest.height;
+	int centerY = dest.y + h / 2;
+	Color col = (Color){ 60, 255, 150, 255 };
+	for(int x = 0; x < w; x++) {
+		int k = (int)((long)x * MIX_RING_LEN / w);
+		float s = mixRingClamped(r, k);
+		int val = (int)(s * (h / 2));
+		DrawLine(dest.x + x, centerY, dest.x + x, centerY + val, col);
+	}
+}
+
+void drawSampleWavePolyline(const MixRing *r, Rectangle dest) {
+	int h = (int)dest.height;
+	int centerY = dest.y + h / 2;
+	float xScale = dest.width / (float)(MIX_RING_LEN - 1);
+	float yScale = h / 2.0f;
+	Color col = (Color){ 255, 80, 80, 255 };
+	Vector2 prev = { dest.x, centerY + mixRingClamped(r, 0) * yScale };
+	for(int i = 1; i < MIX_RING_LEN; i++) {
+		Vector2 cur;
+		cur.x = dest.x + i * xScale;
+		cur.y = centerY + mixRingClamped(r, i) * yScale;
+		DrawLineEx(prev, cur, 1.0f, col);
+		prev = cur;
+	}
+}

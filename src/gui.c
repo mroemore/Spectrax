@@ -168,6 +168,9 @@ Graph *getSelectedInstGraph() {
 	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
 }
 
+static void drawSampleWaveLinesNode(void *self);
+static void drawSampleWavePolylineNode(void *self);
+
 void createArrangerGraph(Arranger *a, PatternList *pl) {
 	agui = createGraph(na_vertical);
 	GuiNode *arrWrap = createGuiNode(0, 0, 100, 100, 5, na_horizontal, "awrap", 0, 0);
@@ -192,7 +195,18 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	appendItem(arrWrap, songControls, 1);
 	appendItem(arrWrap, gn, 4);
 	appendItem(arrWrap, margin2, 1);
-	appendItem(agui->root, arrWrap, 20);
+	appendItem(agui->root, arrWrap, 15);
+
+	GuiNode *demoStack = createGuiNode(0, 0, 100, 100, 0, na_vertical, "demo", 0, 0);
+	GuiNode *linesNode = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "vline", 0, 0);
+	linesNode->drawable = true;
+	linesNode->draw = drawSampleWaveLinesNode;
+	GuiNode *polyNode = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "poly", 0, 0);
+	polyNode->drawable = true;
+	polyNode->draw = drawSampleWavePolylineNode;
+	appendItem(demoStack, linesNode, 1);
+	appendItem(demoStack, polyNode, 1);
+	appendItem(agui->root, demoStack, 5);
 }
 
 typedef struct {
@@ -215,6 +229,30 @@ static BufferScroller *patternBufferScroller;
 
 void setPatternBufferScroller(BufferScroller *bs) {
 	patternBufferScroller = bs;
+}
+
+static MixRing *arrangerMixRing;
+
+void setArrangerMixRing(MixRing *r) {
+	arrangerMixRing = r;
+}
+
+static void drawSampleWaveLinesNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	if(!arrangerMixRing) {
+		return;
+	}
+	drawSampleWaveLines(arrangerMixRing, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
+	DrawTextEx(pixelFont, "VLINE", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, (Color){ 60, 255, 150, 255 });
+}
+
+static void drawSampleWavePolylineNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	if(!arrangerMixRing) {
+		return;
+	}
+	drawSampleWavePolyline(arrangerMixRing, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
+	DrawTextEx(pixelFont, "POLY", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, (Color){ 255, 80, 80, 255 });
 }
 
 static void drawBufferScrollerNode(void *self) {

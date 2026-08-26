@@ -29,6 +29,7 @@ typedef struct {
 	Spectrogram spectrogram;
 	TimeGraph timeGraph;
 	BufferScroller bufferScroller;
+	MixRing mixRing;
 	PresetBank presetBank;
 } paTestData;
 

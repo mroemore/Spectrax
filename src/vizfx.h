@@ -18,7 +18,15 @@
 #define MOD_STRIP_RESPONSE_CURVE 2.0f
 #define SCROLLER_LOG_FACTOR 10.0f
 
+#define MIX_RING_LEN 1024
+
 typedef struct Voice Voice;
+
+typedef struct {
+	float samples[MIX_RING_LEN];
+	int writeIndex;
+	int count;
+} MixRing;
 
 typedef struct {
 	Image image;
@@ -57,5 +65,10 @@ void freeBufferScroller(BufferScroller *bs);
 void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height);
 void drawModStrip(ModStrip *ms, Rectangle dest);
 void freeModStrip(ModStrip *ms);
+
+void initMixRing(MixRing *r);
+void pushMixRingSample(MixRing *r, float sample);
+void drawSampleWaveLines(const MixRing *r, Rectangle dest);
+void drawSampleWavePolyline(const MixRing *r, Rectangle dest);
 
 #endif
