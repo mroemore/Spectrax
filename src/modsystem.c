@@ -71,9 +71,9 @@ void clearParamList(ParamList *list) {
 		printf("WARNING: clearParamList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	// for(int i = 0; i < list->count; i++) {
-	// 	freeParameter(list->params[i]);
-	// }
+	for(int i = 0; i < list->count; i++) {
+		freeParameter(list->params[i]);
+	}
 	list->count = 0;
 }
 
@@ -86,9 +86,16 @@ void clearModList(ModList *list) {
 		printf("WARNING: clearModList list is empty. Size: %i\n", list->count);
 		return;
 	}
-	// for(int i = 0; i < list->count; i++) {
-	// 	freeMod(list->mods[i]);
-	// }
+	for(int i = 0; i < list->count; i++) {
+		/* Mod structs may be ENVs (heap-allocated as Envelope), generic Mods
+		 * (heap-allocated as Mod), or detached params promoted to mods.
+		 * mod->output / envelope stage duration+curvature Params are added
+		 * to a ParamList by initMod / addEnvelopeStage and are owned by that
+		 * ParamList — freeing them here would leave the ParamList with
+		 * dangling pointers. clearParamList owns the Param lifecycle; we
+		 * only free the Mod struct itself. */
+		free(list->mods[i]);
+	}
 	list->count = 0;
 }
 
@@ -140,6 +147,38 @@ void addToParamList(ParamList *list, Parameter *param) {
 	}
 }
 
+bool removeFromModList(ModList *list, Mod *mod) {
+	if(!list || !mod) {
+		return false;
+	}
+	for(int i = 0; i < list->count; i++) {
+		if(list->mods[i] == mod) {
+			for(int j = i; j < list->count - 1; j++) {
+				list->mods[j] = list->mods[j + 1];
+			}
+			list->count--;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool removeFromParamList(ParamList *list, Parameter *param) {
+	if(!list || !param) {
+		return false;
+	}
+	for(int i = 0; i < list->count; i++) {
+		if(list->params[i] == param) {
+			for(int j = i; j < list->count - 1; j++) {
+				list->params[j] = list->params[j + 1];
+			}
+			list->count--;
+			return true;
+		}
+	}
+	return false;
+}
+
 void setParameterValue(Parameter *param, float value) {
 	// DEBUG_LOG("set param");
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
@@ -157,6 +196,7 @@ void setParameterBaseValue(Parameter *param, float value) {
 	float clamped = _clampValue(value, param->minValue, param->maxValue);
 	float oldVal = param->baseValue;
 	param->baseValue = clamped;
+	param->currentValue = clamped; /* keep unmodulated value in sync (dials read currentValue) */
 	if(fabs(fabs(oldVal) - fabs(clamped)) > 0.001f) {
 		if(param->onChange.cbData != NULL && param->onChange.cbFunc != NULL) {
 			param->onChange.cbFunc(param->onChange.cbData);
@@ -213,6 +253,179 @@ bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, fl
 	destination->modulator_count++;
 
 	return true;
+}
+bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
+	if(!list || !destination || !source) {
+		return false;
+	}
+	ModConnection *conn = destination->modulators;
+	while(conn != NULL) {
+		ModConnection *next = conn->next;
+		if(conn->source == source) {
+			if(conn->previous) {
+				conn->previous->next = conn->next;
+			} else {
+				destination->modulators = conn->next;
+			}
+			if(conn->next) {
+				conn->next->previous = conn->previous;
+			}
+			destination->modulator_count--;
+			if(conn->amount) {
+				removeFromParamList(list, conn->amount);
+				freeParameter(conn->amount);
+			}
+			if(conn->type) {
+				removeFromParamList(list, conn->type);
+				freeParameter(conn->type);
+			}
+			free(conn);
+			return true;
+		}
+		conn = next;
+	}
+	return false;
+}
+int removeModulationsForSource(ParamList *list, Mod *source) {
+	if(!list || !source) {
+		return 0;
+	}
+	int removed = 0;
+	/* We cannot remove params from the list while iterating it by index, so
+	 * unlink+free connections now and drop their amount/type params in a
+	 * second pass. */
+	Parameter *orphans[MAX_PARAMS];
+	int orphanCount = 0;
+	for(int i = 0; i < list->count; i++) {
+		Parameter *p = list->params[i];
+		if(!p) {
+			continue;
+		}
+		ModConnection *conn = p->modulators;
+		while(conn != NULL) {
+			ModConnection *next = conn->next;
+			if(conn->source == source) {
+				if(conn->previous) {
+					conn->previous->next = conn->next;
+				} else {
+					p->modulators = conn->next;
+				}
+				if(conn->next) {
+					conn->next->previous = conn->previous;
+				}
+				p->modulator_count--;
+				if(orphanCount < MAX_PARAMS && conn->amount) {
+					orphans[orphanCount++] = conn->amount;
+				}
+				if(orphanCount < MAX_PARAMS && conn->type) {
+					orphans[orphanCount++] = conn->type;
+				}
+				free(conn);
+				removed++;
+			}
+			conn = next;
+		}
+	}
+	for(int k = 0; k < orphanCount; k++) {
+		if(orphans[k]) {
+			removeFromParamList(list, orphans[k]);
+			freeParameter(orphans[k]);
+		}
+	}
+	return removed;
+}
+bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
+	if(!modList || !paramList || !mod) {
+		return false;
+	}
+	if(!removeFromModList(modList, mod)) {
+		return false;
+	}
+	removeModulationsForSource(paramList, mod);
+	/* Remove the mod's own params from the list (owned by paramList). */
+	switch(mod->type) {
+		case MT_LFO: {
+			LFO *lfo = (LFO *)mod;
+			if(lfo->rate) removeFromParamList(paramList, lfo->rate);
+			if(lfo->phase) removeFromParamList(paramList, lfo->phase);
+			break;
+		}
+		case MT_RND: {
+			Random *rnd = (Random *)mod;
+			if(rnd->rate) removeFromParamList(paramList, rnd->rate);
+			if(rnd->phase) removeFromParamList(paramList, rnd->phase);
+			break;
+		}
+		case MT_ENV: {
+			Envelope *env = (Envelope *)mod;
+			for(int i = 0; i < env->stageCount; i++) {
+				if(env->stages[i].duration) {
+					removeFromParamList(paramList, env->stages[i].duration);
+				}
+				if(env->stages[i].curvature) {
+					removeFromParamList(paramList, env->stages[i].curvature);
+				}
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	if(mod->output) {
+		removeFromParamList(paramList, mod->output);
+	}
+	/* Params are no longer referenced by the list; free struct by type.
+	 * (freeEnvelope/freeLFO/freeRandom free their params again — safe now
+	 * because the list no longer holds those pointers.) */
+	switch(mod->type) {
+		case MT_LFO:
+			freeLFO((LFO *)mod);
+			break;
+		case MT_RND:
+			freeRandom((Random *)mod);
+			break;
+		case MT_ENV:
+			freeEnvelope((Envelope *)mod);
+			break;
+		default:
+			freeMod(mod);
+			break;
+	}
+	return true;
+}
+bool rewireModulation(ParamList *list, Parameter *destination, Mod *oldSource, Mod *newSource) {
+	(void)list;
+	if(!destination || !newSource) {
+		return false;
+	}
+	ModConnection *conn = destination->modulators;
+	while(conn != NULL) {
+		if(conn->source == oldSource) {
+			conn->source = newSource;
+			return true;
+		}
+		conn = conn->next;
+	}
+	return false;
+}
+
+void wrapIncrementParameter(Parameter *p, float step) {
+	if(!p) {
+		return;
+	}
+	float count = p->maxValue - p->minValue + 1.0f;
+	if(count <= 0.0f) {
+		setParameterBaseValue(p, p->minValue);
+		return;
+	}
+	float v = p->baseValue + step;
+	while(v > p->maxValue) {
+		v -= count;
+	}
+	while(v < p->minValue) {
+		v += count;
+	}
+	setParameterBaseValue(p, v);
 }
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
 	rnd->lastPhase = 0.0f;

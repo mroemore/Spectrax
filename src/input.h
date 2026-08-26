@@ -23,6 +23,8 @@ typedef enum {
 	KM_NAV_LEFT,
 	KM_NAV_RIGHT,
 	KM_MOD_EXTRA,
+	KM_ADD,
+	KM_REMOVE,
 	KEY_MAPPING_COUNT
 } KeyMapping;
 
@@ -37,7 +39,9 @@ static const int KEYBOARD_MAP[] = {
 	KEY_X,
 	KEY_Q,
 	KEY_W,
-	KEY_LEFT_CONTROL
+	KEY_LEFT_CONTROL,
+	KEY_SEMICOLON,
+	KEY_APOSTROPHE
 };
 
 static const char *KEY_NAMES[] = {
@@ -51,7 +55,9 @@ static const char *KEY_NAMES[] = {
 	"FUNC",
 	"SCN<",
 	"SCN>",
-	"MOD"
+	"MOD",
+	"ADD",
+	"DEL"
 };
 
 static const int GAMEPAD_MAP[] = {
@@ -65,7 +71,11 @@ static const int GAMEPAD_MAP[] = {
 	GAMEPAD_BUTTON_RIGHT_FACE_LEFT,
 	GAMEPAD_BUTTON_LEFT_TRIGGER_1,
 	GAMEPAD_BUTTON_RIGHT_TRIGGER_1,
-	GAMEPAD_BUTTON_LEFT_TRIGGER_2
+	GAMEPAD_BUTTON_LEFT_TRIGGER_2,
+	/* KM_ADD was RIGHT_TRIGGER_1 but collided with KM_NAV_RIGHT —
+	 * moved to RIGHT_FACE_UP (PS3 Triangle / Xbox Y), unused elsewhere. */
+	GAMEPAD_BUTTON_RIGHT_FACE_UP,
+	GAMEPAD_BUTTON_MIDDLE
 };
 
 typedef struct {

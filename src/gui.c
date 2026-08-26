@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
@@ -16,6 +17,14 @@ InstrumentGui *igui;
 Graph *agui;
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
+
+typedef struct {
+	Instrument *inst;
+	Envelope *env;
+	Parameter *routeIndex;
+	Parameter *target; /* current modulation target; NULL = un-routed */
+} RouteState;
+static RouteState runtimeRoutes[MAX_ENVELOPES];
 
 Font textFont;
 Font symbolFont;
@@ -143,6 +152,8 @@ SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, 
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	InstrumentGui *ig = (InstrumentGui *)malloc(sizeof(InstrumentGui));
 	if(!ig) return;
+	memset(ig, 0, sizeof(InstrumentGui));
+	ig->vm = vm;
 	ig->selectedInstrument = selectedInstrument;
 
 	for(int i = 0; i < vm->enabledChannels; i++) {
@@ -711,6 +722,149 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 	appendItem(container, btnwrap, weight);
 }
 
+static Parameter *routeTargetParam(Instrument *inst, int idx) {
+	if(idx < 0 || idx >= 12) {
+		return NULL;
+	}
+	int op = idx / 3;
+	int kind = idx % 3;
+	switch(kind) {
+		case 0: return inst->id.fm.ops[op]->feedbackAmount;
+		case 1: return inst->id.fm.ops[op]->ratio;
+		default: return inst->id.fm.ops[op]->level;
+	}
+}
+
+static void routeOnChange(void *data) {
+	RouteState *rs = (RouteState *)data;
+	Instrument *inst = rs->inst;
+	Parameter *dest = routeTargetParam(inst, getParameterValueAsInt(rs->routeIndex));
+	if(rs->target) {
+		removeModulation(inst->paramList, rs->target, &rs->env->base);
+	}
+	if(dest) {
+		addModulation(inst->paramList, &rs->env->base, dest, 1.0f, MO_ADD);
+	}
+	rs->target = dest;
+}
+
+static void incRouteIndex(Parameter *p, float step) {
+	wrapIncrementParameter(p, step > 0.0f ? 1.0f : -1.0f);
+}
+
+static void appendRuntimeEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, Instrument *inst, int envIndex) {
+	(void)g; /* g reserved for future focus / selection linkage */
+	(void)name; /* name reserved for debug label symmetry */
+	Envelope *env = inst->envelopes[envIndex];
+	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE+", 0, 0);
+	envwrap->draw = drawWrapperNode;
+	envwrap->drawable = true;
+
+	GuiNode *ar = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", 0, incParameterBaseValue, env->stages[0].duration);
+	GuiNode *ac = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
+	GuiNode *dr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
+	GuiNode *dc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
+	GuiNode *route = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, incRouteIndex, runtimeRoutes[envIndex].routeIndex);
+	route->draw = drawDiscreteDialGuiNode;
+	GuiNode *sp = createBlankGuiNode();
+
+	appendItem(envwrap, ar, 4);
+	appendItem(envwrap, ac, 4);
+	appendItem(envwrap, dr, 4);
+	appendItem(envwrap, dc, 4);
+	appendItem(envwrap, route, 4);
+	appendItem(envwrap, sp, 2);
+	appendItem(container, envwrap, weight);
+}
+
+void addRuntimeEnvelope(Instrument *inst) {
+	if(!inst || inst->envelopeCount >= MAX_ENVELOPES) {
+		return;
+	}
+	int idx = inst->envelopeCount;
+	inst->envelopes[idx] = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
+	runtimeRoutes[idx].inst = inst;
+	runtimeRoutes[idx].env = inst->envelopes[idx];
+	runtimeRoutes[idx].routeIndex = createParameter(inst->paramList, "route", 12.0f, 0.0f, 12.0f);
+	runtimeRoutes[idx].target = NULL;
+	runtimeRoutes[idx].routeIndex->onChange.cbData = &runtimeRoutes[idx];
+	runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
+	inst->envelopeCount++;
+	rebuildInstrumentGraph();
+	/* voices alias core envelopes only; runtime envelopes route via
+	 * inst->paramList which all voices share; no rebuild needed */
+}
+
+void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
+	if(!inst || envIndex < inst->coreEnvelopeCount || envIndex >= inst->envelopeCount) {
+		return;
+	}
+	if(runtimeRoutes[envIndex].target) {
+		removeModulation(inst->paramList, runtimeRoutes[envIndex].target,
+		                 &inst->envelopes[envIndex]->base);
+	}
+	removeMod(inst->modList, inst->paramList, &inst->envelopes[envIndex]->base);
+	for(int j = envIndex; j < inst->envelopeCount - 1; j++) {
+		inst->envelopes[j] = inst->envelopes[j + 1];
+		runtimeRoutes[j] = runtimeRoutes[j + 1];
+	}
+	inst->envelopeCount--;
+	memset(&runtimeRoutes[inst->envelopeCount], 0, sizeof(RouteState));
+	rebuildInstrumentGraph();
+	/* voices alias core envelopes only; runtime envelopes route via
+	 * inst->paramList which all voices share; no rebuild needed */
+}
+
+void rebuildInstrumentGraph(void) {
+	if(!igui || !igui->vm) {
+		return;
+	}
+	int idx = *igui->selectedInstrument;
+	for(int i = 0; i < igui->instrumentCount; i++) {
+		freeGuiNode(igui->instrumentScreenGraphs[i]->root);
+		free(igui->instrumentScreenGraphs[i]);
+		igui->instrumentScreenGraphs[i] = NULL;
+	}
+	for(int i = 0; i < igui->vm->enabledChannels; i++) {
+		bool isSelected = (i == idx);
+		igui->instrumentScreenGraphs[i] = createInstGraph(igui->vm->instruments[i], igui->vm, i, isSelected);
+	}
+}
+
+void removeSelectedEnvelope(void) {
+	if(!igui || !igui->vm || !igui->selectedInstrument) {
+		return;
+	}
+	GuiNode *sel = getSelectedInstGraph()->selected;
+	if(!sel) {
+		return;
+	}
+	GuiNode *n = sel;
+	while(n && n->container) {
+		if(strcmp(n->container->name, "mod_wrap") == 0) {
+			int idx = 0;
+			ListElement *l = n->container->items->head;
+			while(l && *(GuiNode **)l->data != n) {
+				idx++;
+				l = l->next;
+			}
+			Instrument *inst = igui->vm->instruments[*igui->selectedInstrument];
+			if(idx < inst->envelopeCount) {
+				removeRuntimeEnvelope(inst, idx);
+			}
+			return;
+		}
+		n = n->container;
+	}
+}
+
+Instrument *getSelectedInstInstrument(void) {
+	if(!igui || !igui->vm) {
+		return NULL;
+	}
+	return igui->vm->instruments[*igui->selectedInstrument];
+}
+
 void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env) {
 	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE", 0, 0);
 	envwrap->draw = drawWrapperNode;
@@ -825,8 +979,11 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	for(int i = 0; i < MAX_ENVELOPES; i++) {
 		if(i < inst->envelopeCount) {
 			// printf("Env I: %i\n", i);
-
-			appendADEnvControlNode(instGraph, modwrap, "mod", 1, false, inst->envelopes[i]);
+			if(i < inst->coreEnvelopeCount) {
+				appendADEnvControlNode(instGraph, modwrap, "mod", 1, false, inst->envelopes[i]);
+			} else {
+				appendRuntimeEnvControlNode(instGraph, modwrap, "mod", 1, inst, i);
+			}
 		} else {
 			// printf("NOEnv I: %i\n", i);
 			appendBlankNode(modwrap, 1);

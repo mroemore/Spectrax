@@ -29,7 +29,7 @@ APP_SRCS = \
 
 APP_OBJS = $(patsubst $(SRC)/%.c,$(OBJDIR)/%.o,$(APP_SRCS))
 
-TESTS = test_io test_voice test_vizfx
+TESTS = test_io test_voice test_vizfx test_modsystem test_mod_voice
 
 all: $(TESTS)
 
@@ -54,12 +54,20 @@ test_voice: $(OBJDIR)/test_voice.o $(APP_OBJS)
 test_vizfx: $(OBJDIR)/test_vizfx.o $(APP_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+test_modsystem: $(OBJDIR)/test_modsystem.o $(APP_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+test_mod_voice: $(OBJDIR)/test_mod_voice.o $(APP_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 run: all
 	./test_io
 	./test_voice
 	./test_vizfx
+	./test_modsystem
+	./test_mod_voice
 
 clean:
-	rm -rf $(OBJDIR) test_io test_voice test_vizfx
+	rm -rf $(OBJDIR) test_io test_voice test_vizfx test_modsystem test_mod_voice
 
 .PHONY: all run clean

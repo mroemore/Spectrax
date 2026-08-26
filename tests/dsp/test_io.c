@@ -13,11 +13,11 @@
  *    via fread (saveSequencerState / loadSequencerState). The struct padding
  *    keeps this in-bounds on the tested platform (verified by probe), so it
  *    round-trips correctly, but the 3 padding bytes are written to the file.
- *  - src/modsystem.c setParameterBaseValue() updates baseValue but NOT
- *    currentValue, while getParameterValueAsInt() reads currentValue. The
- *    sequencer save path therefore serialises the param's currentValue and
- *    the load path restores it into baseValue only — asserted directly on
- *    the Parameter field below.
+ *  - src/modsystem.c setParameterBaseValue() updates BOTH baseValue and
+ *    currentValue (keeps unmodulated params' dials live). The sequencer
+ *    save path serialises the param's currentValue and the load path
+ *    restores it into both fields, so a saved BPM reads back identically
+ *    in both slots — asserted directly on the Parameter field below.
  *  - src/io/preset_io.c savePresetFile() ignores the fwrite() return value
  *    (no PRESET_ERROR_WRITE on short writes). Not exercised here because
  *    fwrite to a healthy file succeeds; noted as pre-existing sloppiness.
@@ -429,8 +429,10 @@ static int test_sequencer_roundtrip(void) {
                 "song array differs after roundtrip");
 
     /* BPM: save serialises currentValue; load restores into baseValue
-     * (setParameterBaseValue doesn't touch currentValue — pre-existing
-     * modsystem quirk). Assert the restored baseValue. */
+     * AND currentValue (setParameterBaseValue keeps them in sync, so
+     * unmodulated dials stay live after a load). Assert the restored
+     * baseValue — currentValue is asserted by the dedicated
+     * test_set_base_value_syncs_current in tests/dsp/test_modsystem.c. */
     ASSERT_NEAR(dst.bpm->baseValue, 137.0f, 0.001f);
 
     remove(path);

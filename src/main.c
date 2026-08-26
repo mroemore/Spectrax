@@ -20,28 +20,7 @@
 #include "graph_gui.h"
 #include "dataviz.h"
 #include "vizfx.h"
-
-typedef struct
-{
-	int sequence_index;
-	int samples_per_beat;
-	int samples_elapsed;
-	int active_sequencer_index;
-	Arranger *arranger;
-	PatternList *patternList;
-	Sequencer *sequencer;
-	ModList *modList;
-	ParamList *globalParameters;
-	VoiceManager *voiceManager;
-	SamplePool *samplePool;
-	WavetablePool *wavetablePool;
-	Spectrogram spectrogram;
-	TimeGraph timeGraph;
-	BufferScroller bufferScroller;
-	PresetBank presetBank;
-} paTestData;
-
-void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui);
+#include "main.h"
 
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
@@ -167,6 +146,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	return 0;
 }
 
+#ifndef SPECTRAX_HARNESS
 int main(void) {
 	PaStream *stream;
 	PaError err;
@@ -323,6 +303,15 @@ int main(void) {
 				}
 				break;
 			case SCENE_INSTRUMENT:
+				if(isKeyJustPressed(appState->inputState, KM_ADD)) {
+					Instrument *inst = getSelectedInstInstrument();
+					if(inst->voiceType == VOICE_TYPE_FM) {
+						addRuntimeEnvelope(inst);
+					}
+				}
+				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
+					removeSelectedEnvelope();
+				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 0, -1, 0);
@@ -424,6 +413,7 @@ error:
 	fprintf(stderr, "Error message: %s\n", Pa_GetErrorText(err));
 	return err;
 }
+#endif /* SPECTRAX_HARNESS */
 
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui) {
 	Settings *settings = createSettings();
