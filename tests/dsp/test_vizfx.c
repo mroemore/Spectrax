@@ -67,13 +67,42 @@ static int test_sine_lo_hi_hit_both_edges(void) {
 	return 0;
 }
 
+static int test_push_collects_column_each_buffer(void) {
+	BufferScroller bs = { 0 };
+	for(int i = 0; i < SCROLLER_BUFFER_SIZE; i++) {
+		pushBufferScrollerFrame(&bs, 0.0f);
+	}
+	ASSERT_TRUE(bs.pendingCount == 1);
+	ASSERT_TRUE(bs.framePos == 0);
+	pushBufferScrollerFrame(&bs, 0.0f);
+	ASSERT_TRUE(bs.framePos == 1);
+	ASSERT_TRUE(bs.pendingCount == 1);
+	printf("PASS test_push_collects_column_each_buffer\n");
+	return 0;
+}
+
+static int test_push_ring_never_exceeds_capacity(void) {
+	BufferScroller bs = { 0 };
+	int total = SCROLLER_BUFFER_SIZE * (SCROLLER_PENDING_CAPACITY + 1);
+	for(int i = 0; i < total; i++) {
+		pushBufferScrollerFrame(&bs, 1.0f);
+	}
+	ASSERT_TRUE(bs.pendingCount == SCROLLER_PENDING_CAPACITY);
+	ASSERT_TRUE(bs.pendingHead == 1);
+	ASSERT_TRUE(bs.pendingTail == 1);
+	printf("PASS test_push_ring_never_exceeds_capacity\n");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_silence_collapses_to_middle_row();
 	failed |= test_full_scale_collapses_to_top_row();
 	failed |= test_sine_lo_hi_hit_both_edges();
+	failed |= test_push_collects_column_each_buffer();
+	failed |= test_push_ring_never_exceeds_capacity();
 
-	printf("\n%s (3 tests, %s)\n",
+	printf("\n%s (5 tests, %s)\n",
 	       failed ? "FAILED" : "PASSED", failed ? ">=1 failed" : "all passed");
 	return failed;
 }

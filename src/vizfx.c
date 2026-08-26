@@ -37,3 +37,160 @@ void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char 
 		hi[r] = (unsigned char)hiRow;
 	}
 }
+
+void initBufferScroller(BufferScroller *bs) {
+	bs->image = GenImageColor(SCROLLER_WIDTH, SCROLLER_COLUMN_HEIGHT, (Color){ 0, 0, 0, 255 });
+	bs->texture = LoadTextureFromImage(bs->image);
+	SetTextureFilter(bs->texture, TEXTURE_FILTER_POINT);
+	bs->writeColumn = 0;
+	bs->pendingHead = 0;
+	bs->pendingTail = 0;
+	bs->pendingCount = 0;
+	bs->framePos = 0;
+}
+
+void pushBufferScrollerFrame(BufferScroller *bs, float sample) {
+	bs->staging[bs->framePos] = sample;
+	bs->framePos++;
+	if(bs->framePos >= SCROLLER_BUFFER_SIZE) {
+		bs->framePos = 0;
+		collapseBufferToColumn(bs->staging, SCROLLER_BUFFER_SIZE,
+		                       bs->pendingLo[bs->pendingTail],
+		                       bs->pendingHi[bs->pendingTail],
+		                       SCROLLER_COLUMN_HEIGHT);
+		bs->pendingTail = (bs->pendingTail + 1) % SCROLLER_PENDING_CAPACITY;
+		if(bs->pendingCount < SCROLLER_PENDING_CAPACITY) {
+			bs->pendingCount++;
+		} else {
+			bs->pendingHead = (bs->pendingHead + 1) % SCROLLER_PENDING_CAPACITY;
+		}
+	}
+}
+
+void updateBufferScrollerData(BufferScroller *bs) {
+	if(bs->pendingCount == 0) {
+		return;
+	}
+	Color *px = (Color *)bs->image.data;
+	const Color waveColour = (Color){ 60, 255, 150, 255 };
+	while(bs->pendingCount > 0) {
+		int col = bs->writeColumn;
+		for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+			int loY = bs->pendingLo[bs->pendingHead][r];
+			int hiY = bs->pendingHi[bs->pendingHead][r];
+			for(int y = loY; y <= hiY; y++) {
+				px[(SCROLLER_COLUMN_HEIGHT - 1 - y) * SCROLLER_WIDTH + col] = waveColour;
+			}
+		}
+		UpdateTextureRec(bs->texture, (Rectangle){ col, 0, 1, SCROLLER_COLUMN_HEIGHT },
+		                 &bs->image.data[col * 4]);
+		bs->writeColumn = (bs->writeColumn + 1) % SCROLLER_WIDTH;
+		bs->pendingHead = (bs->pendingHead + 1) % SCROLLER_PENDING_CAPACITY;
+		bs->pendingCount--;
+	}
+}
+
+void drawBufferScroller(BufferScroller *bs, Rectangle dest) {
+	const int w = SCROLLER_WIDTH;
+	const int h = SCROLLER_COLUMN_HEIGHT;
+	float sx = dest.width / (float)w;
+	float sy = dest.height / (float)h;
+	int split = bs->writeColumn;
+	if(split > 0 && split < w) {
+		DrawTexturePro(bs->texture, (Rectangle){ split, 0, w - split, h },
+		               (Rectangle){ dest.x, dest.y, (w - split) * sx, dest.height },
+		               (Vector2){ 0, 0 }, 0.0f, WHITE);
+		DrawTexturePro(bs->texture, (Rectangle){ 0, 0, split, h },
+		               (Rectangle){ dest.x + (w - split) * sx, dest.y, split * sx, dest.height },
+		               (Vector2){ 0, 0 }, 0.0f, WHITE);
+	} else {
+		DrawTexturePro(bs->texture, (Rectangle){ 0, 0, w, h }, dest,
+		               (Vector2){ 0, 0 }, 0.0f, WHITE);
+	}
+}
+
+void freeBufferScroller(BufferScroller *bs) {
+	UnloadTexture(bs->texture);
+	UnloadImage(bs->image);
+}
+
+static Color modStripColor(ModType type) {
+	switch(type) {
+		case MT_LFO:
+			return (Color){ 0, 255, 255, 255 };
+		case MT_ENV:
+			return (Color){ 130, 255, 130, 255 };
+		case MT_RND:
+			return (Color){ 255, 80, 255, 255 };
+		case MT_OFS:
+			return (Color){ 190, 190, 190, 255 };
+		default:
+			return (Color){ 210, 210, 210, 255 };
+	}
+}
+
+void initModStrip(ModStrip *ms, ModList *modList, int width, int height) {
+	ms->modList = modList;
+	ms->width = width;
+	ms->height = height;
+	ms->pingActive = false;
+	ms->ping = LoadRenderTexture(width, height);
+	ms->pong = LoadRenderTexture(width, height);
+	BeginTextureMode(ms->ping);
+	ClearBackground(BLACK);
+	EndTextureMode();
+	BeginTextureMode(ms->pong);
+	ClearBackground(BLACK);
+	EndTextureMode();
+}
+
+void drawModStrip(ModStrip *ms, Rectangle dest) {
+	float t = GetTime();
+	float theta = 1.0f * sinf(0.21f * t) + 0.6f * sinf(0.53f * t) + 0.4f * sinf(1.13f * t);
+	float dx = 0.7f * cosf(theta);
+	float dy = 0.7f * sinf(theta);
+
+	RenderTexture2D src = ms->pingActive ? ms->ping : ms->pong;
+	RenderTexture2D tgt = ms->pingActive ? ms->pong : ms->ping;
+
+	BeginTextureMode(tgt);
+	ClearBackground(BLACK);
+	DrawTexturePro(src.texture, (Rectangle){ 0, 0, ms->width, ms->height },
+	               (Rectangle){ dx, dy, ms->width, ms->height },
+	               (Vector2){ 0, 0 }, 0.0f, (Color){ 246, 246, 246, 255 });
+
+	if(ms->modList && ms->modList->count > 0 && ms->modList->mods) {
+		int n = ms->modList->count;
+		float barW = ms->width / (float)n;
+		for(int i = 0; i < n; i++) {
+			Mod *m = ms->modList->mods[i];
+			if(!m || !m->output) {
+				continue;
+			}
+			float val = getParameterValue(m->output);
+			if(val < 0.0f) {
+				val = 0.0f;
+			}
+			if(val > 1.0f) {
+				val = 1.0f;
+			}
+			float barH = val * (ms->height - 6);
+			int x = (int)(i * barW) + 2;
+			int bw = (int)barW - 4;
+			if(bw < 1) {
+				bw = 1;
+			}
+			DrawRectangle(x, ms->height - (int)barH, bw, (int)barH, modStripColor(m->type));
+		}
+	}
+	EndTextureMode();
+
+	ms->pingActive = !ms->pingActive;
+	DrawTexturePro(tgt.texture, (Rectangle){ 0, 0, ms->width, ms->height },
+	               dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
+}
+
+void freeModStrip(ModStrip *ms) {
+	UnloadRenderTexture(ms->ping);
+	UnloadRenderTexture(ms->pong);
+}
