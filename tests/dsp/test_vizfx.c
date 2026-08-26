@@ -156,6 +156,22 @@ static int test_pack_column_sine_edges(void) {
 	return 0;
 }
 
+static int test_collapse_log_scales_low_amplitude(void) {
+	float buf[SCROLLER_BUFFER_SIZE];
+	for(int i = 0; i < SCROLLER_BUFFER_SIZE; i++) {
+		buf[i] = 0.2f;
+	}
+	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
+	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	int mid = (int)((0.0f + 1.0f) * 0.5f * (float)(SCROLLER_COLUMN_HEIGHT - 1));
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		ASSERT_TRUE(hi[r] >= mid + 15);
+	}
+	printf("PASS test_collapse_log_scales_low_amplitude\n");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_silence_collapses_to_middle_row();
@@ -166,8 +182,9 @@ int main(void) {
 	failed |= test_pack_column_silence_center_pixel();
 	failed |= test_pack_column_full_scale_top_row();
 	failed |= test_pack_column_sine_edges();
+	failed |= test_collapse_log_scales_low_amplitude();
 
-	printf("\n%s (8 tests, %s)\n",
+	printf("\n%s (9 tests, %s)\n",
 	       failed ? "FAILED" : "PASSED", failed ? ">=1 failed" : "all passed");
 	return failed;
 }

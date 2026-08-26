@@ -13,6 +13,8 @@
 
 #define MOD_STRIP_WIDTH 640
 #define MOD_STRIP_HEIGHT 100
+#define MOD_STRIP_LOG_FACTOR 10.0f
+#define SCROLLER_LOG_FACTOR 10.0f
 
 typedef struct Voice Voice;
 

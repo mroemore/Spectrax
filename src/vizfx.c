@@ -13,6 +13,20 @@ static int sampleToRow(float v) {
 	return (int)((v + 1.0f) * 0.5f * (float)(SCROLLER_COLUMN_HEIGHT - 1));
 }
 
+static float logScale(float v, float factor) {
+	if(factor <= 1.0f) {
+		return v;
+	}
+	return logf(1.0f + v * (factor - 1.0f)) / logf(factor);
+}
+
+static float compandSample(float v) {
+	if(v >= 0.0f) {
+		return logScale(v, SCROLLER_LOG_FACTOR);
+	}
+	return -logScale(-v, SCROLLER_LOG_FACTOR);
+}
+
 void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight) {
 	for(int r = 0; r < columnHeight; r++) {
 		int start = (int)((float)r * bufferSize / columnHeight);
@@ -23,10 +37,10 @@ void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char 
 		if(end > bufferSize) {
 			end = bufferSize;
 		}
-		int loRow = sampleToRow(samples[start]);
+		int loRow = sampleToRow(compandSample(samples[start]));
 		int hiRow = loRow;
 		for(int i = start; i < end; i++) {
-			int y = sampleToRow(samples[i]);
+			int y = sampleToRow(compandSample(samples[i]));
 			if(y < loRow) {
 				loRow = y;
 			}
@@ -208,14 +222,16 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 			if(val > 1.0f) {
 				val = 1.0f;
 			}
+			val = logScale(val, MOD_STRIP_LOG_FACTOR);
 			int x = (int)(i * barW) + 2;
 			int bw = (int)barW - 4;
 			if(bw < 1) {
 				bw = 1;
 			}
 			int halfH = (int)(val * ((ms->height - 6) / 2.0f));
-			DrawRectangle(x, 3, bw, halfH, modStripColor(m->type));
-			DrawRectangle(x, ms->height - 3 - halfH, bw, halfH, modStripColor(m->type));
+			int centerY = ms->height / 2;
+			DrawRectangle(x, centerY - halfH, bw, halfH, modStripColor(m->type));
+			DrawRectangle(x, centerY, bw, halfH, modStripColor(m->type));
 		}
 	}
 	EndTextureMode();
