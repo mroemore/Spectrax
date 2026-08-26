@@ -535,6 +535,234 @@ static int test_remove_mod(void) {
     return 0;
 }
 
+/* --- looped feedback modulation graphs ------------------------------------- */
+
+/* Deterministic const-generators. processModulations runs each mod's
+ * generate() every pass (modsystem.c:895) and then recomputes EVERY
+ * param (including mod outputs) as baseValue + sum(modulator values),
+ * cascading in paramList order (modsystem.c:898-927). Overriding a mod's
+ * generate with a constant writer makes the feedback math exact, so the
+ * fixed points below are fully deterministic (no timing/wavetable
+ * dependence). Note updateMod (modsystem.c:530) never writes a mod's
+ * output, so the override is the sole output writer each pass. */
+static void constGenQuarter(void *self) {
+	setParameterValue(((Mod *)self)->output, 0.25f);
+}
+static void constGenHalf(void *self) {
+	setParameterValue(((Mod *)self)->output, 0.5f);
+}
+static void constGenOneTenth(void *self) {
+	setParameterValue(((Mod *)self)->output, 0.1f);
+}
+static void constGenTwoTenths(void *self) {
+	setParameterValue(((Mod *)self)->output, 0.2f);
+}
+static void constGenThreeTenths(void *self) {
+	setParameterValue(((Mod *)self)->output, 0.3f);
+}
+
+/* Two-element feedback cycle: B modulates A's output, A modulates B's
+ * output. The apply pass cascades in paramList order — A's output is
+ * created before B's (createLFO A then B), so:
+ *
+ *   generate:  A.output = 0.25,  B.output = 0.50
+ *   apply:     A.output = 0 + 1.0 * B.output = 0.50   (reads B's fresh gen)
+ *              B.output = 0 + 1.0 * A.output = 0.50   (reads A's post-apply)
+ *
+ * Stable fixed point: both 0.5. Without the feedback, A would stay at
+ * its const-gen value (0.25) — so the assertion proves the loop is
+ * live, not a tautology. Pins: no crash, no hang, outputs stay finite
+ * and clamped to [0,1] across 200 frames (no divergence). */
+static int test_two_cycle_feedback(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	LFO *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
+	a->base.generate = constGenQuarter;
+	b->base.generate = constGenHalf;
+	addModulation(pl, &b->base, a->base.output, 1.0f, MO_ADD);
+	addModulation(pl, &a->base, b->base.output, 1.0f, MO_ADD);
+	for(int i = 0; i < 200; i++) {
+		processModulations(pl, ml, 0.016f);
+		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
+		                isfinite(b->base.output->currentValue),
+		            "both outputs stay finite");
+		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
+		                a->base.output->currentValue <= 1.0f,
+		            "A output clamped to [0,1]");
+		ASSERT_TRUE(b->base.output->currentValue >= 0.0f &&
+		                b->base.output->currentValue <= 1.0f,
+		            "B output clamped to [0,1]");
+	}
+	ASSERT_NEAR(a->base.output->currentValue, 0.5f, 0.0001f, "A converges to 0.5");
+	ASSERT_NEAR(b->base.output->currentValue, 0.5f, 0.0001f, "B converges to 0.5");
+	teardown(pl, ml);
+	printf("PASS test_two_cycle_feedback\n");
+	return 0;
+}
+
+/* Three-element cycle A->B->C->A. Fixed point (list order A,B,C):
+ *
+ *   generate:  A=0.1, B=0.2, C=0.3
+ *   apply:     A = 0 + 1.0 * B.gen  = 0.2
+ *              B = 0 + 1.0 * C.gen  = 0.3
+ *              C = 0 + 1.0 * A.post = 0.2
+ *
+ * Stable at (0.2, 0.3, 0.2). A and C sit ABOVE their const-gen values,
+ * proving the loop is live; all stay clamped/finite across 500 frames
+ * (longer than the 2-cycle to stress no gradual divergence). */
+static int test_three_cycle_feedback(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	LFO *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
+	LFO *c = createLFO(pl, ml, 0, 0.4f, LS_SIN, "C");
+	a->base.generate = constGenOneTenth;
+	b->base.generate = constGenTwoTenths;
+	c->base.generate = constGenThreeTenths;
+	addModulation(pl, &b->base, a->base.output, 1.0f, MO_ADD);
+	addModulation(pl, &c->base, b->base.output, 1.0f, MO_ADD);
+	addModulation(pl, &a->base, c->base.output, 1.0f, MO_ADD);
+	for(int i = 0; i < 500; i++) {
+		processModulations(pl, ml, 0.016f);
+		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
+		                isfinite(b->base.output->currentValue) &&
+		                isfinite(c->base.output->currentValue),
+		            "all three outputs stay finite");
+		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
+		                a->base.output->currentValue <= 1.0f &&
+		                b->base.output->currentValue >= 0.0f &&
+		                b->base.output->currentValue <= 1.0f &&
+		                c->base.output->currentValue >= 0.0f &&
+		                c->base.output->currentValue <= 1.0f,
+		            "all three outputs clamped to [0,1]");
+	}
+	ASSERT_NEAR(a->base.output->currentValue, 0.2f, 0.0001f, "A converges to 0.2");
+	ASSERT_NEAR(b->base.output->currentValue, 0.3f, 0.0001f, "B converges to 0.3");
+	ASSERT_NEAR(c->base.output->currentValue, 0.2f, 0.0001f, "C converges to 0.2");
+	teardown(pl, ml);
+	printf("PASS test_three_cycle_feedback\n");
+	return 0;
+}
+
+/* Self-modulation: a mod's own output modulates itself. Pins that this
+ * is a legal, stable graph (no recursion, no crash, no hang).
+ *
+ *   MO_ADD:  A.output = 0 + 1.0 * A.gen(0.25) = 0.25   (stable)
+ *   MO_MUL:  A.output = base(0) * A.gen(0.25) = 0.0    (baseValue is 0,
+ *            so MUL forces the output to 0 — the pinned quirk)
+ *
+ * Note processModulations ignores the connection's `amount` param (it
+ * applies conn->source->output directly, modsystem.c:903), so the 1.0
+ * is cosmetic here. */
+static int test_self_modulation(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	a->base.generate = constGenQuarter;
+	addModulation(pl, &a->base, a->base.output, 1.0f, MO_ADD);
+	processModulations(pl, ml, 0.016f);
+	ASSERT_NEAR(a->base.output->currentValue, 0.25f, 0.0001f, "self-ADD stable at 0.25");
+	removeModulation(pl, a->base.output, &a->base);
+	addModulation(pl, &a->base, a->base.output, 1.0f, MO_MUL);
+	processModulations(pl, ml, 0.016f);
+	ASSERT_NEAR(a->base.output->currentValue, 0.0f, 0.0001f, "self-MUL: 0 base * 0.25 = 0");
+	teardown(pl, ml);
+	printf("PASS test_self_modulation\n");
+	return 0;
+}
+
+/* --- list failure modes ----------------------------------------------------- */
+
+/* addToModList silently drops a mod past MAX_MODS (modsystem.c:102-106
+ * has no error path). Pins: count caps at MAX_MODS, the over-capacity
+ * mod is NOT registered, and the caller retains ownership of it (the
+ * drop is a silent no-op, not a transfer). */
+static int test_modlist_full_drop(void) {
+	ModList *ml = createModList();
+	Mod *added[MAX_MODS];
+	for(int i = 0; i < MAX_MODS; i++) {
+		added[i] = (Mod *)malloc(sizeof(Mod));
+		addToModList(ml, added[i]);
+	}
+	ASSERT_EQ(ml->count, MAX_MODS, "list filled to capacity");
+	Mod *extra = (Mod *)malloc(sizeof(Mod));
+	addToModList(ml, extra);
+	ASSERT_EQ(ml->count, MAX_MODS, "over-capacity add silently dropped");
+	free(extra); /* the caller keeps ownership of a dropped mod */
+	teardown(NULL, ml);
+	printf("PASS test_modlist_full_drop\n");
+	return 0;
+}
+
+/* createParameter past MAX_PARAMS (modsystem.c:144-148) still returns a
+ * fresh Parameter, but addToParamList silently refuses to register it.
+ * Pins: count caps at MAX_PARAMS, the orphan is returned but NOT in the
+ * list, and the caller must free it themselves (it is not owned by the
+ * list). */
+static int test_paramlist_full_drop(void) {
+	ParamList *pl = createParamList();
+	for(int i = 0; i < MAX_PARAMS; i++) {
+		createParameter(pl, "p", 0.0f, 0.0f, 1.0f);
+	}
+	ASSERT_EQ(pl->count, MAX_PARAMS, "list filled to capacity");
+	Parameter *orphan = createParameter(pl, "orphan", 0.0f, 0.0f, 1.0f);
+	ASSERT_TRUE(orphan != NULL, "createParameter still returns a param");
+	ASSERT_EQ(pl->count, MAX_PARAMS, "orphan not registered");
+	ASSERT_TRUE(pl->params[MAX_PARAMS - 1] != orphan, "orphan absent from list");
+	freeParameter(orphan); /* the caller owns the orphan */
+	teardown(pl, NULL);
+	printf("PASS test_paramlist_full_drop\n");
+	return 0;
+}
+
+/* NULL/absent failure modes for every removal primitive. All four guard
+ * their list arguments (removeFromModList/removeFromParamList return
+ * false, removeModulation false, removeModulationsForSource 0) and
+ * return the "not found" result for absent items on live lists. */
+static int test_remove_failure_modes(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	ASSERT_TRUE(!removeFromModList(NULL, NULL), "removeFromModList NULL/NULL");
+	ASSERT_TRUE(!removeFromModList(NULL, (Mod *)0x1), "removeFromModList NULL list");
+	ASSERT_TRUE(!removeFromModList(ml, NULL), "removeFromModList NULL mod");
+	ASSERT_TRUE(!removeFromParamList(NULL, NULL), "removeFromParamList NULL/NULL");
+	ASSERT_TRUE(!removeFromParamList(NULL, (Parameter *)0x1), "removeFromParamList NULL list");
+	ASSERT_TRUE(!removeFromParamList(pl, NULL), "removeFromParamList NULL param");
+	ASSERT_TRUE(!removeModulation(NULL, NULL, NULL), "removeModulation all NULL");
+	ASSERT_TRUE(!removeModulation(pl, NULL, NULL), "removeModulation NULL dest");
+	ASSERT_TRUE(!removeModulation(pl, NULL, (Mod *)0x1), "removeModulation NULL dest+source");
+	ASSERT_TRUE(!removeModulationsForSource(NULL, NULL), "removeModulationsForSource NULL/NULL");
+	ASSERT_TRUE(!removeModulationsForSource(NULL, (Mod *)0x1), "removeModulationsForSource NULL list");
+
+	/* absent items on a live list: no crash, no mutation */
+	Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+	Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+	int before = pl->count;
+	ASSERT_TRUE(!removeModulation(pl, dest, &env->base), "absent connection -> false");
+	ASSERT_EQ(removeModulationsForSource(pl, &env->base), 0, "no modulations to remove");
+	ASSERT_EQ(pl->count, before, "absent removals do not mutate the list");
+	teardown(pl, ml);
+	printf("PASS test_remove_failure_modes\n");
+	return 0;
+}
+
+/* clearModList/clearParamList on NULL and on empty lists are graceful
+ * (error/warning print, no crash, no mutation). */
+static int test_clear_null_and_empty(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	clearParamList(NULL);
+	clearModList(NULL);
+	clearParamList(pl);
+	clearModList(ml);
+	ASSERT_EQ(pl->count, 0, "paramList still empty after clear");
+	ASSERT_EQ(ml->count, 0, "modList still empty after clear");
+	teardown(pl, ml);
+	printf("PASS test_clear_null_and_empty\n");
+	return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -552,8 +780,15 @@ int main(void) {
     fails += test_remove_modulation();
     fails += test_remove_modulations_for_source();
     fails += test_rewire_modulation();
-    fails += test_wrap_increment();
-    fails += test_remove_mod();
+fails += test_wrap_increment();
+	fails += test_remove_mod();
+	fails += test_two_cycle_feedback();
+	fails += test_three_cycle_feedback();
+	fails += test_self_modulation();
+	fails += test_modlist_full_drop();
+	fails += test_paramlist_full_drop();
+	fails += test_remove_failure_modes();
+	fails += test_clear_null_and_empty();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;
