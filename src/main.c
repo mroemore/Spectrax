@@ -193,6 +193,12 @@ int main(void) {
 		updateSpectrogramData(&data.spectrogram);
 		updateTimeGraphData(&data.timeGraph);
 		updateBufferScrollerData(&data.bufferScroller);
+		static int autoDriveFrames = 0;
+		autoDriveFrames++;
+		if(autoDriveFrames == 90) {
+			appState->currentScene = SCENE_INSTRUMENT;
+			printf("AUTODRIVE: switched to SCENE_INSTRUMENT (selected=%d)\n", appState->selectedArrangerCell[0]);
+		}
 		// printf("checking inputs...\n");
 		// Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)) {
