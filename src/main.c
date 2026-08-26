@@ -462,14 +462,25 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	/* Seed a valid selected pattern so Shift+Right reaches the pattern
 	 * screen immediately at startup (incrementScene requires
 	 * selectedPattern != -1, which is otherwise only set when the user
-	 * selects an arranger cell). The song's first cell is often empty, so
-	 * scan for the first used pattern across all channels/rows. */
+	 * selects an arranger cell). Prefer the cell saved in the song's
+	 * selected_x/selected_y; fall back to the first used pattern across
+	 * the song when that cell is empty. */
 	if((*appState)->selectedPattern < 0) {
-		for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS && (*appState)->selectedPattern < 0; ch++) {
-			for(int row = 0; row < MAX_SONG_LENGTH; row++) {
-				if(data->arranger->song[ch][row] >= 0) {
-					setSelectedPattern(*appState, &data->arranger->song[ch][row]);
-					break;
+		int selX = data->arranger->selected_x;
+		int selY = data->arranger->selected_y;
+		bool seeded = false;
+		if(selX >= 0 && selX < MAX_SEQUENCER_CHANNELS && selY >= 0 && selY < MAX_SONG_LENGTH &&
+		   data->arranger->song[selX][selY] >= 0) {
+			setSelectedPattern(*appState, &data->arranger->song[selX][selY]);
+			seeded = true;
+		}
+		if(!seeded) {
+			for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS && (*appState)->selectedPattern < 0; ch++) {
+				for(int row = 0; row < MAX_SONG_LENGTH; row++) {
+					if(data->arranger->song[ch][row] >= 0) {
+						setSelectedPattern(*appState, &data->arranger->song[ch][row]);
+						break;
+					}
 				}
 			}
 		}
