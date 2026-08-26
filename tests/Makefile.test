@@ -21,6 +21,7 @@ APP_SRCS = \
 	$(SRC)/fft.c \
 	$(SRC)/notes.c \
 	$(SRC)/sample.c \
+	$(SRC)/graph_gui.c \
 	$(SRC)/io.c \
 	$(SRC)/io/preset_io.c \
 	$(SRC)/io/sequencer_io.c \
@@ -28,7 +29,7 @@ APP_SRCS = \
 
 APP_OBJS = $(patsubst $(SRC)/%.c,$(OBJDIR)/%.o,$(APP_SRCS))
 
-TESTS = test_io test_voice test_modsystem test_mod_voice
+TESTS = test_io test_voice test_modsystem test_mod_voice test_graph_nav
 
 all: $(TESTS)
 
@@ -56,13 +57,17 @@ test_modsystem: $(OBJDIR)/test_modsystem.o $(APP_OBJS)
 test_mod_voice: $(OBJDIR)/test_mod_voice.o $(APP_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+test_graph_nav: $(OBJDIR)/test_graph_nav.o $(APP_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 run: all
 	./test_io
 	./test_voice
 	./test_modsystem
 	./test_mod_voice
+	./test_graph_nav
 
 clean:
-	rm -rf $(OBJDIR) test_io test_voice test_modsystem test_mod_voice
+	rm -rf $(OBJDIR) test_io test_voice test_modsystem test_mod_voice test_graph_nav
 
 .PHONY: all run clean
