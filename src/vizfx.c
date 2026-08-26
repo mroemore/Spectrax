@@ -179,9 +179,9 @@ static ModList *selectVoiceModList(ModStrip *ms) {
 
 void drawModStrip(ModStrip *ms, Rectangle dest) {
 	float t = GetTime();
-	float theta = 1.0f * sinf(0.21f * t) + 0.6f * sinf(0.53f * t) + 0.4f * sinf(1.13f * t);
-	float dx = 0.7f * cosf(theta);
-	float dy = 0.7f * sinf(theta);
+	float theta = 1.8f * sinf(0.6f * t) + 1.2f * sinf(1.5f * t) + 0.8f * sinf(3.1f * t);
+	float dx = 1.8f * cosf(theta);
+	float dy = 1.8f * sinf(theta);
 
 	RenderTexture2D src = ms->pingActive ? ms->ping : ms->pong;
 	RenderTexture2D tgt = ms->pingActive ? ms->pong : ms->ping;
@@ -208,13 +208,14 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 			if(val > 1.0f) {
 				val = 1.0f;
 			}
-			float barH = val * (ms->height - 6);
 			int x = (int)(i * barW) + 2;
 			int bw = (int)barW - 4;
 			if(bw < 1) {
 				bw = 1;
 			}
-			DrawRectangle(x, ms->height - (int)barH, bw, (int)barH, modStripColor(m->type));
+			int halfH = (int)(val * ((ms->height - 6) / 2.0f));
+			DrawRectangle(x, 3, bw, halfH, modStripColor(m->type));
+			DrawRectangle(x, ms->height - 3 - halfH, bw, halfH, modStripColor(m->type));
 		}
 	}
 	EndTextureMode();
