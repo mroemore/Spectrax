@@ -10,6 +10,7 @@
 #include "input.h"
 #include "graph_gui.h"
 #include "voice.h"
+#include "vizfx.h"
 
 typedef struct {
 	int x;
@@ -76,6 +77,7 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setSongMinimapGui(SongMinimapGui *smg);
+void setPatternBufferScroller(BufferScroller *bs);
 void drawStepGuiNode(void *self);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();
@@ -107,6 +109,11 @@ typedef struct {
 	Color wfAltColour;
 	Image wfImage;
 } SampleWaveformGuiNode;
+
+typedef struct {
+	GuiNode base;
+	ModStrip strip;
+} ModStripGuiNode;
 
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
 void printArrGraph();

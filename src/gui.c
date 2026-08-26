@@ -200,6 +200,19 @@ static PatternList *patternPl;
 static Sequencer *patternSeq;
 static int *patternSelectedPatternPtr;
 static int *patternSelectedStepPtr;
+static BufferScroller *patternBufferScroller;
+
+void setPatternBufferScroller(BufferScroller *bs) {
+	patternBufferScroller = bs;
+}
+
+static void drawBufferScrollerNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	if(!patternBufferScroller) {
+		return;
+	}
+	drawBufferScroller(patternBufferScroller, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
+}
 
 static GuiNode *createStepNode(PatternList *pl, Sequencer *seq, int patternIndex, int stepIndex, int *selectedStepPtr) {
 	GuiNode *step = createGuiNode(0, 0, 50, 50, 4, na_vertical, "step", 1, 0);
@@ -252,6 +265,9 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 		size = pl->patterns[patternIndex].pattern_size;
 	}
 	int rows = (size + PATTERN_STEPS_PER_ROW - 1) / PATTERN_STEPS_PER_ROW;
+	GuiNode *scrollerStrip = createGuiNode(0, 0, 640, 96, 0, na_horizontal, "scroller", 0, 0);
+	scrollerStrip->drawable = true;
+	scrollerStrip->draw = drawBufferScrollerNode;
 	GuiNode *gridWrap = createGuiNode(10, 10, 230, 460, 6, na_vertical, "grid", 0, 0);
 	for(int r = 0; r < rows; r++) {
 		GuiNode *row = createGuiNode(0, 0, 100, 50, 4, na_horizontal, "row", 0, 0);
@@ -264,7 +280,8 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 		}
 		appendItem(gridWrap, row, 1);
 	}
-	appendItem(patternGraph->root, gridWrap, 20);
+	appendItem(patternGraph->root, scrollerStrip, 4);
+	appendItem(patternGraph->root, gridWrap, 16);
 	if(size > 0) {
 		int current = *selectedStep;
 		if(current < 0) {
@@ -758,8 +775,29 @@ void appendBlankNode(GuiNode *container, int weight) {
 	appendItem(container, bgn, weight);
 }
 
+static void drawModStripGuiNode(void *self) {
+	ModStripGuiNode *msgn = (ModStripGuiNode *)self;
+	GuiNode *gn = (GuiNode *)msgn;
+	drawModStrip(&msgn->strip, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
+}
+
+static ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, Instrument *inst) {
+	ModStripGuiNode *msgn = malloc(sizeof(ModStripGuiNode));
+	GuiNode *gn = (GuiNode *)msgn;
+	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "modstrip", 0, 0)) {
+		printf("ModStripGuiNode init problem.\n");
+		free(msgn);
+		return NULL;
+	}
+	initModStrip(&msgn->strip, inst->modList, w, h);
+	gn->drawable = true;
+	gn->draw = drawModStripGuiNode;
+	return msgn;
+}
+
 Graph *createInstGraph(Instrument *inst, bool selected) {
-	Graph *instGraph = createGraph(na_horizontal);
+	Graph *instGraph = createGraph(na_vertical);
+	GuiNode *mainRow = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "mainrow", 0, 0);
 	GuiNode *margin1 = createBlankGuiNode();
 	GuiNode *margin2 = createBlankGuiNode();
 	GuiNode *presetWrap = createGuiNode(0, 0, 100, 100, 2, na_vertical, "presetwrappa", 0, 0);
@@ -795,9 +833,18 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 		}
 	}
 	appendItem(instwrap, modwrap, 22);
-	appendItem(instGraph->root, margin1, 1);
-	appendItem(instGraph->root, instwrap, 18);
-	appendItem(instGraph->root, margin2, 1);
+
+	appendItem(mainRow, margin1, 1);
+	appendItem(mainRow, instwrap, 18);
+	appendItem(mainRow, margin2, 1);
+	appendItem(instGraph->root, mainRow, 19);
+
+	ModStripGuiNode *msgn = createModStripGuiNode(0, 0, 640, 100, inst);
+	if(msgn) {
+		appendItem(instGraph->root, (GuiNode *)msgn, 5);
+	} else {
+		appendBlankNode(instGraph->root, 5);
+	}
 	return instGraph;
 }
 

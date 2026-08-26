@@ -49,6 +49,7 @@ SRCS = 	$(SRC_DIR)/main.c \
 		$(SRC_DIR)/sample.c \
 		$(SRC_DIR)/fft.c \
 		$(SRC_DIR)/dataviz.c \
+		$(SRC_DIR)/vizfx.c \
 		$(SRC_DIR)/wavetable.c \
 		$(SRC_DIR)/filters.c \
 		$(SRC_DIR)/sequencer.c
