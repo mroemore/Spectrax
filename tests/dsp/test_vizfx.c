@@ -17,7 +17,7 @@ static int test_silence_collapses_to_middle_row(void) {
 	}
 	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
 	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
-	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 1.0f);
 	int mid = (int)((0.0f + 1.0f) * 0.5f * (float)(SCROLLER_COLUMN_HEIGHT - 1));
 	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
 		ASSERT_TRUE(lo[r] == mid);
@@ -34,7 +34,7 @@ static int test_full_scale_collapses_to_top_row(void) {
 	}
 	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
 	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
-	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 1.0f);
 	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
 		ASSERT_TRUE(lo[r] == SCROLLER_COLUMN_HEIGHT - 1);
 		ASSERT_TRUE(hi[r] == SCROLLER_COLUMN_HEIGHT - 1);
@@ -50,7 +50,7 @@ static int test_sine_lo_hi_hit_both_edges(void) {
 	}
 	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
 	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
-	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 1.0f);
 	int hitLo = 0;
 	int hitHi = 0;
 	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
@@ -146,7 +146,7 @@ static int test_pack_column_sine_edges(void) {
 	}
 	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
 	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
-	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 1.0f);
 	Color wave = { 60, 255, 150, 255 };
 	Color out[SCROLLER_COLUMN_HEIGHT];
 	packScrollerColumn(lo, hi, SCROLLER_COLUMN_HEIGHT, out, wave);
@@ -163,12 +163,39 @@ static int test_collapse_log_scales_low_amplitude(void) {
 	}
 	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
 	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
-	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 1.0f);
 	int mid = (int)((0.0f + 1.0f) * 0.5f * (float)(SCROLLER_COLUMN_HEIGHT - 1));
 	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
 		ASSERT_TRUE(hi[r] >= mid + 15);
 	}
 	printf("PASS test_collapse_log_scales_low_amplitude\n");
+	return 0;
+}
+
+static int test_collapse_gain_scales_to_full_scale(void) {
+	float buf[SCROLLER_BUFFER_SIZE];
+	for(int i = 0; i < SCROLLER_BUFFER_SIZE; i++) {
+		buf[i] = 0.2f;
+	}
+	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
+	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT, 5.0f);
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		ASSERT_TRUE(hi[r] == SCROLLER_COLUMN_HEIGHT - 1);
+	}
+	printf("PASS test_collapse_gain_scales_to_full_scale\n");
+	return 0;
+}
+
+static int test_push_gain_from_window_peak(void) {
+	BufferScroller bs = { 0 };
+	for(int i = 0; i < SCROLLER_BUFFER_SIZE; i++) {
+		pushBufferScrollerFrame(&bs, 0.2f);
+	}
+	ASSERT_TRUE(bs.pendingCount == 1);
+	ASSERT_TRUE(bs.pendingHi[0][0] == SCROLLER_COLUMN_HEIGHT - 1);
+	ASSERT_TRUE(bs.pendingHi[0][SCROLLER_COLUMN_HEIGHT - 1] == SCROLLER_COLUMN_HEIGHT - 1);
+	printf("PASS test_push_gain_from_window_peak\n");
 	return 0;
 }
 
@@ -183,8 +210,10 @@ int main(void) {
 	failed |= test_pack_column_full_scale_top_row();
 	failed |= test_pack_column_sine_edges();
 	failed |= test_collapse_log_scales_low_amplitude();
+	failed |= test_collapse_gain_scales_to_full_scale();
+	failed |= test_push_gain_from_window_peak();
 
-	printf("\n%s (9 tests, %s)\n",
+	printf("\n%s (11 tests, %s)\n",
 	       failed ? "FAILED" : "PASSED", failed ? ">=1 failed" : "all passed");
 	return failed;
 }

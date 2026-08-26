@@ -27,7 +27,7 @@ static float compandSample(float v) {
 	return -logScale(-v, SCROLLER_LOG_FACTOR);
 }
 
-void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight) {
+void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight, float gain) {
 	for(int r = 0; r < columnHeight; r++) {
 		int start = (int)((float)r * bufferSize / columnHeight);
 		int end = (int)((float)(r + 1) * bufferSize / columnHeight);
@@ -37,10 +37,10 @@ void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char 
 		if(end > bufferSize) {
 			end = bufferSize;
 		}
-		int loRow = sampleToRow(compandSample(samples[start]));
+		int loRow = sampleToRow(compandSample(samples[start] * gain));
 		int hiRow = loRow;
 		for(int i = start; i < end; i++) {
-			int y = sampleToRow(compandSample(samples[i]));
+			int y = sampleToRow(compandSample(samples[i] * gain));
 			if(y < loRow) {
 				loRow = y;
 			}
@@ -73,17 +73,36 @@ void initBufferScroller(BufferScroller *bs) {
 	bs->pendingTail = 0;
 	bs->pendingCount = 0;
 	bs->framePos = 0;
+	bs->peakIndex = 0;
+	for(int i = 0; i < SCROLLER_GAIN_WINDOW; i++) {
+		bs->peakRing[i] = 0.0f;
+	}
 }
 
 void pushBufferScrollerFrame(BufferScroller *bs, float sample) {
 	bs->staging[bs->framePos] = sample;
+	bs->peakRing[bs->peakIndex] = fabsf(sample);
+	bs->peakIndex = (bs->peakIndex + 1) % SCROLLER_GAIN_WINDOW;
 	bs->framePos++;
 	if(bs->framePos >= SCROLLER_BUFFER_SIZE) {
 		bs->framePos = 0;
+		float peak = 0.0f;
+		for(int i = 0; i < SCROLLER_GAIN_WINDOW; i++) {
+			if(bs->peakRing[i] > peak) {
+				peak = bs->peakRing[i];
+			}
+		}
+		float gain = 1.0f;
+		if(peak > 0.0f) {
+			gain = 1.0f / peak;
+			if(gain > SCROLLER_MAX_GAIN) {
+				gain = SCROLLER_MAX_GAIN;
+			}
+		}
 		collapseBufferToColumn(bs->staging, SCROLLER_BUFFER_SIZE,
 		                       bs->pendingLo[bs->pendingTail],
 		                       bs->pendingHi[bs->pendingTail],
-		                       SCROLLER_COLUMN_HEIGHT);
+		                       SCROLLER_COLUMN_HEIGHT, gain);
 		bs->pendingTail = (bs->pendingTail + 1) % SCROLLER_PENDING_CAPACITY;
 		if(bs->pendingCount < SCROLLER_PENDING_CAPACITY) {
 			bs->pendingCount++;
@@ -222,7 +241,7 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 			if(val > 1.0f) {
 				val = 1.0f;
 			}
-			val = logScale(val, MOD_STRIP_LOG_FACTOR);
+			val = powf(val, MOD_STRIP_RESPONSE_CURVE);
 			int x = (int)(i * barW) + 2;
 			int bw = (int)barW - 4;
 			if(bw < 1) {

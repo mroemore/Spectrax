@@ -10,10 +10,12 @@
 #define SCROLLER_COLUMN_HEIGHT 96
 #define SCROLLER_WIDTH 640
 #define SCROLLER_PENDING_CAPACITY 16
+#define SCROLLER_GAIN_WINDOW SCROLLER_WIDTH
+#define SCROLLER_MAX_GAIN 20.0f
 
 #define MOD_STRIP_WIDTH 640
 #define MOD_STRIP_HEIGHT 100
-#define MOD_STRIP_LOG_FACTOR 10.0f
+#define MOD_STRIP_RESPONSE_CURVE 2.0f
 #define SCROLLER_LOG_FACTOR 10.0f
 
 typedef struct Voice Voice;
@@ -27,6 +29,8 @@ typedef struct {
 	int pendingCount;
 	float staging[SCROLLER_BUFFER_SIZE];
 	int framePos;
+	float peakRing[SCROLLER_GAIN_WINDOW];
+	int peakIndex;
 	unsigned char pendingLo[SCROLLER_PENDING_CAPACITY][SCROLLER_COLUMN_HEIGHT];
 	unsigned char pendingHi[SCROLLER_PENDING_CAPACITY][SCROLLER_COLUMN_HEIGHT];
 } BufferScroller;
@@ -41,7 +45,7 @@ typedef struct {
 	bool pingActive;
 } ModStrip;
 
-void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight);
+void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight, float gain);
 void packScrollerColumn(const unsigned char *lo, const unsigned char *hi, int columnHeight, Color *out, Color waveColour);
 
 void initBufferScroller(BufferScroller *bs);
