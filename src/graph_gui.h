@@ -73,6 +73,7 @@ void drawNode(GuiNode *cont);
 Graph *createGraph(NodeAlignment na);
 
 void navigateGraph(Graph *g, int keymapping);
+void navigateGraphRefined(Graph *g, int keymapping);
 bool selectLeaf(Graph *g, GuiNode *n, bool head);
 GuiNode *searchUpwardsByAlignment(GuiNode *n, NodeAlignment na, bool prev);
 GuiNode *getAdjacentNode(GuiNode *c, bool prev);

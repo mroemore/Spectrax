@@ -292,6 +292,111 @@ void navigateGraph(Graph *g, int keymapping) {
 	}
 }
 
+static void collectSelectables(GuiNode *node, GuiNode **out, int *count, int cap) {
+	if(!node || !out || !count || *count >= cap) {
+		return;
+	}
+	if(node->selectable) {
+		out[(*count)++] = node;
+		return;
+	}
+	ListElement *l = node->items ? node->items->head : NULL;
+	while(l != NULL) {
+		collectSelectables(*(GuiNode **)l->data, out, count, cap);
+		l = l->next;
+	}
+}
+
+static float centerX(GuiNode *n) { return n->x + n->w * 0.5f; }
+static float centerY(GuiNode *n) { return n->y + n->h * 0.5f; }
+
+/* Classic D-pad focus selection: among candidates that lie in `dir` from the
+ * current selection (with a small edge tolerance), pick the one with the
+ * smallest travel distance, tie-broken by perpendicular center alignment. A
+ * perpendicular cone (half-widths/heights summed + tolerance) keeps the move
+ * in the same column/row. */
+static GuiNode *bestInDirection(GuiNode *sel, GuiNode **cands, int count, int keymapping) {
+	const float tol = 4.0f;
+	GuiNode *best = NULL;
+	float bestEdge = 0.0f;
+	float bestPerp = 0.0f;
+	for(int i = 0; i < count; i++) {
+		GuiNode *c = cands[i];
+		if(c == sel) {
+			continue;
+		}
+		float perpDiff, edgeGap;
+		bool ok;
+		switch(keymapping) {
+			case KM_UP:
+				ok = (c->y + c->h <= sel->y + tol);
+				perpDiff = fabsf(centerX(c) - centerX(sel));
+				edgeGap = sel->y - (c->y + c->h);
+				break;
+			case KM_DOWN:
+				ok = (c->y >= sel->y + sel->h - tol);
+				perpDiff = fabsf(centerX(c) - centerX(sel));
+				edgeGap = c->y - (sel->y + sel->h);
+				break;
+			case KM_LEFT:
+				ok = (c->x + c->w <= sel->x + tol);
+				perpDiff = fabsf(centerY(c) - centerY(sel));
+				edgeGap = sel->x - (c->x + c->w);
+				break;
+			case KM_RIGHT:
+				ok = (c->x >= sel->x + sel->w - tol);
+				perpDiff = fabsf(centerY(c) - centerY(sel));
+				edgeGap = c->x - (sel->x + sel->w);
+				break;
+			default:
+				return NULL;
+		}
+		if(!ok) {
+			continue;
+		}
+		float perpLimit = (keymapping == KM_UP || keymapping == KM_DOWN)
+			? (sel->w * 0.5f + c->w * 0.5f + tol)
+			: (sel->h * 0.5f + c->h * 0.5f + tol);
+		if(perpDiff > perpLimit) {
+			continue;
+		}
+		if(best == NULL || edgeGap < bestEdge - 0.01f ||
+		   (fabsf(edgeGap - bestEdge) <= 0.01f && perpDiff < bestPerp)) {
+			best = c;
+			bestEdge = edgeGap;
+			bestPerp = perpDiff;
+		}
+	}
+	return best;
+}
+
+void navigateGraphRefined(Graph *g, int keymapping) {
+	if(!g) {
+		return;
+	}
+	if(!g->selected) {
+		GuiNode *cands[256];
+		int count = 0;
+		collectSelectables(g->root, cands, &count, 256);
+		if(count > 0) {
+			changeGraphSelection(g, cands[0]);
+		}
+		return;
+	}
+	if(g->selected->customNav) {
+		if(g->selected->customNav(g->selected, keymapping)) {
+			return;
+		}
+	}
+	GuiNode *cands[256];
+	int count = 0;
+	collectSelectables(g->root, cands, &count, 256);
+	GuiNode *best = bestInDirection(g->selected, cands, count, keymapping);
+	if(best) {
+		changeGraphSelection(g, best);
+	}
+}
+
 bool selectLeaf(Graph *g, GuiNode *n, bool head) {
 	if(n == NULL) {
 		return false;
@@ -382,10 +487,12 @@ GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev) {
 }
 
 void changeGraphSelection(Graph *g, GuiNode *new) {
-	if(!g || !g->selected || !new) {
+	if(!g || !new) {
 		return;
 	}
-	g->selected->selected = 0;
+	if(g->selected) {
+		g->selected->selected = 0;
+	}
 	g->selected = new;
 	g->selected->selected = 1;
 }
