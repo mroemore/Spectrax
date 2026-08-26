@@ -60,6 +60,6 @@ run: all
 	./test_vizfx
 
 clean:
-	rm -rf $(OBJDIR) test_io test_voice
+	rm -rf $(OBJDIR) test_io test_voice test_vizfx
 
 .PHONY: all run clean

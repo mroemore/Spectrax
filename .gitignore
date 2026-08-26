@@ -4,6 +4,7 @@ src/io/*.o
 tests/obj/
 tests/test_io
 tests/test_voice
+tests/test_vizfx
 tests/dsp/*.o
 .tmp_files/
 third_party/
