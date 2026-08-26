@@ -500,10 +500,16 @@ void drawBtnGuiNode(void *self) {
 
 void drawDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
+	if(!gn->p) {
+		return;
+	}
 	char paramValue[50];
 	snprintf(paramValue, 50, "%05.2f", gn->p->currentValue);
 	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	float angle = 0.0f;
+	if(range > 0.0f) {
+		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	}
 	int tmpx = gn->x;
 	int tmpy = gn->y;
 	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
@@ -518,10 +524,16 @@ void drawDialGuiNode(void *self) {
 
 void drawBipolarDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
+	if(!gn->p) {
+		return;
+	}
 	char paramValue[50];
 	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
 	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	float angle = 0.0f;
+	if(range > 0.0f) {
+		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	}
 	int tmpx = gn->x;
 	int tmpy = gn->y;
 	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
@@ -532,10 +544,16 @@ void drawBipolarDialGuiNode(void *self) {
 
 void drawDiscreteDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
+	if(!gn->p) {
+		return;
+	}
 	char paramValue[50];
 	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
 	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	float angle = 0.0f;
+	if(range > 0.0f) {
+		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+	}
 	int tmpx = gn->x;
 	int tmpy = gn->y;
 

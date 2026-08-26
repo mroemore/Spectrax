@@ -590,6 +590,35 @@ static int test_runtime_envelope_add_does_not_rebuild_voices(void) {
     return 0;
 }
 
+static int test_preset_param_survives_apply(void) {
+    /* applyInstrumentPreset frees the whole paramList (clearParamList)
+     * and rebuilds it. It MUST recreate selectedPresetIndex (like the
+     * panning/detune params), or the PRESET dial reads a dangling param
+     * whose range reads as [0,0], making drawDialGuiNode divide by zero
+     * (angle = NaN) and pathologically slowing the renderer (~22s/frame
+     * under llvmpipe; the reported 4fps). Regression: the clear* now
+     * frees, turning the pre-existing omission into a use-after-free. */
+    TestEnv e;
+    if (make_env(&e, 1)) {
+        return 1;
+    }
+    Instrument *inst = e.vm->instruments[0];
+    ASSERT_TRUE(inst->selectedPresetIndex != NULL, "preset param exists");
+    ASSERT_NEAR(inst->selectedPresetIndex->maxValue,
+                (float)e.pb.presetCount - 1.0f, 0.001f);
+    bool found = false;
+    for (int i = 0; i < inst->paramList->count; i++) {
+        if (inst->paramList->params[i] == inst->selectedPresetIndex) {
+            found = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(found, "preset param registered in the paramList after apply");
+    free_env(&e);
+    printf("PASS test_preset_param_survives_apply\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -598,6 +627,7 @@ int main(void) {
     fails += test_init_fm_instrument();
     fails += test_clear_paramlist_frees();
     fails += test_preset_load_rebuilds_voices();
+    fails += test_preset_param_survives_apply();
 
     /* Task 10 integration suite */
     fails += test_route_to_fm_param_affects_value();

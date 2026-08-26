@@ -399,6 +399,14 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	instrument->detuneVoiceCount = createParameterEx(instrument->paramList, "detuneVoices", 4.0f, 0.0f, MAX_DETUNE, 1.0f, 1.0f);
 	instrument->detuneRange = createParameterEx(instrument->paramList, "detuneAmt", 10.0f, 1.0f, 100.0f, 1.00f, 10.0f);
 	instrument->detuneSpread = createParameterEx(instrument->paramList, "detuneSpread", 10.0f, 0.0f, 50.0f, 1.0f, 5.0f);
+
+	/* Re-create the preset selector param. clearParamList freed it along
+	 * with everything else; without this the PRESET dial reads a dangling
+	 * param whose range reads as [0,0], making drawDialGuiNode divide by
+	 * zero (angle = NaN) and grinding the renderer to a halt. The caller
+	 * (cb_setInstrumentPreset) writes the applied index into it afterwards. */
+	instrument->selectedPresetIndex = createParameterPro(instrument->paramList, "preset", 0.0f, 0.0f,
+		(float)(instrument->presetBank->presetCount - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
 }
 
 void cb_setInstrumentPreset(void *instrument) {
@@ -406,8 +414,13 @@ void cb_setInstrumentPreset(void *instrument) {
 	int presetIndex = getParameterValueAsInt(i->selectedPresetIndex);
 	applyInstrumentPreset(i, i->presetBank->patches[presetIndex]);
 	/* applyInstrumentPreset freed and rebuilt i's paramList/envelope/operator
-	 * params via clearParamList; voices that previously aliased those Param
-	 * structs must be rebuilt so their pointers track the new ones. */
+	 * params via clearParamList; the preset selector param it just recreated
+	 * starts at 0, so reflect the index we actually applied (direct field
+	 * write: firing the onChange here would recurse into this callback). */
+	i->selectedPresetIndex->baseValue = (float)presetIndex;
+	i->selectedPresetIndex->currentValue = (float)presetIndex;
+	/* voices that previously aliased those Param structs must be rebuilt so
+	 * their pointers track the new ones. */
 	if(i->vm) {
 		rebuildVoicesForInstrument(i->vm, i);
 	}
