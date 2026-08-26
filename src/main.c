@@ -19,6 +19,7 @@
 #include "distortion.h"
 #include "graph_gui.h"
 #include "dataviz.h"
+#include "vizfx.h"
 
 typedef struct
 {
@@ -36,6 +37,7 @@ typedef struct
 	WavetablePool *wavetablePool;
 	Spectrogram spectrogram;
 	TimeGraph timeGraph;
+	BufferScroller bufferScroller;
 	PresetBank presetBank;
 } paTestData;
 
@@ -142,6 +144,8 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 
 		pushFrameToFFT(&data->spectrogram.fft, left_output);
 
+		pushBufferScrollerFrame(&data->bufferScroller, left_output);
+
 		data->arranger->tempoSettings.samplesElapsed++;
 	}
 
@@ -208,6 +212,7 @@ int main(void) {
 		clearBg();
 		updateSpectrogramData(&data.spectrogram);
 		updateTimeGraphData(&data.timeGraph);
+		updateBufferScrollerData(&data.bufferScroller);
 		// printf("checking inputs...\n");
 		// Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)) {
@@ -401,6 +406,7 @@ int main(void) {
 
 	freeSamplePool(data.samplePool);
 	cleanupModSystem(data.modList);
+	freeBufferScroller(&data.bufferScroller);
 
 	printf("The end! :).\n");
 	return err;
@@ -411,6 +417,7 @@ error:
 	freeSamplePool(data.samplePool);
 
 	cleanupModSystem(data.modList);
+	freeBufferScroller(&data.bufferScroller);
 
 	fprintf(stderr, "An error occurred while using the portaudio stream\n");
 	fprintf(stderr, "Error number: %d\n", err);
@@ -423,6 +430,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	loadColourSchemeTxt("colourscheme2.txt", getColorSchemeAsPointerArray(), 9);
 	initSpectrogram(&data->spectrogram, 4096, 256, 5, 1.0);
 	initTimeGraph(&data->timeGraph, 1024, 0, 640, 1024, 128);
+	initBufferScroller(&data->bufferScroller);
 	data->globalParameters = createParamList();
 	*appState = createApplicationState();
 	if(!*appState) {
@@ -483,6 +491,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	printf("bpm yo: %i", data->samples_per_beat);
 
 	createPatternGraph(data->sequencer, data->patternList, &(*appState)->selectedPattern, &(*appState)->selectedStep);
+	setPatternBufferScroller(&data->bufferScroller);
 
 	SongMinimapGui *songMinimapGui = createSongMinimapGui(data->arranger, (*appState)->selectedArrangerCell, 400, 10);
 	setSongMinimapGui(songMinimapGui);
