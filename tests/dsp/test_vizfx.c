@@ -94,6 +94,68 @@ static int test_push_ring_never_exceeds_capacity(void) {
 	return 0;
 }
 
+static int test_pack_column_silence_center_pixel(void) {
+	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
+	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
+	int mid = (int)(0.5f * (float)(SCROLLER_COLUMN_HEIGHT - 1));
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		lo[r] = mid;
+		hi[r] = mid;
+	}
+	Color wave = { 60, 255, 150, 255 };
+	Color out[SCROLLER_COLUMN_HEIGHT];
+	packScrollerColumn(lo, hi, SCROLLER_COLUMN_HEIGHT, out, wave);
+	int painted = 0;
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		if(out[r].r == wave.r && out[r].g == wave.g) {
+			painted++;
+		}
+	}
+	ASSERT_TRUE(painted == 1);
+	ASSERT_TRUE(out[SCROLLER_COLUMN_HEIGHT - 1 - mid].r == wave.r);
+	printf("PASS test_pack_column_silence_center_pixel\n");
+	return 0;
+}
+
+static int test_pack_column_full_scale_top_row(void) {
+	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
+	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		lo[r] = SCROLLER_COLUMN_HEIGHT - 1;
+		hi[r] = SCROLLER_COLUMN_HEIGHT - 1;
+	}
+	Color wave = { 60, 255, 150, 255 };
+	Color out[SCROLLER_COLUMN_HEIGHT];
+	packScrollerColumn(lo, hi, SCROLLER_COLUMN_HEIGHT, out, wave);
+	int painted = 0;
+	for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
+		if(out[r].r == wave.r) {
+			painted++;
+		}
+	}
+	ASSERT_TRUE(painted == 1);
+	ASSERT_TRUE(out[0].r == wave.r);
+	printf("PASS test_pack_column_full_scale_top_row\n");
+	return 0;
+}
+
+static int test_pack_column_sine_edges(void) {
+	float buf[SCROLLER_BUFFER_SIZE];
+	for(int i = 0; i < SCROLLER_BUFFER_SIZE; i++) {
+		buf[i] = sinf(2.0f * 3.14159265f * i / SCROLLER_BUFFER_SIZE);
+	}
+	unsigned char lo[SCROLLER_COLUMN_HEIGHT];
+	unsigned char hi[SCROLLER_COLUMN_HEIGHT];
+	collapseBufferToColumn(buf, SCROLLER_BUFFER_SIZE, lo, hi, SCROLLER_COLUMN_HEIGHT);
+	Color wave = { 60, 255, 150, 255 };
+	Color out[SCROLLER_COLUMN_HEIGHT];
+	packScrollerColumn(lo, hi, SCROLLER_COLUMN_HEIGHT, out, wave);
+	ASSERT_TRUE(out[0].r == wave.r);
+	ASSERT_TRUE(out[SCROLLER_COLUMN_HEIGHT - 1].r == wave.r);
+	printf("PASS test_pack_column_sine_edges\n");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_silence_collapses_to_middle_row();
@@ -101,8 +163,11 @@ int main(void) {
 	failed |= test_sine_lo_hi_hit_both_edges();
 	failed |= test_push_collects_column_each_buffer();
 	failed |= test_push_ring_never_exceeds_capacity();
+	failed |= test_pack_column_silence_center_pixel();
+	failed |= test_pack_column_full_scale_top_row();
+	failed |= test_pack_column_sine_edges();
 
-	printf("\n%s (5 tests, %s)\n",
+	printf("\n%s (8 tests, %s)\n",
 	       failed ? "FAILED" : "PASSED", failed ? ">=1 failed" : "all passed");
 	return failed;
 }

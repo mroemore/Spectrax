@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include "vizfx.h"
+#include "voice.h"
 
 static int sampleToRow(float v) {
 	if(v < -1.0f) {
@@ -35,6 +36,17 @@ void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char 
 		}
 		lo[r] = (unsigned char)loRow;
 		hi[r] = (unsigned char)hiRow;
+	}
+}
+
+void packScrollerColumn(const unsigned char *lo, const unsigned char *hi, int columnHeight, Color *out, Color waveColour) {
+	for(int r = 0; r < columnHeight; r++) {
+		out[r] = (Color){ 0, 0, 0, 255 };
+	}
+	for(int r = 0; r < columnHeight; r++) {
+		for(int y = lo[r]; y <= hi[r]; y++) {
+			out[columnHeight - 1 - y] = waveColour;
+		}
 	}
 }
 
@@ -73,17 +85,15 @@ void updateBufferScrollerData(BufferScroller *bs) {
 	}
 	Color *px = (Color *)bs->image.data;
 	const Color waveColour = (Color){ 60, 255, 150, 255 };
+	Color packed[SCROLLER_COLUMN_HEIGHT];
 	while(bs->pendingCount > 0) {
 		int col = bs->writeColumn;
+		packScrollerColumn(bs->pendingLo[bs->pendingHead], bs->pendingHi[bs->pendingHead],
+		                   SCROLLER_COLUMN_HEIGHT, packed, waveColour);
 		for(int r = 0; r < SCROLLER_COLUMN_HEIGHT; r++) {
-			int loY = bs->pendingLo[bs->pendingHead][r];
-			int hiY = bs->pendingHi[bs->pendingHead][r];
-			for(int y = loY; y <= hiY; y++) {
-				px[(SCROLLER_COLUMN_HEIGHT - 1 - y) * SCROLLER_WIDTH + col] = waveColour;
-			}
+			px[r * SCROLLER_WIDTH + col] = packed[r];
 		}
-		UpdateTextureRec(bs->texture, (Rectangle){ col, 0, 1, SCROLLER_COLUMN_HEIGHT },
-		                 &bs->image.data[col * 4]);
+		UpdateTextureRec(bs->texture, (Rectangle){ col, 0, 1, SCROLLER_COLUMN_HEIGHT }, packed);
 		bs->writeColumn = (bs->writeColumn + 1) % SCROLLER_WIDTH;
 		bs->pendingHead = (bs->pendingHead + 1) % SCROLLER_PENDING_CAPACITY;
 		bs->pendingCount--;
@@ -129,8 +139,9 @@ static Color modStripColor(ModType type) {
 	}
 }
 
-void initModStrip(ModStrip *ms, ModList *modList, int width, int height) {
-	ms->modList = modList;
+void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height) {
+	ms->voicePool = voicePool;
+	ms->voiceCount = voiceCount;
 	ms->width = width;
 	ms->height = height;
 	ms->pingActive = false;
@@ -142,6 +153,28 @@ void initModStrip(ModStrip *ms, ModList *modList, int width, int height) {
 	BeginTextureMode(ms->pong);
 	ClearBackground(BLACK);
 	EndTextureMode();
+}
+
+static ModList *selectVoiceModList(ModStrip *ms) {
+	if(!ms->voicePool || ms->voiceCount <= 0) {
+		return NULL;
+	}
+	Voice *voice = NULL;
+	for(int i = 0; i < ms->voiceCount; i++) {
+		Voice *v = ms->voicePool[i];
+		if(v && v->active) {
+			if(!voice || v->samplesElapsed < voice->samplesElapsed) {
+				voice = v;
+			}
+		}
+	}
+	if(!voice) {
+		voice = ms->voicePool[0];
+	}
+	if(!voice || !voice->modList) {
+		return NULL;
+	}
+	return voice->modList;
 }
 
 void drawModStrip(ModStrip *ms, Rectangle dest) {
@@ -159,11 +192,12 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 	               (Rectangle){ dx, dy, ms->width, ms->height },
 	               (Vector2){ 0, 0 }, 0.0f, (Color){ 246, 246, 246, 255 });
 
-	if(ms->modList && ms->modList->count > 0 && ms->modList->mods) {
-		int n = ms->modList->count;
+	ModList *modList = selectVoiceModList(ms);
+	if(modList && modList->count > 0) {
+		int n = modList->count;
 		float barW = ms->width / (float)n;
 		for(int i = 0; i < n; i++) {
-			Mod *m = ms->modList->mods[i];
+			Mod *m = modList->mods[i];
 			if(!m || !m->output) {
 				continue;
 			}

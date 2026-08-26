@@ -14,6 +14,8 @@
 #define MOD_STRIP_WIDTH 640
 #define MOD_STRIP_HEIGHT 100
 
+typedef struct Voice Voice;
+
 typedef struct {
 	Image image;
 	Texture2D texture;
@@ -28,7 +30,8 @@ typedef struct {
 } BufferScroller;
 
 typedef struct {
-	ModList *modList;
+	Voice **voicePool;
+	int voiceCount;
 	RenderTexture2D ping;
 	RenderTexture2D pong;
 	int width;
@@ -37,6 +40,7 @@ typedef struct {
 } ModStrip;
 
 void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight);
+void packScrollerColumn(const unsigned char *lo, const unsigned char *hi, int columnHeight, Color *out, Color waveColour);
 
 void initBufferScroller(BufferScroller *bs);
 void pushBufferScrollerFrame(BufferScroller *bs, float sample);
@@ -44,7 +48,7 @@ void updateBufferScrollerData(BufferScroller *bs);
 void drawBufferScroller(BufferScroller *bs, Rectangle dest);
 void freeBufferScroller(BufferScroller *bs);
 
-void initModStrip(ModStrip *ms, ModList *modList, int width, int height);
+void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height);
 void drawModStrip(ModStrip *ms, Rectangle dest);
 void freeModStrip(ModStrip *ms);
 

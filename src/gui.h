@@ -132,7 +132,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
 void appendBlankNode(GuiNode *container, int weight);
-Graph *createInstGraph(Instrument *inst, bool selected);
+Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected);
 
 void clearBg();
 void drawArrangerGuiNode(void *self);

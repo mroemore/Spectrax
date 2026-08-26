@@ -147,7 +147,7 @@ void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 
 	for(int i = 0; i < vm->enabledChannels; i++) {
 		bool isSelected = *selectedInstrument == i;
-		ig->instrumentScreenGraphs[i] = createInstGraph(vm->instruments[i], isSelected);
+		ig->instrumentScreenGraphs[i] = createInstGraph(vm->instruments[i], vm, i, isSelected);
 		ig->instrumentCount++;
 	}
 	igui = ig;
@@ -781,7 +781,7 @@ static void drawModStripGuiNode(void *self) {
 	drawModStrip(&msgn->strip, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
 }
 
-static ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, Instrument *inst) {
+static ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel) {
 	ModStripGuiNode *msgn = malloc(sizeof(ModStripGuiNode));
 	GuiNode *gn = (GuiNode *)msgn;
 	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "modstrip", 0, 0)) {
@@ -789,13 +789,13 @@ static ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, Instru
 		free(msgn);
 		return NULL;
 	}
-	initModStrip(&msgn->strip, inst->modList, w, h);
+	initModStrip(&msgn->strip, vm->voicePools[channel], vm->voiceCount[channel], w, h);
 	gn->drawable = true;
 	gn->draw = drawModStripGuiNode;
 	return msgn;
 }
 
-Graph *createInstGraph(Instrument *inst, bool selected) {
+Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected) {
 	Graph *instGraph = createGraph(na_vertical);
 	GuiNode *mainRow = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "mainrow", 0, 0);
 	GuiNode *margin1 = createBlankGuiNode();
@@ -839,7 +839,7 @@ Graph *createInstGraph(Instrument *inst, bool selected) {
 	appendItem(mainRow, margin2, 1);
 	appendItem(instGraph->root, mainRow, 19);
 
-	ModStripGuiNode *msgn = createModStripGuiNode(0, 0, 640, 100, inst);
+	ModStripGuiNode *msgn = createModStripGuiNode(0, 0, 640, 100, vm, channel);
 	if(msgn) {
 		appendItem(instGraph->root, (GuiNode *)msgn, 5);
 	} else {
