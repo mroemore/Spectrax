@@ -223,7 +223,7 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 	ClearBackground(BLACK);
 	DrawTexturePro(src.texture, (Rectangle){ 0, 0, ms->width, ms->height },
 	               (Rectangle){ dx, dy, ms->width, ms->height },
-	               (Vector2){ 0, 0 }, 0.0f, (Color){ 246, 246, 246, 255 });
+	               (Vector2){ 0, 0 }, 0.0f, (Color){ 128 + theta * 120.0f, 246, 246, 250 });
 
 	ModList *modList = selectVoiceModList(ms);
 	if(modList && modList->count > 0) {
