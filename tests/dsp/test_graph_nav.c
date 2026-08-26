@@ -170,7 +170,7 @@ static int test_first_selection(void) {
     ASSERT_TRUE(g->selected == NULL, "no selection initially");
     navigateGraphRefined(g, KM_DOWN);
     ASSERT_TRUE(g->selected != NULL, "first selection established");
-    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "head-most leaf selected");
+    ASSERT_TRUE(strcmp(g->selected->name, "A") == 0, "first DFS-pre-order leaf selected");
     teardown_graph(g);
     printf("PASS test_first_selection\n");
     return 0;
@@ -225,6 +225,38 @@ static int test_cross_section_jump(void) {
     return 0;
 }
 
+/* Intruder E sits between the columns on the TOP row: closer in travel
+ * distance from B, but outside the perpendicular cone (centerY 20 vs B's
+ * 50; cone limit = B.h/2 + E.h/2 + tol = 24). The cone must exclude it. */
+static Graph *build_cone_graph(void) {
+    Graph *g = createGraph(na_vertical);
+    GuiNode *colL = createGuiNode(10, 40, 40, 20, 2, na_vertical, "colL", false, false);
+    GuiNode *b = createGuiNode(10, 40, 40, 20, 2, na_vertical, "B", true, false);
+    GuiNode *e = createGuiNode(70, 10, 20, 20, 2, na_vertical, "E", true, false);
+    GuiNode *colR = createGuiNode(100, 40, 40, 20, 2, na_vertical, "colR", false, false);
+    GuiNode *d = createGuiNode(100, 40, 40, 20, 2, na_vertical, "D", true, false);
+    appendItem(colL, b, 1);
+    appendItem(g->root, colL, 1);
+    appendItem(g->root, e, 1);
+    appendItem(colR, d, 1);
+    appendItem(g->root, colR, 1);
+    b->x = 10; b->y = 40; b->w = 40; b->h = 20;
+    e->x = 70; e->y = 10; e->w = 20; e->h = 20;
+    d->x = 100; d->y = 40; d->w = 40; d->h = 20;
+    return g;
+}
+
+static int test_cone_excludes_misaligned(void) {
+    Graph *g = build_cone_graph();
+    navigateGraphRefined(g, KM_DOWN); /* first selection -> B (DFS order) */
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(strcmp(g->selected->name, "D") == 0,
+                "closer-but-misaligned E excluded by the cone; aligned D wins");
+    teardown_graph(g);
+    printf("PASS test_cone_excludes_misaligned\n");
+    return 0;
+}
+
 static int test_custom_nav_precedence(void) {
     Graph *g = build_2col_graph();
     GuiNode *colL = *(GuiNode **)g->root->items->head->data;
@@ -270,6 +302,7 @@ int main(void) {
     fails += test_row_left_right();
     fails += test_boundary_no_move();
     fails += test_cross_section_jump();
+    fails += test_cone_excludes_misaligned();
     fails += test_custom_nav_precedence();
     fails += test_custom_nav_fallthrough();
     fails += test_null_safety();

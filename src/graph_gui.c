@@ -491,6 +491,8 @@ GuiNode *selectAdjacent(Graph *g, GuiNode *c, bool prev) {
 	return result;
 }
 
+/* Original `!g->selected` guard rejected the FIRST selection; relaxed so
+ * navigateGraphRefined's first-selection path can select a leaf. */
 void changeGraphSelection(Graph *g, GuiNode *new) {
 	if(!g || !new) {
 		return;
