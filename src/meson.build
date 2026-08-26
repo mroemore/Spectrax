@@ -41,6 +41,12 @@ app_only_sources = files(
   'dataviz.c',
 )
 
+# Buffer-scroller / mod-strip visualisations: used by the app (audio callback,
+# gui graph nodes) and unit-tested by test_vizfx.
+vizfx_lib = static_library('spectrax_vizfx', 'vizfx.c',
+  include_directories: inc,
+)
+
 core_lib = static_library('spectrax_core', core_sources,
   include_directories: inc,
   dependencies: [m],
@@ -53,7 +59,7 @@ seq_lib = static_library('spectrax_seq', seq_sources,
 
 spectrax = executable('spectrax',
   app_only_sources,
-  link_with: [core_lib, seq_lib],
+  link_with: [core_lib, seq_lib, vizfx_lib],
   include_directories: inc,
   dependencies: system_deps,
 )

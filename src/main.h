@@ -7,6 +7,7 @@
 #include "voice.h"
 #include "dataviz.h"
 #include "modsystem.h"
+#include "vizfx.h"
 
 /* paTestData is the application-wide runtime bundle shared by
  * the PortAudio callback, the GUI, and the input handlers.
@@ -27,6 +28,8 @@ typedef struct {
 	WavetablePool *wavetablePool;
 	Spectrogram spectrogram;
 	TimeGraph timeGraph;
+	BufferScroller bufferScroller;
+	MixRing mixRing;
 	PresetBank presetBank;
 } paTestData;
 

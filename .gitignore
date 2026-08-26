@@ -9,6 +9,8 @@ tests/test_modsystem
 tests/test_mod_voice
 tests/test_graph_nav
 tests/test_sequencer
+tests/test_vizfx
+.tmp_files/
 .tmp_files/
 third_party/
 .clang-format

@@ -27,3 +27,12 @@ exe = executable('test_sequencer',
   dependencies: system_deps,
 )
 test('test_sequencer', exe)
+
+# vizfx tests are standalone (pure buffer-scroller data ops).
+exe = executable('test_vizfx',
+  files('dsp/test_vizfx.c'),
+  link_with: [core_lib, vizfx_lib],
+  include_directories: inc,
+  dependencies: system_deps,
+)
+test('test_vizfx', exe)

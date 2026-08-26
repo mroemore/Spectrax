@@ -10,6 +10,7 @@
 #include "input.h"
 #include "graph_gui.h"
 #include "voice.h"
+#include "vizfx.h"
 
 typedef struct {
 	int x;
@@ -79,6 +80,8 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setSongMinimapGui(SongMinimapGui *smg);
+void setPatternBufferScroller(BufferScroller *bs);
+void setArrangerMixRing(MixRing *r);
 void drawStepGuiNode(void *self);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();
@@ -111,6 +114,11 @@ typedef struct {
 	Image wfImage;
 } SampleWaveformGuiNode;
 
+typedef struct {
+	GuiNode base;
+	ModStrip strip;
+} ModStripGuiNode;
+
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
 void printArrGraph();
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
@@ -128,7 +136,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
 void appendBlankNode(GuiNode *container, int weight);
-Graph *createInstGraph(Instrument *inst, bool selected);
+Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected);
 void addRuntimeEnvelope(Instrument *inst);
 void removeRuntimeEnvelope(Instrument *inst, int envIndex);
 void rebuildInstrumentGraph(void);
