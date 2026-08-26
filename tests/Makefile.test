@@ -24,11 +24,12 @@ APP_SRCS = \
 	$(SRC)/io.c \
 	$(SRC)/io/preset_io.c \
 	$(SRC)/io/sequencer_io.c \
-	$(SRC)/io/settings_io.c
+	$(SRC)/io/settings_io.c \
+	$(SRC)/vizfx.c
 
 APP_OBJS = $(patsubst $(SRC)/%.c,$(OBJDIR)/%.o,$(APP_SRCS))
 
-TESTS = test_io test_voice
+TESTS = test_io test_voice test_vizfx
 
 all: $(TESTS)
 
@@ -50,9 +51,13 @@ test_io: $(OBJDIR)/test_io.o $(APP_OBJS)
 test_voice: $(OBJDIR)/test_voice.o $(APP_OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
+test_vizfx: $(OBJDIR)/test_vizfx.o $(APP_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
 run: all
 	./test_io
 	./test_voice
+	./test_vizfx
 
 clean:
 	rm -rf $(OBJDIR) test_io test_voice
