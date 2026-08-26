@@ -469,15 +469,20 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->envelopeCount = 1;
 			(*instrument)->lfoCount = 0;
 			(*instrument)->id.sampler.sp = samplePool;
-			(*instrument)->id.sampler.sample = samplePool->samples[0];
+			/* An empty pool is legal (createVoiceManager inits every channel
+			 * as a SAMPLE instrument before the preset is applied); never
+			 * deref samples[0] when nothing was loaded. */
+			(*instrument)->id.sampler.sample = (samplePool->sampleCount > 0) ? samplePool->samples[0] : NULL;
+			int sampleLen = (samplePool->sampleCount > 0) ? samplePool->samples[0]->length : 1;
+			int sampleCountMax = (samplePool->sampleCount > 0) ? samplePool->sampleCount - 1 : 0;
 			(*instrument)->id.sampler.getSampleValue = getSampleValueFwd;
 			(*instrument)->id.sampler.bitDepth = createParameterEx((*instrument)->paramList, "bitdepth", 24.0f, 8.0f, 24.0f, 1.0f, 4.0f);
 			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 44100.0f, 2000.0f, 44100.0f, 100.0f, 1000.0f);
-			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)samplePool->sampleCount - 1, 1.0f, 10.0f, *instrument, updateSampleReferences);
+			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)sampleCountMax, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->id.sampler.loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
 			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
-			(*instrument)->id.sampler.loopStartIndex = createParameterEx((*instrument)->paramList, "loop start", 0, 0, (float)samplePool->samples[0]->length, 100.0f, 1000.0f);
-			(*instrument)->id.sampler.loopEndIndex = createParameterEx((*instrument)->paramList, "loop end", (float)samplePool->samples[0]->length - 1.0f, 1.0f, (float)samplePool->samples[0]->length, 100.0f, 1000.0f);
+			(*instrument)->id.sampler.loopStartIndex = createParameterEx((*instrument)->paramList, "loop start", 0, 0, (float)sampleLen, 100.0f, 1000.0f);
+			(*instrument)->id.sampler.loopEndIndex = createParameterEx((*instrument)->paramList, "loop end", (float)(sampleLen - 1), 1.0f, (float)sampleLen, 100.0f, 1000.0f);
 			break;
 		case VOICE_TYPE_FM:
 			(*instrument)->envelopeCount = 4;
