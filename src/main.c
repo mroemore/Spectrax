@@ -468,30 +468,18 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	}
 	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
 	printf("arranger/pattern load result: %i\n", loadstate);
-	/* Seed a valid selected pattern so Shift+Right reaches the pattern
-	 * screen immediately at startup (incrementScene requires
-	 * selectedPattern != -1, which is otherwise only set when the user
-	 * selects an arranger cell). Prefer the cell saved in the song's
-	 * selected_x/selected_y; fall back to the first used pattern across
-	 * the song when that cell is empty. */
+	/* Seed selectedPattern from the arranger's restored selection so Shift+Right
+	 * reaches the pattern screen immediately at startup. loadSequencerState
+	 * restores arranger->selected_x/selected_y, but selectedPattern itself is
+	 * only ever set when the user navigates an arranger cell, so it is -1
+	 * here. If the selected cell holds no pattern, leave selectedPattern at -1
+	 * and let incrementScene keep blocking (no empty pattern view). */
 	if((*appState)->selectedPattern < 0) {
 		int selX = data->arranger->selected_x;
 		int selY = data->arranger->selected_y;
-		bool seeded = false;
 		if(selX >= 0 && selX < MAX_SEQUENCER_CHANNELS && selY >= 0 && selY < MAX_SONG_LENGTH &&
 		   data->arranger->song[selX][selY] >= 0) {
 			setSelectedPattern(*appState, &data->arranger->song[selX][selY]);
-			seeded = true;
-		}
-		if(!seeded) {
-			for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS && (*appState)->selectedPattern < 0; ch++) {
-				for(int row = 0; row < MAX_SONG_LENGTH; row++) {
-					if(data->arranger->song[ch][row] >= 0) {
-						setSelectedPattern(*appState, &data->arranger->song[ch][row]);
-						break;
-					}
-				}
-			}
 		}
 	}
 	data->sequencer = createSequencer(data->arranger);
