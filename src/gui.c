@@ -673,6 +673,7 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		return false;
 	}
 	PresetNameGuiNode *pn = (PresetNameGuiNode *)g->selected;
+	pn->editing = true;
 	if(isKeyJustPressed(is, KM_UP)) {
 		cycleNameChar(pn, 1);
 		return true;
