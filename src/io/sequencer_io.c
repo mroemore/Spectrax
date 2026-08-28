@@ -40,9 +40,9 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 	fwrite(&bpm, sizeof(int), 1, file);
 	fwrite(&arranger->playing, sizeof(int), 1, file);
 	// fwrite(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
-	// V2: per-channel preset slot index (added after playing, before song).
-	fwrite(arranger->channelSlots, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
+	// V2: song block written first, then per-channel preset slot index after song.
 	fwrite(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file);
+	fwrite(arranger->channelSlots, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
 
 	fclose(file);
 	return SEQ_OK;
@@ -140,6 +140,13 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 	// 	printf("error voicetypes\n");
 	// 	return SEQ_ERROR_READ;
 	// }
+	if(fread(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file) != MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH) {
+		fclose(file);
+		printf("error reading arranger data.\n");
+
+		return SEQ_ERROR_READ;
+	}
+
 	if(is_v2) {
 		if(fread(arranger->channelSlots, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
 			fclose(file);
@@ -151,12 +158,6 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 		for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 			arranger->channelSlots[i] = 0;
 		}
-	}
-	if(fread(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file) != MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH) {
-		fclose(file);
-		printf("error reading arranger data.\n");
-
-		return SEQ_ERROR_READ;
 	}
 
 	fclose(file);
