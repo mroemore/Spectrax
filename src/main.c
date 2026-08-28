@@ -468,6 +468,23 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	}
 	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
 	printf("arranger/pattern load result: %i\n", loadstate);
+	/* Re-apply the per-channel preset the song file asked for, if the bank still
+	 * holds a patch at that slot index. SEQ1 (legacy) files store channelSlots
+	 * all-zero, which fall through the guard and preserve the channel-0 default
+	 * patch that createVoiceManager installed. rebuildVoicesForInstrument is
+	 * required because applyInstrumentPreset frees and rebuilds the instrument's
+	 * paramList / envelope / operator / modSettings arrays. */
+	if(data->voiceManager) {
+		VoiceManager *vm = data->voiceManager;
+		PresetBank *pb = &data->presetBank;
+		for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+			int slot = data->arranger->channelSlots[ch];
+			if(slot >= 0 && slot < pb->presetCount) {
+				applyInstrumentPreset(vm->instruments[ch], pb->patches[slot]);
+				rebuildVoicesForInstrument(vm, vm->instruments[ch]);
+			}
+		}
+	}
 	/* Seed selectedPattern from the arranger's restored selection so Shift+Right
 	 * reaches the pattern screen immediately at startup. loadSequencerState
 	 * restores arranger->selected_x/selected_y, but selectedPattern itself is

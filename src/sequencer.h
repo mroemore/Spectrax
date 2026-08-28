@@ -50,6 +50,7 @@ typedef struct
 	TempoSettings tempoSettings;
 	int playing;
 	int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
+	int channelSlots[MAX_SEQUENCER_CHANNELS];
 	AppstateCallback onCellSelect;
 	AppstateCallback onPatternSelection;
 	VoiceManager *vm;

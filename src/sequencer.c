@@ -76,6 +76,7 @@ Arranger *createArranger(Settings *settings, VoiceManager *vm, ApplicationState 
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		arranger->playhead_indices[i] = 0;
+		arranger->channelSlots[i] = 0;
 	}
 	printf("set playhead indices.\n");
 

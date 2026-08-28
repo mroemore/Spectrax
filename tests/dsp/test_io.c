@@ -193,6 +193,15 @@ static int make_seq_env(SeqEnv *e, float initialBpm, int patternCount) {
     return 0;
 }
 
+/* Free everything make_seq_env allocated. */
+static void free_seq_env(SeqEnv *e) {
+    if (!e) return;
+    if (e->arranger) { free(e->arranger); e->arranger = NULL; }
+    if (e->patterns) { free(e->patterns); e->patterns = NULL; }
+    if (e->bpm)      { free(e->bpm);      e->bpm = NULL; }
+    if (e->pl)       { free(e->pl);       e->pl = NULL; }
+}
+
 /* ---- preset tests ------------------------------------------------------ */
 
 static int test_save_preset_ok(void) {
@@ -364,8 +373,8 @@ static int test_save_sequencer_ok(void) {
     /* Magic headers: SEQ1 at 0, PATT at 4, ARRG after the pattern section. */
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
-    ASSERT_TRUE(memcmp(magic, SEQ_MAGIC_HEADER, 4) == 0,
-                "sequence file must start with SEQ1 magic");
+    ASSERT_TRUE(memcmp(magic, SEQ_MAGIC_HEADER_V2, 4) == 0,
+                "sequence file must start with SEQ2 magic (V2 = channelSlots present)");
     {
         FILE *f = fopen(path, "rb");
         if (!f) return 1;
@@ -382,13 +391,14 @@ static int test_save_sequencer_ok(void) {
         fclose(f);
     }
 
-    /* Exact serialised size, computed from the save layout. */
+    /* Exact serialised size, computed from the save layout (SEQ2 / V2). */
     long long expected =
-        4 + 4 + (long long)sizeof(int)                       /* SEQ1, PATT, pattern_count */
+        4 + 4 + (long long)sizeof(int)                       /* SEQ2, PATT, pattern_count */
         + 4 + (long long)(MAX_SEQUENCE_LENGTH * NOTE_INFO_SIZE * sizeof(int)) /* one pattern */
         + 4                                                 /* ARRG */
         + (long long)(MAX_SEQUENCER_CHANNELS * sizeof(int))  /* playhead_indices */
         + 6LL * (long long)sizeof(int)                       /* enabled, selx, sely, loop, bpm, playing */
+        + (long long)(MAX_SEQUENCER_CHANNELS * sizeof(int))  /* channelSlots (V2) */
         + (long long)(MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH * sizeof(int)); /* song */
     ASSERT_EQ(file_size(path), expected);
 
@@ -496,6 +506,133 @@ static int test_load_sequencer_truncated(void) {
               SEQ_ERROR_READ);
     remove(path);
     printf("PASS test_load_sequencer_truncated\n");
+    return 0;
+}
+
+/* ---- per-channel slot assignment tests (Task 4) ------------------------ */
+
+/* Per-channel slot indices round-trip through a SEQ2 project file.
+ * make_seq_env() builds a SeqEnv; we set a few slots, save, load into a
+ * freshly calloc'd Arranger, and confirm the saved values come back. */
+static int test_seq_channel_slots_roundtrip(void) {
+    ensure_tmp_dirs();
+    SeqEnv e;
+    ASSERT_EQ(make_seq_env(&e, 120.0f, 1), 0);
+    e.arranger->channelSlots[0] = 2;
+    e.arranger->channelSlots[1] = 5;
+    e.arranger->channelSlots[2] = 0;
+    e.arranger->channelSlots[3] = 1;
+    const char *f = TMP_DIR "seqslot.sng";
+    remove(f);
+    ASSERT_EQ(saveSequencerState(f, e.arranger, e.patterns), SEQ_OK);
+
+    Arranger arr2;
+    PatternList pl2;
+    memset(&arr2, 0, sizeof(arr2));
+    memset(&pl2, 0, sizeof(pl2));
+    /* Load needs a valid bpm Parameter to land in; use make_seq_env to set
+     * one up, then drop the arranger+patternList slots and reuse the bpm. */
+    SeqEnv dst;
+    ASSERT_EQ(make_seq_env(&dst, 0.0f, 0), 0);
+    arr2.tempoSettings.bpm = dst.arranger->tempoSettings.bpm;
+    pl2 = *dst.patterns; /* keep dst.patterns zeroed for the loader */
+    memset(dst.arranger->channelSlots, 0x7F, sizeof(dst.arranger->channelSlots)); /* sentinel */
+    ASSERT_EQ(loadSequencerState(f, &arr2, &pl2), SEQ_OK);
+
+    ASSERT_EQ(arr2.channelSlots[0], 2);
+    ASSERT_EQ(arr2.channelSlots[1], 5);
+    ASSERT_EQ(arr2.channelSlots[2], 0);
+    ASSERT_EQ(arr2.channelSlots[3], 1);
+
+    /* Make sure the rest of the array is also sane (zero where unset). */
+    ASSERT_EQ(arr2.channelSlots[7], 0);
+
+    remove(f);
+    free(dst.arranger); free(dst.patterns); free(dst.bpm);
+    free_seq_env(&e);
+    printf("PASS test_seq_channel_slots_roundtrip\n");
+    return 0;
+}
+
+/* A hand-written SEQ1 (V1) file must still load with SEQ_OK, but every
+ * channelSlots entry is zero (V1 has no slot field). This guards the
+ * migration path: existing projects still open, with no preset assigned. */
+static int test_seq_v1_loads_with_zero_slots(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_seq_v1_zero_slots.sng";
+    remove(path);
+
+    /* Build a SEQ1 file by hand: the same layout saveSequencerState used
+     * before Task 4 (no channelSlots payload). We need a real bpm param
+     * for the loader to restore into, so allocate one. */
+    Parameter *bpm = createParameterPro(
+        createParamList(), "BPM", 0.0f, 1.0f, 1000.0f, 1.0f, 10.0f, NULL, NULL);
+    ASSERT_TRUE(bpm != NULL, "bpm param allocation");
+    Arranger arr;
+    PatternList pat;
+    memset(&arr, 0, sizeof(arr));
+    memset(&pat, 0, sizeof(pat));
+    arr.tempoSettings.bpm = bpm;
+
+    FILE *fp = fopen(path, "wb");
+    ASSERT_TRUE(fp != NULL, "open v1 seq for write");
+    ASSERT_TRUE(writeChunkHeader(fp, SEQ_MAGIC_HEADER), "v1 SEQ1 magic");
+    ASSERT_TRUE(writeChunkHeader(fp, PATTERN_SECTION), "PATT section");
+    int zero = 0;
+    fwrite(&zero, sizeof(int), 1, fp);
+    ASSERT_TRUE(writeChunkHeader(fp, ARRANGER_SECTION), "ARRG section");
+    int playheads[MAX_SEQUENCER_CHANNELS] = {0};
+    fwrite(playheads, sizeof(int), MAX_SEQUENCER_CHANNELS, fp);
+    int enabled = 1;
+    fwrite(&enabled, sizeof(int), 1, fp);
+    int selx = 0, sely = 0, loop = 0, bpmv = 120, playing = 0;
+    fwrite(&selx, sizeof(int), 1, fp);
+    fwrite(&sely, sizeof(int), 1, fp);
+    fwrite(&loop, sizeof(int), 1, fp);
+    fwrite(&bpmv, sizeof(int), 1, fp);
+    fwrite(&playing, sizeof(int), 1, fp);
+    int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
+    memset(song, -1, sizeof(song));
+    fwrite(song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, fp);
+    fclose(fp);
+
+    /* Load — should succeed with SEQ_OK. */
+    ASSERT_EQ(loadSequencerState(path, &arr, &pat), SEQ_OK);
+
+    /* All channelSlots default to 0 under V1. */
+    int any_nonzero = 0;
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        if (arr.channelSlots[i] != 0) any_nonzero = 1;
+    }
+    ASSERT_TRUE(!any_nonzero, "V1 load must zero every channelSlots entry");
+
+    /* And the rest still loads: bpm is 120. */
+    ASSERT_NEAR(bpm->baseValue, 120.0f, 0.001f);
+
+    remove(path);
+    printf("PASS test_seq_v1_loads_with_zero_slots\n");
+    return 0;
+}
+
+/* Save file must start with the SEQ2 magic (V2 format marker). The brief
+ * is explicit: V2 files carry channelSlots, V1 files do not. */
+static int test_save_sequencer_seq2_magic(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_seq_seq2_magic.sng";
+    remove(path);
+
+    SeqEnv e;
+    ASSERT_EQ(make_seq_env(&e, 120.0f, 1), 0);
+    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns), SEQ_OK);
+
+    char magic[4];
+    ASSERT_EQ(read_magic(path, magic), 0);
+    ASSERT_TRUE(memcmp(magic, SEQ_MAGIC_HEADER_V2, 4) == 0,
+                "SEQ2 magic must prefix every saved .sng");
+
+    remove(path);
+    free_seq_env(&e);
+    printf("PASS test_save_sequencer_seq2_magic\n");
     return 0;
 }
 
@@ -638,10 +775,13 @@ int main(void) {
     failed |= test_load_sequencer_missing();
     failed |= test_load_sequencer_bad_magic();
     failed |= test_load_sequencer_truncated();
+    failed |= test_seq_channel_slots_roundtrip();
+    failed |= test_seq_v1_loads_with_zero_slots();
+    failed |= test_save_sequencer_seq2_magic();
     failed |= test_settings_roundtrip();
     failed |= test_settings_missing();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 17, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 20, failed ? ">=1 failed" : "all passed");
     return failed;
 }

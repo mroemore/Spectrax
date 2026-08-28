@@ -9,6 +9,7 @@
 #include "sample.h"
 
 #define SEQ_MAGIC_HEADER "SEQ1"
+#define SEQ_MAGIC_HEADER_V2 "SEQ2"
 #define PATTERN_SECTION "PATT"
 #define ARRANGER_SECTION "ARRG"
 #define PRESET_MAGIC_HEADER "IPBH"
