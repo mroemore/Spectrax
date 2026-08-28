@@ -629,17 +629,75 @@ void drawWrapperNode(void *self) {
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, (Color){ 10, 5, 5, 255 });
 }
 
+static void drawPresetNameGuiNode(void *self) {
+	PresetNameGuiNode *pn = (PresetNameGuiNode *)self;
+	GuiNode *gn = (GuiNode *)pn;
+	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, BLACK);
+	/* copy the current name into the node once per selection */
+	int n = (int)strlen(pn->name);
+	if(n < 32) {
+		n = 32;
+	}
+	int cellW = gn->w / 32;
+	if(cellW < 4) {
+		cellW = 4;
+	}
+	for(int i = 0; i < 32; i++) {
+		int cx = gn->x + i * cellW;
+		int cy = gn->y;
+		char ch = (i < (int)strlen(pn->name)) ? pn->name[i] : ' ';
+		if(pn->editing && i == pn->cursor) {
+			DrawRectangle(cx, cy, cellW, gn->h, RED);          /* inverted cursor block */
+			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 5, 10, BLACK);
+		} else {
+			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 5, 10, RED);
+		}
+	}
+}
+
+bool isPresetNameNode(GuiNode *n) {
+	return n && n->draw == drawPresetNameGuiNode;
+}
+
+GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected) {
+	PresetNameGuiNode *pn = malloc(sizeof(PresetNameGuiNode));
+	if(!pn) {
+		return NULL;
+	}
+	GuiNode *gn = (GuiNode *)pn;
+	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "PRESET_NAME", 0, 0)) {
+		free(pn);
+		return NULL;
+	}
+	pn->inst = inst;
+	memset(pn->name, 0, sizeof(pn->name));
+	/* seed from the current preset's name so the node shows what's loaded */
+	if(inst && inst->selectedPresetIndex && inst->presetBank) {
+		int idx = getParameterValueAsInt(inst->selectedPresetIndex);
+		if(idx >= 0 && idx < inst->presetBank->presetCount) {
+			strncpy(pn->name, inst->presetBank->patches[idx].name, sizeof(pn->name) - 1);
+		}
+	}
+	pn->cursor = 0;
+	pn->editing = false;
+	gn->drawable = true;
+	gn->draw = drawPresetNameGuiNode;
+	return gn;
+}
+
 void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
 	GuiNode *presetIndex = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
 	GuiNode *pad1 = createBlankGuiNode();
+	GuiNode *nameNode = createPresetNameGuiNode(0, 0, 100, 100, inst, 0);
 	// GuiNode *savePreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
 	// GuiNode *loadPreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
 	//
 	appendItem(btnwrap, presetIndex, 1);
 	appendItem(btnwrap, pad1, 7);
+	appendItem(btnwrap, nameNode, 4);
 	appendItem(container, btnwrap, weight);
 	if(selected) {
 		g->selected = presetIndex;

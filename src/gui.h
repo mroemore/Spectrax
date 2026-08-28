@@ -119,8 +119,18 @@ typedef struct {
 	ModStrip strip;
 } ModStripGuiNode;
 
+typedef struct {
+	GuiNode base;
+	Instrument *inst;
+	char name[33];
+	int cursor;
+	bool editing;
+} PresetNameGuiNode;
+
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
 void printArrGraph();
+GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
+bool isPresetNameNode(GuiNode *n);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
 void drawSampleWaveformGuiNode(void *self);
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
