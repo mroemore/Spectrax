@@ -758,6 +758,160 @@ static int test_preset_ship_dir_migration(void) {
     return 0;
 }
 
+/* Task 5: sanitizePresetFilename must replace path/space/colon/star chars
+ * with underscores and append ".ipb". The brief fixes the exact form so
+ * callers can build <dir>/<sanitized>.ipb paths without further work. */
+static int test_sanitize_filename(void) {
+	char out[64];
+	sanitizePresetFilename("lead pad dark", out, sizeof(out));
+	ASSERT_TRUE(strcmp(out, "lead_pad_dark.ipb") == 0, "spaces -> underscores");
+	sanitizePresetFilename("UNNAMED", out, sizeof(out));
+	ASSERT_TRUE(strcmp(out, "UNNAMED.ipb") == 0, "plain name");
+	sanitizePresetFilename("a/b\\c", out, sizeof(out));
+	ASSERT_TRUE(strcmp(out, "a_b_c.ipb") == 0, "path separators stripped");
+	printf("PASS test_sanitize_filename\n");
+	return 0;
+}
+
+/* Task 5: saveInstrumentAsPreset must return PRESET_EXISTS when the
+ * sanitized .ipb file is already present in the destination directory. We
+ * build a real Instrument via init_instrument (FM, with a real PresetBank
+ * allocated by make_bank) so saveInstrumentAsPreset can call
+ * presetFromInstrument + presetNameExists + addPresetToBank end-to-end.
+ * SamplePool is NULL because FM has no sample data; init_instrument only
+ * dereferences it for VOICE_TYPE_SAMPLE. */
+static int test_save_returns_exists(void) {
+	ensure_tmp_dirs();
+	const char *dir = PRESET_DIR;
+
+	PresetBank *pb = make_bank();
+	ASSERT_TRUE(pb != NULL, "calloc PresetBank failed");
+
+	Instrument *inst = NULL;
+	init_instrument(&inst, VOICE_TYPE_FM, NULL, pb);
+	ASSERT_TRUE(inst != NULL, "init_instrument FM");
+	ASSERT_TRUE(inst->presetBank == pb, "instrument bank == pb");
+
+	const char *name = "dupe";
+
+	/* Clean any stale file from a prior aborted run so the first save
+	 * really creates the file. */
+	char clean[64];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	remove(path);
+
+	PresetFileResult r1 = saveInstrumentAsPreset(inst, name, dir);
+	ASSERT_EQ_MSG(r1, PRESET_OK, "first save ok");
+	ASSERT_EQ_MSG(pb->presetCount, 1, "bank grew by one after first save");
+	ASSERT_TRUE(strcmp(pb->patches[0].name, "dupe") == 0,
+	            "preset name stored verbatim");
+	ASSERT_TRUE(access(path, F_OK) == 0, "preset file written");
+
+	/* Same instrument + same name into the same dir → PRESET_EXISTS.
+	 * (presetFromInstrument + addPresetToBank must NOT run when EXIST.) */
+	PresetFileResult r2 = saveInstrumentAsPreset(inst, name, dir);
+	ASSERT_EQ_MSG(r2, PRESET_EXISTS, "second save returns PRESET_EXISTS");
+	ASSERT_EQ_MSG(pb->presetCount, 1,
+	              "bank unchanged after PRESET_EXISTS (no double-add)");
+
+	/* Different name in the same dir → PRESET_OK, bank grows. */
+	const char *name2 = "second";
+	char clean2[64];
+	sanitizePresetFilename(name2, clean2, sizeof(clean2));
+	char path2[512];
+	snprintf(path2, sizeof(path2), "%s%s", dir, clean2);
+	remove(path2);
+	PresetFileResult r3 = saveInstrumentAsPreset(inst, name2, dir);
+	ASSERT_EQ_MSG(r3, PRESET_OK, "different name saves ok");
+	ASSERT_EQ_MSG(pb->presetCount, 2, "bank grew by one");
+	ASSERT_TRUE(access(path2, F_OK) == 0, "second preset file written");
+
+	/* Cleanup: scrub the temp .ipb files we wrote. The PresetBank entries
+	 * reference the Preset structs inlined in patches[], which we leak
+	 * alongside pb — same shortcut other tests in this file use. */
+	remove(path);
+	remove(path2);
+	free(pb);
+	printf("PASS test_save_returns_exists\n");
+	return 0;
+}
+
+/* Task 5: presetNameExists must report membership in the in-memory
+ * PresetBank by name. Independent of the filesystem check inside
+ * saveInstrumentAsPreset — this helper only inspects the bank. */
+static int test_preset_name_exists(void) {
+	PresetBank *pb = make_bank();
+	ASSERT_TRUE(pb != NULL, "calloc PresetBank failed");
+
+	Preset p;
+	make_preset(&p, 1);
+	strncpy(p.name, "alpha", sizeof(p.name) - 1);
+	p.name[sizeof(p.name) - 1] = '\0';
+	addPresetToBank(pb, p);
+
+	make_preset(&p, 2);
+	strncpy(p.name, "beta", sizeof(p.name) - 1);
+	p.name[sizeof(p.name) - 1] = '\0';
+	addPresetToBank(pb, p);
+
+	ASSERT_TRUE(presetNameExists(pb, "alpha") == true, "alpha present");
+	ASSERT_TRUE(presetNameExists(pb, "beta") == true, "beta present");
+	ASSERT_TRUE(presetNameExists(pb, "gamma") == false, "gamma absent");
+	/* Prefix collision must NOT count — strncmp fixed-width compares the
+	 * full 32-byte name slot, not just up to the first NUL. */
+	ASSERT_TRUE(presetNameExists(pb, "alph") == false, "prefix is not a match");
+	ASSERT_TRUE(presetNameExists(pb, "") == false, "empty name not present");
+
+	free(pb);
+	printf("PASS test_preset_name_exists\n");
+	return 0;
+}
+
+/* Task 5: end-to-end — saveInstrumentAsPreset writes a file that
+ * loadPresetFile can read back. Confirms the .name field round-trips
+ * through saveInstrumentAsPreset → savePresetFile → loadPresetFile. */
+static int test_save_instrument_roundtrip(void) {
+	ensure_tmp_dirs();
+	const char *dir = PRESET_DIR;
+	const char *name = "fm_roundtrip";
+	char clean[64];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	remove(path);
+
+	PresetBank *pb = make_bank();
+	ASSERT_TRUE(pb != NULL, "calloc PresetBank failed");
+	Instrument *inst = NULL;
+	init_instrument(&inst, VOICE_TYPE_FM, NULL, pb);
+	ASSERT_TRUE(inst != NULL, "init_instrument FM");
+
+	/* tweak an FM operator so we can prove the data path copied the live
+	 * instrument's param values (not just a default-FM preset). */
+	setParameterBaseValue(inst->id.fm.ops[1]->ratio, 7.5f);
+
+	PresetFileResult r = saveInstrumentAsPreset(inst, name, dir);
+	ASSERT_EQ_MSG(r, PRESET_OK, "save ok");
+	ASSERT_EQ_MSG(pb->presetCount, 1, "bank has one preset");
+
+	PresetBank *pb2 = make_bank();
+	ASSERT_TRUE(pb2 != NULL, "calloc PresetBank 2");
+	ASSERT_EQ_MSG(loadPresetFile(path, pb2), PRESET_OK, "load ok");
+	ASSERT_EQ_MSG(pb2->presetCount, 1, "loaded bank has one preset");
+	ASSERT_TRUE(strcmp(pb2->patches[0].name, name) == 0, "name round-trips");
+	ASSERT_EQ_MSG(pb2->patches[0].voiceType, VOICE_TYPE_FM, "voiceType FM");
+	ASSERT_TRUE(pb2->patches[0].pd.fm.ops[1].ratio == 7.5f,
+	            "tweaked op ratio round-trips");
+
+	remove(path);
+	free(pb);
+	free(pb2);
+	printf("PASS test_save_instrument_roundtrip\n");
+	return 0;
+}
+
 int main(void) {
     int failed = 0;
     failed |= test_save_preset_ok();
@@ -780,8 +934,12 @@ int main(void) {
     failed |= test_save_sequencer_seq2_magic();
     failed |= test_settings_roundtrip();
     failed |= test_settings_missing();
+    failed |= test_sanitize_filename();
+    failed |= test_save_returns_exists();
+    failed |= test_preset_name_exists();
+    failed |= test_save_instrument_roundtrip();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 20, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 24, failed ? ">=1 failed" : "all passed");
     return failed;
 }

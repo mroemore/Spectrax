@@ -28,6 +28,7 @@ typedef enum {
 
 typedef enum {
 	PRESET_OK,
+	PRESET_EXISTS,
 	PRESET_ERROR_OPEN,
 	PRESET_ERROR_READ,
 	PRESET_ERROR_WRITE,

@@ -83,3 +83,57 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 	addPresetToBank(pb, preset);
 	return PRESET_OK;
 }
+
+/* Task 5: build a safe ".ipb" filename from a user-supplied preset name.
+ * Replaces characters that would break paths or shell scripts (space,
+ * forward/backslash, colon, star) with '_'. Always appends ".ipb". */
+void sanitizePresetFilename(const char *name, char *out, size_t outSize) {
+	size_t i = 0;
+	for(const char *c = name; *c && i + 5 < outSize; c++) {
+		char ch = *c;
+		if(ch == ' ' || ch == '/' || ch == '\\' || ch == ':' || ch == '*') {
+			ch = '_';
+		}
+		out[i++] = ch;
+	}
+	strcpy(out + i, ".ipb");
+}
+
+/* Task 5: scan the in-memory PresetBank for a preset whose 32-byte
+ * name slot matches `name`. Fixed-width compare (strncmp) is intentional:
+ * short names leave trailing NULs in patches[].name[], and we don't want
+ * "alpha" to match "alphabet". */
+bool presetNameExists(PresetBank *pb, const char *name) {
+	for(int i = 0; i < pb->presetCount; i++) {
+		if(strncmp(pb->patches[i].name, name, 32) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Task 5: end-to-end save path for a live Instrument. Pulls the data
+ * with presetFromInstrument, fills p.name, refuses to overwrite an
+ * existing preset (returns PRESET_EXISTS), then writes the file and
+ * records the preset in the bank's in-memory list. */
+PresetFileResult saveInstrumentAsPreset(Instrument *inst, const char *name, const char *dir) {
+	if(!inst || !name || !dir) {
+		return PRESET_ERROR_FORMAT;
+	}
+	char clean[48];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	Preset p = presetFromInstrument(inst);
+	strncpy(p.name, name, sizeof(p.name) - 1);
+	p.name[sizeof(p.name) - 1] = '\0';
+	if(presetNameExists(inst->presetBank, name)) {
+		return PRESET_EXISTS;
+	}
+	PresetFileResult r = savePresetFile(path, &p);
+	if(r != PRESET_OK) {
+		return r;
+	}
+	addPresetToBank(inst->presetBank, p);
+	return PRESET_OK;
+}
