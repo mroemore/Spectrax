@@ -1,0 +1,123 @@
+# Fixture: preset save / overwrite-modal / load-list flow.
+#
+# Exercises the three stateful preset pathways through the instrument_harness
+# under Xvfb. Drives the live input by injecting key presses into the harness
+# event queue (one frame per script line by default), so behaviour is identical
+# to a real user typing on the keyboard.
+#
+# NOTE: the script engine parses ONE step per line (tokens[0] is the op);
+# multi-key lines only run the first key. So every key is on its own line.
+#
+# Initial state after initApplication():
+#   - selection = RATIO1 (FM instrument, btnrow1)
+#   - bank      = fm1..fm5 (5 presets seeded from bin/data/instrument_presets/)
+#   - algo      = 0, all FM params at default values
+#
+# Layout reminder for btnwrap ("PRESET_CONTROLS" row, horizontal):
+#   [PRESET, pad1, PRESET_NAME, SAVE, LOAD]
+# `pad1` is a blank non-selectable spacer; selectAdjacent skips it, so
+# horizontal navigation compresses to PRESET -> PRESET_NAME -> SAVE -> LOAD.
+
+# --- Navigate from RATIO1 to PRESET_NAME ---------------------------------
+# UP from a horizontal item walks the searchUpwardsByAlignment ladder to the
+# nearest vertical container's previous sibling. From btnrow1 -> btnwrap ->
+# instwrap, the previous item is presetWrap, and selectLeaf(g, presetWrap,
+# head=false) lands on the TAIL of PRESET_CONTROLS = LOAD.
+UP
+ASSERT selected==LOAD
+
+# Two LEFTs slide LOAD -> SAVE -> PRESET_NAME.
+LEFT
+LEFT
+ASSERT selected==PRESET_NAME
+
+# --- Edit the name: change only position 0 from 'f' to 'X' ---------------
+# Cursor starts at index 0. The seeded char 'f' folds to 'F' (index 5 in the
+# uppercase table). 'X' is at index 23. Delta = (23 - 5) % 41 = 18.
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+UP
+
+# --- Save the new preset (creates a brand new bank slot) -----------------
+# START at PRESET_NAME commits the edit and runs guiSavePreset. "Xm1" does
+# not exist yet, so saveInstrumentAsPreset returns PRESET_SAVED -> adds the
+# patch to the bank and writes bin/data/instrument_presets/Xm1.ipb.
+START
+ASSERT preset==Xm1
+ASSERT file==Xm1
+ASSERT presetCount==6
+
+# --- Re-save with the SAME name to trigger the overwrite modal -----------
+# guiSavePreset calls saveInstrumentAsPreset, which returns PRESET_EXISTS
+# for "Xm1" (already in the bank). guiSetOverwritePending flips the modal
+# into MODAL_CONFIRM_OVERWRITE; the next frame's input handler intercepts
+# LEFT/RIGHT/START/SELECT before any other code can run.
+START
+
+# --- Drive the modal: NO is the safe default, so flip to YES ------------
+# LEFT (or RIGHT) toggles g_overwriteChoice. The display shows NO red by
+# default; one LEFT highlights YES red instead.
+LEFT
+
+# START commits. saveInstrumentAsPresetOverwrite replaces the existing bank
+# slot at "Xm1" without growing presetCount, so the count stays at 6.
+START
+ASSERT presetCount==6
+ASSERT preset==Xm1
+ASSERT file==Xm1
+
+# Exit the name node's edit mode so arrows navigate again (the name node
+# consumes arrows only while editing).
+SELECT
+
+# --- Open the load list --------------------------------------------------
+# DOWN from PRESET_NAME drops out of btnwrap -> presetWrap -> FM instwrap,
+# and selectLeaf(g, FM instwrap, head=true) lands on RATIO1 (btnrow1 head).
+DOWN
+# UP from RATIO1 walks back the same ladder and lands on LOAD (tail of
+# PRESET_CONTROLS) -- same path used in step 1.
+UP
+ASSERT selected==LOAD
+
+# START at LOAD fires cbOpenLoadList, which sets g_loadListActive = true.
+# While the load list is open, handlePresetUiInput routes UP/DOWN/START to
+# the list state machine; LEFT/RIGHT and other keys fall through to the
+# normal navigation handlers.
+START
+ASSERT loadListActive==1
+
+# --- Scroll the highlight, then load Xm1 ---------------------------------
+# Default highlight is 0; scroll down 2 then back up 2 to prove the scroll
+# handler runs (no crash, no off-by-one). Sorted order puts "Xm1" first
+# (uppercase 'X' < 'f' in ASCII), so highlight 0 is Xm1.
+DOWN
+DOWN
+UP
+UP
+
+# START at highlight 0 calls applyInstrumentPreset(inst, patches[0]), which
+# rebuilds the paramList and sets inst->selectedPresetIndex baseValue to 0.
+# The load-list node then calls guiCloseLoadList() -> g_loadListActive = 0.
+START
+ASSERT loadListActive==0
+
+# Sanity: the saved file is still on disk after load.
+ASSERT file==Xm1
+
+# --- Done -----------------------------------------------------------------
+QUIT

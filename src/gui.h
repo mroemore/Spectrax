@@ -170,6 +170,11 @@ void guiSetOverwritePending(const char *name);
  * this to short-circuit scene navigation while the modal is up. */
 bool guiIsModalOpen(void);
 
+/* True while the preset load-list (Task 9) is open. The scripted harness
+ * uses this to assert that the LOAD button activated the list and that
+ * START in the list closed it. */
+bool guiIsLoadListActive(void);
+
 /* Drawn from DrawGUI's SCENE_INSTRUMENT case while g_modalState != MODAL_NONE. */
 void drawPresetModal(void);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);

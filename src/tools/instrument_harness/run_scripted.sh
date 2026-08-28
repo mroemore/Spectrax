@@ -32,5 +32,14 @@ if [[ ! -x "${BIN}/instrument_harness" ]]; then
 fi
 
 cd "${BIN}"
+# The preset save/load fixture writes a real preset into the shipped preset
+# dir; remove it before AND after so the fixture stays deterministic and
+# the dir is left clean. (sanitizePresetFilename preserves case.)
+rm -f data/instrument_presets/Xm1.ipb data/instrument_presets/xm1.ipb
+set +e
 xvfb-run -a -s "-screen 0 1280x800x24" \
 	"${BIN}/instrument_harness" --script "${FIXTURE_PATH}"
+HARNESS_RC=$?
+set -e
+rm -f data/instrument_presets/Xm1.ipb data/instrument_presets/xm1.ipb
+exit ${HARNESS_RC}

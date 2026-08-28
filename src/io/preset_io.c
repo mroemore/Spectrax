@@ -9,15 +9,27 @@
 #define OLD_PRESET_DATA_OFFSET offsetof(Preset, voiceType)
 #define OLD_PRESET_SIZE (sizeof(Preset) - OLD_PRESET_DATA_OFFSET)
 
+static int cmpPresetPaths(const void *a, const void *b) {
+	const char *const *pa = a;
+	const char *const *pb = b;
+	return strcmp(*pa, *pb);
+}
 void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb) {
 	DirectoryList *dirList = createDirectoryList();
 	populateDirectoryList(dirList, dirPath);
+
+	/* Sort the directory entries so the bank order is deterministic
+	 * regardless of readdir order (the load-list UI sorts the same way). */
+	if(dirList->count > 1) {
+		qsort(dirList->file_paths, dirList->count, sizeof(char *), cmpPresetPaths);
+	}
+
 	for(int i = 0; i < dirList->count; i++) {
 		loadPresetFile(dirList->file_paths[i], pb);
 	}
+
 	freeDirectoryList(dirList);
 }
-
 PresetFileResult savePresetFile(const char *filename, Preset *preset) {
 	FILE *file = fopen(filename, "wb");
 	if(!file) {

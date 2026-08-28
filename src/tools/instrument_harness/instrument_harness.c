@@ -33,9 +33,11 @@
 
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "raylib.h"
 
@@ -48,6 +50,14 @@
 #include "voice.h"
 #include "modsystem.h"
 #include "settings.h"
+
+#include "io/preset_io.h"
+
+/* The preset save dir is hardcoded relative to cwd (see
+ * src/gui.c::guiSavePreset / cbConfirmOverwrite) — the harness
+ * runs from bin/ via run_scripted.sh, so this maps to
+ * bin/data/instrument_presets/ on disk. */
+#define HARNESS_PRESET_DIR "data/instrument_presets/"
 
 #define MAX_SCRIPT_STEPS 512
 #define MAX_SCRIPT_LINE 256
@@ -62,6 +72,11 @@ typedef enum {
 	SOP_ASSERT_ENVCOUNT, /* inst->envelopeCount == N */
 	SOP_ASSERT_MODULATORS, /* ops[op]->{fb|rat|lvl}->modulator_count == N */
 	SOP_ASSERT_SELECTED, /* currentGraph->selected->name == "NAME" */
+	SOP_ASSERT_PRESET,   /* presetBank has a patch whose name matches "NAME" */
+	SOP_ASSERT_FILE,     /* "data/instrument_presets/<sanitized>" exists on disk */
+	SOP_ASSERT_PRESETCOUNT, /* presetBank->presetCount == N */
+	SOP_ASSERT_ALGO,     /* FM selectedAlgorithm baseValue (as int) == N */
+	SOP_ASSERT_LOADLISTACTIVE, /* g_loadListActive (guiIsLoadListActive) == N */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -72,14 +87,15 @@ typedef struct {
 	union {
 		KeyMapping key; /* for SOP_KEY */
 		KeyMapping arrow; /* for SOP_EDIT_ARROW */
-		int n;          /* for SOP_FRAMES, SOP_ASSERT_ENVCOUNT, N for modulators */
+		int n;          /* for SOP_FRAMES, SOP_ASSERT_ENVCOUNT, SOP_ASSERT_PRESETCOUNT,
+		                 * SOP_ASSERT_ALGO; and N for modulators */
 		int op;         /* for SOP_ASSERT_MODULATORS: operator index 0..3 */
 		int kind;       /* for SOP_ASSERT_MODULATORS: 0=fb 1=rat 2=lvl */
 	} a;
 	union {
 		int n;          /* secondary int (modulator_count) */
 	} b;
-	char name[64];       /* for SOP_ASSERT_SELECTED */
+	char name[64];       /* for SOP_ASSERT_SELECTED, SOP_ASSERT_PRESET, SOP_ASSERT_FILE */
 } ScriptStep;
 
 typedef struct {
@@ -195,6 +211,10 @@ static int parseKeyName(const char *s, KeyMapping *out) {
  *   ASSERT envcount==<N>
  *   ASSERT modulators==(<op>,<kind>,<N>)
  *   ASSERT selected==<NAME>
+ *   ASSERT preset==<NAME>           -- presetBank has patch named NAME
+ *   ASSERT file==<NAME>             -- data/instrument_presets/<san NAME>.ipb exists
+ *   ASSERT presetCount==<N>         -- presetBank->presetCount == N
+ *   ASSERT algo==<N>                -- FM selectedAlgorithm baseValue == N
  *   QUIT
  * On any syntax error, set g_scriptState=SCRIPT_FAIL with a message and
  * let the main loop bail.
@@ -250,6 +270,12 @@ static void parseScript(const char *path) {
 			s->op = SOP_KEY; s->a.key = KM_UP; s->frames = 1;
 		} else if(strcmp(op, "DOWN") == 0) {
 			s->op = SOP_KEY; s->a.key = KM_DOWN; s->frames = 1;
+		} else if(strcmp(op, "SELECT") == 0) {
+			s->op = SOP_KEY; s->a.key = KM_SELECT; s->frames = 1;
+		} else if(strcmp(op, "START") == 0) {
+			s->op = SOP_KEY; s->a.key = KM_START; s->frames = 1;
+		} else if(strcmp(op, "FUNCTION") == 0) {
+			s->op = SOP_KEY; s->a.key = KM_FUNCTION; s->frames = 1;
 		} else if(strcmp(op, "EDIT") == 0) {
 			if(nt < 2) {
 				fclose(fp);
@@ -327,9 +353,58 @@ static void parseScript(const char *path) {
 				s->op = SOP_ASSERT_SELECTED;
 				strncpy(s->name, tokens[3], sizeof(s->name) - 1);
 				s->name[sizeof(s->name) - 1] = '\0';
+			} else if(strcmp(tokens[1], "preset") == 0) {
+				/* ASSERT preset == <NAME> : presetBank has a patch whose
+				 * name slot matches NAME (strncmp N=32, same convention
+				 * as presetNameExists in io/preset_io.c). */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT preset==<NAME>");
+					return;
+				}
+				s->op = SOP_ASSERT_PRESET;
+				strncpy(s->name, tokens[3], sizeof(s->name) - 1);
+				s->name[sizeof(s->name) - 1] = '\0';
+			} else if(strcmp(tokens[1], "file") == 0) {
+				/* ASSERT file == <NAME> : on-disk existence of
+				 * "data/instrument_presets/<sanitized NAME>.ipb".
+				 * NAME is the user-facing preset name; sanitize
+				 * mirrors preset_io.c::sanitizePresetFilename. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT file==<NAME>");
+					return;
+				}
+				s->op = SOP_ASSERT_FILE;
+				strncpy(s->name, tokens[3], sizeof(s->name) - 1);
+				s->name[sizeof(s->name) - 1] = '\0';
+			} else if(strcmp(tokens[1], "presetCount") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT presetCount==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_PRESETCOUNT;
+				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "algo") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT algo==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_ALGO;
+				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "loadListActive") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT loadListActive==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_LOADLISTACTIVE;
+				s->a.n = atoi(tokens[3]);
 			} else {
 				fclose(fp);
-				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected)", tokens[1]);
+				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive)", tokens[1]);
 				return;
 			}
 		} else if(strcmp(op, "QUIT") == 0) {
@@ -401,6 +476,71 @@ static void runAssertSelected(int lineno, const char *expected) {
 	}
 }
 
+/* Walk the in-memory preset bank looking for a patch whose 32-byte name
+ * slot matches `expected`. Mirrors presetNameExists() from preset_io.c
+ * (strncmp N=32 so short names don't get spuriously matched against
+ * longer ones). Used after a save to prove the bank was updated. */
+static void runAssertPreset(int lineno, const char *expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || !inst->presetBank) {
+		failScript(lineno, "ASSERT preset==%s: no instrument/presetBank", expected);
+		return;
+	}
+	PresetBank *pb = inst->presetBank;
+	for(int i = 0; i < pb->presetCount; i++) {
+		if(strncmp(pb->patches[i].name, expected, 32) == 0) {
+			return;
+		}
+	}
+	failScript(lineno, "ASSERT preset==%s failed: not found in bank (count=%d)",
+	           expected, pb->presetCount);
+}
+
+/* Resolve "data/instrument_presets/<sanitized NAME>.ipb" to an absolute
+ * path under the harness cwd (which run_scripted.sh cds into bin/), then
+ * check existence with stat(). sanitizePresetFilename() from preset_io.c
+ * turns "MY PATCH" into "MY_PATCH.ipb" (space -> underscore). Mirror
+ * the convention exactly so the assert agrees with what saveInstrumentAsPreset
+ * actually wrote. */
+static void runAssertFile(int lineno, const char *expected) {
+	char clean[48];
+	sanitizePresetFilename(expected, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", HARNESS_PRESET_DIR, clean);
+	struct stat st;
+	if(stat(path, &st) == 0) {
+		return;
+	}
+	failScript(lineno, "ASSERT file==%s failed: %s does not exist", expected, path);
+}
+
+static void runAssertPresetCount(int lineno, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	int got = (inst && inst->presetBank) ? inst->presetBank->presetCount : -1;
+	if(got != expected) {
+		failScript(lineno, "ASSERT presetCount==%d failed: got %d", expected, got);
+	}
+}
+
+static void runAssertAlgo(int lineno, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || inst->voiceType != VOICE_TYPE_FM || !inst->id.fm.selectedAlgorithm) {
+		failScript(lineno, "ASSERT algo==%d: no FM instrument or no algo param", expected);
+		return;
+	}
+	int got = (int)inst->id.fm.selectedAlgorithm->baseValue;
+	if(got != expected) {
+		failScript(lineno, "ASSERT algo==%d failed: got %d", expected, got);
+	}
+}
+
+static void runAssertLoadListActive(int lineno, int expected) {
+	int got = guiIsLoadListActive() ? 1 : 0;
+	if(got != expected) {
+		failScript(lineno, "ASSERT loadListActive==%d failed: got %d", expected, got);
+	}
+}
+
 /* Zero the keys array; used as the resting state between scripted events. */
 static void clearInjectedKeys(InputState *state) {
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
@@ -453,6 +593,21 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_SELECTED:
 			runAssertSelected(s->lineno, s->name);
+			break;
+		case SOP_ASSERT_PRESET:
+			runAssertPreset(s->lineno, s->name);
+			break;
+		case SOP_ASSERT_FILE:
+			runAssertFile(s->lineno, s->name);
+			break;
+		case SOP_ASSERT_PRESETCOUNT:
+			runAssertPresetCount(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_ALGO:
+			runAssertAlgo(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_LOADLISTACTIVE:
+			runAssertLoadListActive(s->lineno, s->a.n);
 			break;
 		default:
 			break;

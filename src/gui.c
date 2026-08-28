@@ -780,6 +780,9 @@ void drawPresetModal(void) {
 
 #define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
 static int charIndex(char c) {
+	if(c >= 'a' && c <= 'z') {
+		c -= 32;
+	}
 	for(int i = 0; i < (int)strlen(NAME_CHARS); i++) {
 		if(NAME_CHARS[i] == c) {
 			return i;
@@ -794,6 +797,19 @@ static void cycleNameChar(PresetNameGuiNode *pn, int delta) {
 	idx = (idx + delta + count) % count;
 	pn->name[pn->cursor] = NAME_CHARS[idx];
 }
+
+static void commitPresetName(PresetNameGuiNode *pn) {
+	/* trim + default, then run the save flow (overwrite check happens here) */
+	if(strlen(pn->name) == 0 || strspn(pn->name, " ") == strlen(pn->name)) {
+		strncpy(pn->name, "UNNAMED", sizeof(pn->name) - 1);
+	}
+	pn->editing = false;
+	guiSavePreset(pn->inst, pn->name); /* opens the overwrite modal if EXISTS */
+}
+
+/* Forward decls so handlePresetUiInput can activate the SAVE/LOAD buttons. */
+static void cbFocusNameNode(Parameter *p, float v);
+static void cbOpenLoadList(Parameter *p, float v);
 
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	/* Task 8: while the overwrite modal is up we consume ALL input and
@@ -895,11 +911,44 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 
 	(void)inst;
 	Graph *g = getSelectedInstGraph();
-	if(!g || !g->selected || !isPresetNameNode(g->selected)) {
+	GuiNode *sel = (g) ? g->selected : NULL;
+	/* START on a preset action button (SAVE/LOAD) activates it. The button
+	 * nodes fire their callback via the KM_EDIT arrow path elsewhere; this
+	 * gives them a bare-activate action that matches the arcade controls. */
+	if(sel && isKeyJustPressed(is, KM_START)) {
+		if(sel->callback == cbOpenLoadList || sel->callback == cbFocusNameNode) {
+			sel->callback(sel->p, 0.0f);
+			return true;
+		}
+	}
+	/* Track the last name node the selection sat on. A FRESH selection of
+	 * the name node enters edit mode (arrows edit the name); once the user
+	 * exits (KM_SELECT) the arrows navigate normally again and the flag
+	 * resets when the selection moves off the node. */
+	static GuiNode *lastNameNode = NULL;
+	if(!sel || !isPresetNameNode(sel)) {
+		lastNameNode = NULL;
 		return false;
 	}
-	PresetNameGuiNode *pn = (PresetNameGuiNode *)g->selected;
-	pn->editing = true;
+	PresetNameGuiNode *pn = (PresetNameGuiNode *)sel;
+	if(lastNameNode != sel) {
+		pn->editing = true;
+	}
+	lastNameNode = sel;
+
+	if(!pn->editing) {
+		/* Exited edit mode: KM_START commits, KM_SELECT re-arms nothing,
+		 * and arrows fall through to normal navigation. */
+		if(isKeyJustPressed(is, KM_START)) {
+			commitPresetName(pn);
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_SELECT)) {
+			return true;
+		}
+		return false;
+	}
+
 	if(isKeyJustPressed(is, KM_UP)) {
 		cycleNameChar(pn, 1);
 		return true;
@@ -919,10 +968,7 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	if(isKeyJustPressed(is, KM_START)) {
 		/* trim + default, then run the save flow (overwrite check happens here) */
 		pn->editing = false;
-		if(strlen(pn->name) == 0 || strspn(pn->name, " ") == strlen(pn->name)) {
-			strncpy(pn->name, "UNNAMED", sizeof(pn->name) - 1);
-		}
-		guiSavePreset(pn->inst, pn->name); /* opens the overwrite modal if EXISTS */
+		commitPresetName(pn);
 		return true;
 	}
 	if(isKeyJustPressed(is, KM_SELECT)) {
@@ -968,7 +1014,7 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 		return NULL;
 	}
 	GuiNode *gn = (GuiNode *)pn;
-	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "PRESET_NAME", 0, 0)) {
+	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "PRESET_NAME", 1, 0)) {
 		free(pn);
 		return NULL;
 	}
