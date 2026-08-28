@@ -12,6 +12,7 @@
 #define PATTERN_SECTION "PATT"
 #define ARRANGER_SECTION "ARRG"
 #define PRESET_MAGIC_HEADER "IPBH"
+#define PRESET_MAGIC_HEADER_V2 "IPB2"
 
 #ifdef _WIN32
 #define CloseWindow RLCloseWindow

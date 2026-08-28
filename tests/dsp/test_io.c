@@ -52,6 +52,16 @@
     } \
 } while (0)
 
+#define ASSERT_EQ_MSG(actual, expected, msg) do { \
+    long long _a = (long long)(actual); \
+    long long _e = (long long)(expected); \
+    if (_a != _e) { \
+        fprintf(stderr, "FAIL %s:%d: %s (expected %lld, got %lld)\n", \
+                __FILE__, __LINE__, (msg), _e, _a); \
+        return 1; \
+    } \
+} while (0)
+
 #define ASSERT_TRUE(cond, msg) do { \
     if (!(cond)) { \
         fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, (msg)); \
@@ -193,11 +203,11 @@ static int test_save_preset_ok(void) {
     make_preset(&p, 1);
     ASSERT_EQ(savePresetFile(path, &p), PRESET_OK);
 
-    /* Magic header */
+    /* Magic header (V2 = IPB2; V1 = IPBH kept for migration only) */
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
-    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER, 4) == 0,
-                "preset file must start with IPBH magic");
+    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V2, 4) == 0,
+                "preset file must start with IPB2 magic (V2 format)");
 
     /* Non-empty, exactly magic + raw struct */
     ASSERT_EQ(file_size(path), (long long)(4 + sizeof(Preset)));
@@ -531,6 +541,58 @@ static int test_settings_missing(void) {
 
 /* ---- main -------------------------------------------------------------- */
 
+/* A Preset round-trips through a V2 file with its name intact. */
+static int test_preset_name_roundtrip(void) {
+    ensure_tmp_dirs();
+    const char *f = TMP_DIR "presetdir/named.ipb";
+    remove(f); /* scrub in case a prior interrupted run left it behind */
+    Preset p;
+    make_preset(&p, 2);
+    strncpy(p.name, "lead pad", sizeof(p.name));
+    ASSERT_TRUE(savePresetFile(f, &p) == PRESET_OK, "savePresetFile V2 ok");
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(loadPresetFile(f, pb) == PRESET_OK, "loadPresetFile V2 ok");
+    ASSERT_EQ_MSG(pb->presetCount, 1, "one preset loaded");
+    ASSERT_TRUE(strcmp(pb->patches[0].name, "lead pad") == 0, "name preserved");
+    ASSERT_TRUE(pb->patches[0].pd.fm.ops[1].ratio == p.pd.fm.ops[1].ratio, "op ratio preserved");
+    free(pb);
+    remove(f);
+    printf("PASS test_preset_name_roundtrip\n");
+    return 0;
+}
+
+/* A V1 file (old magic, struct without the name field) loads with the name
+ * derived from the filename and is re-saved as V2. */
+static int test_preset_v1_migration(void) {
+    ensure_tmp_dirs();
+    const char *v1 = TMP_DIR "presetdir/oldpreset.ipb";
+    remove(v1); /* scrub in case a prior interrupted run left it behind */
+    Preset p;
+    make_preset(&p, 1);
+    /* write the old format by hand: V1 header + the struct sans name field */
+    FILE *fp = fopen(v1, "wb");
+    ASSERT_TRUE(fp != NULL, "open v1 for write");
+    ASSERT_TRUE(writeChunkHeader(fp, "IPBH"), "v1 header written");
+    ASSERT_TRUE(fwrite(((char *)&p) + 33, sizeof(Preset) - 33, 1, fp) == 1, "v1 body written");
+    fclose(fp);
+
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(loadPresetFile(v1, pb) == PRESET_OK, "v1 load ok");
+    ASSERT_EQ_MSG(pb->presetCount, 1, "v1 preset loaded");
+    ASSERT_TRUE(strcmp(pb->patches[0].name, "oldpreset") == 0, "name from filename");
+
+    /* migration re-saved the file as V2: check the header magic */
+    fp = fopen(v1, "rb");
+    ASSERT_TRUE(fp != NULL, "open v1 for read");
+    ASSERT_TRUE(readAndVerifyChunkHeader(fp, "IPB2"), "file now V2 after migration");
+    fclose(fp);
+
+    free(pb);
+    remove(v1);
+    printf("PASS test_preset_v1_migration\n");
+    return 0;
+}
+
 int main(void) {
     int failed = 0;
     failed |= test_save_preset_ok();
@@ -540,6 +602,8 @@ int main(void) {
     failed |= test_load_preset_truncated();
     failed |= test_load_presets_from_directory();
     failed |= test_directory_list();
+    failed |= test_preset_name_roundtrip();
+    failed |= test_preset_v1_migration();
     failed |= test_save_sequencer_ok();
     failed |= test_sequencer_roundtrip();
     failed |= test_load_sequencer_missing();
@@ -549,6 +613,6 @@ int main(void) {
     failed |= test_settings_missing();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 14, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 16, failed ? ">=1 failed" : "all passed");
     return failed;
 }

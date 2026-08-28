@@ -122,6 +122,7 @@ typedef struct {
 } SamplerInstrumentData;
 
 typedef struct {
+	char name[33];
 	VoiceType voiceType;
 	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
 	int modSettingsCount;
