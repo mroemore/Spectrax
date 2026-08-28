@@ -1,9 +1,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include "preset_io.h"
 
-#define OLD_PRESET_SIZE (sizeof(Preset) - 33) /* V1 had no name field */
+/* V1 had no name field; the body starts at voiceType (offset depends on
+ * alignment of the new `name[33]` field, so use offsetof, not a literal). */
+#define OLD_PRESET_DATA_OFFSET offsetof(Preset, voiceType)
+#define OLD_PRESET_SIZE (sizeof(Preset) - OLD_PRESET_DATA_OFFSET)
 
 void loadPresetsFromDirectory(const char *dirPath, PresetBank *pb) {
 	DirectoryList *dirList = createDirectoryList();
@@ -57,7 +61,7 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 		fclose(file);
 		return PRESET_ERROR_FORMAT;
 	}
-	if(fread(((char *)&preset) + 33, OLD_PRESET_SIZE, 1, file) != 1) {
+	if(fread(((char *)&preset) + OLD_PRESET_DATA_OFFSET, OLD_PRESET_SIZE, 1, file) != 1) {
 		fclose(file);
 		return PRESET_ERROR_READ;
 	}

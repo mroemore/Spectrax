@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stddef.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -573,7 +574,10 @@ static int test_preset_v1_migration(void) {
     FILE *fp = fopen(v1, "wb");
     ASSERT_TRUE(fp != NULL, "open v1 for write");
     ASSERT_TRUE(writeChunkHeader(fp, "IPBH"), "v1 header written");
-    ASSERT_TRUE(fwrite(((char *)&p) + 33, sizeof(Preset) - 33, 1, fp) == 1, "v1 body written");
+    /* match the real V1 layout: body starts at voiceType (offsetof, not 33 — the
+     * 33-byte name field is followed by 3 bytes of padding before voiceType). */
+    size_t v1_body_off = offsetof(Preset, voiceType);
+    ASSERT_TRUE(fwrite(((char *)&p) + v1_body_off, sizeof(Preset) - v1_body_off, 1, fp) == 1, "v1 body written");
     fclose(fp);
 
     PresetBank *pb = make_bank();
@@ -593,6 +597,30 @@ static int test_preset_v1_migration(void) {
     return 0;
 }
 
+/* Loading the real shipped V1 preset directory must migrate every file:
+ * the 5 default-FM .ipb files load with names derived from their filenames.
+ * Meson runs this test with cwd == builddir, so the shipped dir is reached
+ * via ../bin/data/instrument_presets/. readdir() ordering is not guaranteed,
+ * so we locate "fm1" by name rather than assuming patches[0] is fm1. */
+static int test_preset_ship_dir_migration(void) {
+    const char *ship_dir = "../bin/data/instrument_presets/";
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(pb != NULL, "calloc PresetBank failed");
+    loadPresetsFromDirectory(ship_dir, pb);
+    ASSERT_EQ(pb->presetCount, 5);
+    int fm1_idx = -1;
+    for (int i = 0; i < pb->presetCount; i++) {
+        if (strcmp(pb->patches[i].name, "fm1") == 0) { fm1_idx = i; break; }
+    }
+    ASSERT_TRUE(fm1_idx >= 0, "fm1 present after migration (name from filename)");
+    /* a default-FM preset: voiceType FM, 4 AD env mods */
+    ASSERT_EQ_MSG(pb->patches[fm1_idx].voiceType, VOICE_TYPE_FM, "fm1 is FM");
+    ASSERT_EQ_MSG(pb->patches[fm1_idx].modSettingsCount, 4, "fm1 has 4 mods");
+    free(pb);
+    printf("PASS test_preset_ship_dir_migration\n");
+    return 0;
+}
+
 int main(void) {
     int failed = 0;
     failed |= test_save_preset_ok();
@@ -604,6 +632,7 @@ int main(void) {
     failed |= test_directory_list();
     failed |= test_preset_name_roundtrip();
     failed |= test_preset_v1_migration();
+    failed |= test_preset_ship_dir_migration();
     failed |= test_save_sequencer_ok();
     failed |= test_sequencer_roundtrip();
     failed |= test_load_sequencer_missing();
@@ -613,6 +642,6 @@ int main(void) {
     failed |= test_settings_missing();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 16, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 17, failed ? ">=1 failed" : "all passed");
     return failed;
 }
