@@ -355,17 +355,40 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	clearParamList(instrument->paramList);
 	instrument->voiceType = p.voiceType;
 	switch(p.voiceType) {
-		default:
 		case VOICE_TYPE_FM:
-			instrument->envelopeCount = 4;
-			instrument->lfoCount = 0;
 			instrument->id.fm.selectedAlgorithm = createParameterEx(instrument->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
 			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
 				instrument->id.fm.ops[i] = createOperator(instrument->paramList, 1);
+				setParameterBaseValue(instrument->id.fm.ops[i]->ratio, p.pd.fm.ops[i].ratio);
+				setParameterValue(instrument->id.fm.ops[i]->ratio, p.pd.fm.ops[i].ratio);
+				setParameterBaseValue(instrument->id.fm.ops[i]->level, p.pd.fm.ops[i].level);
+				setParameterValue(instrument->id.fm.ops[i]->level, p.pd.fm.ops[i].level);
+				setParameterBaseValue(instrument->id.fm.ops[i]->feedbackAmount, p.pd.fm.ops[i].feedbackAmount);
+				setParameterValue(instrument->id.fm.ops[i]->feedbackAmount, p.pd.fm.ops[i].feedbackAmount);
+				setParameterBaseValue(instrument->id.fm.ops[i]->outLevel, p.pd.fm.ops[i].outLevel);
+				setParameterValue(instrument->id.fm.ops[i]->outLevel, p.pd.fm.ops[i].outLevel);
 			}
-			setParameterBaseValue(instrument->id.fm.ops[1]->ratio, 2.0);
-			setParameterBaseValue(instrument->id.fm.ops[2]->ratio, 3.0);
-			setParameterBaseValue(instrument->id.fm.ops[3]->ratio, 4.0);
+			setParameterBaseValue(instrument->id.fm.selectedAlgorithm, (float)p.pd.fm.selectedAlgorithm);
+			setParameterValue(instrument->id.fm.selectedAlgorithm, (float)p.pd.fm.selectedAlgorithm);
+			break;
+		case VOICE_TYPE_SAMPLE:
+			instrument->id.sampler.sp = (instrument->vm) ? instrument->vm->samplePool : NULL;
+			instrument->id.sampler.sample = (instrument->id.sampler.sp && instrument->id.sampler.sp->sampleCount > 0) ? instrument->id.sampler.sp->samples[0] : NULL;
+			instrument->id.sampler.getSampleValue = getSampleValueFwd;
+			int sl = (instrument->id.sampler.sample) ? instrument->id.sampler.sample->length : 1;
+			int smax = (instrument->id.sampler.sp && instrument->id.sampler.sp->sampleCount > 0) ? instrument->id.sampler.sp->sampleCount - 1 : 0;
+			instrument->id.sampler.bitDepth = createParameterEx(instrument->paramList, "bitdepth", (float)p.pd.sampler.bitDepth, 8.0f, 24.0f, 1.0f, 4.0f);
+			instrument->id.sampler.sampleRate = createParameterEx(instrument->paramList, "bitrate", (float)p.pd.sampler.sampleRate, 2000.0f, 44100.0f, 100.0f, 1000.0f);
+			instrument->id.sampler.sampleIndex = createParameterPro(instrument->paramList, "sample", (float)p.pd.sampler.sampleIndex, 0, (float)smax, 1.0f, 10.0f, instrument, updateSampleReferences);
+			instrument->id.sampler.loopSample = createParameterEx(instrument->paramList, "loop", (float)p.pd.sampler.loopSample, 0, 1.0, 1.0f, 1.0f);
+			instrument->id.sampler.playbackType = createParameterPro(instrument->paramList, "playback", (float)p.pd.sampler.playbackType, 0, (float)SPT_COUNT, 1.0f, 10.0f, instrument, setSamplePlaybackFunction);
+			instrument->id.sampler.loopStartIndex = createParameterEx(instrument->paramList, "loop start", (float)p.pd.sampler.loopStartIndex, 0, (float)sl, 100.0f, 1000.0f);
+			instrument->id.sampler.loopEndIndex = createParameterEx(instrument->paramList, "loop end", (float)p.pd.sampler.loopEndIndex, 1.0f, (float)sl, 100.0f, 1000.0f);
+			break;
+		case VOICE_TYPE_BLEP:
+			instrument->id.blep.shape = createParameterEx(instrument->paramList, "shape", (float)p.pd.blep.shape, 0.0f, (float)BLEP_SHAPE_COUNT - 1, 1.0, 10.0);
+			break;
+		default:
 			break;
 	}
 	instrument->envelopeCount = 0;
@@ -377,11 +400,21 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 				initEnvelopeFromPreset(&p.modSettings[i], instrument->envelopes[instrument->envelopeCount], instrument->paramList, instrument->modList);
 				instrument->envelopeCount++;
 				break;
-			case MT_LFO:
-				instrument->lfoCount++;
+			case MT_LFO: {
+				LFO *lfo = (LFO *)malloc(sizeof(LFO));
+				if(lfo) {
+					initLfoFromPreset(&p.modSettings[i].md.lfo, lfo, instrument->paramList, instrument->modList);
+					instrument->lfoCount++;
+				}
 				break;
-			case MT_RND:
+			}
+			case MT_RND: {
+				Random *rnd = (Random *)malloc(sizeof(Random));
+				if(rnd) {
+					initRandFromPreset(&p.modSettings[i].md.rand, rnd, instrument->paramList, instrument->modList);
+				}
 				break;
+			}
 			default:
 				break;
 		}

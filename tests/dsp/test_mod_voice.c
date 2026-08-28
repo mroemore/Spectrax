@@ -619,6 +619,113 @@ static int test_preset_param_survives_apply(void) {
     return 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* Task 2 — applyInstrumentPreset fidelity (FM / sampler / BLEP /      */
+/* LFO / RND).                                                        */
+/*                                                                    */
+/* Before the fix: applyInstrumentPreset only reset count + panning    */
+/* for FM and ignored sampler / blep outright. Preset FM op data       */
+/* (ratio, level, outLevel, feedbackAmount, algorithm) was silently   */
+/* dropped, and modSettings (LFOs / RANDs) were counted but never      */
+/* materialised into modList entries. After the fix:                  */
+/*   - FM operator params reflect the preset's OperatorData          */
+/*   - Each MT_LFO preset slot creates a live LFO in modList          */
+/* ------------------------------------------------------------------ */
+
+static int test_apply_preset_writes_fm_op_data(void) {
+    /*
+     * Bug: the FM branch of applyInstrumentPreset reset op counters
+     * and recalled createOperator() (which allocates fresh params at
+     * default 1.0 / 1.0 / 0.0 / 0.0), then never wrote the preset's
+     * OperatorData into them. After applyInstrumentPreset with a known
+     * preset, every Operator's Parameter baseValue should reflect the
+     * preset's stored OperatorData, AND selectedAlgorithm should land
+     * on the preset's selectedAlgorithm int.
+     */
+    TestEnv e;
+    if (make_env(&e, 1)) return 1;
+    Instrument *inst = e.vm->instruments[0];
+
+    Preset p;
+    memset(&p, 0, sizeof(p));
+    strncpy(p.name, "task2-fm", sizeof(p.name) - 1);
+    p.voiceType = VOICE_TYPE_FM;
+    p.modSettingsCount = 0;
+    /* Distinct, easy-to-verify values for each operator slot. */
+    p.pd.fm.ops[0].ratio         = 1.5f;
+    p.pd.fm.ops[0].level         = 0.20f;
+    p.pd.fm.ops[0].outLevel      = 0.80f;
+    p.pd.fm.ops[0].feedbackAmount = 0.10f;
+    p.pd.fm.ops[1].ratio         = 3.0f;
+    p.pd.fm.ops[1].level         = 0.30f;
+    p.pd.fm.ops[1].outLevel      = 0.90f;
+    p.pd.fm.ops[1].feedbackAmount = 0.05f;
+    p.pd.fm.ops[2].ratio         = 5.0f;
+    p.pd.fm.ops[2].level         = 0.40f;
+    p.pd.fm.ops[2].outLevel      = 0.70f;
+    p.pd.fm.ops[2].feedbackAmount = 0.15f;
+    p.pd.fm.ops[3].ratio         = 7.0f;
+    p.pd.fm.ops[3].level         = 0.50f;
+    p.pd.fm.ops[3].outLevel      = 0.60f;
+    p.pd.fm.ops[3].feedbackAmount = 0.25f;
+    p.pd.fm.selectedAlgorithm = 3;
+
+    applyInstrumentPreset(inst, p);
+
+    for (int i = 0; i < MAX_FM_OPERATORS; i++) {
+        Operator *op = inst->id.fm.ops[i];
+        ASSERT_TRUE(op != NULL, "FM op allocated");
+        ASSERT_NEAR(op->ratio->baseValue,         p.pd.fm.ops[i].ratio,          0.0001f);
+        ASSERT_NEAR(op->level->baseValue,         p.pd.fm.ops[i].level,          0.0001f);
+        ASSERT_NEAR(op->outLevel->baseValue,      p.pd.fm.ops[i].outLevel,       0.0001f);
+        ASSERT_NEAR(op->feedbackAmount->baseValue, p.pd.fm.ops[i].feedbackAmount, 0.0001f);
+    }
+    ASSERT_EQ((int)inst->id.fm.selectedAlgorithm->baseValue,
+              p.pd.fm.selectedAlgorithm);
+
+    free_env(&e);
+    printf("PASS test_apply_preset_writes_fm_op_data\n");
+    return 0;
+}
+
+static int test_apply_preset_creates_lfo_mod(void) {
+    /*
+     * Bug: the modSettings loop counted MT_LFO and MT_RND entries but
+     * never created the LFO/Random or added them to modList, so the
+     * count was dead state. Fix: a slot with type=MT_LFO must (a)
+     * create an LFO via initLfoFromPreset, (b) add it to inst->modList.
+     */
+    TestEnv e;
+    if (make_env(&e, 1)) return 1;
+    Instrument *inst = e.vm->instruments[0];
+
+    int lfosBefore = inst->modList->count;
+
+    Preset p;
+    memset(&p, 0, sizeof(p));
+    strncpy(p.name, "task2-lfo", sizeof(p.name) - 1);
+    p.voiceType = VOICE_TYPE_FM;
+    /* 5th slot is the LFO (envelope 0..3 default + 1 LFO). */
+    p.modSettingsCount = 5;
+    initADPresetData(&p.modSettings[0], 0.1f, 0.2f, 0.5f, 0.5f);
+    initADPresetData(&p.modSettings[1], 0.1f, 0.2f, 0.5f, 0.5f);
+    initADPresetData(&p.modSettings[2], 0.1f, 0.2f, 0.5f, 0.5f);
+    initADPresetData(&p.modSettings[3], 0.1f, 0.2f, 0.5f, 0.5f);
+    initLfoPresetData(&p.modSettings[4], LS_SIN, 5.5f, 0.25f);
+    /* FM op fields may be junk for this test; only the LFO creation matters. */
+
+    applyInstrumentPreset(inst, p);
+
+    /* The 5th modList entry (index 4) must be an LFO. */
+    ASSERT_EQ(inst->modList->count, lfosBefore + 1);
+    ASSERT_TRUE(inst->modList->count >= 5, "enough mod slots for LFO check");
+    ASSERT_EQ((int)inst->modList->mods[4]->type, (int)MT_LFO);
+
+    free_env(&e);
+    printf("PASS test_apply_preset_creates_lfo_mod\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -628,6 +735,10 @@ int main(void) {
     fails += test_clear_paramlist_frees();
     fails += test_preset_load_rebuilds_voices();
     fails += test_preset_param_survives_apply();
+
+    /* Task 2 — applyInstrumentPreset fidelity */
+    fails += test_apply_preset_writes_fm_op_data();
+    fails += test_apply_preset_creates_lfo_mod();
 
     /* Task 10 integration suite */
     fails += test_route_to_fm_param_affects_value();
