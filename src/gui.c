@@ -13,6 +13,7 @@
 #include "notes.h"
 #include "voice.h"
 #include "io/preset_io.h"
+#include "io.h"
 
 InstrumentGui *igui;
 Graph *agui;
@@ -630,14 +631,67 @@ void drawWrapperNode(void *self) {
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, (Color){ 10, 5, 5, 255 });
 }
 
-/* Task 7: load-list active flag. guiOpenLoadList() flips this on; Task 9
- * will read it to render the file list UI. */
+/* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList
+ * by enumerating data/instrument_presets/ .ipb files, stripping the
+ * extension, and sorting alphabetically. While g_loadListActive is true,
+ * handlePresetUiInput routes UP/DOWN/START/SELECT to the load-list node
+ * regardless of which node is selected in the instrument graph. */
+#define LOADLIST_MAX 256
+#define LOADLIST_NAME_MAX 32
+typedef struct {
+	char names[LOADLIST_MAX][LOADLIST_NAME_MAX];
+	int count;
+	int highlight;
+} PresetLoadList;
+static PresetLoadList g_loadList;
 static bool g_loadListActive = false;
 
 bool guiIsLoadListActive(void) { return g_loadListActive; }
 
+/* qsort helper: compare two fixed-width name strings lexicographically. */
+static int loadListCmp(const void *a, const void *b) {
+	const char *na = (const char *)a;
+	const char *nb = (const char *)b;
+	return strncmp(na, nb, LOADLIST_NAME_MAX);
+}
+
+/* Strip the trailing ".ipb" from a filename in-place; no-op if the
+ * suffix is absent. */
+static void stripIpbExtension(char *s) {
+	size_t len = strlen(s);
+	const char *suffix = ".ipb";
+	size_t slen = strlen(suffix);
+	if(len > slen && strcmp(s + len - slen, suffix) == 0) {
+		s[len - slen] = '\0';
+	}
+}
+
 void guiOpenLoadList(void) {
+	g_loadList.count = 0;
+	g_loadList.highlight = 0;
+	DirectoryList *dl = createDirectoryList();
+	if(dl) {
+		populateDirectoryList(dl, "data/instrument_presets/");
+		for(size_t i = 0; i < dl->count && g_loadList.count < LOADLIST_MAX; i++) {
+			/* Take only the basename so we don't show the dir prefix. */
+			const char *path = dl->file_paths[i];
+			const char *slash = strrchr(path, '/');
+			const char *base = slash ? slash + 1 : path;
+			strncpy(g_loadList.names[g_loadList.count], base, LOADLIST_NAME_MAX - 1);
+			g_loadList.names[g_loadList.count][LOADLIST_NAME_MAX - 1] = '\0';
+			stripIpbExtension(g_loadList.names[g_loadList.count]);
+			g_loadList.count++;
+		}
+		freeDirectoryList(dl);
+	}
+	if(g_loadList.count > 1) {
+		qsort(g_loadList.names, (size_t)g_loadList.count, LOADLIST_NAME_MAX, loadListCmp);
+	}
 	g_loadListActive = true;
+}
+
+static void guiCloseLoadList(void) {
+	g_loadListActive = false;
 }
 
 /* Task 8: overwrite-modal state. The modal is the only modal in the app
@@ -772,6 +826,73 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		return true;
 	}
 
+	/* Task 9: while the load-list is open we hijack UP/DOWN/START/SELECT
+	 * to drive list navigation. We don't need the selected node to be
+	 * the load-list node — the LOAD button's callback already opened the
+	 * list, and we should keep routing input to it regardless of where
+	 * the user navigated in the meantime. */
+	if(g_loadListActive) {
+		if(g_loadList.count == 0) {
+			/* Nothing to load — just close on any input and fall through. */
+			guiCloseLoadList();
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_UP)) {
+			g_loadList.highlight = (g_loadList.highlight + g_loadList.count - 1) % g_loadList.count;
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_DOWN)) {
+			g_loadList.highlight = (g_loadList.highlight + 1) % g_loadList.count;
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_START)) {
+			/* Find the highlighted preset in the bank and apply it. The
+			 * name list came from the directory, so the bank's patches
+			 * are 1:1 with the displayed names. */
+			const char *want = g_loadList.names[g_loadList.highlight];
+			if(inst && inst->presetBank) {
+				for(int i = 0; i < inst->presetBank->presetCount; i++) {
+					if(strncmp(inst->presetBank->patches[i].name, want, 32) == 0) {
+						applyInstrumentPreset(inst, inst->presetBank->patches[i]);
+						/* Mirror the preset-selector callback pattern
+						 * (see cb_setInstrumentPreset): the selector param
+						 * was recreated at 0 by applyInstrumentPreset, so
+						 * write the index directly to avoid re-entering
+						 * the onChange callback. */
+						if(inst->selectedPresetIndex) {
+							inst->selectedPresetIndex->baseValue = (float)i;
+							inst->selectedPresetIndex->currentValue = (float)i;
+						}
+						if(inst->vm) {
+							rebuildVoicesForInstrument(inst->vm, inst);
+						}
+						/* NOTE: arranger->channelSlots[channel] is the
+						 * authoritative "which patch this channel uses"
+						 * slot for save/load sequencing. There's no
+						 * backref from inst or vm to the arranger, so
+						 * updating the slot from here would require a new
+						 * GUI-side getter or a vm->arranger field. We
+						 * skip it for now — loading updates the live
+						 * instrument, and the next save-song round-trip
+						 * will reconcile channelSlots when needed. */
+						break;
+					}
+				}
+			}
+			guiCloseLoadList();
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_SELECT)) {
+			/* Cancel without loading. */
+			guiCloseLoadList();
+			return true;
+		}
+		/* List is open but no relevant key was pressed — fall through
+		 * to the rest of the instrument input path so L/R navigation
+		 * (handled downstream) still works. */
+		return false;
+	}
+
 	(void)inst;
 	Graph *g = getSelectedInstGraph();
 	if(!g || !g->selected || !isPresetNameNode(g->selected)) {
@@ -870,6 +991,60 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 static void cbFocusNameNode(Parameter *p, float v) { (void)v; (void)p; /* focus handled via selection; the node is directly editable */ }
 static void cbOpenLoadList(Parameter *p, float v) { (void)v; (void)p; guiOpenLoadList(); }
 
+/* Task 9: scrollable preset-load-list node. The list contents live in
+ * the file-static g_loadList state populated by guiOpenLoadList(); this
+ * node is purely a renderer + presence-in-the-graph. Identifying the
+ * node by draw fn pointer (mirroring isPresetNameNode) lets handlePresetUiInput
+ * route input even when the graph's selected node has moved on. */
+#define LOADLIST_VISIBLE_ROWS 6
+#define LOADLIST_ROW_PX 12
+
+static void drawPresetLoadListNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, BLACK);
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 1.0f, (Color){ 80, 20, 20, 255 });
+	if(!g_loadListActive) {
+		/* Closed: render an inert placeholder so the layout doesn't
+		 * collapse in tests / harness. */
+		DrawText("(CLOSED)", gn->x + 6, gn->y + 6, 10, (Color){ 80, 30, 30, 255 });
+		return;
+	}
+	int rows = LOADLIST_VISIBLE_ROWS;
+	if(rows > g_loadList.count) {
+		rows = g_loadList.count;
+	}
+	for(int i = 0; i < rows; i++) {
+		int ry = gn->y + 4 + i * LOADLIST_ROW_PX;
+		bool isHi = (i == g_loadList.highlight);
+		if(isHi) {
+			DrawRectangle(gn->x + 2, ry - 1, gn->w - 4, LOADLIST_ROW_PX - 2, RED);
+		}
+		Color fg = isHi ? BLACK : RED;
+		const char *label = g_loadList.names[i];
+		DrawText(label, gn->x + 6, ry, 10, fg);
+	}
+}
+
+bool isPresetLoadListNode(GuiNode *n) {
+	return n && n->draw == drawPresetLoadListNode;
+}
+
+GuiNode *createPresetLoadListNode(int x, int y, int w, int h) {
+	GuiNode *gn = (GuiNode *)malloc(sizeof(GuiNode));
+	if(!gn) {
+		return NULL;
+	}
+	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "PRESET_LOADLIST", 0, 0)) {
+		free(gn);
+		return NULL;
+	}
+	gn->drawable = true;
+	gn->draw = drawPresetLoadListNode;
+	return gn;
+}
+
+
+
 void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
@@ -885,6 +1060,11 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	appendItem(btnwrap, saveBtn, 1);
 	appendItem(btnwrap, loadBtn, 1);
 	appendItem(container, btnwrap, weight);
+	/* Task 9: scrollable preset-load-list below the PRESET_CONTROLS row.
+	 * Height = 6 visible rows + 8px padding = 80px so it has room even
+	 * when closed (it shows a "(CLOSED)" placeholder then). */
+	GuiNode *loadListNode = createPresetLoadListNode(0, 0, 100, 80);
+	appendItem(container, loadListNode, weight);
 	if(selected) {
 		g->selected = presetIndex;
 	}

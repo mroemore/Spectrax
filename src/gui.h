@@ -132,6 +132,12 @@ void printArrGraph();
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
 bool isPresetNameNode(GuiNode *n);
 
+/* Task 9: scrollable preset file list. Identified by draw fn pointer
+ * via isPresetLoadListNode (same pattern as the name node). The list
+ * contents live in a static g_loadList state populated by guiOpenLoadList. */
+GuiNode *createPresetLoadListNode(int x, int y, int w, int h);
+bool isPresetLoadListNode(GuiNode *n);
+
 /* Task 7: name-entry input handler. Returns true if it consumed the input.
  * Called at the top of the instrument input path in main.c and the harness. */
 bool handlePresetUiInput(InputState *is, Instrument *inst);
