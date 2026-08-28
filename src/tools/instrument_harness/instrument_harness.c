@@ -491,6 +491,9 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 	if(!currentGraph || !currentGraph->selected) {
 		return;
 	}
+	if(handlePresetUiInput(appState->inputState, getSelectedInstInstrument())) {
+		return;
+	}
 
 	if(isKeyHeld(appState->inputState, KM_EDIT)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

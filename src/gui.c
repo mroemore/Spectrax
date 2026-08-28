@@ -12,6 +12,7 @@
 #include "modsystem.h"
 #include "notes.h"
 #include "voice.h"
+#include "io/preset_io.h"
 
 InstrumentGui *igui;
 Graph *agui;
@@ -629,6 +630,81 @@ void drawWrapperNode(void *self) {
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, (Color){ 10, 5, 5, 255 });
 }
 
+/* Task 7: load-list active flag. guiOpenLoadList() flips this on; Task 9
+ * will read it to render the file list UI. */
+static bool g_loadListActive = false;
+
+bool guiIsLoadListActive(void) { return g_loadListActive; }
+
+void guiOpenLoadList(void) {
+	g_loadListActive = true;
+}
+
+void guiSavePreset(Instrument *inst, const char *name) {
+	if(!inst || !name) {
+		return;
+	}
+	PresetFileResult r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
+	/* Task 8 will branch on PRESET_EXISTS here to open the overwrite modal. */
+	(void)r;
+}
+
+#define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
+static int charIndex(char c) {
+	for(int i = 0; i < (int)strlen(NAME_CHARS); i++) {
+		if(NAME_CHARS[i] == c) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+static void cycleNameChar(PresetNameGuiNode *pn, int delta) {
+	int idx = charIndex(pn->name[pn->cursor]);
+	int count = (int)strlen(NAME_CHARS);
+	idx = (idx + delta + count) % count;
+	pn->name[pn->cursor] = NAME_CHARS[idx];
+}
+
+bool handlePresetUiInput(InputState *is, Instrument *inst) {
+	(void)inst;
+	Graph *g = getSelectedInstGraph();
+	if(!g || !g->selected || !isPresetNameNode(g->selected)) {
+		return false;
+	}
+	PresetNameGuiNode *pn = (PresetNameGuiNode *)g->selected;
+	if(isKeyJustPressed(is, KM_UP)) {
+		cycleNameChar(pn, 1);
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_DOWN)) {
+		cycleNameChar(pn, -1);
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_LEFT)) {
+		pn->cursor = (pn->cursor + 31) % 32;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_RIGHT)) {
+		pn->cursor = (pn->cursor + 1) % 32;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_START)) {
+		/* trim + default, then run the save flow (overwrite check happens here) */
+		pn->editing = false;
+		if(strlen(pn->name) == 0 || strspn(pn->name, " ") == strlen(pn->name)) {
+			strncpy(pn->name, "UNNAMED", sizeof(pn->name) - 1);
+		}
+		guiSavePreset(pn->inst, pn->name); /* opens the overwrite modal if EXISTS */
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_SELECT)) {
+		pn->editing = false;
+		return true;
+	}
+	return false;
+}
+
 static void drawPresetNameGuiNode(void *self) {
 	PresetNameGuiNode *pn = (PresetNameGuiNode *)self;
 	GuiNode *gn = (GuiNode *)pn;
@@ -685,6 +761,9 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 	return gn;
 }
 
+static void cbFocusNameNode(Parameter *p, float v) { (void)v; (void)p; /* focus handled via selection; the node is directly editable */ }
+static void cbOpenLoadList(Parameter *p, float v) { (void)v; (void)p; guiOpenLoadList(); }
+
 void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
@@ -692,12 +771,13 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *presetIndex = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
 	GuiNode *pad1 = createBlankGuiNode();
 	GuiNode *nameNode = createPresetNameGuiNode(0, 0, 100, 100, inst, 0);
-	// GuiNode *savePreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
-	// GuiNode *loadPreset = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
-	//
+	GuiNode *saveBtn = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 0, cbFocusNameNode, (Parameter *)inst);
+	GuiNode *loadBtn = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 0, cbOpenLoadList, (Parameter *)inst);
 	appendItem(btnwrap, presetIndex, 1);
 	appendItem(btnwrap, pad1, 7);
 	appendItem(btnwrap, nameNode, 4);
+	appendItem(btnwrap, saveBtn, 1);
+	appendItem(btnwrap, loadBtn, 1);
 	appendItem(container, btnwrap, weight);
 	if(selected) {
 		g->selected = presetIndex;

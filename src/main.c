@@ -340,6 +340,9 @@ int main(void) {
 						currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
 					}
 				} else {
+					if(handlePresetUiInput(appState->inputState, getSelectedInstInstrument())) {
+						break;
+					}
 					Graph *currentGraph = getSelectedInstGraph();
 
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

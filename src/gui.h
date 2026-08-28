@@ -131,6 +131,19 @@ GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment
 void printArrGraph();
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
 bool isPresetNameNode(GuiNode *n);
+
+/* Task 7: name-entry input handler. Returns true if it consumed the input.
+ * Called at the top of the instrument input path in main.c and the harness. */
+bool handlePresetUiInput(InputState *is, Instrument *inst);
+
+/* Task 7: SAVE flow entry point. Saves the instrument as a preset under
+ * `name` in the user-presets dir. If the file already exists Task 8 will
+ * add the overwrite modal branch here. */
+void guiSavePreset(Instrument *inst, const char *name);
+
+/* Task 7: LOAD flow entry point. Task 9 will replace the stub with the
+ * load-list UI. For now it just flips a flag. */
+void guiOpenLoadList(void);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
 void drawSampleWaveformGuiNode(void *self);
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
