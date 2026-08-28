@@ -137,13 +137,35 @@ bool isPresetNameNode(GuiNode *n);
 bool handlePresetUiInput(InputState *is, Instrument *inst);
 
 /* Task 7: SAVE flow entry point. Saves the instrument as a preset under
- * `name` in the user-presets dir. If the file already exists Task 8 will
- * add the overwrite modal branch here. */
+ * `name` in the user-presets dir. On PRESET_EXISTS this opens the
+ * overwrite modal (Task 8) and the actual overwrite save happens later
+ * once the user confirms. */
 void guiSavePreset(Instrument *inst, const char *name);
 
 /* Task 7: LOAD flow entry point. Task 9 will replace the stub with the
  * load-list UI. For now it just flips a flag. */
 void guiOpenLoadList(void);
+
+/* Task 8: overwrite-modal state + API. The modal is the only modal in
+ * the app (per the brief), so we keep a tiny enum and a single pending
+ * name slot rather than a generalised modal system. */
+typedef enum {
+	MODAL_NONE,
+	MODAL_CONFIRM_OVERWRITE
+} ModalState;
+
+/* Open the overwrite modal for `name`. Called by guiSavePreset when the
+ * underlying save returns PRESET_EXISTS. The caller passes the live
+ * Instrument* through handlePresetUiInput so the modal can re-attempt the
+ * save on confirm. */
+void guiSetOverwritePending(const char *name);
+
+/* True while any modal is open. Callers in main.c / the harness can use
+ * this to short-circuit scene navigation while the modal is up. */
+bool guiIsModalOpen(void);
+
+/* Drawn from DrawGUI's SCENE_INSTRUMENT case while g_modalState != MODAL_NONE. */
+void drawPresetModal(void);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
 void drawSampleWaveformGuiNode(void *self);
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);

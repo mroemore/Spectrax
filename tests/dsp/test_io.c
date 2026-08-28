@@ -912,6 +912,76 @@ static int test_save_instrument_roundtrip(void) {
 	return 0;
 }
 
+/* Task 8: saveInstrumentAsPresetOverwrite must (1) replace the file's
+ * data with the new instrument data, (2) NOT return PRESET_EXISTS, and
+ * (3) NOT grow the bank — it replaces the existing slot at the same
+ * name. After overwrite, loading the file in a fresh bank must show the
+ * tweaked value, and presetCount must stay at 1. */
+static int test_overwrite_replaces_file_and_bank(void) {
+	ensure_tmp_dirs();
+	const char *dir = PRESET_DIR;
+	const char *name = "ow_target";
+
+	char clean[64];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	remove(path);
+
+	PresetBank *pb = make_bank();
+	ASSERT_TRUE(pb != NULL, "calloc PresetBank failed");
+	Instrument *inst = NULL;
+	init_instrument(&inst, VOICE_TYPE_FM, NULL, pb);
+	ASSERT_TRUE(inst != NULL, "init_instrument FM");
+
+	/* Initial save: op[1].ratio = 3.0 */
+	setParameterBaseValue(inst->id.fm.ops[1]->ratio, 3.0f);
+	PresetFileResult r1 = saveInstrumentAsPreset(inst, name, dir);
+	ASSERT_EQ_MSG(r1, PRESET_OK, "initial save ok");
+	ASSERT_EQ_MSG(pb->presetCount, 1, "bank has 1 preset after initial save");
+	ASSERT_TRUE(file_size(path) > 0, "file exists and is non-empty after initial save");
+
+	/* Mutate the live instrument: op[1].ratio = 9.5 — clearly different. */
+	setParameterBaseValue(inst->id.fm.ops[1]->ratio, 9.5f);
+
+	/* Plain saveInstrumentAsPreset should now refuse (PRESET_EXISTS) —
+	 * sanity check the precondition the modal guards against. */
+	PresetFileResult r_blocked = saveInstrumentAsPreset(inst, name, dir);
+	ASSERT_EQ_MSG(r_blocked, PRESET_EXISTS, "plain save refuses on duplicate");
+	ASSERT_EQ_MSG(pb->presetCount, 1,
+	              "bank unchanged after blocked save (no double-add)");
+
+	/* Now confirm via the overwrite path. */
+	PresetFileResult r2 = saveInstrumentAsPresetOverwrite(inst, name, dir);
+	ASSERT_EQ_MSG(r2, PRESET_OK, "overwrite save returns PRESET_OK");
+	ASSERT_EQ_MSG(pb->presetCount, 1,
+	              "bank still has 1 preset after overwrite (replaced, not appended)");
+	ASSERT_TRUE(file_size(path) > 0, "file still exists after overwrite");
+
+	/* Reload in a fresh bank and confirm the on-disk data reflects the
+	 * tweaked value, proving the file was actually rewritten (not just
+	 * left alone in place). */
+	PresetBank *pb2 = make_bank();
+	ASSERT_TRUE(pb2 != NULL, "calloc PresetBank 2");
+	ASSERT_EQ_MSG(loadPresetFile(path, pb2), PRESET_OK, "reload ok");
+	ASSERT_EQ_MSG(pb2->presetCount, 1, "reloaded bank has 1 preset");
+	ASSERT_TRUE(strcmp(pb2->patches[0].name, name) == 0, "name round-trips");
+	ASSERT_TRUE(pb2->patches[0].pd.fm.ops[1].ratio == 9.5f,
+	            "overwritten file contains the new ratio (file was actually rewritten)");
+
+	/* One more overwrite to make sure repeated overwrites still don't grow the bank. */
+	setParameterBaseValue(inst->id.fm.ops[1]->ratio, 1.25f);
+	PresetFileResult r3 = saveInstrumentAsPresetOverwrite(inst, name, dir);
+	ASSERT_EQ_MSG(r3, PRESET_OK, "second overwrite save returns PRESET_OK");
+	ASSERT_EQ_MSG(pb->presetCount, 1, "bank still has 1 preset after second overwrite");
+
+	remove(path);
+	free(pb);
+	free(pb2);
+	printf("PASS test_overwrite_replaces_file_and_bank\n");
+	return 0;
+}
+
 int main(void) {
     int failed = 0;
     failed |= test_save_preset_ok();
@@ -938,8 +1008,9 @@ int main(void) {
     failed |= test_save_returns_exists();
     failed |= test_preset_name_exists();
     failed |= test_save_instrument_roundtrip();
+    failed |= test_overwrite_replaces_file_and_bank();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 24, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 25, failed ? ">=1 failed" : "all passed");
     return failed;
 }

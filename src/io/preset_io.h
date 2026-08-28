@@ -13,4 +13,15 @@ void sanitizePresetFilename(const char *name, char *out, size_t outSize);
 bool presetNameExists(PresetBank *pb, const char *name);
 PresetFileResult saveInstrumentAsPreset(Instrument *inst, const char *name, const char *dir);
 
+/* Task 8: overwrite-confirmation path. Like saveInstrumentAsPreset, but:
+ *   - skips the in-bank dedup check (returns PRESET_OK even if a preset
+ *     with `name` already exists);
+ *   - replaces the existing bank slot at the same name instead of
+ *     appending, so the bank doesn't grow on overwrite;
+ *   - still writes the file in-place (savePresetFile opens with "wb",
+ *     which truncates by default).
+ * The caller (the overwrite modal) is responsible for confirming with
+ * the user before invoking this. */
+PresetFileResult saveInstrumentAsPresetOverwrite(Instrument *inst, const char *name, const char *dir);
+
 #endif

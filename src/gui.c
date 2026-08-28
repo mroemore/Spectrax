@@ -640,13 +640,88 @@ void guiOpenLoadList(void) {
 	g_loadListActive = true;
 }
 
+/* Task 8: overwrite-modal state. The modal is the only modal in the app
+ * (per the brief), so a single-state-machine + a pending-name slot is
+ * sufficient. g_overwriteChoice is the user's current YES/NO selection
+ * while the modal is up (defaults to NO = false on open). */
+static ModalState g_modalState = MODAL_NONE;
+static char g_pendingName[33];
+static bool g_overwriteChoice; /* false = NO, true = YES */
+
+void guiSetOverwritePending(const char *name) {
+	if(!name) {
+		return;
+	}
+	strncpy(g_pendingName, name, sizeof(g_pendingName) - 1);
+	g_pendingName[sizeof(g_pendingName) - 1] = '\0';
+	g_overwriteChoice = false; /* safe default = NO */
+	g_modalState = MODAL_CONFIRM_OVERWRITE;
+}
+
+bool guiIsModalOpen(void) { return g_modalState != MODAL_NONE; }
+
 void guiSavePreset(Instrument *inst, const char *name) {
 	if(!inst || !name) {
 		return;
 	}
 	PresetFileResult r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
-	/* Task 8 will branch on PRESET_EXISTS here to open the overwrite modal. */
-	(void)r;
+	if(r == PRESET_EXISTS) {
+		/* Defer the actual overwrite to the modal: the user hasn't
+		 * confirmed yet. handlePresetUiInput drives the modal and
+		 * calls saveInstrumentAsPresetOverwrite() on YES. */
+		guiSetOverwritePending(name);
+	}
+}
+
+/* Task 8: centered overlay panel for the overwrite confirmation. Drawn
+ * AFTER drawNode(...) in the SCENE_INSTRUMENT case so the modal sits on
+ * top of the underlying scene. We dim the scene with a translucent
+ * black rectangle so the panel reads as the active surface. */
+void drawPresetModal(void) {
+	if(g_modalState != MODAL_CONFIRM_OVERWRITE) {
+		return;
+	}
+	/* Scene dimmer. */
+	DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 0, 0, 0, 160 });
+
+	/* Centered panel: 280x80 in the middle of the 640x480 screen. */
+	const int pw = 280;
+	const int ph = 80;
+	const int px = (SCREEN_W - pw) / 2;
+	const int py = (SCREEN_H - ph) / 2;
+	DrawRectangleRec((Rectangle){ px, py, pw, ph }, (Color){ 30, 20, 20, 255 });
+	DrawRectangleLinesEx((Rectangle){ px, py, pw, ph }, 2.0f, (Color){ 200, 60, 60, 255 });
+
+	/* Header: OVERWRITE <name>? */
+	char header[64];
+	snprintf(header, sizeof(header), "OVERWRITE \"%s\"?", g_pendingName);
+	int headerFontSize = 16;
+	int headerW = MeasureText(header, headerFontSize);
+	DrawText(header, px + (pw - headerW) / 2, py + 10, headerFontSize, (Color){ 230, 200, 200, 255 });
+
+	/* Buttons: [YES] [NO]. Highlighted one in red, the other in grey.
+	 * Layout: split the panel vertically at pw/2; YES flush to the right
+	 * of the left half (with a 12px gap), NO flush to the left of the
+	 * right half. We only need each label's measured width to position
+	 * the text inside its half. */
+	const int btnY = py + 44;
+	const char *yesLabel = "[YES]";
+	const char *noLabel = "[NO]";
+	const int yesFont = 18;
+	const int noFont = 18;
+	const int yesW = MeasureText(yesLabel, yesFont);
+	const int yesX = px + (pw / 2) - yesW - 12;
+	const int noX = px + (pw / 2) + 12;
+	Color yesCol = g_overwriteChoice ? (Color){ 230, 60, 60, 255 } : (Color){ 120, 110, 110, 255 };
+	Color noCol = !g_overwriteChoice ? (Color){ 230, 60, 60, 255 } : (Color){ 120, 110, 110, 255 };
+	DrawText(yesLabel, yesX, btnY, yesFont, yesCol);
+	DrawText(noLabel, noX, btnY, noFont, noCol);
+
+	/* Tiny hint: L/R toggle, START confirm, SELECT cancel. */
+	const char *hint = "L/R toggle  START confirm  SELECT cancel";
+	int hintFont = 9;
+	int hintW = MeasureText(hint, hintFont);
+	DrawText(hint, px + (pw - hintW) / 2, py + ph - 14, hintFont, (Color){ 160, 140, 140, 255 });
 }
 
 #define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
@@ -667,6 +742,36 @@ static void cycleNameChar(PresetNameGuiNode *pn, int delta) {
 }
 
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
+	/* Task 8: while the overwrite modal is up we consume ALL input and
+	 * drive the modal state machine. This must run BEFORE the name-node
+	 * check so a modal doesn't accidentally drop back to name editing. */
+	if(g_modalState == MODAL_CONFIRM_OVERWRITE) {
+		if(isKeyJustPressed(is, KM_LEFT) || isKeyJustPressed(is, KM_RIGHT)) {
+			g_overwriteChoice = !g_overwriteChoice;
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_START)) {
+			if(g_overwriteChoice) {
+				/* User confirmed overwrite — actually overwrite now.
+				 * saveInstrumentAsPresetOverwrite skips the EXISTS check
+				 * and replaces the bank slot at g_pendingName. */
+				saveInstrumentAsPresetOverwrite(inst, g_pendingName, "data/instrument_presets/");
+			}
+			/* Either branch: close the modal. On NO we just drop back to
+			 * the name-edit screen so the user can change the name. */
+			g_modalState = MODAL_NONE;
+			return true;
+		}
+		if(isKeyJustPressed(is, KM_SELECT)) {
+			/* SELECT also dismisses (same as choosing NO) — handy escape. */
+			g_modalState = MODAL_NONE;
+			return true;
+		}
+		/* Consume anything else while the modal is up so the underlying
+		 * scene doesn't react to stray presses. */
+		return true;
+	}
+
 	(void)inst;
 	Graph *g = getSelectedInstGraph();
 	if(!g || !g->selected || !isPresetNameNode(g->selected)) {
@@ -1299,6 +1404,11 @@ void DrawGUI(int currentScene) {
 			// printf("i!");
 			drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 			// drawNode(instrumentGraph->root);
+			/* Task 8: overlay the overwrite modal last so it sits on top
+			 * of the instrument screen while the user is deciding. */
+			if(g_modalState != MODAL_NONE) {
+				drawPresetModal();
+			}
 			break;
 		default:
 			printf("Invalid scene, nothing to draw\n");

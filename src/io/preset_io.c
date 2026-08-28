@@ -137,3 +137,41 @@ PresetFileResult saveInstrumentAsPreset(Instrument *inst, const char *name, cons
 	addPresetToBank(inst->presetBank, p);
 	return PRESET_OK;
 }
+
+/* Task 8: overwrite-confirmation save path. Mirrors saveInstrumentAsPreset
+ * but skips the EXISTS guard AND replaces the existing bank slot at the
+ * same name instead of appending. On a missing-name slot we still append
+ * (consistent with the original behaviour: this function never errors on
+ * a duplicate, it just does the right thing either way). */
+PresetFileResult saveInstrumentAsPresetOverwrite(Instrument *inst, const char *name, const char *dir) {
+	if(!inst || !name || !dir) {
+		return PRESET_ERROR_FORMAT;
+	}
+	char clean[48];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	Preset p = presetFromInstrument(inst);
+	strncpy(p.name, name, sizeof(p.name) - 1);
+	p.name[sizeof(p.name) - 1] = '\0';
+	/* Write the file first. savePresetFile opens "wb", which truncates
+	 * an existing file in-place; no need to unlink() first. */
+	PresetFileResult r = savePresetFile(path, &p);
+	if(r != PRESET_OK) {
+		return r;
+	}
+	/* Replace the bank slot if one already exists at this name, else
+	 * append (matches saveInstrumentAsPreset for the no-prior-entry case). */
+	int replaced = 0;
+	for(int i = 0; i < inst->presetBank->presetCount; i++) {
+		if(strncmp(inst->presetBank->patches[i].name, name, 32) == 0) {
+			inst->presetBank->patches[i] = p;
+			replaced = 1;
+			break;
+		}
+	}
+	if(!replaced) {
+		addPresetToBank(inst->presetBank, p);
+	}
+	return PRESET_OK;
+}
