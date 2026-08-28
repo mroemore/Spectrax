@@ -688,6 +688,92 @@ static int test_apply_preset_writes_fm_op_data(void) {
     return 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* Task 3 — presetFromInstrument extractor + round-trip.                */
+/*                                                                    */
+/* presetFromInstrument is the reverse of applyInstrumentPreset: it   */
+/* reads a live Instrument and produces a Preset struct that, after  */
+/* save/load, applies faithfully. The test below mutates a runtime-  */
+/* built FM instrument (one runtime AD envelope added to modList)     */
+/* into a Preset, then runs that Preset through applyInstrumentPreset */
+/* on a fresh instrument and asserts every observed field is        */
+/* preserved.                                                        */
+/* ------------------------------------------------------------------ */
+
+static int test_preset_from_instrument_roundtrip(void) {
+    TestEnv e;
+    if (make_env(&e, 1)) return 1;
+    Instrument *inst = e.vm->instruments[0];
+
+    /* Snapshot the baseline (default FM preset) before mutation. */
+    int algoBefore = (int)inst->id.fm.selectedAlgorithm->baseValue;
+    float opRatio[4], opLevel[4], opOut[4], opFb[4];
+    for (int i = 0; i < MAX_FM_OPERATORS; i++) {
+        opRatio[i] = inst->id.fm.ops[i]->ratio->baseValue;
+        opLevel[i] = inst->id.fm.ops[i]->level->baseValue;
+        opOut[i]   = inst->id.fm.ops[i]->outLevel->baseValue;
+        opFb[i]    = inst->id.fm.ops[i]->feedbackAmount->baseValue;
+    }
+
+    /* Append a runtime envelope at index 4 (slot 5 in envelopes[]).
+     * createAD lives in modsystem; gui.c's addRuntimeEnvelope is NOT
+     * linked into this test binary, so we inline the same operations
+     * the brief specifies. */
+    int idx = inst->envelopeCount;
+    inst->envelopes[idx] = createAD(inst->paramList, inst->modList,
+                                    0.123f, 0.456f, "RT-3");
+    inst->envelopeCount++;
+    ASSERT_TRUE(inst->envelopes[idx] != NULL, "runtime env created");
+
+    /* Extract the preset from the live instrument. */
+    Preset out;
+    memset(&out, 0, sizeof(out));
+    out = presetFromInstrument(inst);
+    ASSERT_EQ((int)out.voiceType, (int)VOICE_TYPE_FM);
+    ASSERT_EQ(out.modSettingsCount, 5);
+    ASSERT_EQ((int)out.pd.fm.selectedAlgorithm, algoBefore);
+    for (int i = 0; i < MAX_FM_OPERATORS; i++) {
+        ASSERT_NEAR(out.pd.fm.ops[i].ratio,         opRatio[i], 0.0001f);
+        ASSERT_NEAR(out.pd.fm.ops[i].level,         opLevel[i], 0.0001f);
+        ASSERT_NEAR(out.pd.fm.ops[i].outLevel,      opOut[i],   0.0001f);
+        ASSERT_NEAR(out.pd.fm.ops[i].feedbackAmount, opFb[i],  0.0001f);
+    }
+    /* Runtime envelope lands in slot 4 as MT_ENV. */
+    ASSERT_EQ((int)out.modSettings[4].type, (int)MT_ENV);
+
+    /* Round-trip: apply the extracted preset to a fresh instrument and
+     * confirm the post-apply instrument is structurally equivalent to
+     * the source instrument we extracted from. */
+    Instrument *dst = NULL;
+    init_instrument(&dst, VOICE_TYPE_FM, e.sp, &e.pb);
+    ASSERT_TRUE(dst != NULL, "dst instrument allocated");
+    applyInstrumentPreset(dst, out);
+    ASSERT_EQ((int)dst->voiceType, (int)VOICE_TYPE_FM);
+    ASSERT_EQ(dst->envelopeCount, 5);
+    ASSERT_EQ((int)dst->id.fm.selectedAlgorithm->baseValue, algoBefore);
+    for (int i = 0; i < MAX_FM_OPERATORS; i++) {
+        ASSERT_NEAR(dst->id.fm.ops[i]->ratio->baseValue,         opRatio[i], 0.0001f);
+        ASSERT_NEAR(dst->id.fm.ops[i]->level->baseValue,         opLevel[i], 0.0001f);
+        ASSERT_NEAR(dst->id.fm.ops[i]->outLevel->baseValue,      opOut[i],   0.0001f);
+        ASSERT_NEAR(dst->id.fm.ops[i]->feedbackAmount->baseValue, opFb[i],   0.0001f);
+    }
+    /* Runtime envelope survived: the 5th slot is a live Envelope in
+     * the modList, not just a count. */
+    bool foundRT = false;
+    for (int i = 0; i < dst->modList->count; i++) {
+        if (dst->modList->mods[i]->type == MT_ENV) {
+            Envelope *env = (Envelope *)dst->modList->mods[i];
+            if (env == dst->envelopes[4]) { foundRT = true; break; }
+        }
+    }
+    ASSERT_TRUE(foundRT, "runtime envelope preserved through round-trip");
+
+    free(dst);
+    free_env(&e);
+    printf("PASS test_preset_from_instrument_roundtrip\n");
+    return 0;
+}
+
 static int test_apply_preset_creates_lfo_mod(void) {
     /*
      * Bug: the modSettings loop counted MT_LFO and MT_RND entries but
@@ -739,6 +825,9 @@ int main(void) {
     /* Task 2 — applyInstrumentPreset fidelity */
     fails += test_apply_preset_writes_fm_op_data();
     fails += test_apply_preset_creates_lfo_mod();
+
+    /* Task 3 — presetFromInstrument extractor + round-trip */
+    fails += test_preset_from_instrument_roundtrip();
 
     /* Task 10 integration suite */
     fails += test_route_to_fm_param_affects_value();

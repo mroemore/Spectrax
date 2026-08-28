@@ -442,6 +442,64 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 		(float)(instrument->presetBank->presetCount - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
 }
 
+Preset presetFromInstrument(Instrument *instrument) {
+	Preset p;
+	memset(&p, 0, sizeof(p));
+	p.voiceType = instrument->voiceType;
+	switch(instrument->voiceType) {
+		case VOICE_TYPE_FM:
+			p.pd.fm.selectedAlgorithm = getParameterValueAsInt(instrument->id.fm.selectedAlgorithm);
+			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+				p.pd.fm.ops[i].ratio = getParameterValue(instrument->id.fm.ops[i]->ratio);
+				p.pd.fm.ops[i].level = getParameterValue(instrument->id.fm.ops[i]->level);
+				p.pd.fm.ops[i].feedbackAmount = getParameterValue(instrument->id.fm.ops[i]->feedbackAmount);
+				p.pd.fm.ops[i].outLevel = getParameterValue(instrument->id.fm.ops[i]->outLevel);
+			}
+			break;
+		case VOICE_TYPE_SAMPLE:
+			p.pd.sampler.bitDepth = getParameterValueAsInt(instrument->id.sampler.bitDepth);
+			p.pd.sampler.sampleRate = getParameterValueAsInt(instrument->id.sampler.sampleRate);
+			p.pd.sampler.loopSample = getParameterValueAsInt(instrument->id.sampler.loopSample) != 0;
+			p.pd.sampler.sampleIndex = getParameterValueAsInt(instrument->id.sampler.sampleIndex);
+			p.pd.sampler.playbackType = (SamplePlaybackType)getParameterValueAsInt(instrument->id.sampler.playbackType);
+			p.pd.sampler.loopStartIndex = getParameterValueAsInt(instrument->id.sampler.loopStartIndex);
+			p.pd.sampler.loopEndIndex = getParameterValueAsInt(instrument->id.sampler.loopEndIndex);
+			break;
+		case VOICE_TYPE_BLEP:
+			p.pd.blep.shape = getParameterValueAsInt(instrument->id.blep.shape);
+			break;
+		default:
+			break;
+	}
+	int n = instrument->modList ? instrument->modList->count : 0;
+	if(n > MAX_ENVELOPES + MAX_LFOS) {
+		n = MAX_ENVELOPES + MAX_LFOS;
+	}
+	p.modSettingsCount = n;
+	for(int i = 0; i < n; i++) {
+		Mod *mod = instrument->modList->mods[i];
+		p.modSettings[i].type = mod->type;
+		switch(mod->type) {
+			case MT_ENV:
+				saveEnvPreset(&p.modSettings[i].md.env, (Envelope *)mod);
+				break;
+			case MT_LFO:
+				saveLfoPreset(&p.modSettings[i].md.lfo, (LFO *)mod);
+				break;
+			case MT_RND:
+				saveRandPreset(&p.modSettings[i].md.rand, (Random *)mod);
+				break;
+			default:
+				break;
+		}
+	}
+	if(instrument->selectedPresetIndex) {
+		/* p.name is deliberately left empty here — the save plumbing (Task 5)
+		 * fills it with the name the user typed. */
+	}
+	return p;
+}
+
 void cb_setInstrumentPreset(void *instrument) {
 	Instrument *i = (Instrument *)instrument;
 	int presetIndex = getParameterValueAsInt(i->selectedPresetIndex);

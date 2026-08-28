@@ -255,6 +255,7 @@ OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement
 
 void initDefaultFmPreset(Preset *p);
 void applyInstrumentPreset(Instrument *instrument, Preset p);
+Preset presetFromInstrument(Instrument *instrument);
 void cb_setInstrumentPreset(void *instrument);
 void initPresetBank(PresetBank *pb);
 void addPresetToBank(PresetBank *pb, Preset p);
