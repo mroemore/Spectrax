@@ -81,6 +81,16 @@ ASSERT presetCount==6
 ASSERT preset==Xm1
 ASSERT file==Xm1
 
+# --- Re-save to reopen the modal, then CANCEL (SELECT) ------------------
+# The name node is still selected + editing after the overwrite. Committing
+# "Xm1" again reopens the modal; SELECT cancels it (modal closes, no
+# overwrite happens, bank + file untouched).
+START
+SELECT
+ASSERT presetCount==6
+ASSERT preset==Xm1
+ASSERT file==Xm1
+
 # Exit the name node's edit mode so arrows navigate again (the name node
 # consumes arrows only while editing).
 SELECT

@@ -924,16 +924,20 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	/* Track the last name node the selection sat on. A FRESH selection of
 	 * the name node enters edit mode (arrows edit the name); once the user
 	 * exits (KM_SELECT) the arrows navigate normally again and the flag
-	 * resets when the selection moves off the node. */
+	 * resets when the selection moves off the node OR the graph is rebuilt
+	 * (a stale node pointer would otherwise falsely suppress re-arm). */
+	static Graph *lastNameGraph = NULL;
 	static GuiNode *lastNameNode = NULL;
 	if(!sel || !isPresetNameNode(sel)) {
+		lastNameGraph = NULL;
 		lastNameNode = NULL;
 		return false;
 	}
 	PresetNameGuiNode *pn = (PresetNameGuiNode *)sel;
-	if(lastNameNode != sel) {
+	if(lastNameGraph != g || lastNameNode != sel) {
 		pn->editing = true;
 	}
+	lastNameGraph = g;
 	lastNameNode = sel;
 
 	if(!pn->editing) {
