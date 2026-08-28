@@ -763,9 +763,27 @@ static int test_clear_null_and_empty(void) {
 	return 0;
 }
 
+static int test_generated_output_survives_apply(void) {
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+	triggerEnvelope(env);
+	processModulations(pl, ml, 0.016f);
+	/* The generate pass wrote a non-zero level into the envelope output; the
+	 * apply pass must not clobber mod source outputs back to their baseValue.
+	 * The instrument-page mod strip reads exactly these outputs, so a clobber
+	 * makes it show nothing while a note plays. */
+	ASSERT_TRUE(getParameterValue(env->base.output) > 0.0f,
+	            "envelope output survives the processModulations apply pass");
+	teardown(pl, ml);
+	printf("PASS test_generated_output_survives_apply\n");
+	return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
+    fails += test_generated_output_survives_apply();
     fails += test_create_lists();
     fails += test_add_modulation_wiring();
     fails += test_process_modulation_arithmetic();
