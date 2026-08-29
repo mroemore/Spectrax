@@ -544,12 +544,15 @@ void drawDialGuiNode(void *self) {
 	if(!gn->p) {
 		return;
 	}
+	/* Use baseValue (unmodulated) so the dial reflects the user's actual
+	 * setting rather than the envelope-modulated currentValue. The dial
+	 * is a control surface; the modulated value is for the audio path. */
 	char paramValue[50];
-	snprintf(paramValue, 50, "%05.2f", gn->p->currentValue);
+	snprintf(paramValue, 50, "%05.2f", gn->p->baseValue);
 	float range = gn->p->maxValue - gn->p->minValue;
 	float angle = 0.0f;
 	if(range > 0.0f) {
-		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+		angle = (gn->p->baseValue - gn->p->minValue) / (range / 100) * 2.7;
 	}
 	int tmpx = gn->x;
 	int tmpy = gn->y;
@@ -621,12 +624,13 @@ void drawDiscreteDialGuiNode(void *self) {
 	if(!gn->p) {
 		return;
 	}
+	/* baseValue (unmodulated) -- see drawDialGuiNode comment. */
 	char paramValue[50];
-	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
+	snprintf(paramValue, 50, "%i", (int)gn->p->baseValue);
 	float range = gn->p->maxValue - gn->p->minValue;
 	float angle = 0.0f;
 	if(range > 0.0f) {
-		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
+		angle = (gn->p->baseValue - gn->p->minValue) / (range / 100) * 2.7;
 	}
 	int tmpx = gn->x;
 	int tmpy = gn->y;
@@ -1141,6 +1145,34 @@ static void commitPresetName(PresetNameGuiNode *pn) {
 /* Forward decls so handlePresetUiInput can activate the SAVE/LOAD buttons. */
 static void cbFocusNameNode(void *ctx);
 static void cbOpenLoadList(void *ctx);
+static void cbPresetPrev(void *ctx);
+static void cbPresetNext(void *ctx);
+
+/* Task 7+: PREV/NEXT action buttons. Activate on KM_EDIT (same as
+ * SAVE/LOAD). The Instrument is the ctx. setParameterBaseValue triggers
+ * selectedPresetIndex's onChange (cb_setInstrumentPreset) which applies
+ * the new preset and rebuilds voices. */
+static void cbPresetPrev(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	if(!inst || !inst->selectedPresetIndex || !inst->presetBank) {
+		return;
+	}
+	int cur = getParameterValueAsInt(inst->selectedPresetIndex);
+	if(cur > 0) {
+		setParameterBaseValue(inst->selectedPresetIndex, (float)(cur - 1));
+	}
+}
+
+static void cbPresetNext(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	if(!inst || !inst->selectedPresetIndex || !inst->presetBank) {
+		return;
+	}
+	int cur = getParameterValueAsInt(inst->selectedPresetIndex);
+	if(cur < inst->presetBank->presetCount - 1) {
+		setParameterBaseValue(inst->selectedPresetIndex, (float)(cur + 1));
+	}
+}
 
 /* Task 4: number of valid cursor slots for the preset name node. name[33]
  * holds 32 chars + 1 NUL. effectiveNameLen returns the exclusive upper bound
@@ -1288,10 +1320,12 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	(void)inst;
 	Graph *g = getSelectedInstGraph();
 	GuiNode *sel = (g) ? g->selected : NULL;
-	/* START on a preset action button (SAVE/LOAD) activates it. The button
-	 * nodes fire their callback via the KM_EDIT arrow path elsewhere; this
-	 * gives them a bare-activate action that matches the arcade controls. */
-	if(sel && isKeyJustPressed(is, KM_START)) {
+	/* KM_EDIT (z) on a preset action button (SAVE/LOAD) activates it.
+	 * KM_START deliberately does NOT fire buttons -- START is reserved
+	 * for modal confirmation/cancel semantics. Holding KM_EDIT to fire
+	 * the button mirrors the dial-edit gesture (KM_EDIT + arrow edits
+	 * the selected dial); here KM_EDIT alone activates the button. */
+	if(sel && isKeyJustPressed(is, KM_EDIT)) {
 		/* Action buttons (SAVE/LOAD) store their handler in `actionCb` (an
 		 * ActionCallback, signature `void(void*)`), not `callback` (which is
 		 * reserved for OnPressCallback on dial nodes). */
@@ -1378,6 +1412,12 @@ static void drawPresetNameGuiNode(void *self) {
 		bg = (Color){ 10, 50, 10, 255 };
 	}
 	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, bg);
+	/* Selected-but-not-editing outline: the "you can press z to edit me"
+	 * affordance. The inverted cursor block already covers the editing
+	 * state, so the outline is only drawn outside edit mode. */
+	if(gn->selected && !pn->editing) {
+		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0f, (Color){ 200, 80, 60, 255 });
+	}
 	/* copy the current name into the node once per selection */
 	int n = (int)strlen(pn->name);
 	if(n < 32) {
@@ -1544,16 +1584,23 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
-	GuiNode *presetIndex = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
+	/* PREV/NEXT action buttons replace the old PRESET dial. The dial
+	 * had display problems (it showed the modulated currentValue and
+	 * swung wildly when the algo param got a coarse >-range increment)
+	 * and its left/right increment semantics weren't obvious in the
+	 * arcade UX. Two action buttons + a KM_EDIT fire is unambiguous. */
+	GuiNode *prevBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PREV", selected, cbPresetPrev, inst);
 	GuiNode *pad1 = createBlankGuiNode();
 	GuiNode *nameNode = createPresetNameGuiNode(0, 0, 100, 100, inst, 0);
 	GuiNode *saveBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 0, cbFocusNameNode, inst);
 	GuiNode *loadBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 0, cbOpenLoadList, inst);
-	appendItem(btnwrap, presetIndex, 1);
+	GuiNode *nextBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "NEXT", 0, cbPresetNext, inst);
+	appendItem(btnwrap, prevBtn, 1);
 	appendItem(btnwrap, pad1, 7);
 	appendItem(btnwrap, nameNode, 4);
 	appendItem(btnwrap, saveBtn, 1);
 	appendItem(btnwrap, loadBtn, 1);
+	appendItem(btnwrap, nextBtn, 1);
 	appendItem(container, btnwrap, weight);
 	/* Task 7: the preset load list is no longer a child node in the
 	 * PRESET controls row. It now lives as its own overlay Layer,
@@ -1562,7 +1609,7 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	 * (loadBtn) is still here so the user can request the list, but
 	 * the list itself is rendered in the overlay. */
 	if(selected) {
-		g->selected = presetIndex;
+		g->selected = prevBtn;
 	}
 }
 

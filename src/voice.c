@@ -364,7 +364,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	instrument->voiceType = p.voiceType;
 	switch(p.voiceType) {
 		case VOICE_TYPE_FM:
-			instrument->id.fm.selectedAlgorithm = createParameterEx(instrument->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
+			instrument->id.fm.selectedAlgorithm = createParameterEx(instrument->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 1.0f);
 			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
 				instrument->id.fm.ops[i] = createOperator(instrument->paramList, 1);
 				setParameterBaseValue(instrument->id.fm.ops[i]->ratio, p.pd.fm.ops[i].ratio);
@@ -651,7 +651,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 		case VOICE_TYPE_FM:
 			(*instrument)->envelopeCount = 4;
 			(*instrument)->lfoCount = 0;
-			(*instrument)->id.fm.selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 10.0f);
+			(*instrument)->id.fm.selectedAlgorithm = createParameterEx((*instrument)->paramList, "algo", 0, 0, ALGO_COUNT, 1.0f, 1.0f);
 			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
 				(*instrument)->id.fm.ops[i] = createOperator((*instrument)->paramList, 1);
 			}

@@ -22,11 +22,14 @@
 # UP from a horizontal item walks the searchUpwardsByAlignment ladder to the
 # nearest vertical container's previous sibling. From btnrow1 -> btnwrap ->
 # instwrap, the previous item is presetWrap, and selectLeaf(g, presetWrap,
-# head=false) lands on the TAIL of PRESET_CONTROLS = LOAD.
+# head=false) lands on the TAIL of PRESET_CONTROLS = NEXT (PREV / pad / NAME /
+# SAVE / LOAD / NEXT -- NEXT is the rightmost after the recent dial->button
+# migration).
 UP
-ASSERT selected==LOAD
+ASSERT selected==NEXT
 
-# Two LEFTs slide LOAD -> SAVE -> PRESET_NAME.
+# Three LEFTs slide NEXT -> LOAD -> SAVE -> PRESET_NAME.
+LEFT
 LEFT
 LEFT
 ASSERT selected==PRESET_NAME
@@ -111,18 +114,22 @@ SELECT
 # DOWN from PRESET_NAME drops out of btnwrap -> presetWrap -> FM instwrap,
 # and selectLeaf(g, FM instwrap, head=true) lands on RATIO1 (btnrow1 head).
 DOWN
-# UP from RATIO1 walks back the same ladder and lands on LOAD (tail of
-# PRESET_CONTROLS) -- same path used in step 1.
+# UP from RATIO1 walks back the same ladder and lands on NEXT (tail of
+# PRESET_CONTROLS -- was LOAD before the dial->buttons migration).
 UP
+ASSERT selected==NEXT
+# LEFT to reach the LOAD button (the cbOpenLoadList action node).
+LEFT
 ASSERT selected==LOAD
 
-# Task 7: START at LOAD fires cbOpenLoadList, which now pushes a Layer onto
+# KM_EDIT (z) at LOAD fires cbOpenLoadList, which now pushes a Layer onto
 # ig->overlayLayers. Each layer wraps its own Graph; the load-list layer is a
 # Graph of <BACK> + one action button per preset, all stacked vertically.
 # `g_loadListActive` mirrors the layer-stack state for the legacy
 # `guiIsLoadListActive()` assertion. handlePresetUiInput now routes arrow
-# keys + START to the top layer's Graph via layerStackInput.
-START
+# keys + START to the top layer's Graph via layerStackInput. (KM_EDIT, not
+# KM_START, fires action buttons -- see "z triggers button presses".)
+EDIT
 ASSERT loadListActive==1
 
 # --- Scroll the highlight, then load Xm1 ---------------------------------
