@@ -563,11 +563,16 @@ void drawDialGuiNode(void *self) {
 	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
 	tmpx += gn->padding + 2;
 	tmpy += gn->padding;
-	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -225, angle);
+	/* Compact geometry so the dial + value + label stack fits the
+	 * ~31px-tall cells the reflow gives the FM/envelope rows. The old
+	 * 24px dial + label at +30 overflowed the cell and clipped the
+	 * label into the row below (the reported unreadable control
+	 * labels). 20px dial, label right under it at +22 -> 31px total. */
+	drawRotatedDial(tmpx, tmpy, 20, 20, 10, -225, angle);
 	tmpx += 28;
 	tmpy += 2;
-	drawValueDisplay(tmpx, tmpy, 38, 16, paramValue);
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 30 }, 9, 1, (Color){ 200, 180, 180, 255 });
+	drawValueDisplay(tmpx, tmpy, 38, 14, paramValue);
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
@@ -642,12 +647,13 @@ void drawDiscreteDialGuiNode(void *self) {
 	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
 	tmpx += gn->padding;
 	tmpy += gn->padding;
-	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -225, angle);
+	/* Compact geometry -- see drawDialGuiNode. */
+	drawRotatedDial(tmpx, tmpy, 20, 20, 10, -225, angle);
 	tmpx += 6;
 	tmpy += 5;
 	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
 
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 28 }, 9, 1, (Color){ 200, 180, 180, 255 });
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
 void drawWrapperNode(void *self) {
@@ -2100,9 +2106,9 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 
 	ModStripGuiNode *msgn = createModStripGuiNode(0, 0, 640, 100, vm, channel);
 	if(msgn) {
-		appendItem(instGraph->root, (GuiNode *)msgn, 5);
+		appendItem(instGraph->root, (GuiNode *)msgn, 4);
 	} else {
-		appendBlankNode(instGraph->root, 5);
+		appendBlankNode(instGraph->root, 4);
 	}
 	return instGraph;
 }

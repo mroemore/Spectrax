@@ -40,6 +40,16 @@
 #include <sys/stat.h>
 
 #include "raylib.h"
+/* raylib and X11 both typedef `Font` and `Drawable`; rename X11's away
+ * (same trick as nav_harness). Used by shotX11 (SHOT script verb) to
+ * capture the presented window under Xvfb/llvmpipe where raylib's
+ * TakeScreenshot reads back a blank frame. */
+#define Font _X11_Font
+#define Drawable _X11_Drawable
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#undef Drawable
+#undef Font
 
 #include "main.h"
 #include "gui.h"
@@ -86,6 +96,7 @@ typedef enum {
 	SOP_ASSERT_TOPLAYER_SELECTED, /* Task 7: topmost overlay layer's graph
 	                            * selected->name == "NAME". Falls back to the
 	                            * instrument graph when no layer is active. */
+	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -316,6 +327,16 @@ static void parseScript(const char *path) {
 				return;
 			}
 			s->op = SOP_FRAMES; s->a.n = n; s->frames = n;
+		} else if(strcmp(op, "SHOT") == 0) {
+			/* SHOT <path>: capture the window to a PNG via X11. */
+			if(nt < 2) {
+				fclose(fp);
+				failScript(lineno, "SHOT requires a path");
+				return;
+			}
+			s->op = SOP_SHOT; s->frames = 1;
+			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
+			s->name[sizeof(s->name) - 1] = '\0';
 		} else if(strcmp(op, "ASSERT") == 0) {
 			if(nt < 2) {
 				fclose(fp);
@@ -670,6 +691,7 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 /* Process one scripted "assert" immediately. Asserts evaluate the
  * current graph state right after the previous handler run. They
  * take one frame to execute (no key injection). */
+static int shotX11(const char *path);
 static void processScriptAssert(const ScriptStep *s) {
 	switch(s->op) {
 		case SOP_ASSERT_ENVCOUNT:
@@ -705,9 +727,81 @@ static void processScriptAssert(const ScriptStep *s) {
 		case SOP_ASSERT_SAVEDFLASH:
 			runAssertSavedFlash(s->lineno, s->a.n);
 			break;
+		case SOP_SHOT:
+			if(shotX11(s->name) != 0) {
+				failScript(s->lineno, "SHOT %s: capture failed", s->name);
+			}
+			break;
 		default:
 			break;
 	}
+}
+
+/*
+ * raylib TakeScreenshot reads back a blank frame under Xvfb/llvmpipe, so
+ * capture the presented window via X11 XGetImage instead (same technique
+ * as nav_harness). GetWindowHandle() returns a GLFW struct, not the X
+ * Window id -- walk the root's children and match by size.
+ */
+static Window findWin(Display *dpy, int w, int h) {
+	Window root = DefaultRootWindow(dpy);
+	Window parent;
+	Window *kids = NULL;
+	unsigned int n = 0;
+	Window found = 0;
+	if(!XQueryTree(dpy, root, &root, &parent, &kids, &n)) {
+		return 0;
+	}
+	for(unsigned int i = 0; i < n; i++) {
+		XWindowAttributes a;
+		if(XGetWindowAttributes(dpy, kids[i], &a) &&
+		   a.map_state == IsViewable && a.width == w && a.height == h) {
+			found = kids[i];
+			break;
+		}
+	}
+	if(kids) {
+		XFree(kids);
+	}
+	return found;
+}
+
+static int shotX11(const char *path) {
+	Display *dpy = XOpenDisplay(NULL);
+	if(!dpy) {
+		return 1;
+	}
+	Window win = findWin(dpy, SCREEN_W, SCREEN_H);
+	if(!win) {
+		XCloseDisplay(dpy);
+		return 1;
+	}
+	XImage *img = XGetImage(dpy, win, 0, 0, SCREEN_W, SCREEN_H, AllPlanes, ZPixmap);
+	if(!img) {
+		XCloseDisplay(dpy);
+		return 1;
+	}
+	int bpp = img->bits_per_pixel / 8;
+	unsigned char *pix = malloc((size_t)SCREEN_W * SCREEN_H * 4);
+	unsigned char *src = (unsigned char *)img->data;
+	for(int i = 0; i < SCREEN_W * SCREEN_H; i++) {
+		unsigned char *s = src + (size_t)i * bpp;
+		pix[i * 4 + 0] = s[2];
+		pix[i * 4 + 1] = s[1];
+		pix[i * 4 + 2] = s[0];
+		pix[i * 4 + 3] = 255;
+	}
+	XDestroyImage(img);
+	XCloseDisplay(dpy);
+	Image ri = { 0 };
+	ri.width = SCREEN_W;
+	ri.height = SCREEN_H;
+	ri.mipmaps = 1;
+	ri.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+	ri.data = pix;
+	bool ok = ExportImage(ri, path);
+	free(pix);
+	return ok ? 0 : 1;
 }
 
 /* ----- Shared input handler (used by both interactive and scripted) --- */
@@ -824,9 +918,7 @@ static void runScripted(paTestData *data, ApplicationState *appState) {
 		BeginDrawing();
 		clearBg();
 		handleInstrumentInput(data, appState);
-		if(!g_scriptMode) {
-			DrawGUI(appState->currentScene);
-		}
+		DrawGUI(appState->currentScene);
 		EndDrawing();
 
 		g_scriptSubframe++;
