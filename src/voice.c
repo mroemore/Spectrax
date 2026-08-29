@@ -31,6 +31,14 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp, pb);
 		vm->instruments[i]->vm = vm;
+		/* Task 6: the boot preset is a stand-in for "no preset yet"
+		 * (presetBank starts empty — patches[0].name is uninitialised).
+		 * Zero the name so applyInstrumentPreset's trailing
+		 * markPresetLoaded call skips the snapshot capture and leaves
+		 * loaded.name empty (no baseline). */
+		if(pb->presetCount == 0) {
+			pb->patches[0].name[0] = '\0';
+		}
 		applyInstrumentPreset(vm->instruments[i], pb->patches[0]);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
 		vm->voiceAllocation[i] = VA_FREE_OR_ZERO;
@@ -440,6 +448,64 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * (cb_setInstrumentPreset) writes the applied index into it afterwards. */
 	instrument->selectedPresetIndex = createParameterPro(instrument->paramList, "preset", 0.0f, 0.0f,
 		(float)(instrument->presetBank->presetCount - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
+	/* Task 6: stamp the snapshot with the loaded preset's identity so
+	 * the dirty bit flips to clean. Search the bank by name (rather
+	 * than passing the index around) because some call sites — notably
+	 * initVoices() at boot — apply a preset without an index at hand.
+	 * Falls back to index=-1 if the preset hasn't been appended yet
+	 * (the common case during init is "the first bank slot", and
+	 * consumers should walk the bank by name anyway). */
+	markPresetLoaded(instrument, p.name);
+}
+
+/* Task 6: stamp `inst->loaded` with the on-disk identity so the
+ * dirty flag clears. Called from applyInstrumentPreset (load
+ * refresh) and from the save paths in gui.c (initial save in
+ * guiSavePreset and the overwrite-confirmation branch in
+ * handlePresetUiInput — both commit on the same "live state now
+ * matches disk" semantic).
+ *
+ * `name` is the on-disk identity to record. Pass NULL/"" to skip
+ * the capture (the boot path applies an uninitialised Preset at
+ * bank slot 0, and we don't want to record a garbage snapshot
+ * there). `name` is also copied into inst->loaded.name so callers
+ * don't have to walk the bank later. */
+void markPresetLoaded(Instrument *inst, const char *name) {
+	if(!inst || !name || !name[0]) {
+		return;
+	}
+	/* Snapshot the live instrument state. presetFromInstrument reads
+	 * every dial on the current voice type and serialises it into
+	 * a Preset — we keep the result in inst->loaded.snapshot so the
+	 * next dial-arrow edit can diff against it. (The dirty bit
+	 * alone doesn't capture what changed; the snapshot is the
+	 * baseline.) */
+	inst->loaded.snapshot = presetFromInstrument(inst);
+	strncpy(inst->loaded.snapshot.name, name, sizeof(inst->loaded.snapshot.name) - 1);
+	inst->loaded.snapshot.name[sizeof(inst->loaded.snapshot.name) - 1] = '\0';
+	strncpy(inst->loaded.name, name, sizeof(inst->loaded.name) - 1);
+	inst->loaded.name[sizeof(inst->loaded.name) - 1] = '\0';
+	/* Capture completes the sync-to-disk transaction: dirty flips
+	 * to clean so the next edit starts a new diff. */
+	inst->loaded.dirty = false;
+}
+
+/* Task 6: single-source-of-truth dirty check. Returns true only
+ * when the live state has been edited since the last load/save.
+ * The flag is always meaningful once markPresetLoaded has run at
+ * least once (loaded.snapshot.name[0] != '\0'); a fresh instrument
+ * with name[0] == '\0' has no baseline and is never considered
+ * dirty. Consumers like the load-list gate in gui.c use this so
+ * they don't push the confirm modal on a brand-new instrument the
+ * user hasn't touched yet. */
+bool isInstrumentDirty(const Instrument *inst) {
+	if(!inst) {
+		return false;
+	}
+	if(inst->loaded.name[0] == '\0') {
+		return false;
+	}
+	return inst->loaded.dirty;
 }
 
 Preset presetFromInstrument(Instrument *instrument) {
@@ -537,6 +603,13 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 		printf("could not allocate memory for instrument in init_instrument.\n");
 		return;
 	}
+	/* Task 6: dirty-tracking baseline. malloc leaves the bytes
+	 * undefined; if we don't zero them here the first isInstrumentDirty
+	 * call can read a garbage name and lie about whether the
+	 * instrument has been captured yet. */
+	(*instrument)->loaded.name[0] = '\0';
+	(*instrument)->loaded.dirty = false;
+	(*instrument)->loaded.snapshot.name[0] = '\0';
 	(*instrument)->modList = createModList();
 	if(!(*instrument)->modList) {
 		printf("modList creation failed in init_instrument.\n");

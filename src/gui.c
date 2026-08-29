@@ -712,6 +712,10 @@ void guiSetOverwritePending(const char *name) {
 
 bool guiIsModalOpen(void) { return g_modalState != MODAL_NONE; }
 
+/* Task 6: forward decl — defined further down. Used by both
+ * guiSavePreset() and the overwrite-confirmation path. */
+static void markInstrumentSavedAs(Instrument *inst, const char *name);
+
 PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
 	if(!inst || !name) {
 		return PRESET_ERROR_FORMAT;
@@ -724,8 +728,46 @@ PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
 		 * propagate PRESET_EXISTS to the caller (commitPresetName)
 		 * so it can skip firing either flash — the modal is the UI. */
 		guiSetOverwritePending(name);
+	} else if(r == PRESET_OK) {
+		/* Task 6: save success → live state now matches disk, so
+		 * the dirty flag clears and the loaded snapshot updates
+		 * to this preset's name. */
+		markInstrumentSavedAs(inst, name);
 	}
 	return r;
+}
+
+/* Task 6 stub: full modal layer lands in Task 7. Currently this is
+ * a no-op so the load-list button can call it without crashing.
+ * Task 7 will replace this body with a modalState push and a
+ * three-way choice (discard / save / cancel) that falls through
+ * to guiOpenLoadList() on discard. */
+void guiShowDirtyConfirmModal(Instrument *inst) {
+	(void)inst;
+	/* Task 7: set g_modalState = MODAL_CONFIRM_DISCARD_CHANGES;
+	 * stash inst for the dispatch; nothing more here. */
+}
+
+/* Task 6 helper: after a successful save (or overwrite) the live
+ * instrument now matches a specific preset on disk. Locate the slot
+ * in the bank by name and stamp the LoadedPreset snapshot, which
+ * also clears the dirty bit. Sharing this between the new-save
+ * branch in guiSavePreset() and the overwrite branch in
+ * handlePresetUiInput() keeps the two save paths from drifting. */
+static void markInstrumentSavedAs(Instrument *inst, const char *name) {
+	if(!inst || !name || !name[0]) {
+		return;
+	}
+	PresetBank *pb = inst->presetBank;
+	if(!pb) {
+		return;
+	}
+	for(int i = 0; i < pb->presetCount; i++) {
+		if(strncmp(pb->patches[i].name, name, sizeof(pb->patches[i].name)) == 0) {
+			markPresetLoaded(inst, name);
+			return;
+		}
+	}
 }
 
 /* Task 8: centered overlay panel for the overwrite confirmation. Drawn
@@ -879,6 +921,10 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 				 * saveInstrumentAsPresetOverwrite skips the EXISTS check
 				 * and replaces the bank slot at g_pendingName. */
 				saveInstrumentAsPresetOverwrite(inst, g_pendingName, "data/instrument_presets/");
+				/* Task 6: after a successful overwrite, live state now
+				 * matches the on-disk preset, so refresh the LoadedPreset
+				 * snapshot and clear the dirty bit. */
+				markInstrumentSavedAs(inst, g_pendingName);
 			}
 			/* Either branch: close the modal. On NO we just drop back to
 			 * the name-edit screen so the user can change the name. */
@@ -1148,7 +1194,20 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 }
 
 static void cbFocusNameNode(void *ctx) { (void)ctx; /* focus handled via selection; the node is directly editable */ }
-static void cbOpenLoadList(void *ctx) { (void)ctx; guiOpenLoadList(); }
+static void cbOpenLoadList(void *ctx) {
+	/* Task 6: gate the load list on the dirty bit. If the user has
+	 * edits in flight, yanking the instrument away to a different
+	 * preset silently throws those edits on the floor — push the
+	 * dirty-confirm modal instead and let the user pick
+	 * discard/save/cancel. Task 7 fills in the modal body; for now
+	 * the no-op stub returns without opening the list. */
+	Instrument *inst = (Instrument *)ctx;
+	if(inst && isInstrumentDirty(inst)) {
+		guiShowDirtyConfirmModal(inst);
+		return;
+	}
+	guiOpenLoadList();
+}
 
 /* Task 9: scrollable preset-load-list node. The list contents live in
  * the file-static g_loadList state populated by guiOpenLoadList(); this

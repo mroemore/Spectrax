@@ -1,6 +1,7 @@
 #ifndef VOICE_H
 #define VOICE_H
 #include <stdlib.h>
+#include <stdbool.h>
 #include "kiss_fft.h"
 #include "settings.h"
 #include "oscillator.h"
@@ -139,6 +140,31 @@ typedef struct {
 	int presetCount;
 } PresetBank;
 
+/* Task 6: dirty tracking. A LoadedPreset records the on-disk
+ * snapshot that the instrument's live state was last loaded from
+ * (or last saved to). The dirty bit is what makes the snapshot
+ * meaningful: true means the live state has been edited since the
+ * capture and now differs from disk.
+ *
+ * Layout follows the brief exactly:
+ *   - `snapshot`: full Preset captured at load/save time, used to
+ *     diff against the live instrument (see isInstrumentDirty).
+ *     Zero-initialised at init so a brand-new instrument has a
+ *     known (zero) baseline rather than reading uninitialised bytes.
+ *   - `dirty`: live-edit flag. Set true by the KM_EDIT+arrow dial
+ *     dispatch (main.c + harness). Cleared to false by
+ *     markPresetLoaded whenever the live state matches disk again.
+ *   - `name`: a fixed-size (33 byte) copy of the preset name so
+ *     consumers can read it without chasing the bank pointer. The
+ *     canonical identity in the snapshot above is a separate field
+ *     and uses the same width — we keep both for parity with the
+ *     brief while making the bank lookup cheap. */
+typedef struct {
+	Preset snapshot;
+	bool dirty;
+	char name[33];
+} LoadedPreset;
+
 /* Forward-declare VoiceManager so Instrument can hold a back-pointer;
  * the full definition appears further down. */
 typedef struct VoiceManager VoiceManager;
@@ -159,6 +185,13 @@ typedef struct {
 	Parameter *panning;
 	PresetBank *presetBank;
 	Parameter *selectedPresetIndex;
+	/* Task 6: snapshot of the last loaded/saved preset. The `dirty`
+	 * sub-field is the live-edit flag — set true by the KM_EDIT+arrow
+	 * hook (any time a dial callback fires), cleared to false by
+	 * markPresetLoaded whenever the instrument's state is brought
+	 * back in sync with disk (after a load or a successful save).
+	 * See LoadedPreset above for the full layout. */
+	LoadedPreset loaded;
 	VoiceManager *vm;
 	union {
 		SamplerInstrumentData sampler;
@@ -260,6 +293,18 @@ Preset presetFromInstrument(Instrument *instrument);
 void cb_setInstrumentPreset(void *instrument);
 void initPresetBank(PresetBank *pb);
 void addPresetToBank(PresetBank *pb, Preset p);
+
+/* Task 6: stamp `inst->loaded` with the on-disk identity of the
+ * preset the instrument was just loaded from or saved to. Called
+ * from applyInstrumentPreset (load refresh) and from the save
+ * paths in gui.c (initial save + overwrite branch in
+ * handlePresetUiInput). `name` is the preset's on-disk name; pass
+ * NULL/"" to skip the capture. The capture snapshots the live
+ * instrument state (via presetFromInstrument) into inst->loaded.snapshot,
+ * copies the name into inst->loaded.name, and clears the dirty bit
+ * so the next edit starts a fresh diff. */
+void markPresetLoaded(Instrument *inst, const char *name);
+bool isInstrumentDirty(const Instrument *inst);
 
 void initialize_voice(Voice *voice, Instrument *inst);
 void initInstDefaults(Instrument *i);

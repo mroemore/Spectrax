@@ -195,6 +195,16 @@ typedef enum {
  * save on confirm. */
 void guiSetOverwritePending(const char *name);
 
+/* Task 6: open the "discard unsaved changes?" modal. Called from
+ * cbOpenLoadList when the user presses LOAD on a dirty instrument
+ * (i.e. one whose live state has been edited since the last
+ * load/save). Task 7 fills in the actual modal layer; for now the
+ * stub is a no-op so the rest of the system still compiles and
+ * unit-tests pass. The Task 7 implementation will switch the
+ * state machine and dispatch the three-way choice (discard / save /
+ * cancel) before falling through to guiOpenLoadList. */
+void guiShowDirtyConfirmModal(Instrument *inst);
+
 /* True while any modal is open. Callers in main.c / the harness can use
  * this to short-circuit scene navigation while the modal is up. */
 bool guiIsModalOpen(void);

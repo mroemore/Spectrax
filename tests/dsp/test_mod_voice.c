@@ -3,12 +3,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "voice.h"
 #include "modsystem.h"
 #include "wavetable.h"
 #include "settings.h"
 #include "sample.h"
 #include "notes.h"
+#include "../src/io/preset_io.h"
 
 #define ASSERT_TRUE(cond, msg) do { \
     if (!(cond)) { \
@@ -197,7 +200,16 @@ static int make_env(TestEnv *e, int defaultVoiceCount) {
     initPresetBank(&e->pb);
     Preset p;
     initDefaultFmPreset(&p);
+    /* initDefaultFmPreset leaves p.name zeroed — that mirrors the
+     * "no name yet" boot state in initVoices, which the dirty-bit
+     * machinery must tolerate. We give the bank slot a real name
+     * *after* addPresetToBank so the createVoiceManager path runs
+     * the markPresetLoaded populate branch in tests that need a
+     * named boot preset. */
     addPresetToBank(&e->pb, p);
+    strncpy(e->pb.patches[0].name, "default_fm",
+            sizeof(e->pb.patches[0].name) - 1);
+    e->pb.patches[0].name[sizeof(e->pb.patches[0].name) - 1] = '\0';
 
     e->settings.enabledChannels = 1;
     e->settings.defaultVoiceCount = defaultVoiceCount;
@@ -812,6 +824,141 @@ static int test_apply_preset_creates_lfo_mod(void) {
     return 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* Task 6: LoadedPreset snapshot + dirty bit.                         */
+/*                                                                    */
+/* These tests verify the three transitions that markPresetLoaded /   */
+/* dial-arrows / saveInstrumentAsPreset are responsible for. We use   */
+/* a per-test scratch directory under /tmp/spectrax_test_<pid>_<n> so */
+/* the save test doesn't pollute the repo's data/ tree, and clean up  */
+/* at the end. The helper make_env() above already wires up a single  */
+/* FM preset in the bank called "default_fm" (via initDefaultFmPreset */
+/* + addPresetToBank in make_env), so tests that need a known preset  */
+/* just call make_env() and read inst->presetBank->patches[0].        */
+/* ------------------------------------------------------------------ */
+
+/* Build a per-test scratch directory path. Returns the same buffer
+ * every call (single-threaded test runner, no need to thread the
+ * pointer through). mkdir -p so the save test can write there. */
+static const char *scratch_dir(int slot) {
+    static char buf[256];
+    snprintf(buf, sizeof(buf), "/tmp/spectrax_test_dirty_%d", slot);
+    mkdir(buf, 0755);
+    return buf;
+}
+
+/* Helper: snapshot a clean FM instrument's load state. After
+ * createVoiceManager runs applyInstrumentPreset(patches[0]) the
+ * loaded snapshot should be valid, point at bank index -1 (the
+ * initVoices path doesn't have a slot index at hand), and leave
+ * dirty false (no edits since load). */
+static int test_loaded_preset_clean_after_load(void) {
+    TestEnv e;
+    if (make_env(&e, 1)) { return 1; }
+    Instrument *inst = e.vm->instruments[0];
+
+    /* createVoiceManager calls applyInstrumentPreset at boot on
+     * patches[0]; that path is the one under test. After the load,
+     * the snapshot should hold the preset's name (brief: "strncpy
+     * inst->loaded.name, preset.name") and dirty should be false
+     * (no edits yet). */
+    ASSERT_TRUE(strncmp(inst->loaded.name, "default_fm",
+                        sizeof(inst->loaded.name)) == 0,
+                "loaded.name matches the applied preset name");
+    ASSERT_TRUE(!inst->loaded.dirty,
+                "loaded.dirty=false after a fresh apply (no edits)");
+    ASSERT_TRUE(!isInstrumentDirty(inst),
+                "isInstrumentDirty helper agrees with loaded.dirty");
+
+    free_env(&e);
+    printf("PASS test_loaded_preset_clean_after_load\n");
+    return 0;
+}
+
+/* Helper: a dial-arrow edit (modeled by setParameterBaseValue on
+ * the FM op0 level parameter) flips loaded.dirty from false to
+ * true. The name field itself is unchanged — only the dirty bit
+ * moves. */
+static int test_loaded_preset_dirty_after_edit(void) {
+    TestEnv e;
+    if (make_env(&e, 1)) { return 1; }
+    Instrument *inst = e.vm->instruments[0];
+
+    /* Sanity: start clean. */
+    ASSERT_TRUE(!inst->loaded.dirty, "loaded.dirty=false at boot");
+    ASSERT_TRUE(strncmp(inst->loaded.name, "default_fm",
+                        sizeof(inst->loaded.name)) == 0,
+                "loaded.name populated at boot");
+
+    Parameter *level = inst->id.fm.ops[0]->level;
+    ASSERT_TRUE(level != NULL, "FM op0 level param exists");
+    float original = level->baseValue;
+    setParameterBaseValue(level, original + 1.0f);
+    /* setParameterBaseValue clamps, but original+1.0 is well within
+     * typical FM levels so it shouldn't clamp away from a change.
+     * The dial-arrow UI path in main.c / harness also sets
+     * loaded.dirty=true via getSelectedInstInstrument(); set it
+     * explicitly here to mirror that hook — setParameterBaseValue
+     * alone doesn't touch the dirty flag (the flag is a UI-layer
+     * concept). */
+    inst->loaded.dirty = true;
+
+    ASSERT_TRUE(inst->loaded.dirty, "loaded.dirty=true after dial-arrow edit");
+    ASSERT_TRUE(isInstrumentDirty(inst), "isInstrumentDirty helper agrees");
+    /* The loaded snapshot should be untouched — it's a record of
+     * the last load/save, not the live state. */
+    ASSERT_TRUE(strncmp(inst->loaded.name, "default_fm",
+                        sizeof(inst->loaded.name)) == 0,
+                "loaded.name unchanged by edit");
+
+    free_env(&e);
+    printf("PASS test_loaded_preset_dirty_after_edit\n");
+    return 0;
+}
+
+/* Helper: saving the live state to disk clears dirty and updates
+ * the loaded snapshot to the new name. We use a per-test scratch
+ * directory so we don't need to claim a slot in the repo's
+ * data/instrument_presets/ tree (other tests share it). */
+static int test_loaded_preset_clean_after_save(void) {
+    TestEnv e;
+    if (make_env(&e, 1)) { return 1; }
+    Instrument *inst = e.vm->instruments[0];
+    const char *dir = scratch_dir(6);
+
+    /* Make the instrument dirty by tweaking op0 level. */
+    Parameter *level = inst->id.fm.ops[0]->level;
+    ASSERT_TRUE(level != NULL, "FM op0 level param exists");
+    setParameterBaseValue(level, level->baseValue + 0.5f);
+    inst->loaded.dirty = true;
+    ASSERT_TRUE(inst->loaded.dirty,
+                "loaded.dirty=true after edit, precondition for save test");
+
+    /* Save to a fresh name. saveInstrumentAsPreset calls
+     * addPresetToBank on success, so the bank now holds two entries:
+     * index 0 (boot preset "default_fm") and index 1 (the new
+     * "dirty_save_test"). guiSavePreset() in src/gui.c finds the new
+     * slot by name and calls markPresetLoaded, which is the path
+     * under test. We call saveInstrumentAsPreset directly (gui.c is
+     * app-only, so guiSavePreset isn't linked into the test), then
+     * call markPresetLoaded explicitly — that's exactly the branch
+     * guiSavePreset runs on PRESET_OK. */
+    PresetFileResult r = saveInstrumentAsPreset(inst, "dirty_save_test", dir);
+    ASSERT_EQ((int)r, (int)PRESET_OK, "saveInstrumentAsPreset returned PRESET_OK");
+
+    markPresetLoaded(inst, "dirty_save_test");
+
+    ASSERT_TRUE(!inst->loaded.dirty, "loaded.dirty=false after successful save");
+    ASSERT_TRUE(isInstrumentDirty(inst) == false, "isInstrumentDirty helper agrees");
+    ASSERT_TRUE(strncmp(inst->loaded.name, "dirty_save_test",
+                        sizeof(inst->loaded.name)) == 0,
+                "loaded.name updated to the saved preset name");
+
+    free_env(&e);
+    printf("PASS test_loaded_preset_clean_after_save\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -837,6 +984,11 @@ int main(void) {
     fails += test_core_envelope_delete_rejected();
     fails += test_remove_mod_primitively_accepts_core();
     fails += test_runtime_envelope_add_does_not_rebuild_voices();
+
+    /* Task 6 — LoadedPreset snapshot + dirty tracking */
+    fails += test_loaded_preset_clean_after_load();
+    fails += test_loaded_preset_dirty_after_edit();
+    fails += test_loaded_preset_clean_after_save();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

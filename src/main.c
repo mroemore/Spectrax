@@ -340,17 +340,34 @@ int main(void) {
 					 * on the preset name node (or an action button)
 					 * must be a no-op, not a crash. */
 					if(isSelectedDialNode(currentGraph)) {
+						bool firedCallback = false;
 						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 							currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
+							firedCallback = true;
 						}
 						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 							currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
+							firedCallback = true;
 						}
 						if(isKeyJustPressed(appState->inputState, KM_UP)) {
 							currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
+							firedCallback = true;
 						}
 						if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 							currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+							firedCallback = true;
+						}
+						/* Task 6: any dial callback that just fired moves
+						 * the live state away from the last loaded/saved
+						 * snapshot, so flip dirty. The flag only sticks if
+						 * loaded.valid is true (see isInstrumentDirty) —
+						 * editing a brand-new, never-loaded instrument
+						 * stays "not dirty" because there's no baseline. */
+						if(firedCallback) {
+							Instrument *editInst = getSelectedInstInstrument();
+							if(editInst) {
+								editInst->loaded.dirty = true;
+							}
 						}
 					}
 				} else {

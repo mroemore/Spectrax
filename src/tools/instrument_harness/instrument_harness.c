@@ -687,17 +687,33 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		 * node is a real dial. Mirrors the main.c guard so the scripted
 		 * fixture (EDIT + DOWN on PRESET_NAME) doesn't crash. */
 		if(isSelectedDialNode(currentGraph)) {
+			bool firedCallback = false;
 			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 				currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
+				firedCallback = true;
 			}
 			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 				currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
+				firedCallback = true;
 			}
 			if(isKeyJustPressed(appState->inputState, KM_UP)) {
 				currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
+				firedCallback = true;
 			}
 			if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 				currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+				firedCallback = true;
+			}
+			/* Task 6: dirty tracking. Same semantics as main.c —
+			 * a callback that just fired means the live state moved
+			 * away from the last loaded/saved snapshot. The flag is
+			 * sticky once set; markPresetLoaded is the only thing
+			 * that clears it. */
+			if(firedCallback) {
+				Instrument *editInst = getSelectedInstInstrument();
+				if(editInst) {
+					editInst->loaded.dirty = true;
+				}
 			}
 		}
 	} else {
