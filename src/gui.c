@@ -1326,10 +1326,12 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * the button mirrors the dial-edit gesture (KM_EDIT + arrow edits
 	 * the selected dial); here KM_EDIT alone activates the button. */
 	if(sel && isKeyJustPressed(is, KM_EDIT)) {
-		/* Action buttons (SAVE/LOAD) store their handler in `actionCb` (an
-		 * ActionCallback, signature `void(void*)`), not `callback` (which is
-		 * reserved for OnPressCallback on dial nodes). */
-		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode) {
+		/* Action buttons (SAVE/LOAD/PREV/NEXT) store their handler in
+		 * `actionCb` (an ActionCallback, signature `void(void*)`), not
+		 * `callback` (which is reserved for OnPressCallback on dial
+		 * nodes). */
+		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode
+		   || sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
 			sel->actionCb(sel->actionCtx);
 			return true;
 		}

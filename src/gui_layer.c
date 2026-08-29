@@ -165,10 +165,13 @@ void layerStackInput(LayerStack *stack, InputState *is) {
 		popLayer(stack);
 		return;
 	}
-	/* START activates the selected node's action callback. This is
-	 * the only "destructive" input the layer stack handles — if the
-	 * selected node has no actionCb, START is a no-op. */
-	if(isKeyJustPressed(is, KM_START) && g->selected->actionCb) {
+	/* KM_EDIT (z) activates the selected node's action callback. Action
+	 * buttons inside overlay layers (load-list entries, overwrite YES/NO,
+	 * dirty-confirm DISCARD/SAVE/CANCEL) all live as `actionCb` on their
+	 * GuiNode; KM_EDIT fires them, matching the base graph's button
+	 * activation model. If the selected node has no actionCb, this is
+	 * a no-op (e.g. when the layer's selection lands on a header). */
+	if(isKeyJustPressed(is, KM_EDIT) && g->selected && g->selected->actionCb) {
 		g->selected->actionCb(g->selected->actionCtx);
 	}
 }

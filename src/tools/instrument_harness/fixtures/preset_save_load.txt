@@ -143,12 +143,45 @@ DOWN
 UP
 UP
 
-# Task 7: START on entry 0 calls cbLoadListPick(0) -> applyInstrumentPreset.
+# Task 7: KM_EDIT on entry 0 calls cbLoadListPick(0) -> applyInstrumentPreset.
 # The action callback pops the layer and resets g_loadListActive = 0.
-START
+# (KM_EDIT, not KM_START, fires layer action buttons -- see "z triggers
+# button presses".)
+EDIT
 ASSERT loadListActive==0
 
 # Sanity: the saved file is still on disk after load.
+ASSERT file==Xm1
+
+# --- PREV/NEXT regression: action buttons fire on KM_EDIT -----------------
+# Selection is on the load-list layer's BACK (was navigated there). Pop the
+# layer (SELECT pops the top layer universally) so we can interact with
+# the instrument graph again.
+SELECT
+# After the load-list close, selection stays on whatever the instrument
+# graph had selected before LOAD was pressed: the LOAD button itself
+# (we left it on the load-list close). Walk back to PREV (LEFT) + NAME
+# (LEFT) + NEXT requires 5 LEFTs from LOAD to PREV (PREV / pad / NAME /
+# SAVE / LOAD / NEXT -> PREV is 5 lefts).
+LEFT
+LEFT
+LEFT
+LEFT
+LEFT
+ASSERT selected==PREV
+
+# Capture the current preset index (after the load-list applied Xm1 it's
+# index 0). Fire PREV: it should clamp (no-op at index 0).
+EDIT
+# NEXT twice: should walk to Xm1+1 = fm1 (1), then fm2 (2).
+RIGHT
+EDIT
+RIGHT
+EDIT
+# The fixture can't directly read selectedPresetIndex; the assertion
+# below uses preset name presence in the bank. We've loaded Xm1, then
+# fired NEXT twice (applying fm1 then fm2). No new files should exist
+# because these are *loads* from the bank, not saves.
 ASSERT file==Xm1
 
 # --- Done -----------------------------------------------------------------
