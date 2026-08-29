@@ -27,6 +27,10 @@ typedef struct {
 	Parameter *target; /* current modulation target; NULL = un-routed */
 } RouteState;
 static RouteState runtimeRoutes[MAX_ENVELOPES];
+/* Task 8: the current preset-name node. Set on every graph build
+ * (createPresetNameGuiNode). The SAVE action button uses it to commit
+ * the instrument under the name currently shown. */
+static PresetNameGuiNode *g_presetNameNode;
 
 Font textFont;
 Font symbolFont;
@@ -1539,6 +1543,7 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 	}
 	pn->cursor = 0;
 	pn->editing = false;
+	g_presetNameNode = pn;
 	/* Task 5: no flash active at construction. 0 is also strictly <= any
 	 * currentFrameIndex() that returns >= 0 after raylib InitWindow. */
 	pn->savedFlashUntil = 0;
@@ -1548,7 +1553,17 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 	return gn;
 }
 
-static void cbFocusNameNode(void *ctx) { (void)ctx; /* focus handled via selection; the node is directly editable */ }
+/* Task 8: SAVE action. Captures the current instrument under the name
+ * shown in the preset-name node (g_presetNameNode), running the same
+ * commit flow as KM_START on the name node. This makes the SAVE button
+ * an actual save: guiSavePreset returns PRESET_EXISTS when the name is
+ * already in the bank, which opens the overwrite-confirm modal. */
+static void cbFocusNameNode(void *ctx) {
+	(void)ctx;
+	if(g_presetNameNode) {
+		commitPresetName(g_presetNameNode);
+	}
+}
 static void cbOpenLoadList(void *ctx) {
 	/* Task 6: gate the load list on the dirty bit. If the user has
 	 * edits in flight, yanking the instrument away to a different

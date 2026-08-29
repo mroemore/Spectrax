@@ -77,6 +77,7 @@ typedef enum {
 	SOP_ASSERT_FILE,     /* "data/instrument_presets/<sanitized>" exists on disk */
 	SOP_ASSERT_PRESETCOUNT, /* presetBank->presetCount == N */
 	SOP_ASSERT_ALGO,     /* FM selectedAlgorithm baseValue (as int) == N */
+	SOP_ASSERT_RATIO1,   /* FM op0 ratio baseValue (as int) == N */
 	SOP_ASSERT_LOADLISTACTIVE, /* g_loadListActive (guiIsLoadListActive) == N */
 	SOP_ASSERT_SAVEDFLASH,     /* Task 5: selected PresetNameGuiNode's savedFlashUntil
 	                            * is strictly in the future (currentFrameIndex() < it).
@@ -418,6 +419,15 @@ static void parseScript(const char *path) {
 				}
 				s->op = SOP_ASSERT_ALGO;
 				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "ratio1") == 0) {
+				/* ASSERT ratio1==<N>: FM op0 ratio baseValue (as int). */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT ratio1==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_RATIO1;
+				s->a.n = atoi(tokens[3]);
 			} else if(strcmp(tokens[1], "loadListActive") == 0) {
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
 					fclose(fp);
@@ -584,6 +594,20 @@ static void runAssertAlgo(int lineno, int expected) {
 	}
 }
 
+/* Task 8: assert FM op0 ratio baseValue (as int) == N. Proves a param
+ * edit persisted through a save/load round-trip. */
+static void runAssertRatio1(int lineno, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || inst->voiceType != VOICE_TYPE_FM || !inst->id.fm.ops[0] || !inst->id.fm.ops[0]->ratio) {
+		failScript(lineno, "ASSERT ratio1==%d: no FM instrument or no op0 ratio", expected);
+		return;
+	}
+	int got = (int)inst->id.fm.ops[0]->ratio->baseValue;
+	if(got != expected) {
+		failScript(lineno, "ASSERT ratio1==%d failed: got %d", expected, got);
+	}
+}
+
 /* Task 5: assert that the selected PresetNameGuiNode's saved flash is
  * active (==1) or inactive (==0). Drives through the public
  * presetNameGuiNodeSavedFlashActive getter so the harness doesn't reach
@@ -671,6 +695,9 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_ALGO:
 			runAssertAlgo(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_RATIO1:
+			runAssertRatio1(s->lineno, s->a.n);
 			break;
 		case SOP_ASSERT_LOADLISTACTIVE:
 			runAssertLoadListActive(s->lineno, s->a.n);

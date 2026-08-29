@@ -1,0 +1,57 @@
+# save_overwrite.txt
+# Regression for the reported save bugs:
+#   1. changing a param in an existing preset + SAVE must persist through
+#      a load into another slot.
+#   2. saving over an existing preset must prompt the overwrite modal.
+#
+# Boots to SCENE_INSTRUMENT on slot 0 (fm1), selection on RATIO1.
+# fm1's op0 ratio default is 1.0.
+
+# --- Baseline -------------------------------------------------------------
+ASSERT ratio1==1
+
+# --- Change a param in fm1 ------------------------------------------------
+# EDIT+UP on RATIO1: relativeValue=2.0 > 1 -> coarseIncrement (1.0 for
+# ratio, see createOperator) -> 1 -> 2.
+EDIT UP
+ASSERT ratio1==2
+
+# --- Save via the SAVE button (existing name fm1) -------------------------
+# From RATIO1: UP -> preset row tail (NEXT). LEFT -> LOAD. LEFT -> SAVE.
+UP
+ASSERT selected==NEXT
+LEFT
+ASSERT selected==LOAD
+LEFT
+ASSERT selected==SAVE
+# KM_EDIT fires cbFocusNameNode -> commitPresetName -> guiSavePreset("fm1")
+# -> PRESET_EXISTS -> overwrite modal pushed. The modal's graph starts
+# with NO selected.
+EDIT
+ASSERT topLayerSelected==OVERWRITE_NO
+
+# --- Drive the modal: YES (RIGHT from NO reaches YES in the layer graph) --
+RIGHT
+ASSERT topLayerSelected==OVERWRITE_YES
+EDIT
+
+# Modal pops; base graph returns. Selection is wherever it was (SAVE).
+ASSERT selected==SAVE
+ASSERT ratio1==2
+ASSERT presetCount==5
+
+# --- Reload fm1 into a blank slot; the change must persist ---------------
+# Selection is on SAVE. RIGHT reaches LOAD (row: PREV/pad/NAME/SAVE/LOAD/
+# NEXT). EDIT opens the load-list; EDIT on entry 0 (fm1) loads it into the
+# current slot.
+RIGHT
+ASSERT selected==LOAD
+EDIT
+ASSERT loadListActive==1
+EDIT
+ASSERT loadListActive==0
+# After cbLoadListPick, the graph rebuilds (selection resets to RATIO1).
+# The loaded patch must carry ratio1==2 (the persisted edit).
+ASSERT ratio1==2
+ASSERT presetCount==5
+QUIT
