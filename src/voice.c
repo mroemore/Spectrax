@@ -359,6 +359,14 @@ void rebuildVoicesForInstrument(VoiceManager *vm, Instrument *instrument) {
 }
 
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
+	/* Task 8: gate the audio thread out while we tear down + rebuild the
+	 * param/mod lists. The PortAudio callback reads these lists every
+	 * buffer; freeing them from the GUI thread while it iterates is a
+	 * use-after-free. The flag is cleared at the end of this function;
+	 * callers that ALSO rebuild the voice pool wrap that separately. */
+	if(instrument) {
+		instrument->rebuilding = true;
+	}
 	clearModList(instrument->modList);
 	clearParamList(instrument->paramList);
 	instrument->voiceType = p.voiceType;
@@ -456,6 +464,9 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * (the common case during init is "the first bank slot", and
 	 * consumers should walk the bank by name anyway). */
 	markPresetLoaded(instrument, p.name);
+	if(instrument) {
+		instrument->rebuilding = false;
+	}
 }
 
 /* Task 6: stamp `inst->loaded` with the on-disk identity so the
@@ -580,9 +591,13 @@ void cb_setInstrumentPreset(void *instrument) {
 	i->selectedPresetIndex->baseValue = (float)presetIndex;
 	i->selectedPresetIndex->currentValue = (float)presetIndex;
 	/* voices that previously aliased those Param structs must be rebuilt so
-	 * their pointers track the new ones. */
+	 * their pointers track the new ones. The audio thread iterates the
+	 * voice pool every buffer -- hold the rebuilding flag across the
+	 * free/malloc so it doesn't deref a freed Voice. */
 	if(i->vm) {
+		i->rebuilding = true;
 		rebuildVoicesForInstrument(i->vm, i);
+		i->rebuilding = false;
 	}
 }
 
@@ -646,6 +661,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	(*instrument)->loaded.name[0] = '\0';
 	(*instrument)->loaded.dirty = false;
 	(*instrument)->loaded.snapshot.name[0] = '\0';
+	(*instrument)->rebuilding = false;
 	(*instrument)->modList = createModList();
 	if(!(*instrument)->modList) {
 		printf("modList creation failed in init_instrument.\n");

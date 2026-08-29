@@ -55,7 +55,14 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 
 	// process instrument-level param changes:
 	for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++) {
-		processModulations(data->voiceManager->instruments[j]->paramList, data->voiceManager->instruments[j]->modList, 1.0f / framesPerBuffer);
+		Instrument *chInst = data->voiceManager->instruments[j];
+		/* Task 8: skip channels whose lists are being rebuilt by the GUI
+		 * thread (applyInstrumentPreset / voice rebuild). Reading them
+		 * here mid-rebuild is a use-after-free -> segfault. */
+		if(chInst->rebuilding) {
+			continue;
+		}
+		processModulations(chInst->paramList, chInst->modList, 1.0f / framesPerBuffer);
 	}
 	// process song-level param changes:
 	processModulations(data->globalParameters, data->modList, 1.0f / framesPerBuffer);
@@ -65,6 +72,13 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		float right_output = 0.0f;
 
 		for(j = 0; j < data->arranger->enabledChannels; j++) {
+			/* Task 8: skip channels whose voice pool is mid-rebuild (the
+			 * Voice structs are freed + re-malloc'd by rebuildVoicesForInstrument
+			 * on preset change). Iterating voicePools[j][v] here would
+			 * deref a freed Voice. */
+			if(data->voiceManager->instruments[j]->rebuilding) {
+				continue;
+			}
 			for(int v = 0; v < data->voiceManager->voiceCount[j]; v++) {
 				Voice *currentVoice = data->voiceManager->voicePools[j][v];
 				if(currentVoice->active) {

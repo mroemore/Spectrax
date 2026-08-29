@@ -953,7 +953,9 @@ static void cbLoadListPick(void *ctx) {
 			inst->selectedPresetIndex->currentValue = (float)slot;
 		}
 		if(inst->vm) {
+			inst->rebuilding = true;
 			rebuildVoicesForInstrument(inst->vm, inst);
+			inst->rebuilding = false;
 		}
 		rebuildInstrumentGraph();
 	}
@@ -1313,7 +1315,9 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 							inst->selectedPresetIndex->currentValue = (float)i;
 						}
 						if(inst->vm) {
+							inst->rebuilding = true;
 							rebuildVoicesForInstrument(inst->vm, inst);
+							inst->rebuilding = false;
 						}
 						/* NOTE: arranger->channelSlots[channel] is the
 						 * authoritative "which patch this channel uses"
@@ -1794,6 +1798,14 @@ static Parameter *routeTargetParam(Instrument *inst, int idx) {
 static void routeOnChange(void *data) {
 	RouteState *rs = (RouteState *)data;
 	Instrument *inst = rs->inst;
+	if(!inst) {
+		return;
+	}
+	/* Task 8: rewireModulation mutates the modList the audio thread
+	 * iterates; hold the rebuilding flag across the swap. */
+	if(inst) {
+		inst->rebuilding = true;
+	}
 	Parameter *dest = routeTargetParam(inst, getParameterValueAsInt(rs->routeIndex));
 	if(rs->target) {
 		removeModulation(inst->paramList, rs->target, &rs->env->base);
@@ -1802,6 +1814,9 @@ static void routeOnChange(void *data) {
 		addModulation(inst->paramList, &rs->env->base, dest, 1.0f, MO_ADD);
 	}
 	rs->target = dest;
+	if(inst) {
+		inst->rebuilding = false;
+	}
 }
 
 static void incRouteIndex(Parameter *p, float step) {
@@ -1837,6 +1852,11 @@ void addRuntimeEnvelope(Instrument *inst) {
 	if(!inst || inst->envelopeCount >= MAX_ENVELOPES) {
 		return;
 	}
+	/* Task 8: the audio thread iterates inst->paramList/modList every
+	 * buffer; hold the rebuilding flag while we mutate the lists. */
+	if(inst) {
+		inst->rebuilding = true;
+	}
 	int idx = inst->envelopeCount;
 	inst->envelopes[idx] = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
 	runtimeRoutes[idx].inst = inst;
@@ -1847,6 +1867,9 @@ void addRuntimeEnvelope(Instrument *inst) {
 	runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
 	inst->envelopeCount++;
 	rebuildInstrumentGraph();
+	if(inst) {
+		inst->rebuilding = false;
+	}
 	/* voices alias core envelopes only; runtime envelopes route via
 	 * inst->paramList which all voices share; no rebuild needed */
 }
@@ -1854,6 +1877,11 @@ void addRuntimeEnvelope(Instrument *inst) {
 void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
 	if(!inst || envIndex < inst->coreEnvelopeCount || envIndex >= inst->envelopeCount) {
 		return;
+	}
+	/* Task 8: hold the rebuilding flag while we mutate + free from the
+	 * modList/paramList the audio thread iterates. */
+	if(inst) {
+		inst->rebuilding = true;
 	}
 	if(runtimeRoutes[envIndex].target) {
 		removeModulation(inst->paramList, runtimeRoutes[envIndex].target,
@@ -1867,6 +1895,9 @@ void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
 	inst->envelopeCount--;
 	memset(&runtimeRoutes[inst->envelopeCount], 0, sizeof(RouteState));
 	rebuildInstrumentGraph();
+	if(inst) {
+		inst->rebuilding = false;
+	}
 	/* voices alias core envelopes only; runtime envelopes route via
 	 * inst->paramList which all voices share; no rebuild needed */
 }

@@ -198,6 +198,12 @@ typedef struct {
 	 * See LoadedPreset above for the full layout. */
 	LoadedPreset loaded;
 	VoiceManager *vm;
+	/* Set by the GUI thread while the instrument's param/mod lists and
+	 * voice pool are being rebuilt (applyInstrumentPreset / voice
+	 * rebuild). The PortAudio callback checks it and skips this channel
+	 * while true -- without it, the audio thread derefs freed params
+	 * mid-rebuild and segfaults on preset change (e.g. NEXT). */
+	volatile bool rebuilding;
 	union {
 		SamplerInstrumentData sampler;
 		FmInstrumentData fm;
