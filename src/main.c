@@ -425,6 +425,10 @@ int main(void) {
 		DrawFPS(SCREEN_W - 80, 5);
 		EndDrawing();
 	}
+	/* GL resource cleanup must run BEFORE CloseWindow destroys the GL
+	 * context — UnloadTexture after CloseWindow segfaults in
+	 * rlUnloadTexture (rlgl derefs the dead context). */
+	freeBufferScroller(&data.bufferScroller);
 	CloseWindow();
 	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);
 	saveColourScheme("CLR.dat", getColourScheme());
@@ -439,7 +443,6 @@ int main(void) {
 
 	freeSamplePool(data.samplePool);
 	cleanupModSystem(data.modList);
-	freeBufferScroller(&data.bufferScroller);
 
 	printf("The end! :).\n");
 	return err;
@@ -450,7 +453,6 @@ error:
 	freeSamplePool(data.samplePool);
 
 	cleanupModSystem(data.modList);
-	freeBufferScroller(&data.bufferScroller);
 
 	fprintf(stderr, "An error occurred while using the portaudio stream\n");
 	fprintf(stderr, "Error number: %d\n", err);
@@ -512,6 +514,16 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	}
 	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
 	printf("arranger/pattern load result: %i\n", loadstate);
+	/* loadSequencerState restores arranger->selected_x/selected_y but
+	 * never touches appState->selectedArrangerCell — that copy is only
+	 * written by selectArrangerCell (the arrow-key path). Without this
+	 * sync the visual cursor (drawn from arranger->selected_x/y) and the
+	 * instrument screen's selected channel (read from
+	 * selectedArrangerCell[0]) disagree until the user presses an arrow:
+	 * the cursor shows one cell while the instrument screen edits a
+	 * different channel. */
+	(*appState)->selectedArrangerCell[0] = data->arranger->selected_x;
+	(*appState)->selectedArrangerCell[1] = data->arranger->selected_y;
 	/* Re-apply the per-channel preset the song file asked for, if the bank still
 	 * holds a patch at that slot index. SEQ1 (legacy) files store channelSlots
 	 * all-zero, which fall through the guard and preserve the channel-0 default
