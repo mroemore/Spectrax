@@ -1923,7 +1923,7 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	GuiNode *margin1 = createBlankGuiNode();
 	GuiNode *margin2 = createBlankGuiNode();
 	GuiNode *presetWrap = createGuiNode(0, 0, 100, 100, 2, na_vertical, "presetwrappa", 0, 0);
-	appendPresetControlNode(instGraph, presetWrap, "presetz", 1, 0, inst);
+	appendPresetControlNode(instGraph, presetWrap, "presetz", 2, 0, inst);
 	// GuiNode *pad1 = createBlankGuiNode();
 	GuiNode *pad2 = createBlankGuiNode();
 
