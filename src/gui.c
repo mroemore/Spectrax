@@ -758,7 +758,19 @@ PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
 	if(!inst || !name) {
 		return PRESET_ERROR_FORMAT;
 	}
-	PresetFileResult r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
+	PresetFileResult r;
+	if(inst->selectedPresetIndex) {
+		int curSlot = getParameterValueAsInt(inst->selectedPresetIndex);
+		if(curSlot >= inst->presetBank->presetCount) {
+			/* Task 8: parked on a blank slot -- save INTO it so the
+			 * bank doesn't grow past the slot the user is viewing. */
+			r = saveInstrumentAsPresetToSlot(inst, name, "data/instrument_presets/", curSlot);
+		} else {
+			r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
+		}
+	} else {
+		r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
+	}
 	if(r == PRESET_EXISTS) {
 		/* Defer the actual overwrite to the modal: the user hasn't
 		 * confirmed yet. handlePresetUiInput drives the modal and
@@ -920,19 +932,30 @@ static void cbLoadListPick(void *ctx) {
 		return;
 	}
 	if(idx < inst->presetBank->presetCount) {
-		applyInstrumentPreset(inst, inst->presetBank->patches[idx]);
+		/* Task 8 slot model: the chosen preset lands in the CURRENT
+		 * bank slot (the one the user had selected via PREV/NEXT), not
+		 * appended somewhere new. This makes "load a preset into this
+		 * blank slot" work: the blank slot (index >= presetCount) gets
+		 * the loaded patch, and the selection stays on that slot. */
+		int slot = getParameterValueAsInt(inst->selectedPresetIndex);
+		if(slot < 0 || slot >= PRESET_BANK_SLOTS) {
+			slot = 0;
+		}
+		inst->presetBank->patches[slot] = inst->presetBank->patches[idx];
+		applyInstrumentPreset(inst, inst->presetBank->patches[slot]);
 		/* Task 6: refresh the loaded-preset snapshot so dirty=false and
 		 * loaded.name is set. Without this the dirty-confirm gate in
 		 * cbOpenLoadList never opens because isInstrumentDirty returns
 		 * false on a fresh instrument with no baseline name. */
-		markPresetLoaded(inst, inst->presetBank->patches[idx].name);
+		markPresetLoaded(inst, inst->presetBank->patches[slot].name);
 		if(inst->selectedPresetIndex) {
-			inst->selectedPresetIndex->baseValue = (float)idx;
-			inst->selectedPresetIndex->currentValue = (float)idx;
+			inst->selectedPresetIndex->baseValue = (float)slot;
+			inst->selectedPresetIndex->currentValue = (float)slot;
 		}
 		if(inst->vm) {
 			rebuildVoicesForInstrument(inst->vm, inst);
 		}
+		rebuildInstrumentGraph();
 	}
 	if(ig) {
 		popLayer(&ig->overlayLayers);
@@ -1163,13 +1186,15 @@ static void cbPresetPrev(void *ctx) {
 	}
 }
 
+/* Task 8: PREV/NEXT walk the full PRESET_BANK_SLOTS range, including
+ * blank slots (indices >= presetCount hold a default FM patch). */
 static void cbPresetNext(void *ctx) {
 	Instrument *inst = (Instrument *)ctx;
 	if(!inst || !inst->selectedPresetIndex || !inst->presetBank) {
 		return;
 	}
 	int cur = getParameterValueAsInt(inst->selectedPresetIndex);
-	if(cur < inst->presetBank->presetCount - 1) {
+	if(cur < PRESET_BANK_SLOTS - 1) {
 		setParameterBaseValue(inst->selectedPresetIndex, (float)(cur + 1));
 	}
 }
@@ -1333,6 +1358,13 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode
 		   || sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
 			sel->actionCb(sel->actionCtx);
+			/* PREV/NEXT apply a preset, which rebuilds the paramList;
+			 * the graph's dials still point at the freed params. Rebuild
+			 * the graph so the dials re-address the new params and the
+			 * UI reflects the applied preset. */
+			if(sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
+				rebuildInstrumentGraph();
+			}
 			return true;
 		}
 	}

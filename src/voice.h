@@ -17,6 +17,11 @@
 #define MAX_FM_OPERATORS 4
 #define MAX_DETUNE 16
 #define MAX_PATCHES 255
+/* Task 8: the bank presents a fixed navigable slot count. Slots beyond
+ * presetCount (the on-disk presets) hold a default FM patch (see
+ * makeDefaultFmPreset) so PREV/NEXT can walk into blank slots and the
+ * user can load a preset into them or edit + save a fresh one. */
+#define PRESET_BANK_SLOTS 16
 
 typedef enum {
 	VOICE_TYPE_SAMPLE,
@@ -293,6 +298,8 @@ Preset presetFromInstrument(Instrument *instrument);
 void cb_setInstrumentPreset(void *instrument);
 void initPresetBank(PresetBank *pb);
 void addPresetToBank(PresetBank *pb, Preset p);
+Preset makeDefaultFmPreset(void);
+void fillEmptyBankSlots(PresetBank *pb);
 
 /* Task 6: stamp `inst->loaded` with the on-disk identity of the
  * preset the instrument was just loaded from or saved to. Called

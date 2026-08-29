@@ -184,6 +184,23 @@ EDIT
 # because these are *loads* from the bank, not saves.
 ASSERT file==Xm1
 
+# --- Blank-slot load flow (Task 8) ----------------------------------------
+# The bank presents PRESET_BANK_SLOTS=16 slots; slots >= presetCount (5)
+# hold a default FM patch. The previous block's preset applies rebuilt the
+# graph, so selection is on the FM row head (RATIO1). UP walks to the
+# PRESET controls row's tail (NEXT); LEFT reaches LOAD. EDIT opens the
+# load-list; EDIT on entry 0 (Xm1) loads it into the CURRENT slot
+# (cbLoadListPick writes patches[slot] = Xm1). loadListActive resets.
+UP
+ASSERT selected==NEXT
+LEFT
+ASSERT selected==LOAD
+EDIT
+ASSERT loadListActive==1
+EDIT
+ASSERT loadListActive==0
+ASSERT file==Xm1
+
 # --- Done -----------------------------------------------------------------
 # Task 7 fixture note: the dirty-confirm flow (edit a param, press LOAD,
 # navigate the 3-button DISCARD/SAVE/CANCEL overlay, then proceed to the

@@ -13,6 +13,13 @@ void sanitizePresetFilename(const char *name, char *out, size_t outSize);
 bool presetNameExists(PresetBank *pb, const char *name);
 PresetFileResult saveInstrumentAsPreset(Instrument *inst, const char *name, const char *dir);
 
+/* Task 8: save into a specific bank slot. If `slot` is blank (>= the
+ * bank's filled count) the new preset fills it; if the name already
+ * exists it returns PRESET_EXISTS (caller opens the overwrite modal);
+ * otherwise it appends (same as saveInstrumentAsPreset). Used so the
+ * user can save a fresh preset into the blank slot they've parked on. */
+PresetFileResult saveInstrumentAsPresetToSlot(Instrument *inst, const char *name, const char *dir, int slot);
+
 /* Task 8: overwrite-confirmation path. Like saveInstrumentAsPreset, but:
  *   - skips the in-bank dedup check (returns PRESET_OK even if a preset
  *     with `name` already exists);

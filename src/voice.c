@@ -447,7 +447,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * zero (angle = NaN) and grinding the renderer to a halt. The caller
 	 * (cb_setInstrumentPreset) writes the applied index into it afterwards. */
 	instrument->selectedPresetIndex = createParameterPro(instrument->paramList, "preset", 0.0f, 0.0f,
-		(float)(instrument->presetBank->presetCount - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
+		(float)(PRESET_BANK_SLOTS - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
 	/* Task 6: stamp the snapshot with the loaded preset's identity so
 	 * the dirty bit flips to clean. Search the bank by name (rather
 	 * than passing the index around) because some call sites — notably
@@ -569,6 +569,9 @@ Preset presetFromInstrument(Instrument *instrument) {
 void cb_setInstrumentPreset(void *instrument) {
 	Instrument *i = (Instrument *)instrument;
 	int presetIndex = getParameterValueAsInt(i->selectedPresetIndex);
+	if(presetIndex < 0 || presetIndex >= PRESET_BANK_SLOTS) {
+		return;
+	}
 	applyInstrumentPreset(i, i->presetBank->patches[presetIndex]);
 	/* applyInstrumentPreset freed and rebuilt i's paramList/envelope/operator
 	 * params via clearParamList; the preset selector param it just recreated
@@ -585,6 +588,39 @@ void cb_setInstrumentPreset(void *instrument) {
 
 void initPresetBank(PresetBank *pb) {
 	pb->presetCount = 0;
+}
+
+/* Task 8: a usable default FM patch for empty bank slots. The bank
+ * presents PRESET_BANK_SLOTS navigable slots; slots past presetCount
+ * (the on-disk presets) hold this so PREV/NEXT into a blank slot gives
+ * the user something real to edit. Four operators with 1:1 ratios and
+ * a flat algorithm -- a harmless init sound. */
+Preset makeDefaultFmPreset(void) {
+	Preset p;
+	memset(&p, 0, sizeof(p));
+	p.name[0] = '\0';
+	p.voiceType = VOICE_TYPE_FM;
+	for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+		p.pd.fm.ops[i].ratio = 1.0f;
+		p.pd.fm.ops[i].level = 0.5f;
+		p.pd.fm.ops[i].outLevel = 0.5f;
+		p.pd.fm.ops[i].feedbackAmount = 0.0f;
+	}
+	p.pd.fm.selectedAlgorithm = 0;
+	return p;
+}
+
+/* Fill slots [presetCount, PRESET_BANK_SLOTS) with the default FM patch
+ * so PREV/NEXT can walk the full slot range without tripping over
+ * uninitialised patches. Called after directory load + at bank init. */
+void fillEmptyBankSlots(PresetBank *pb) {
+	if(!pb) {
+		return;
+	}
+	Preset def = makeDefaultFmPreset();
+	for(int i = pb->presetCount; i < PRESET_BANK_SLOTS; i++) {
+		pb->patches[i] = def;
+	}
 }
 
 void addPresetToBank(PresetBank *pb, Preset p) {
@@ -622,7 +658,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 
 	(*instrument)->presetBank = pb;
 
-	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (*instrument)->presetBank->presetCount - 1, 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
+	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (float)(PRESET_BANK_SLOTS - 1), 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
 	switch(vt) {
 		case VOICE_TYPE_BLEP:
 			(*instrument)->envelopeCount = 2;

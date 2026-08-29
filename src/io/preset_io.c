@@ -153,6 +153,48 @@ PresetFileResult saveInstrumentAsPreset(Instrument *inst, const char *name, cons
 	return PRESET_OK;
 }
 
+/* Task 8: save into a specific bank slot. If the slot is blank (index
+ * >= filled count), fill it in place instead of appending -- this is
+ * the "edit + name + save into the blank slot you're parked on" path.
+ * If the name already exists in the bank, refuse with PRESET_EXISTS so
+ * the caller can open the overwrite modal. Otherwise append (same as
+ * saveInstrumentAsPreset). */
+PresetFileResult saveInstrumentAsPresetToSlot(Instrument *inst, const char *name, const char *dir, int slot) {
+	if(!inst || !name || !dir) {
+		return PRESET_ERROR_FORMAT;
+	}
+	if(slot < 0 || slot >= PRESET_BANK_SLOTS) {
+		return PRESET_ERROR_FORMAT;
+	}
+	char clean[48];
+	sanitizePresetFilename(name, clean, sizeof(clean));
+	char path[512];
+	snprintf(path, sizeof(path), "%s%s", dir, clean);
+	Preset p = presetFromInstrument(inst);
+	strncpy(p.name, name, sizeof(p.name) - 1);
+	p.name[sizeof(p.name) - 1] = '\0';
+	if(presetNameExists(inst->presetBank, name)) {
+		return PRESET_EXISTS;
+	}
+	PresetFileResult r = savePresetFile(path, &p);
+	if(r != PRESET_OK) {
+		return r;
+	}
+	if(slot >= inst->presetBank->presetCount) {
+		/* Blank slot: fill it. presetCount only advances past the new
+		 * highest filled index (a gap is fine for now). */
+		inst->presetBank->patches[slot] = p;
+		if(slot >= inst->presetBank->presetCount) {
+			inst->presetBank->presetCount = slot + 1;
+		}
+	} else {
+		/* Already-filled slot with a new name: append so both remain
+		 * addressable (matches saveInstrumentAsPreset). */
+		addPresetToBank(inst->presetBank, p);
+	}
+	return PRESET_OK;
+}
+
 /* Task 8: overwrite-confirmation save path. Mirrors saveInstrumentAsPreset
  * but skips the EXISTS guard AND replaces the existing bank slot at the
  * same name instead of appending. On a missing-name slot we still append

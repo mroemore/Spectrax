@@ -616,8 +616,11 @@ static int test_preset_param_survives_apply(void) {
     }
     Instrument *inst = e.vm->instruments[0];
     ASSERT_TRUE(inst->selectedPresetIndex != NULL, "preset param exists");
+    /* Task 8: the preset param spans the full navigable slot range, not
+     * just the filled-on-disk count -- PREV/NEXT walk PRESET_BANK_SLOTS
+     * slots, blank ones holding a default FM patch. */
     ASSERT_NEAR(inst->selectedPresetIndex->maxValue,
-                (float)e.pb.presetCount - 1.0f, 0.001f);
+                (float)(PRESET_BANK_SLOTS - 1), 0.001f);
     bool found = false;
     for (int i = 0; i < inst->paramList->count; i++) {
         if (inst->paramList->params[i] == inst->selectedPresetIndex) {

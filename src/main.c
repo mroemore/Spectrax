@@ -484,6 +484,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 
 	initPresetBank(&data->presetBank);
 	loadPresetsFromDirectory("data/instrument_presets/", &data->presetBank);
+	fillEmptyBankSlots(&data->presetBank);
 	printf("\n\nPRESETS LOADED: %i\n\n", data->presetBank.presetCount);
 	data->voiceManager = createVoiceManager(settings, data->samplePool, data->wavetablePool, &data->presetBank);
 	if(!data->voiceManager) {
