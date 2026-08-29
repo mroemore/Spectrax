@@ -127,7 +127,6 @@ typedef struct {
 	bool editing;
 } PresetNameGuiNode;
 
-GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p);
 GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);
 void drawActionBtnGuiNode(void *self);
@@ -188,7 +187,6 @@ void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int
 void drawValueDisplay(int x, int y, int w, int h, char *text);
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
 void drawDialGuiNode(void *self);
-void drawBtnGuiNode(void *self);
 void drawWrapperNode(void *self);
 void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);

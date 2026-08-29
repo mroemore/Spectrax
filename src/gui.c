@@ -180,8 +180,8 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 
 	GuiNode *pad0 = createNamedBlankGuiNode("pad00");
 	GuiNode *pad1 = createNamedBlankGuiNode("pad01");
-	GuiNode *bpm = createBtnGuiNode(0, 0, 100, 100, 5, na_vertical, "BPM", false, incParameterBaseValue, a->tempoSettings.bpm);
-	GuiNode *swing = createBtnGuiNode(0, 0, 100, 100, 5, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
+	GuiNode *bpm = createDialGuiNode(0, 0, 100, 100, 5, na_vertical, "BPM", false, incParameterBaseValue, a->tempoSettings.bpm);
+	GuiNode *swing = createDialGuiNode(0, 0, 100, 100, 5, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
 	GuiNode *pad2 = createNamedBlankGuiNode("pad02");
 	appendItem(songControls, pad0, 1);
 	appendItem(songControls, bpm, 1);
@@ -409,19 +409,6 @@ void arrangerGraphControlInput(int keymapping) {
 	}
 }
 
-GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p) {
-	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
-	if(gn == NULL) {
-		printf("createBtnGuiNode error, could not create.");
-		return NULL;
-	}
-	gn->callback = callback;
-	gn->p = p;
-	gn->drawable = true;
-	gn->draw = drawDialGuiNode;
-	return gn;
-}
-
 void printArrGraph() {
 	printGraph(agui->root, 0);
 }
@@ -531,28 +518,6 @@ void drawColourRectangle(int x, int y, int w, int h, float roundness, float line
 	} else {
 		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, (Color){ 10, 0, 0, 255 });
 	}
-}
-
-void drawBtnGuiNode(void *self) {
-	GuiNode *gn = (GuiNode *)self;
-	char paramValue[50];
-	snprintf(paramValue, sizeof(paramValue), "%.2f", gn->p->currentValue);
-	int tmpx = gn->x;
-	int tmpy = gn->y;
-	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
-
-	tmpx += gn->padding;
-	tmpy += gn->padding;
-	int paramInt = (int)gn->p->currentValue;
-	if(paramInt == 1) {
-		DrawRectangleRounded((Rectangle){ tmpx - 2, tmpy - 2, 37, 23 }, 0.3f, 12, (Color){ 205, 75, 0, 125 });
-		DrawTexturePro(btnOn, (Rectangle){ 0, 0, 33, 19 }, (Rectangle){ tmpx, tmpy, 33, 19 }, (Vector2){ 0, 0 }, 0, WHITE);
-	} else {
-		DrawRectangleRounded((Rectangle){ tmpx, tmpy, 37, 23 }, 0.3f, 12, (Color){ 40, 30, 30, 165 });
-		DrawTexturePro(btnOff, (Rectangle){ 0, 0, 33, 19 }, (Rectangle){ tmpx, tmpy, 33, 19 }, (Vector2){ 0, 0 }, 0, WHITE);
-	}
-
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx + 4, tmpy + 32 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
 void drawDialGuiNode(void *self) {
@@ -841,8 +806,8 @@ static void commitPresetName(PresetNameGuiNode *pn) {
 }
 
 /* Forward decls so handlePresetUiInput can activate the SAVE/LOAD buttons. */
-static void cbFocusNameNode(Parameter *p, float v);
-static void cbOpenLoadList(Parameter *p, float v);
+static void cbFocusNameNode(void *ctx);
+static void cbOpenLoadList(void *ctx);
 
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	/* Task 8: while the overwrite modal is up we consume ALL input and
@@ -1071,8 +1036,8 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 	return gn;
 }
 
-static void cbFocusNameNode(Parameter *p, float v) { (void)v; (void)p; /* focus handled via selection; the node is directly editable */ }
-static void cbOpenLoadList(Parameter *p, float v) { (void)v; (void)p; guiOpenLoadList(); }
+static void cbFocusNameNode(void *ctx) { (void)ctx; /* focus handled via selection; the node is directly editable */ }
+static void cbOpenLoadList(void *ctx) { (void)ctx; guiOpenLoadList(); }
 
 /* Task 9: scrollable preset-load-list node. The list contents live in
  * the file-static g_loadList state populated by guiOpenLoadList(); this
@@ -1132,11 +1097,11 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "PRESET_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
-	GuiNode *presetIndex = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
+	GuiNode *presetIndex = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "PRESET", selected, incParameterBaseValue, inst->selectedPresetIndex);
 	GuiNode *pad1 = createBlankGuiNode();
 	GuiNode *nameNode = createPresetNameGuiNode(0, 0, 100, 100, inst, 0);
-	GuiNode *saveBtn = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 0, cbFocusNameNode, (Parameter *)inst);
-	GuiNode *loadBtn = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 0, cbOpenLoadList, (Parameter *)inst);
+	GuiNode *saveBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 0, cbFocusNameNode, inst);
+	GuiNode *loadBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 0, cbOpenLoadList, inst);
 	appendItem(btnwrap, presetIndex, 1);
 	appendItem(btnwrap, pad1, 7);
 	appendItem(btnwrap, nameNode, 4);
@@ -1161,20 +1126,20 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
 
-	GuiNode *rat1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO1", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
-	GuiNode *fb1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK1", 0, incParameterBaseValue, inst->id.fm.ops[0]->feedbackAmount);
-	GuiNode *lvl1 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL1", 0, incParameterBaseValue, inst->id.fm.ops[0]->level);
-	GuiNode *rat2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO2", 0, incParameterBaseValue, inst->id.fm.ops[1]->ratio);
-	GuiNode *fb2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK2", 0, incParameterBaseValue, inst->id.fm.ops[1]->feedbackAmount);
-	GuiNode *lvl2 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL2", 0, incParameterBaseValue, inst->id.fm.ops[1]->level);
-	GuiNode *rat3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO3", 0, incParameterBaseValue, inst->id.fm.ops[2]->ratio);
-	GuiNode *fb3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK3", 0, incParameterBaseValue, inst->id.fm.ops[2]->feedbackAmount);
-	GuiNode *lvl3 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL3", 0, incParameterBaseValue, inst->id.fm.ops[2]->level);
-	GuiNode *rat4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO4", 0, incParameterBaseValue, inst->id.fm.ops[3]->ratio);
-	GuiNode *fb4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK4", 0, incParameterBaseValue, inst->id.fm.ops[3]->feedbackAmount);
-	GuiNode *lvl4 = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL4", 0, incParameterBaseValue, inst->id.fm.ops[3]->level);
-	GuiNode *alg = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->id.fm.selectedAlgorithm);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *rat1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO1", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
+	GuiNode *fb1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK1", 0, incParameterBaseValue, inst->id.fm.ops[0]->feedbackAmount);
+	GuiNode *lvl1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL1", 0, incParameterBaseValue, inst->id.fm.ops[0]->level);
+	GuiNode *rat2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO2", 0, incParameterBaseValue, inst->id.fm.ops[1]->ratio);
+	GuiNode *fb2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK2", 0, incParameterBaseValue, inst->id.fm.ops[1]->feedbackAmount);
+	GuiNode *lvl2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL2", 0, incParameterBaseValue, inst->id.fm.ops[1]->level);
+	GuiNode *rat3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO3", 0, incParameterBaseValue, inst->id.fm.ops[2]->ratio);
+	GuiNode *fb3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK3", 0, incParameterBaseValue, inst->id.fm.ops[2]->feedbackAmount);
+	GuiNode *lvl3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL3", 0, incParameterBaseValue, inst->id.fm.ops[2]->level);
+	GuiNode *rat4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO4", 0, incParameterBaseValue, inst->id.fm.ops[3]->ratio);
+	GuiNode *fb4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK4", 0, incParameterBaseValue, inst->id.fm.ops[3]->feedbackAmount);
+	GuiNode *lvl4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL4", 0, incParameterBaseValue, inst->id.fm.ops[3]->level);
+	GuiNode *alg = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->id.fm.selectedAlgorithm);
+	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
 	alg->draw = drawDiscreteDialGuiNode;
 	pan->draw = drawDiscreteDialGuiNode;
 	if(selected) {
@@ -1221,14 +1186,13 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
 
-	GuiNode *sampleIndex = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->id.sampler.sampleIndex);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
-	GuiNode *loop = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->id.sampler.loopSample);
-	loop->draw = drawBtnGuiNode;
+	GuiNode *sampleIndex = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->id.sampler.sampleIndex);
+	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *loop = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->id.sampler.loopSample);
 	pan->draw = drawDiscreteDialGuiNode;
-	GuiNode *loopStart = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, incParameterBaseValue, inst->id.sampler.loopStartIndex);
-	GuiNode *loopEnd = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, incParameterBaseValue, inst->id.sampler.loopEndIndex);
-	GuiNode *playbackType = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PLAYBACK", 0, incParameterBaseValue, inst->id.sampler.playbackType);
+	GuiNode *loopStart = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, incParameterBaseValue, inst->id.sampler.loopStartIndex);
+	GuiNode *loopEnd = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, incParameterBaseValue, inst->id.sampler.loopEndIndex);
+	GuiNode *playbackType = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PLAYBACK", 0, incParameterBaseValue, inst->id.sampler.playbackType);
 	SampleWaveformGuiNode *swgn = createSampleWaveformGuiNode(0, 0, 100, 100, 5, na_vertical, "WFRM", 0, inst, inst->id.sampler.loopStartIndex, inst->id.sampler.loopEndIndex);
 	if(selected) {
 		g->selected = sampleIndex;
@@ -1262,8 +1226,8 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
 
-	GuiNode *waveShape = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "SHAPE", selected, incParameterBaseValue, inst->id.blep.shape);
-	GuiNode *pan = createBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *waveShape = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SHAPE", selected, incParameterBaseValue, inst->id.blep.shape);
+	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
 	pan->draw = drawDiscreteDialGuiNode;
 
 	if(selected) {
@@ -1323,11 +1287,11 @@ static void appendRuntimeEnvControlNode(Graph *g, GuiNode *container, char *name
 	envwrap->draw = drawWrapperNode;
 	envwrap->drawable = true;
 
-	GuiNode *ar = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", 0, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
-	GuiNode *route = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, incRouteIndex, runtimeRoutes[envIndex].routeIndex);
+	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", 0, incParameterBaseValue, env->stages[0].duration);
+	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
+	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
+	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
+	GuiNode *route = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, incRouteIndex, runtimeRoutes[envIndex].routeIndex);
 	route->draw = drawDiscreteDialGuiNode;
 	GuiNode *sp = createBlankGuiNode();
 
@@ -1433,10 +1397,10 @@ void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight
 	envwrap->draw = drawWrapperNode;
 	envwrap->drawable = true;
 
-	GuiNode *ar = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
+	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
+	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
+	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
+	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
 	if(selected) { g->selected = ar; }
 
 	GuiNode *sp1 = createBlankGuiNode();
@@ -1457,14 +1421,14 @@ void appendADSREnvControlNode(Graph *g, GuiNode *container, char *name, int weig
 	envwrap->draw = drawWrapperNode;
 	envwrap->drawable = true;
 
-	GuiNode *ar = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
-	GuiNode *sr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SUSTAIN", 0, incParameterBaseValue, env->stages[2].duration);
-	GuiNode *sc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[2].curvature);
-	GuiNode *rr = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "RELEASE", 0, incParameterBaseValue, env->stages[3].duration);
-	GuiNode *rc = createBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[3].curvature);
+	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
+	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
+	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
+	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
+	GuiNode *sr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SUSTAIN", 0, incParameterBaseValue, env->stages[2].duration);
+	GuiNode *sc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[2].curvature);
+	GuiNode *rr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RELEASE", 0, incParameterBaseValue, env->stages[3].duration);
+	GuiNode *rc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[3].curvature);
 	if(selected) { g->selected = ar; }
 
 	GuiNode *sp1 = createBlankGuiNode();
