@@ -37,6 +37,19 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	double cpu_time_used;
 	start = clock();
 	int stepSamples = data->arranger->tempoSettings.swingStep ? data->arranger->tempoSettings.samplesPerOddStep : data->arranger->tempoSettings.samplesPerEvenStep;
+	/* TEMP probe: log every tempo-state change + anomalies */
+	{
+		static int prev_even = -1, prev_odd = -1, prev_bpm = -1;
+		int ceven = data->arranger->tempoSettings.samplesPerEvenStep;
+		int codd = data->arranger->tempoSettings.samplesPerOddStep;
+		int cbpm = (int)getParameterValue(data->arranger->tempoSettings.bpm);
+		int cswing = (int)getParameterValue(data->arranger->tempoSettings.swing);
+		if(prev_even != ceven || prev_odd != codd || prev_bpm != cbpm) {
+			fprintf(stderr, "TEMPOCHANGE even=%d odd=%d bpm=%d swing=%d stepSamples=%d\n",
+			        ceven, codd, cbpm, cswing, stepSamples);
+			prev_even = ceven; prev_odd = codd; prev_bpm = cbpm;
+		}
+	}
 	if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
 		data->arranger->tempoSettings.samplesElapsed = 0;
 		if(data->arranger->playing) {
