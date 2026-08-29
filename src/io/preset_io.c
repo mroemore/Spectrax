@@ -111,13 +111,16 @@ void sanitizePresetFilename(const char *name, char *out, size_t outSize) {
 	strcpy(out + i, ".ipb");
 }
 
-/* Task 5: scan the in-memory PresetBank for a preset whose 32-byte
- * name slot matches `name`. Fixed-width compare (strncmp) is intentional:
- * short names leave trailing NULs in patches[].name[], and we don't want
- * "alpha" to match "alphabet". */
+/* Check whether a preset with exactly the name `name` is in `pb`. The
+ * stored patch slots are 32 bytes wide and zero-padded past the NUL by
+ * strncpy, so we compare up to the shorter string's length: short names
+ * in the bank stop at their own NUL (so "alpha" doesn't match
+ * "alphabet"), and the bank is otherwise untouched. Replaces the old
+ * fixed-width strncmp which let "Xm1  " match a stored "Xm1" via the
+ * trailing NULs. */
 bool presetNameExists(PresetBank *pb, const char *name) {
 	for(int i = 0; i < pb->presetCount; i++) {
-		if(strncmp(pb->patches[i].name, name, 32) == 0) {
+		if(strcmp(pb->patches[i].name, name) == 0) {
 			return true;
 		}
 	}
@@ -176,7 +179,7 @@ PresetFileResult saveInstrumentAsPresetOverwrite(Instrument *inst, const char *n
 	 * append (matches saveInstrumentAsPreset for the no-prior-entry case). */
 	int replaced = 0;
 	for(int i = 0; i < inst->presetBank->presetCount; i++) {
-		if(strncmp(inst->presetBank->patches[i].name, name, 32) == 0) {
+		if(strcmp(inst->presetBank->patches[i].name, name) == 0) {
 			inst->presetBank->patches[i] = p;
 			replaced = 1;
 			break;

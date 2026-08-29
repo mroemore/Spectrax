@@ -125,6 +125,12 @@ typedef struct {
 	char name[33];
 	int cursor;
 	bool editing;
+	/* Task 5: visual save-feedback flashes. Set in commitPresetName after
+	 * guiSavePreset returns. 0 = inactive. Compared against a wall-clock
+	 * frame index (currentFrameIndex()); a value strictly greater than the
+	 * current frame means the flash is active. */
+	int savedFlashUntil;
+	int errorFlashUntil;
 } PresetNameGuiNode;
 
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p);
@@ -142,6 +148,13 @@ bool isSelectedDialNode(const Graph *g);
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
 bool isPresetNameNode(GuiNode *n);
 
+/* Task 5: flash getters used by the scripted harness to assert that the
+ * saved-/error-flash fired after a save attempt. Returns true while the
+ * flash is still active (savedFlashUntil > currentFrameIndex()).
+ * Returns false for any non-PresetNameGuiNode input. */
+bool presetNameGuiNodeSavedFlashActive(GuiNode *n);
+bool presetNameGuiNodeErrorFlashActive(GuiNode *n);
+
 /* Task 9: scrollable preset file list. Identified by draw fn pointer
  * via isPresetLoadListNode (same pattern as the name node). The list
  * contents live in a static g_loadList state populated by guiOpenLoadList. */
@@ -155,8 +168,14 @@ bool handlePresetUiInput(InputState *is, Instrument *inst);
 /* Task 7: SAVE flow entry point. Saves the instrument as a preset under
  * `name` in the user-presets dir. On PRESET_EXISTS this opens the
  * overwrite modal (Task 8) and the actual overwrite save happens later
- * once the user confirms. */
-void guiSavePreset(Instrument *inst, const char *name);
+ * once the user confirms.
+ *
+ * Task 5: returns the PresetFileResult from the underlying save so the
+ * caller (commitPresetName) can light a success- or error-flash on the
+ * PresetNameGuiNode. PRESET_EXISTS is not propagated as an "error" —
+ * the user hasn't confirmed the overwrite yet, so it's neither success
+ * nor failure at this point. */
+PresetFileResult guiSavePreset(Instrument *inst, const char *name);
 
 /* Task 7: LOAD flow entry point. Task 9 will replace the stub with the
  * load-list UI. For now it just flips a flag. */

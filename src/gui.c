@@ -712,17 +712,20 @@ void guiSetOverwritePending(const char *name) {
 
 bool guiIsModalOpen(void) { return g_modalState != MODAL_NONE; }
 
-void guiSavePreset(Instrument *inst, const char *name) {
+PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
 	if(!inst || !name) {
-		return;
+		return PRESET_ERROR_FORMAT;
 	}
 	PresetFileResult r = saveInstrumentAsPreset(inst, name, "data/instrument_presets/");
 	if(r == PRESET_EXISTS) {
 		/* Defer the actual overwrite to the modal: the user hasn't
 		 * confirmed yet. handlePresetUiInput drives the modal and
-		 * calls saveInstrumentAsPresetOverwrite() on YES. */
+		 * calls saveInstrumentAsPresetOverwrite() on YES. We still
+		 * propagate PRESET_EXISTS to the caller (commitPresetName)
+		 * so it can skip firing either flash — the modal is the UI. */
 		guiSetOverwritePending(name);
 	}
+	return r;
 }
 
 /* Task 8: centered overlay panel for the overwrite confirmation. Drawn
@@ -796,13 +799,39 @@ static void cycleNameChar(PresetNameGuiNode *pn, int delta) {
 	pn->name[pn->cursor] = NAME_CHARS[idx];
 }
 
+/* Task 5: forward decl so commitPresetName (defined below) can call it
+ * before the static definition. The real implementation lives next to
+ * effectiveNameLen further down. */
+static int currentFrameIndex(void);
+
 static void commitPresetName(PresetNameGuiNode *pn) {
 	/* trim + default, then run the save flow (overwrite check happens here) */
 	if(strlen(pn->name) == 0 || strspn(pn->name, " ") == strlen(pn->name)) {
 		strncpy(pn->name, "UNNAMED", sizeof(pn->name) - 1);
+		pn->name[sizeof(pn->name) - 1] = '\0';
+	}
+	/* Task 5: strip trailing spaces. The old "Xm1  " (cursor-left-padded
+	 * to 32 chars) used to bypass the EXISTS check because strncmp(_,32)
+	 * matched the trailing NULs of the shorter stored name. With the
+	 * trim the save call below always sees the same "Xm1" the bank
+	 * already holds, so PRESET_EXISTS fires and the modal opens. */
+	for(int i = (int)strlen(pn->name) - 1; i >= 0 && pn->name[i] == ' '; i--) {
+		pn->name[i] = '\0';
 	}
 	pn->editing = false;
-	guiSavePreset(pn->inst, pn->name); /* opens the overwrite modal if EXISTS */
+	PresetFileResult r = guiSavePreset(pn->inst, pn->name);
+	/* PRESET_OK -> green/success flash. PRESET_EXISTS is handled out of
+	 * band by the modal (guiSetOverwritePending), so it's NOT an error
+	 * from the user's perspective; the flash fires when the overwrite
+	 * actually commits via saveInstrumentAsPresetOverwrite.
+	 *
+	 * Every other PresetFileResult (format / io / null arg) is a real
+	 * failure — light the red error flash. */
+	if(r == PRESET_OK) {
+		pn->savedFlashUntil = currentFrameIndex() + 30;
+	} else if(r != PRESET_EXISTS) {
+		pn->errorFlashUntil = currentFrameIndex() + 30;
+	}
 }
 
 /* Forward decls so handlePresetUiInput can activate the SAVE/LOAD buttons. */
@@ -823,6 +852,16 @@ static int effectiveNameLen(const char *name) {
 		n = PRESET_NAME_MAX;
 	}
 	return n;
+}
+
+/* Task 5: cheap wall-clock frame index used by the save/error flash
+ * bookkeeping in PresetNameGuiNode. raylib's GetTime returns seconds
+ * since InitWindow(); multiplying by 60 gives a 60fps counter. Not
+ * exactly frame-accurate (the real dt may differ), but stable enough
+ * for "flash for ~0.5s after a save". Flash getters compare against
+ * this with a strict `>` so the flash dies exactly at the boundary. */
+static int currentFrameIndex(void) {
+	return (int)(GetTime() * 60.0f);
 }
 
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
@@ -882,7 +921,7 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 			const char *want = g_loadList.names[g_loadList.highlight];
 			if(inst && inst->presetBank) {
 				for(int i = 0; i < inst->presetBank->presetCount; i++) {
-					if(strncmp(inst->presetBank->patches[i].name, want, 32) == 0) {
+					if(strcmp(inst->presetBank->patches[i].name, want) == 0) {
 						applyInstrumentPreset(inst, inst->presetBank->patches[i]);
 						/* Mirror the preset-selector callback pattern
 						 * (see cb_setInstrumentPreset): the selector param
@@ -1004,7 +1043,18 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 static void drawPresetNameGuiNode(void *self) {
 	PresetNameGuiNode *pn = (PresetNameGuiNode *)self;
 	GuiNode *gn = (GuiNode *)pn;
-	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, BLACK);
+	/* Task 5: pick the background tint based on which flash (if any) is
+	 * active. Error flash wins over saved flash if both somehow fire in
+	 * the same frame — PRESET_OK and PRESET_ERROR_* are mutually
+	 * exclusive in commitPresetName, but be defensive anyway. Default
+	 * is the original solid black. */
+	Color bg = BLACK;
+	if(currentFrameIndex() < pn->errorFlashUntil) {
+		bg = (Color){ 60, 10, 10, 255 };
+	} else if(currentFrameIndex() < pn->savedFlashUntil) {
+		bg = (Color){ 10, 50, 10, 255 };
+	}
+	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, bg);
 	/* copy the current name into the node once per selection */
 	int n = (int)strlen(pn->name);
 	if(n < 32) {
@@ -1029,6 +1079,24 @@ static void drawPresetNameGuiNode(void *self) {
 
 bool isPresetNameNode(GuiNode *n) {
 	return n && n->draw == drawPresetNameGuiNode;
+}
+
+/* Task 5: flash getters. Strict `>` so the flash dies exactly on the
+ * boundary frame. isPresetNameNode guards the downcast. */
+bool presetNameGuiNodeSavedFlashActive(GuiNode *n) {
+	if(!isPresetNameNode(n)) {
+		return false;
+	}
+	PresetNameGuiNode *pn = (PresetNameGuiNode *)n;
+	return currentFrameIndex() < pn->savedFlashUntil;
+}
+
+bool presetNameGuiNodeErrorFlashActive(GuiNode *n) {
+	if(!isPresetNameNode(n)) {
+		return false;
+	}
+	PresetNameGuiNode *pn = (PresetNameGuiNode *)n;
+	return currentFrameIndex() < pn->errorFlashUntil;
 }
 
 /* Task 3: KM_EDIT + arrow dispatch guard. The action button and preset
@@ -1070,6 +1138,10 @@ GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, b
 	}
 	pn->cursor = 0;
 	pn->editing = false;
+	/* Task 5: no flash active at construction. 0 is also strictly <= any
+	 * currentFrameIndex() that returns >= 0 after raylib InitWindow. */
+	pn->savedFlashUntil = 0;
+	pn->errorFlashUntil = 0;
 	gn->drawable = true;
 	gn->draw = drawPresetNameGuiNode;
 	return gn;

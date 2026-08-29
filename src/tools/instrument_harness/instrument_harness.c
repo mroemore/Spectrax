@@ -77,6 +77,10 @@ typedef enum {
 	SOP_ASSERT_PRESETCOUNT, /* presetBank->presetCount == N */
 	SOP_ASSERT_ALGO,     /* FM selectedAlgorithm baseValue (as int) == N */
 	SOP_ASSERT_LOADLISTACTIVE, /* g_loadListActive (guiIsLoadListActive) == N */
+	SOP_ASSERT_SAVEDFLASH,     /* Task 5: selected PresetNameGuiNode's savedFlashUntil
+	                            * is strictly in the future (currentFrameIndex() < it).
+	                            * ==1 right after a successful save, ==0 once the
+	                            * ~30-frame flash window has expired. */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -359,8 +363,8 @@ static void parseScript(const char *path) {
 				s->name[sizeof(s->name) - 1] = '\0';
 			} else if(strcmp(tokens[1], "preset") == 0) {
 				/* ASSERT preset == <NAME> : presetBank has a patch whose
-				 * name slot matches NAME (strncmp N=32, same convention
-				 * as presetNameExists in io/preset_io.c). */
+				 * name matches NAME exactly (strcmp, same convention as
+				 * presetNameExists in io/preset_io.c). */
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
 					fclose(fp);
 					failScript(lineno, "ASSERT preset==<NAME>");
@@ -406,9 +410,17 @@ static void parseScript(const char *path) {
 				}
 				s->op = SOP_ASSERT_LOADLISTACTIVE;
 				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "savedFlash") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT savedFlash==<0|1>");
+					return;
+				}
+				s->op = SOP_ASSERT_SAVEDFLASH;
+				s->a.n = atoi(tokens[3]);
 			} else {
 				fclose(fp);
-				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive)", tokens[1]);
+				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive|savedFlash)", tokens[1]);
 				return;
 			}
 		} else if(strcmp(op, "QUIT") == 0) {
@@ -480,10 +492,10 @@ static void runAssertSelected(int lineno, const char *expected) {
 	}
 }
 
-/* Walk the in-memory preset bank looking for a patch whose 32-byte name
- * slot matches `expected`. Mirrors presetNameExists() from preset_io.c
- * (strncmp N=32 so short names don't get spuriously matched against
- * longer ones). Used after a save to prove the bank was updated. */
+/* Walk the in-memory preset bank looking for a patch whose name matches
+ * `expected` exactly. Mirrors presetNameExists() from preset_io.c (strcmp
+ * so short names don't get spuriously matched against longer ones).
+ * Used after a save to prove the bank was updated. */
 static void runAssertPreset(int lineno, const char *expected) {
 	Instrument *inst = getSelectedInstInstrument();
 	if(!inst || !inst->presetBank) {
@@ -492,7 +504,7 @@ static void runAssertPreset(int lineno, const char *expected) {
 	}
 	PresetBank *pb = inst->presetBank;
 	for(int i = 0; i < pb->presetCount; i++) {
-		if(strncmp(pb->patches[i].name, expected, 32) == 0) {
+		if(strcmp(pb->patches[i].name, expected) == 0) {
 			return;
 		}
 	}
@@ -535,6 +547,19 @@ static void runAssertAlgo(int lineno, int expected) {
 	int got = (int)inst->id.fm.selectedAlgorithm->baseValue;
 	if(got != expected) {
 		failScript(lineno, "ASSERT algo==%d failed: got %d", expected, got);
+	}
+}
+
+/* Task 5: assert that the selected PresetNameGuiNode's saved flash is
+ * active (==1) or inactive (==0). Drives through the public
+ * presetNameGuiNodeSavedFlashActive getter so the harness doesn't reach
+ * into gui.c private state. Selection must be the PRESET_NAME node. */
+static void runAssertSavedFlash(int lineno, int expected) {
+	GuiNode *sel = getSelectedInstGraph() ? getSelectedInstGraph()->selected : NULL;
+	int got = sel ? (presetNameGuiNodeSavedFlashActive(sel) ? 1 : 0) : -1;
+	if(got != expected) {
+		failScript(lineno, "ASSERT savedFlash==%d failed: got %d (selection %s)",
+		           expected, got, sel ? "present" : "NULL");
 	}
 }
 
@@ -612,6 +637,9 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_LOADLISTACTIVE:
 			runAssertLoadListActive(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_SAVEDFLASH:
+			runAssertSavedFlash(s->lineno, s->a.n);
 			break;
 		default:
 			break;

@@ -70,6 +70,7 @@ START
 ASSERT preset==Xm1
 ASSERT file==Xm1
 ASSERT presetCount==6
+ASSERT savedFlash==1
 
 # --- Re-save with the SAME name to trigger the overwrite modal -----------
 # guiSavePreset calls saveInstrumentAsPreset, which returns PRESET_EXISTS
