@@ -1010,6 +1010,18 @@ bool isPresetNameNode(GuiNode *n) {
 	return n && n->draw == drawPresetNameGuiNode;
 }
 
+/* Task 3: KM_EDIT + arrow dispatch guard. The action button and preset
+ * name / load-list nodes also live in the instrument graph; calling
+ * their `callback` slot with a float delta would either be meaningless
+ * (action buttons have no Parameter*) or, for the name node, dispatch
+ * into a NULL/stale function pointer and crash. Only true for a real
+ * dial node (drawDialGuiNode + non-NULL OnPressCallback). */
+bool isSelectedDialNode(const Graph *g) {
+	if(!g || !g->selected) return false;
+	GuiNode *n = g->selected;
+	return n->draw == drawDialGuiNode && n->callback != NULL;
+}
+
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected) {
 	PresetNameGuiNode *pn = malloc(sizeof(PresetNameGuiNode));
 	if(!pn) {

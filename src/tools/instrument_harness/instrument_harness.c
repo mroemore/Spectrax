@@ -651,17 +651,22 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 	}
 
 	if(isKeyHeld(appState->inputState, KM_EDIT)) {
-		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-			currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
-		}
-		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-			currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
-		}
-		if(isKeyJustPressed(appState->inputState, KM_UP)) {
-			currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
-		}
-		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-			currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+		/* Task 3: only dispatch the value callback when the selected
+		 * node is a real dial. Mirrors the main.c guard so the scripted
+		 * fixture (EDIT + DOWN on PRESET_NAME) doesn't crash. */
+		if(isSelectedDialNode(currentGraph)) {
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_UP)) {
+				currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+				currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+			}
 		}
 	} else {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

@@ -129,5 +129,27 @@ ASSERT loadListActive==0
 # Sanity: the saved file is still on disk after load.
 ASSERT file==Xm1
 
+# --- Crash regression: `z`+DOWN on the preset name node -------------------
+# Before Task 3, holding EDIT (z) and pressing DOWN while the selection was
+# the PRESET_NAME node dispatched currentGraph->selected->callback(...) with
+# a NULL/stale function pointer and crashed the harness. The dispatch guard
+# (isSelectedDialNode) now skips the callback for non-dial selections, so
+# this block must reach the ASSERT below without crashing.
+#
+# Drive back to PRESET_NAME: DOWN from LOAD drops out of btnwrap into
+# btnrow1 (RATIO1), UP walks the same ladder back to LOAD, then two LEFTs
+# slide LOAD -> SAVE -> PRESET_NAME.
+DOWN
+UP
+ASSERT selected==LOAD
+LEFT
+LEFT
+ASSERT selected==PRESET_NAME
+
+# Hold EDIT, press DOWN. With the guard in place this is a no-op; without
+# it, the harness segfaults inside handleInstrumentInput.
+EDIT DOWN
+ASSERT selected==PRESET_NAME
+
 # --- Done -----------------------------------------------------------------
 QUIT

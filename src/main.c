@@ -326,18 +326,23 @@ int main(void) {
 				if(isKeyHeld(appState->inputState, KM_EDIT)) {
 					Graph *currentGraph = getSelectedInstGraph();
 
-					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
-						;
-					}
-					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+					/* Task 3: only dispatch the value callback when the
+					 * selected node is a real dial. Pressing EDIT+arrow
+					 * on the preset name node (or an action button)
+					 * must be a no-op, not a crash. */
+					if(isSelectedDialNode(currentGraph)) {
+						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+							currentGraph->selected->callback(currentGraph->selected->p, -0.1f);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+							currentGraph->selected->callback(currentGraph->selected->p, 0.1f);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_UP)) {
+							currentGraph->selected->callback(currentGraph->selected->p, 2.0f);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+							currentGraph->selected->callback(currentGraph->selected->p, -2.0f);
+						}
 					}
 				} else {
 					if(handlePresetUiInput(appState->inputState, getSelectedInstInstrument())) {

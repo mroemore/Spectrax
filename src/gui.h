@@ -131,6 +131,14 @@ GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignmen
 GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);
 void drawActionBtnGuiNode(void *self);
 void printArrGraph();
+
+/* Task 3: dispatch guard for KM_EDIT + arrow keys. True only when the
+ * currently-selected node is a dial (has the draw fn pointer drawDialGuiNode
+ * and a non-NULL OnPressCallback). Used by the SCENE_INSTRUMENT input
+ * branches in main.c and the harness to skip the callback dispatch when
+ * the selection is anything else (preset name node, action button, load
+ * list, etc.). Fixes the `z`+DOWN crash on the preset name node. */
+bool isSelectedDialNode(const Graph *g);
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
 bool isPresetNameNode(GuiNode *n);
 
