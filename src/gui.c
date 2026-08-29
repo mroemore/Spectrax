@@ -61,7 +61,14 @@ SpriteSheet *createSpriteSheet(char *imagePath, int sprite_w, int sprite_h) {
 }
 
 void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y, int w, int h) {
-	index = index > spriteSheet->spriteCount ? index % spriteSheet->spriteCount : index;
+	if(!spriteSheet || spriteSheet->spriteCount <= 0) {
+		/* Asset failed to load or has zero sprites -- avoid the SIGFPE
+		 * from `index % 0` and silently skip the draw. The arranger
+		 * scene's instrument icons are decorative; the rest of the UI
+		 * (cells, cursor, pattern grid) still renders. */
+		return;
+	}
+	index = index >= spriteSheet->spriteCount ? index % spriteSheet->spriteCount : index;
 	spriteSheet->spriteSize.x = index * spriteSheet->spriteW;
 	DrawTexturePro(spriteSheet->sheet, spriteSheet->spriteSize, (Rectangle){ x + spriteSheet->spriteW / 2.0, y + spriteSheet->spriteW / 2.0, w, h }, spriteSheet->origin, 0.0, WHITE);
 	spriteSheet->spriteSize.x = 0;
