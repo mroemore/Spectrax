@@ -278,18 +278,22 @@ static void parseScript(const char *path) {
 			s->op = SOP_KEY; s->a.key = KM_FUNCTION; s->frames = 1;
 		} else if(strcmp(op, "EDIT") == 0) {
 			if(nt < 2) {
-				fclose(fp);
-				failScript(lineno, "EDIT requires an arrow (EDIT LEFT|RIGHT|UP|DOWN)");
-				return;
+				/* Task 4: standalone EDIT injects a one-frame KM_EDIT press so
+				 * fixtures can explicitly toggle edit mode on the name node.
+				 * Falls through to the g_script.count++ at the end of the
+				 * parser loop (no `continue` -- that would skip the step
+				 * registration). */
+				s->op = SOP_KEY; s->a.key = KM_EDIT; s->frames = 1;
+			} else {
+				KeyMapping arrow;
+				if(!parseKeyName(tokens[1], &arrow) ||
+				   (arrow != KM_LEFT && arrow != KM_RIGHT && arrow != KM_UP && arrow != KM_DOWN)) {
+					fclose(fp);
+					failScript(lineno, "EDIT requires LEFT|RIGHT|UP|DOWN, got '%s'", tokens[1]);
+					return;
+				}
+				s->op = SOP_EDIT_ARROW; s->a.arrow = arrow; s->frames = 3;
 			}
-			KeyMapping arrow;
-			if(!parseKeyName(tokens[1], &arrow) ||
-			   (arrow != KM_LEFT && arrow != KM_RIGHT && arrow != KM_UP && arrow != KM_DOWN)) {
-				fclose(fp);
-				failScript(lineno, "EDIT requires LEFT|RIGHT|UP|DOWN, got '%s'", tokens[1]);
-				return;
-			}
-			s->op = SOP_EDIT_ARROW; s->a.arrow = arrow; s->frames = 3;
 		} else if(strcmp(op, "FRAMES") == 0) {
 			if(nt < 2) {
 				fclose(fp);

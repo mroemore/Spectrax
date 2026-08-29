@@ -809,6 +809,22 @@ static void commitPresetName(PresetNameGuiNode *pn) {
 static void cbFocusNameNode(void *ctx);
 static void cbOpenLoadList(void *ctx);
 
+/* Task 4: number of valid cursor slots for the preset name node. name[33]
+ * holds 32 chars + 1 NUL. effectiveNameLen returns the exclusive upper bound
+ * on the cursor index (the number of editable slots). NULL or empty name
+ * returns 0 so the cursor stays pinned at slot 0. Capped at PRESET_NAME_MAX. */
+#define PRESET_NAME_MAX 32
+static int effectiveNameLen(const char *name) {
+	if(!name || !name[0]) {
+		return 0;
+	}
+	int n = (int)strlen(name);
+	if(n > PRESET_NAME_MAX) {
+		n = PRESET_NAME_MAX;
+	}
+	return n;
+}
+
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	/* Task 8: while the overwrite modal is up we consume ALL input and
 	 * drive the modal state machine. This must run BEFORE the name-node
@@ -914,43 +930,40 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * nodes fire their callback via the KM_EDIT arrow path elsewhere; this
 	 * gives them a bare-activate action that matches the arcade controls. */
 	if(sel && isKeyJustPressed(is, KM_START)) {
-		if(sel->callback == cbOpenLoadList || sel->callback == cbFocusNameNode) {
-			sel->callback(sel->p, 0.0f);
+		/* Action buttons (SAVE/LOAD) store their handler in `actionCb` (an
+		 * ActionCallback, signature `void(void*)`), not `callback` (which is
+		 * reserved for OnPressCallback on dial nodes). */
+		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode) {
+			sel->actionCb(sel->actionCtx);
 			return true;
 		}
 	}
-	/* Track the last name node the selection sat on. A FRESH selection of
-	 * the name node enters edit mode (arrows edit the name); once the user
-	 * exits (KM_SELECT) the arrows navigate normally again and the flag
-	 * resets when the selection moves off the node OR the graph is rebuilt
-	 * (a stale node pointer would otherwise falsely suppress re-arm). */
-	static Graph *lastNameGraph = NULL;
-	static GuiNode *lastNameNode = NULL;
+	/* Task 4: edit mode is no longer auto-armed by a fresh selection. The
+	 * user must press KM_EDIT to enter, and KM_EDIT/KM_SELECT to exit.
+	 * Arrows cycle chars / move the cursor only while editing; when not
+	 * editing they fall through to normal navigation. */
 	if(!sel || !isPresetNameNode(sel)) {
-		lastNameGraph = NULL;
-		lastNameNode = NULL;
 		return false;
 	}
 	PresetNameGuiNode *pn = (PresetNameGuiNode *)sel;
-	if(lastNameGraph != g || lastNameNode != sel) {
-		pn->editing = true;
-	}
-	lastNameGraph = g;
-	lastNameNode = sel;
 
 	if(!pn->editing) {
-		/* Exited edit mode: KM_START commits, KM_SELECT re-arms nothing,
-		 * and arrows fall through to normal navigation. */
+		/* Selected but not editing: KM_EDIT (z) enters edit mode, KM_START
+		 * commits, and arrows + KM_SELECT fall through to normal navigation. */
+		if(isKeyJustPressed(is, KM_EDIT)) {
+			pn->editing = true;
+			return true;
+		}
 		if(isKeyJustPressed(is, KM_START)) {
 			commitPresetName(pn);
 			return true;
 		}
-		if(isKeyJustPressed(is, KM_SELECT)) {
-			return true;
-		}
 		return false;
 	}
 
+	/* Editing: arrows cycle the active char (UP/DOWN) and move the cursor
+	 * (LEFT/RIGHT, bounded to effectiveNameLen); KM_START commits; KM_EDIT
+	 * and KM_SELECT toggle edit off. */
 	if(isKeyJustPressed(is, KM_UP)) {
 		cycleNameChar(pn, 1);
 		return true;
@@ -960,17 +973,25 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		return true;
 	}
 	if(isKeyJustPressed(is, KM_LEFT)) {
-		pn->cursor = (pn->cursor + 31) % 32;
+		if(pn->cursor > 0) {
+			pn->cursor--;
+		}
 		return true;
 	}
 	if(isKeyJustPressed(is, KM_RIGHT)) {
-		pn->cursor = (pn->cursor + 1) % 32;
+		if(pn->cursor < effectiveNameLen(pn->name)) {
+			pn->cursor++;
+		}
 		return true;
 	}
 	if(isKeyJustPressed(is, KM_START)) {
 		/* trim + default, then run the save flow (overwrite check happens here) */
 		pn->editing = false;
 		commitPresetName(pn);
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_EDIT)) {
+		pn->editing = false;
 		return true;
 	}
 	if(isKeyJustPressed(is, KM_SELECT)) {
@@ -1019,7 +1040,13 @@ bool isPresetNameNode(GuiNode *n) {
 bool isSelectedDialNode(const Graph *g) {
 	if(!g || !g->selected) return false;
 	GuiNode *n = g->selected;
-	return n->draw == drawDialGuiNode && n->callback != NULL;
+	/* Both continuous (drawDialGuiNode) and discrete (drawDiscreteDialGuiNode)
+	 * dials expose a value-callback OnPressCallback and respond to EDIT+arrow.
+	 * Some discrete dials (e.g. ROUTE) overwrite draw with the discrete variant
+	 * after createDialGuiNode; both must pass the guard so the harness can
+	 * drive them via the scripted EDIT<arrow> opcodes. */
+	return (n->draw == drawDialGuiNode || n->draw == drawDiscreteDialGuiNode)
+		&& n->callback != NULL;
 }
 
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected) {

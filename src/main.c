@@ -323,9 +323,18 @@ int main(void) {
 						// updateInstrumentGui(instrumentGui);
 					}
 				}
-				if(isKeyHeld(appState->inputState, KM_EDIT)) {
-					Graph *currentGraph = getSelectedInstGraph();
+				/* Task 4: handlePresetUiInput always runs first. It drives
+				 * the preset name node (KM_EDIT enter/exit, KM_START commit,
+				 * arrow cycle/cursor), the load-list modal, and the SAVE/LOAD
+				 * buttons. If it consumed the event (return true), break so
+				 * navigation / dial-adjustment don't double-fire on the same
+				 * frame. */
+				if(handlePresetUiInput(appState->inputState, getSelectedInstInstrument())) {
+					break;
+				}
+				Graph *currentGraph = getSelectedInstGraph();
 
+				if(isKeyHeld(appState->inputState, KM_EDIT)) {
 					/* Task 3: only dispatch the value callback when the
 					 * selected node is a real dial. Pressing EDIT+arrow
 					 * on the preset name node (or an action button)
@@ -345,11 +354,6 @@ int main(void) {
 						}
 					}
 				} else {
-					if(handlePresetUiInput(appState->inputState, getSelectedInstInstrument())) {
-						break;
-					}
-					Graph *currentGraph = getSelectedInstGraph();
-
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						navigateGraphRefined(currentGraph, KM_LEFT);
 					}

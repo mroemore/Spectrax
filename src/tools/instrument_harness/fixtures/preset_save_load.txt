@@ -32,6 +32,10 @@ LEFT
 ASSERT selected==PRESET_NAME
 
 # --- Edit the name: change only position 0 from 'f' to 'X' ---------------
+# Task 4: explicit EDIT to enter edit mode on the name node. Before Task 4,
+# a fresh selection auto-entered edit mode; after Task 4 the user must press
+# EDIT to start editing. Arrows only cycle while editing.
+EDIT
 # Cursor starts at index 0. The seeded char 'f' folds to 'F' (index 5 in the
 # uppercase table). 'X' is at index 23. Delta = (23 - 5) % 41 = 18.
 UP
@@ -52,6 +56,11 @@ UP
 UP
 UP
 UP
+
+# Task 4: explicit EDIT to exit edit mode before commit. The "not editing"
+# START branch handles the commit + overwrite check (matches the previous
+# auto-edit -> START flow, which also left editing=false on commit).
+EDIT
 
 # --- Save the new preset (creates a brand new bank slot) -----------------
 # START at PRESET_NAME commits the edit and runs guiSavePreset. "Xm1" does
@@ -91,8 +100,10 @@ ASSERT presetCount==6
 ASSERT preset==Xm1
 ASSERT file==Xm1
 
-# Exit the name node's edit mode so arrows navigate again (the name node
-# consumes arrows only while editing).
+# Task 4: edit mode is already off after the prior commit (commitPresetName
+# sets editing=false before the modal opens). This SELECT is a no-op now --
+# the not-editing branch consumes KM_SELECT without changing state. Arrows
+# navigate again because the not-editing branch returns false for them.
 SELECT
 
 # --- Open the load list --------------------------------------------------
