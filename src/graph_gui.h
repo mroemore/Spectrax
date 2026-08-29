@@ -16,6 +16,7 @@
 
 typedef void (*DrawCallback)(void *self);
 typedef void (*OnPressCallback)(Parameter *parameter, float value);
+typedef void (*ActionCallback)(void *ctx);
 typedef bool (*CustomNavFunc)(void *self, int keymapping);
 
 typedef struct GuiNode GuiNode;
@@ -34,6 +35,8 @@ struct GuiNode {
 	OnPressCallback callback;
 	DrawCallback draw;
 	Parameter *p;
+	ActionCallback actionCb;
+	void *actionCtx;
 	uint8_t itemCount;
 	List *itemWeights;
 	ListElement *weightRef;

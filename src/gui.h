@@ -128,6 +128,9 @@ typedef struct {
 } PresetNameGuiNode;
 
 GuiNode *createBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback callback, Parameter *p);
+GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p);
+GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);
+void drawActionBtnGuiNode(void *self);
 void printArrGraph();
 GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
 bool isPresetNameNode(GuiNode *n);

@@ -579,6 +579,39 @@ void drawDialGuiNode(void *self) {
 	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 30 }, 9, 1, (Color){ 200, 180, 180, 255 });
 }
 
+GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
+	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
+	if(gn == NULL) {
+		printf("createDialGuiNode error, could not create.");
+		return NULL;
+	}
+	gn->callback = cb;
+	gn->p = p;
+	gn->drawable = true;
+	gn->draw = drawDialGuiNode;
+	return gn;
+}
+
+GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx) {
+	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
+	if(gn == NULL) {
+		printf("createActionBtnGuiNode error, could not create.");
+		return NULL;
+	}
+	gn->actionCb = cb;
+	gn->actionCtx = ctx;
+	gn->drawable = true;
+	gn->draw = drawActionBtnGuiNode;
+	return gn;
+}
+
+void drawActionBtnGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.125, 2.0, gn->selected);
+	Color labelColour = gn->selected ? (Color){ 255, 180, 180, 255 } : (Color){ 200, 180, 180, 255 };
+	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
+}
+
 void drawBipolarDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	if(!gn->p) {
