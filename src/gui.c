@@ -163,11 +163,23 @@ void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 		ig->instrumentScreenGraphs[i] = createInstGraph(vm->instruments[i], vm, i, isSelected);
 		ig->instrumentCount++;
 	}
+	/* Task 7: initialise the overlay layer stack. The stack starts empty;
+	 * modals push layers on demand, the instrument input/draw path drains
+	 * it when empty. */
+	initLayerStack(&ig->overlayLayers);
 	igui = ig;
 }
 
 Graph *getSelectedInstGraph() {
 	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
+}
+
+LayerStack *getInstrumentOverlayLayers(void) {
+	return igui ? &igui->overlayLayers : NULL;
+}
+
+InstrumentGui *getInstrumentGui(void) {
+	return igui;
 }
 
 static void drawSampleWaveLinesNode(void *self);
@@ -664,6 +676,8 @@ static void stripIpbExtension(char *s) {
 	}
 }
 
+void guiOpenLoadList(void);
+
 void guiOpenLoadList(void) {
 	g_loadList.count = 0;
 	g_loadList.highlight = 0;
@@ -686,10 +700,18 @@ void guiOpenLoadList(void) {
 		qsort(g_loadList.names, (size_t)g_loadList.count, LOADLIST_NAME_MAX, loadListCmp);
 	}
 	g_loadListActive = true;
+	/* Task 7: also push the load-list layer so the user can navigate
+	 * the presets within an overlay graph. */
+	if(igui) {
+		guiBuildLoadListLayer(igui);
+	}
 }
 
 static void guiCloseLoadList(void) {
 	g_loadListActive = false;
+	if(igui) {
+		popLayer(&igui->overlayLayers);
+	}
 }
 
 /* Task 8: overwrite-modal state. The modal is the only modal in the app
@@ -708,6 +730,11 @@ void guiSetOverwritePending(const char *name) {
 	g_pendingName[sizeof(g_pendingName) - 1] = '\0';
 	g_overwriteChoice = false; /* safe default = NO */
 	g_modalState = MODAL_CONFIRM_OVERWRITE;
+	/* Task 7: push the overwrite-confirm layer so the user can
+	 * navigate YES/NO with arrow keys + START. */
+	if(igui) {
+		guiBuildOverwriteLayer(igui, name);
+	}
 }
 
 bool guiIsModalOpen(void) { return g_modalState != MODAL_NONE; }
@@ -742,10 +769,21 @@ PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
  * Task 7 will replace this body with a modalState push and a
  * three-way choice (discard / save / cancel) that falls through
  * to guiOpenLoadList() on discard. */
+// (removed in Task 7: real implementation is below)
+
 void guiShowDirtyConfirmModal(Instrument *inst) {
-	(void)inst;
-	/* Task 7: set g_modalState = MODAL_CONFIRM_DISCARD_CHANGES;
-	 * stash inst for the dispatch; nothing more here. */
+	if(!inst) {
+		return;
+	}
+	/* Task 7: the dirty-confirm layer's SAVE branch uses g_pendingName,
+	 * so seed it from the currently-loaded preset's name. The user
+	 * edited this preset and we're offering to flush those edits to
+	 * the same slot on disk. */
+	strncpy(g_pendingName, inst->loaded.name, sizeof(g_pendingName) - 1);
+	g_pendingName[sizeof(g_pendingName) - 1] = '\0';
+	if(igui) {
+		guiBuildDirtyConfirmLayer(igui, inst);
+	}
 }
 
 /* Task 6 helper: after a successful save (or overwrite) the live
@@ -770,55 +808,272 @@ static void markInstrumentSavedAs(Instrument *inst, const char *name) {
 	}
 }
 
-/* Task 8: centered overlay panel for the overwrite confirmation. Drawn
- * AFTER drawNode(...) in the SCENE_INSTRUMENT case so the modal sits on
- * top of the underlying scene. We dim the scene with a translucent
- * black rectangle so the panel reads as the active surface. */
-void drawPresetModal(void) {
-	if(g_modalState != MODAL_CONFIRM_OVERWRITE) {
+/* Task 7: Layer-based overlay system. The three modals (overwrite,
+ * dirty-confirm, load-list) each build a self-contained Graph of
+ * action nodes and push it as a Layer on the instrument's overlay
+ * stack. Input is routed to the topmost layer; drawing stacks
+ * bottom-up. */
+
+/* Modal-side callbacks. These close the topmost layer (pop it) and
+ * perform the user-confirmed action. They store the pending state
+ * in file-static globals below so they don't need to thread
+ * per-layer state. */
+static void cbOverwriteConfirm(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	InstrumentGui *ig = igui;
+	if(inst && ig) {
+		saveInstrumentAsPresetOverwrite(inst, g_pendingName, "data/instrument_presets/");
+		markInstrumentSavedAs(inst, g_pendingName);
+	}
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	g_modalState = MODAL_NONE;
+}
+
+static void cbOverwriteCancel(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	g_modalState = MODAL_NONE;
+}
+
+static void cbDirtyDiscard(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	InstrumentGui *ig = igui;
+	/* Discard edits and proceed straight to the load list. */
+	if(inst) {
+		markPresetLoaded(inst, NULL);
+	}
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	if(inst) {
+		guiOpenLoadList();
+	}
+}
+
+static void cbDirtySave(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	InstrumentGui *ig = igui;
+	/* Save with the currently-staged name. If it exists, push the
+	 * overwrite layer on top of this one; otherwise commit and
+	 * pop straight to the load list. */
+	if(inst && inst->presetBank) {
+		PresetFileResult r = saveInstrumentAsPreset(inst, g_pendingName, "data/instrument_presets/");
+		if(r == PRESET_OK) {
+			markInstrumentSavedAs(inst, g_pendingName);
+			if(ig) {
+				popLayer(&ig->overlayLayers);
+			}
+			guiOpenLoadList();
+			return;
+		}
+		if(r == PRESET_EXISTS) {
+			/* Replace the dirty-confirm with overwrite-confirm.
+			 * Pop the dirty layer first so the overwrite layer
+			 * is the only thing on the stack. */
+			if(ig) {
+				popLayer(&ig->overlayLayers);
+			}
+			guiBuildOverwriteLayer(ig, g_pendingName);
+			return;
+		}
+	}
+	/* Any other error: just close the dirty-confirm and bail. */
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+}
+
+static void cbDirtyCancel(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+}
+
+static void cbLoadListPick(void *ctx) {
+	/* ctx is the index into g_loadList.names (and inst->presetBank->patches). */
+	int idx = (int)(intptr_t)ctx;
+	InstrumentGui *ig = igui;
+	Instrument *inst = ig ? ig->vm->instruments[*ig->selectedInstrument] : NULL;
+	if(!inst || !inst->presetBank || idx < 0 || idx >= g_loadList.count) {
+		if(ig) {
+			popLayer(&ig->overlayLayers);
+		}
+		g_loadListActive = false;
 		return;
 	}
-	/* Scene dimmer. */
-	DrawRectangle(0, 0, SCREEN_W, SCREEN_H, (Color){ 0, 0, 0, 160 });
+	if(idx < inst->presetBank->presetCount) {
+		applyInstrumentPreset(inst, inst->presetBank->patches[idx]);
+		/* Task 6: refresh the loaded-preset snapshot so dirty=false and
+		 * loaded.name is set. Without this the dirty-confirm gate in
+		 * cbOpenLoadList never opens because isInstrumentDirty returns
+		 * false on a fresh instrument with no baseline name. */
+		markPresetLoaded(inst, inst->presetBank->patches[idx].name);
+		if(inst->selectedPresetIndex) {
+			inst->selectedPresetIndex->baseValue = (float)idx;
+			inst->selectedPresetIndex->currentValue = (float)idx;
+		}
+		if(inst->vm) {
+			rebuildVoicesForInstrument(inst->vm, inst);
+		}
+	}
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	g_loadListActive = false;
+}
 
-	/* Centered panel: 280x80 in the middle of the 640x480 screen. */
-	const int pw = 280;
-	const int ph = 80;
+static void cbLoadListCancel(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	g_loadListActive = false;
+}
+
+/* Build the overwrite-confirm layer. The graph has two action
+ * buttons: YES (confirms overwrite) and NO (cancels). Both pop
+ * the layer; YES additionally commits the overwrite. */
+void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName) {
+	if(!ig) {
+		return;
+	}
+	if(pendingName) {
+		strncpy(g_pendingName, pendingName, sizeof(g_pendingName) - 1);
+		g_pendingName[sizeof(g_pendingName) - 1] = '\0';
+	}
+	g_overwriteChoice = false; /* safe default: NO */
+	g_modalState = MODAL_CONFIRM_OVERWRITE;
+
+	/* The layer's graph. We use a vertical container as the root
+	 * and the two action buttons as children. The createGraph()
+	 * root covers the whole screen — the actual visual panel is
+	 * drawn by the layer's draw step (DrawRectangle + DrawText),
+	 * not by the graph nodes themselves. Action buttons need a
+	 * position and size; we give them the same y to make the
+	 * horizontal nav obvious (LEFT/RIGHT). */
+	Graph *g = createGraph(na_horizontal);
+	const int py = (SCREEN_H - 80) / 2;
+	const int px = (SCREEN_W - 280) / 2;
+	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbOverwriteCancel, NULL);
+	noBtn->name = strdup("OVERWRITE_NO");
+	GuiNode *yesBtn = createActionBtnGuiNode(px + 150, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbOverwriteConfirm, ig->vm->instruments[*ig->selectedInstrument]);
+	yesBtn->name = strdup("OVERWRITE_YES");
+	appendItem(g->root, noBtn, 1);
+	appendItem(g->root, yesBtn, 1);
+	changeGraphSelection(g, noBtn);
+
+	Layer *layer = createLayer(g, px, py, 280, 80, "OVERWRITE", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
+
+/* Build the dirty-confirm layer. Three-way: DISCARD, CANCEL, SAVE.
+ * The graph is a single row of three action buttons. */
+void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst) {
+	if(!ig) {
+		return;
+	}
+	(void)inst; /* inst is recovered from the ig->vm at callback time */
+	g_modalState = MODAL_CONFIRM_OVERWRITE; /* keep legacy field in sync */
+
+	Graph *g = createGraph(na_horizontal);
+	const int pw = 360;
+	const int ph = 70;
 	const int px = (SCREEN_W - pw) / 2;
 	const int py = (SCREEN_H - ph) / 2;
-	DrawRectangleRec((Rectangle){ px, py, pw, ph }, (Color){ 30, 20, 20, 255 });
-	DrawRectangleLinesEx((Rectangle){ px, py, pw, ph }, 2.0f, (Color){ 200, 60, 60, 255 });
+	GuiNode *discardBtn = createActionBtnGuiNode(px + 10, py + 38, 100, 22, 0, na_horizontal, "DISCARD", 1, cbDirtyDiscard, ig->vm->instruments[*ig->selectedInstrument]);
+	GuiNode *saveBtn = createActionBtnGuiNode(px + 130, py + 38, 100, 22, 0, na_horizontal, "SAVE", 0, cbDirtySave, ig->vm->instruments[*ig->selectedInstrument]);
+	GuiNode *cancelBtn = createActionBtnGuiNode(px + 250, py + 38, 100, 22, 0, na_horizontal, "CANCEL", 0, cbDirtyCancel, NULL);
+	discardBtn->name = strdup("DIRTY_DISCARD");
+	saveBtn->name = strdup("DIRTY_SAVE");
+	cancelBtn->name = strdup("DIRTY_CANCEL");
+	appendItem(g->root, discardBtn, 1);
+	appendItem(g->root, saveBtn, 1);
+	appendItem(g->root, cancelBtn, 1);
+	g->selected = discardBtn;
 
-	/* Header: OVERWRITE <name>? */
-	char header[64];
-	snprintf(header, sizeof(header), "OVERWRITE \"%s\"?", g_pendingName);
-	int headerFontSize = 16;
-	int headerW = MeasureText(header, headerFontSize);
-	DrawText(header, px + (pw - headerW) / 2, py + 10, headerFontSize, (Color){ 230, 200, 200, 255 });
+	Layer *layer = createLayer(g, px, py, pw, ph, "DIRTY_CONFIRM", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
 
-	/* Buttons: [YES] [NO]. Highlighted one in red, the other in grey.
-	 * Layout: split the panel vertically at pw/2; YES flush to the right
-	 * of the left half (with a 12px gap), NO flush to the left of the
-	 * right half. We only need each label's measured width to position
-	 * the text inside its half. */
-	const int btnY = py + 44;
-	const char *yesLabel = "[YES]";
-	const char *noLabel = "[NO]";
-	const int yesFont = 18;
-	const int noFont = 18;
-	const int yesW = MeasureText(yesLabel, yesFont);
-	const int yesX = px + (pw / 2) - yesW - 12;
-	const int noX = px + (pw / 2) + 12;
-	Color yesCol = g_overwriteChoice ? (Color){ 230, 60, 60, 255 } : (Color){ 120, 110, 110, 255 };
-	Color noCol = !g_overwriteChoice ? (Color){ 230, 60, 60, 255 } : (Color){ 120, 110, 110, 255 };
-	DrawText(yesLabel, yesX, btnY, yesFont, yesCol);
-	DrawText(noLabel, noX, btnY, noFont, noCol);
+/* Build the load-list layer. The graph is a vertical list of
+ * action buttons, one per preset in the bank. Up/Down moves
+ * through the list; START triggers cbLoadListPick with the
+ * preset index. */
+void guiBuildLoadListLayer(InstrumentGui *ig) {
+	if(!ig) {
+		return;
+	}
+	g_loadListActive = true;
 
-	/* Tiny hint: L/R toggle, START confirm, SELECT cancel. */
-	const char *hint = "L/R toggle  START confirm  SELECT cancel";
-	int hintFont = 9;
-	int hintW = MeasureText(hint, hintFont);
-	DrawText(hint, px + (pw - hintW) / 2, py + ph - 14, hintFont, (Color){ 160, 140, 140, 255 });
+	Graph *g = createGraph(na_vertical);
+	const int pw = 200;
+	const int rowH = 14;
+	const int maxRows = 8;
+	int ph = (g_loadList.count < maxRows ? g_loadList.count : maxRows) * rowH + 8;
+	if(ph < rowH * 2) {
+		ph = rowH * 2;
+	}
+	const int px = (SCREEN_W - pw) / 2;
+	const int py = (SCREEN_H - ph) / 2;
+
+	int rows = g_loadList.count;
+	if(rows > maxRows) {
+		rows = maxRows;
+	}
+	GuiNode *firstEntry = NULL;
+	for(int i = 0; i < rows; i++) {
+		GuiNode *row = createActionBtnGuiNode(px, py + i * rowH, pw, rowH, 0, na_horizontal, g_loadList.names[i], 0, cbLoadListPick, (void *)(intptr_t)i);
+		row->name = strdup(g_loadList.names[i]);
+		appendItem(g->root, row, 1);
+		if(!firstEntry) {
+			firstEntry = row;
+		}
+	}
+	/* Cancel/back button lives at the bottom of the list so the
+	 * default selection is the first preset entry. */
+	GuiNode *cancelBtn = createActionBtnGuiNode(px, py + ph - rowH, pw, rowH, 0, na_horizontal, "< BACK", 0, cbLoadListCancel, NULL);
+	cancelBtn->name = strdup("LOADLIST_BACK");
+	appendItem(g->root, cancelBtn, 1);
+	if(firstEntry) {
+		changeGraphSelection(g, firstEntry);
+	} else {
+		changeGraphSelection(g, cancelBtn);
+	}
+
+	Layer *layer = createLayer(g, px, py, pw, ph, "LOADLIST", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
+
+bool guiPopOverlay(InstrumentGui *ig) {
+	if(!ig || ig->overlayLayers.count == 0) {
+		return false;
+	}
+	popLayer(&ig->overlayLayers);
+	if(ig->overlayLayers.count == 0) {
+		g_modalState = MODAL_NONE;
+		g_loadListActive = false;
+	}
+	return true;
+}
+
+/* Task 7: stub fill. Pushed here as a layer so the LOAD button
+ * gates the load list on the dirty bit (Task 6). */
+// (the real guiShowDirtyConfirmModal definition is later in this file
+// once getSelectedInstInstrument / guiBuildDirtyConfirmLayer are visible)
+
+/* Task 7: legacy drawPresetModal is now a no-op; the layer system
+ * owns modal drawing via layerStackDraw. Kept as a stub so any
+ * existing call site compiles. */
+void drawPresetModal(void) {
+	/* no-op: see layerStackDraw in DrawGUI */
 }
 
 #define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
@@ -907,6 +1162,21 @@ static int currentFrameIndex(void) {
 }
 
 bool handlePresetUiInput(InputState *is, Instrument *inst) {
+	/* Task 7: while ANY overlay layer is open we route the entire input
+	 * stream to the topmost layer's graph via layerStackInput. This
+	 * replaces the old "is modal open" / "is load-list active" branches
+	 * — those state flags are still maintained (for legacy assertions)
+	 * but the input is now driven by the layer system's navigateGraph +
+	 * actionCb machinery. Returning true here is critical: the rest of
+	 * the instrument input must NOT run while a layer is up, otherwise
+	 * arrow keys would simultaneously navigate the layer AND change
+	 * instrument parameter values. */
+	InstrumentGui *ig = getInstrumentGui();
+	if(ig && !layerStackIsEmpty(&ig->overlayLayers)) {
+		layerStackInput(&ig->overlayLayers, is);
+		return true;
+	}
+
 	/* Task 8: while the overwrite modal is up we consume ALL input and
 	 * drive the modal state machine. This must run BEFORE the name-node
 	 * check so a modal doesn't accidentally drop back to name editing. */
@@ -1278,11 +1548,12 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	appendItem(btnwrap, saveBtn, 1);
 	appendItem(btnwrap, loadBtn, 1);
 	appendItem(container, btnwrap, weight);
-	/* Task 9: scrollable preset-load-list below the PRESET_CONTROLS row.
-	 * Height = 6 visible rows + 8px padding = 80px so it has room even
-	 * when closed (it shows a "(CLOSED)" placeholder then). */
-	GuiNode *loadListNode = createPresetLoadListNode(0, 0, 100, 80);
-	appendItem(container, loadListNode, weight);
+	/* Task 7: the preset load list is no longer a child node in the
+	 * PRESET controls row. It now lives as its own overlay Layer,
+	 * pushed onto ig->overlayLayers when the user opens it (see
+	 * guiOpenLoadList / guiBuildLoadListLayer). The action button
+	 * (loadBtn) is still here so the user can request the list, but
+	 * the list itself is rendered in the overlay. */
 	if(selected) {
 		g->selected = presetIndex;
 	}
@@ -1801,10 +2072,13 @@ void DrawGUI(int currentScene) {
 			// printf("i!");
 			drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 			// drawNode(instrumentGraph->root);
-			/* Task 8: overlay the overwrite modal last so it sits on top
-			 * of the instrument screen while the user is deciding. */
-			if(g_modalState != MODAL_NONE) {
-				drawPresetModal();
+			/* Task 7: draw any open overlay layers on top of the
+			 * instrument screen. This replaces the old drawPresetModal()
+			 * call — overwrite, dirty-confirm, and the load-list are all
+			 * overlay layers now. The layer system itself handles per-layer
+			 * "dim" tinting for depth. */
+			if(igui) {
+				layerStackDraw(&igui->overlayLayers);
 			}
 			break;
 		default:

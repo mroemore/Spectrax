@@ -43,6 +43,7 @@
 
 #include "main.h"
 #include "gui.h"
+#include "gui_layer.h"
 #include "graph_gui.h"
 #include "input.h"
 #include "appstate.h"
@@ -81,6 +82,9 @@ typedef enum {
 	                            * is strictly in the future (currentFrameIndex() < it).
 	                            * ==1 right after a successful save, ==0 once the
 	                            * ~30-frame flash window has expired. */
+	SOP_ASSERT_TOPLAYER_SELECTED, /* Task 7: topmost overlay layer's graph
+	                            * selected->name == "NAME". Falls back to the
+	                            * instrument graph when no layer is active. */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -361,6 +365,18 @@ static void parseScript(const char *path) {
 				s->op = SOP_ASSERT_SELECTED;
 				strncpy(s->name, tokens[3], sizeof(s->name) - 1);
 				s->name[sizeof(s->name) - 1] = '\0';
+			} else if(strcmp(tokens[1], "topLayerSelected") == 0) {
+				/* ASSERT topLayerSelected==<NAME>: like selected, but reads
+				 * the topmost overlay layer's graph (for modal navigation).
+				 * Falls back to the instrument graph if no layer is active. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT topLayerSelected==<NAME>");
+					return;
+				}
+				s->op = SOP_ASSERT_TOPLAYER_SELECTED;
+				strncpy(s->name, tokens[3], sizeof(s->name) - 1);
+				s->name[sizeof(s->name) - 1] = '\0';
 			} else if(strcmp(tokens[1], "preset") == 0) {
 				/* ASSERT preset == <NAME> : presetBank has a patch whose
 				 * name matches NAME exactly (strcmp, same convention as
@@ -489,6 +505,24 @@ static void runAssertSelected(int lineno, const char *expected) {
 	const char *got = (g && g->selected && g->selected->name) ? g->selected->name : "(null)";
 	if(strcmp(got, expected) != 0) {
 		failScript(lineno, "ASSERT selected==%s failed: got %s", expected, got);
+	}
+}
+
+/* Task 7: assert the topmost overlay layer's graph selected->name.
+ * Falls back to the instrument graph if no layer is active. */
+static void runAssertTopLayerSelected(int lineno, const char *expected) {
+	InstrumentGui *ig = getInstrumentGui();
+	Graph *g = NULL;
+	if(ig && ig->overlayLayers.count > 0) {
+		Layer *top = &ig->overlayLayers.layers[ig->overlayLayers.count - 1];
+		g = top->graph;
+	}
+	if(!g) {
+		g = getSelectedInstGraph();
+	}
+	const char *got = (g && g->selected && g->selected->name) ? g->selected->name : "(null)";
+	if(strcmp(got, expected) != 0) {
+		failScript(lineno, "ASSERT topLayerSelected==%s failed: got %s", expected, got);
 	}
 }
 
@@ -622,6 +656,9 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_SELECTED:
 			runAssertSelected(s->lineno, s->name);
+			break;
+		case SOP_ASSERT_TOPLAYER_SELECTED:
+			runAssertTopLayerSelected(s->lineno, s->name);
 			break;
 		case SOP_ASSERT_PRESET:
 			runAssertPreset(s->lineno, s->name);

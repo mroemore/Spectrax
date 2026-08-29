@@ -11,6 +11,7 @@
 #include "graph_gui.h"
 #include "voice.h"
 #include "vizfx.h"
+#include "gui_layer.h"
 
 typedef struct {
 	int x;
@@ -71,6 +72,12 @@ typedef struct {
 	int *selectedInstrument;
 	Shape shape;
 	struct VoiceManager *vm;
+	/* Task 7: overlay layer stack. Every modal (overwrite, dirty-confirm,
+	 * load-list) lives as a layer on top of the instrument's underlying
+	 * graph. The stack starts empty; pushLayer() to open a modal, popLayer()
+	 * to dismiss. layerStackInput() routes the next keypress to the topmost
+	 * layer's graph; layerStackDraw() draws all layers bottom-up. */
+	LayerStack overlayLayers;
 } InstrumentGui;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
@@ -216,6 +223,18 @@ bool guiIsLoadListActive(void);
 
 /* Drawn from DrawGUI's SCENE_INSTRUMENT case while g_modalState != MODAL_NONE. */
 void drawPresetModal(void);
+
+/* Task 7: layer-based overlay system. All three modals (overwrite,
+ * dirty-confirm, load-list) are built as overlay layers on the
+ * instrument's LayerStack. */
+
+void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName);
+void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst);
+void guiBuildLoadListLayer(InstrumentGui *ig);
+
+/* Pop the topmost overlay layer (if any). Returns true if a layer was
+ * popped. */
+bool guiPopOverlay(InstrumentGui *ig);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
 void drawSampleWaveformGuiNode(void *self);
 ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
@@ -242,4 +261,10 @@ void drawArrangerGuiNode(void *self);
 void drawSongMinimapGui(void *self);
 void InitGUI(void);
 void DrawGUI(int currentScene);
+
+/* Task 7: layer stack accessors used by main.c, the harness, and the
+ * per-modal builders. getInstrumentOverlayLayers() returns the live
+ * LayerStack so callers can push/pop. */
+LayerStack *getInstrumentOverlayLayers(void);
+InstrumentGui *getInstrumentGui(void);
 #endif // GUI_H

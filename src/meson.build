@@ -37,6 +37,7 @@ seq_sources = files(
 app_only_sources = files(
   'main.c',
   'gui.c',
+  'gui_layer.c',
   'distortion.c',
   'dataviz.c',
 )
