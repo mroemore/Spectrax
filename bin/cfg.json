@@ -1,0 +1,8 @@
+{
+	"defaultBPM":	120,
+	"enabledChannels":	8,
+	"defaultSequenceLength":	16,
+	"defaultVoiceCount":	1,
+	"voiceTypes":	[4, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0],
+	"theme":	"clr.json"
+}
