@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
 	char dataDir[1024];
 	resolveDataDir(argc, argv, dataDir, sizeof(dataDir));
 	if(!chdirToDataDir(dataDir)) {
-		printf("Could not enter data dir '%s'.\n", dataDir);
+		fprintf(stderr, "spectrax: cannot use data dir '%s'\n", dataDir);
 		return 1;
 	}
 
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
 	strncpy(fontCfg.path, "resources/fonts/console.ttf", sizeof(fontCfg.path) - 1);
 	fontCfg.path[sizeof(fontCfg.path) - 1] = '\0';
 	fontCfg.size = 9;
-	fontCfg.spacing = 0;
+	fontCfg.spacing = 1;
 	setFontConfig(&fontCfg);
 
 	/* Only claim "theme loaded" if the file actually exists, so InitGUI
