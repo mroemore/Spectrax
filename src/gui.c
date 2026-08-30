@@ -568,13 +568,13 @@ bool navigateArrangerGuiNode(void *self, int keymapping) {
 }
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
-	DrawCircleSector((Vector2){ x + radius, y + radius }, radius + 2, startAngle, startAngle + offsetAngle, 32, RED);
+	DrawCircleSector((Vector2){ x + radius, y + radius }, radius + 2, startAngle, startAngle + offsetAngle, 32, cs.dial);
 	DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 }, (Rectangle){ x + radius, y + radius, w, h }, (Vector2){ radius, radius }, startAngle + offsetAngle, WHITE);
 }
 
 void drawValueDisplay(int x, int y, int w, int h, char *text) {
 	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
-	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, RED);
+	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, cs.valueText);
 }
 
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
