@@ -107,6 +107,7 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->stepClosed = (Color){ 80, 30, 30, 255 };
 	colourScheme->arrangerPlayhead = (Color){ 255, 0, 0, 255 };
 	colourScheme->arrangerCellText = (Color){ 200, 180, 180, 255 };
+	colourScheme->wrapperBorder = (Color){ 10, 5, 5, 255 };
 }
 
 void setColourScheme(ColourScheme *colourScheme) {
@@ -287,7 +288,7 @@ static void drawSampleWaveLinesNode(void *self) {
 		return;
 	}
 	drawSampleWaveLines(arrangerMixRing, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
-	DrawTextEx(pixelFont, "VLINE", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, (Color){ 60, 255, 150, 255 });
+	DrawTextEx(pixelFont, "VLINE", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, cs.vline);
 }
 
 static void drawSampleWavePolylineNode(void *self) {
@@ -296,7 +297,7 @@ static void drawSampleWavePolylineNode(void *self) {
 		return;
 	}
 	drawSampleWavePolyline(arrangerMixRing, (Rectangle){ gn->x, gn->y, gn->w, gn->h });
-	DrawTextEx(pixelFont, "POLY", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, (Color){ 255, 80, 80, 255 });
+	DrawTextEx(pixelFont, "POLY", (Vector2){ gn->x + 2, gn->y + 2 }, 9, 1, cs.poly);
 }
 
 static void drawBufferScrollerNode(void *self) {
@@ -464,9 +465,9 @@ SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, i
 	}
 
 	swgn->instrument = inst;
-	swgn->bgColour = (Color){ 0, 0, 0, 255 };
-	swgn->wfColour = (Color){ 255, 0, 0, 255 };
-	swgn->wfAltColour = (Color){ 0, 255, 0, 255 };
+	swgn->bgColour = cs.waveformBg;
+	swgn->wfColour = cs.waveform;
+	swgn->wfAltColour = cs.waveformAlt;
 	swgn->loopStart = loopStart;
 	swgn->loopEnd = loopEnd;
 
@@ -549,16 +550,16 @@ void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int
 }
 
 void drawValueDisplay(int x, int y, int w, int h, char *text) {
-	DrawRectangle(x, y, w, h, (Color){ 50, 40, 40, 255 });
+	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
 	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, RED);
 }
 
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
-	DrawRectangleRounded((Rectangle){ x, y, w, h }, roundness, 12, (Color){ 80, 60, 60, 255 });
+	DrawRectangleRounded((Rectangle){ x, y, w, h }, roundness, 12, cs.panel);
 	if(highlighted) {
 		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, cs.highlightedCell);
 	} else {
-		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, (Color){ 10, 0, 0, 255 });
+		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, cs.panelBorder);
 	}
 }
 
@@ -591,7 +592,7 @@ void drawDialGuiNode(void *self) {
 	tmpx += 28;
 	tmpy += 2;
 	drawValueDisplay(tmpx, tmpy, 38, 14, paramValue);
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, (Color){ 200, 180, 180, 255 });
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, cs.label);
 }
 
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
@@ -623,7 +624,7 @@ GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAli
 void drawActionBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.125, 2.0, gn->selected);
-	Color labelColour = gn->selected ? (Color){ 255, 180, 180, 255 } : (Color){ 200, 180, 180, 255 };
+	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
 	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
 }
 
@@ -672,13 +673,13 @@ void drawDiscreteDialGuiNode(void *self) {
 	tmpy += 5;
 	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
 
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, (Color){ 200, 180, 180, 255 });
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, cs.label);
 }
 
 void drawWrapperNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
-	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, (Color){ 80, 60, 60, 255 });
-	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, (Color){ 10, 5, 5, 255 });
+	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, cs.panel);
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.wrapperBorder);
 }
 
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList
@@ -1474,16 +1475,16 @@ static void drawPresetNameGuiNode(void *self) {
 	 * is the original solid black. */
 	Color bg = BLACK;
 	if(currentFrameIndex() < pn->errorFlashUntil) {
-		bg = (Color){ 60, 10, 10, 255 };
+		bg = cs.sampleBg;
 	} else if(currentFrameIndex() < pn->savedFlashUntil) {
-		bg = (Color){ 10, 50, 10, 255 };
+		bg = cs.sampleAltBg;
 	}
 	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, bg);
 	/* Selected-but-not-editing outline: the "you can press z to edit me"
 	 * affordance. The inverted cursor block already covers the editing
 	 * state, so the outline is only drawn outside edit mode. */
 	if(gn->selected && !pn->editing) {
-		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0f, (Color){ 200, 80, 60, 255 });
+		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0f, cs.sampleBorder);
 	}
 	/* copy the current name into the node once per selection */
 	int n = (int)strlen(pn->name);
@@ -1615,11 +1616,11 @@ static void cbOpenLoadList(void *ctx) {
 static void drawPresetLoadListNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, BLACK);
-	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 1.0f, (Color){ 80, 20, 20, 255 });
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 1.0f, cs.stepBorder);
 	if(!g_loadListActive) {
 		/* Closed: render an inert placeholder so the layout doesn't
 		 * collapse in tests / harness. */
-		DrawText("(CLOSED)", gn->x + 6, gn->y + 6, 10, (Color){ 80, 30, 30, 255 });
+		DrawText("(CLOSED)", gn->x + 6, gn->y + 6, 10, cs.stepClosed);
 		return;
 	}
 	int rows = LOADLIST_VISIBLE_ROWS;
@@ -2172,14 +2173,14 @@ void drawArrangerGuiNode(void *self) {
 			if(arranger->song[i][j] > -1) {
 				sprintf(cellText, "%02i", arranger->song[i][j]);
 				if(arranger->playhead_indices[i] == j && arranger->playing) {
-					DrawRectangle(newx, newy, cellW, cellH, (Color){ 255, 0, 0, 255 });
+					DrawRectangle(newx, newy, cellW, cellH, cs.arrangerPlayhead);
 				} else {
 					DrawRectangle(newx, newy, cellW, cellH, cs.defaultCell);
 				}
-				DrawTextEx(pixelFont, cellText, (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, (Color){ 200, 180, 180, 255 });
+				DrawTextEx(pixelFont, cellText, (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, cs.arrangerCellText);
 			} else {
 				DrawRectangle(newx, newy, cellW, cellH, cs.blankCell);
-				DrawTextEx(pixelFont, "--", (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, (Color){ 200, 180, 180, 255 });
+				DrawTextEx(pixelFont, "--", (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, cs.arrangerCellText);
 			}
 		}
 	}

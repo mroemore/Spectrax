@@ -32,6 +32,7 @@ typedef struct {
 	Color stepClosed;
 	Color arrangerPlayhead;
 	Color arrangerCellText;
+	Color wrapperBorder;
 } ColourScheme;
 
 typedef struct {

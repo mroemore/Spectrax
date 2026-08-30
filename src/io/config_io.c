@@ -70,6 +70,7 @@ static Color *themeFieldByName(ColourScheme *cs, const char *name) {
 	if(!strcmp(name, "stepClosed")) return &cs->stepClosed;
 	if(!strcmp(name, "arrangerPlayhead")) return &cs->arrangerPlayhead;
 	if(!strcmp(name, "arrangerCellText")) return &cs->arrangerCellText;
+	if(!strcmp(name, "wrapperBorder")) return &cs->wrapperBorder;
 	return NULL;
 }
 
@@ -136,7 +137,7 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 		"panel", "panelBorder", "valueDisplayBg", "label", "labelSelected", "dial",
 		"valueText", "vline", "poly", "waveformBg", "waveform", "waveformAlt",
 		"sampleBg", "sampleAltBg", "sampleBorder", "stepBorder", "stepClosed",
-		"arrangerPlayhead", "arrangerCellText" };
+		"arrangerPlayhead", "arrangerCellText", "wrapperBorder" };
 	size_t n = sizeof(names) / sizeof(names[0]);
 	for(size_t i = 0; i < n; i++) {
 		/* Cast away const for the lookup helper (it only dereferences for read,
