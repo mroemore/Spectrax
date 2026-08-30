@@ -171,9 +171,9 @@ void addPatternToArranger(Arranger *arranger, int patternId, int sequencer_id, i
 }
 
 void addBlankIfEmpty(PatternList *patternList, Arranger *arranger, int sequencerId, int row) {
-	printf("addblank\n");
-	int patternID = addBlankPattern(patternList);
 	if(arranger->song[sequencerId][row] == -1) {
+		printf("addblank\n");
+		int patternID = addBlankPattern(patternList);
 		addPatternToArranger(arranger, patternID, sequencerId, row);
 	}
 }

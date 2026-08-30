@@ -284,6 +284,10 @@ int main(int argc, char **argv) {
 				if(isKeyHeld(appState->inputState, KM_SELECT)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
 						addBlankIfEmpty(data.patternList, data.arranger, appState->selectedArrangerCell[0], appState->selectedArrangerCell[1]);
+						int pid = data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+						if(pid != -1) {
+							setSelectedPattern(appState, &pid);
+						}
 					}
 				} else if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
