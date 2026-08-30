@@ -54,13 +54,13 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		data->arranger->tempoSettings.samplesElapsed = 0;
 		if(data->arranger->playing) {
 			incrementSequencer(data->sequencer, data->patternList, data->arranger);
-		}
-		for(int sc = 0; sc < data->arranger->enabledChannels; sc++) {
-			if(data->sequencer->running[sc]) {
-				int *note = getCurrentStep(data->patternList, data->sequencer->pattern_index[sc], data->sequencer->playhead_index[sc]);
-				if(note[0] != OFF) {
-					Voice *voice = getFreeVoice(data->voiceManager, sc);
-					triggerVoice(voice, note);
+			for(int sc = 0; sc < data->arranger->enabledChannels; sc++) {
+				if(data->sequencer->running[sc]) {
+					int *note = getCurrentStep(data->patternList, data->sequencer->pattern_index[sc], data->sequencer->playhead_index[sc]);
+					if(note[0] != OFF) {
+						Voice *voice = getFreeVoice(data->voiceManager, sc);
+						triggerVoice(voice, note);
+					}
 				}
 			}
 		}
@@ -118,20 +118,25 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 
 					OutVal currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);
 
-					if(data->arranger->playing) {
-						// float vol = getParameterValue(currentVoice->volume);
-						// if(j == 0){
-						// 	printf("VOLUME: %f\n", vol);
-						// }
-						left_output += currentSample.L * getParameterValue(currentVoice->volume);
-						right_output += currentSample.R * getParameterValue(currentVoice->volume);
-						currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
-						currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
+					/* Voices always mix while active so that stopping the
+					 * song lets the current notes ring out through their
+					 * AD envelope (which ends at 0 amplitude) instead of
+					 * hard-zeroing the output mid-cycle. The old
+					 * `playing ? mix : zero` branch snapped every active
+					 * voice's sample to 0 the instant `playing` flipped --
+					 * a step discontinuity, i.e. the click/pop heard on
+					 * start and stop. */
+					left_output += currentSample.L * getParameterValue(currentVoice->volume);
+					right_output += currentSample.R * getParameterValue(currentVoice->volume);
+					currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
+					currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
 
-						currentVoice->samplesElapsed++;
-					} else {
+					currentVoice->samplesElapsed++;
+					if(!data->arranger->playing) {
 						currentSample.L = 0;
 						currentSample.R = 0;
+						left_output = 0.0f;
+						right_output = 0.0f;
 					}
 				} else {
 					//	data->voices[j].mod[0].result = 0;
