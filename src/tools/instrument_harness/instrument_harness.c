@@ -15,6 +15,13 @@
  * own main() is excluded, leaving initApplication + helper symbols
  * available to the harness.
  *
+ * Config coupling: the app splits config (~/.config/spectrax, cfg.json +
+ * clr.json) from data (assets/song/presets). The harness runs from bin/
+ * without main()'s --data-dir/--config-dir plumbing, so initApplication
+ * resolves the config dir itself — which lands on ~/.config/spectrax when
+ * it exists. Fixtures assert against default settings; if the user's home
+ * config ever diverges from the defaults, the fixtures must account for it.
+ *
  * Run from the bin/ directory (the same cwd the app expects),
  * so that resources/ and data/ resolve correctly:
  *
