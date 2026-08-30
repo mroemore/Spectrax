@@ -248,6 +248,98 @@ static int test_resolve_config_dir_home(void) {
 	return failed;
 }
 
+static int test_resolve_config_dir_xdg(void) {
+	int failed = 0;
+	/* $XDG_CONFIG_HOME/spectrax wins over $HOME/.config/spectrax when
+	 * the XDG candidate exists and has cfg.json. Gate is cfg.json. */
+	char old_home[512] = "";
+	char old_xdg_cfg[512] = "";
+	const char *h = getenv("HOME");
+	const char *x = getenv("XDG_CONFIG_HOME");
+	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
+	if(x) { strncpy(old_xdg_cfg, x, sizeof(old_xdg_cfg) - 1); }
+
+	ensure_tmp_dirs();
+	mkdir(".tmp_files/xdgcfgtest", 0755);
+	mkdir(".tmp_files/xdgcfgtest/spectrax", 0755);
+	FILE *f = fopen(".tmp_files/xdgcfgtest/spectrax/cfg.json", "wb");
+	if(f) { fputs("{}", f); fclose(f); }
+	/* Even if HOME points at a valid config dir, XDG must win. */
+	mkdir(".tmp_files/xdgcfgtest/home_with_cfg", 0755);
+	mkdir(".tmp_files/xdgcfgtest/home_with_cfg/.config", 0755);
+	mkdir(".tmp_files/xdgcfgtest/home_with_cfg/.config/spectrax", 0755);
+	f = fopen(".tmp_files/xdgcfgtest/home_with_cfg/.config/spectrax/cfg.json", "wb");
+	if(f) { fputs("{}", f); fclose(f); }
+	setenv("HOME", ".tmp_files/xdgcfgtest/home_with_cfg", 1);
+	setenv("XDG_CONFIG_HOME", ".tmp_files/xdgcfgtest", 1);
+
+	char buf[512];
+	resolveConfigDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".tmp_files/xdgcfgtest/spectrax") != 0) {
+		printf("FAIL xdg config wins: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	remove(".tmp_files/xdgcfgtest/spectrax/cfg.json");
+	rmdir(".tmp_files/xdgcfgtest/spectrax");
+	remove(".tmp_files/xdgcfgtest/home_with_cfg/.config/spectrax/cfg.json");
+	rmdir(".tmp_files/xdgcfgtest/home_with_cfg/.config/spectrax");
+	rmdir(".tmp_files/xdgcfgtest/home_with_cfg/.config");
+	rmdir(".tmp_files/xdgcfgtest/home_with_cfg");
+	rmdir(".tmp_files/xdgcfgtest");
+
+	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
+	if(x) setenv("XDG_CONFIG_HOME", old_xdg_cfg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return failed;
+}
+
+static int test_resolve_data_dir_xdg(void) {
+	int failed = 0;
+	/* $XDG_DATA_HOME/spectrax wins over $HOME/.local/share/spectrax when
+	 * the XDG candidate directory exists. Gate is dir-exists only —
+	 * no cfg.json needed (data dir resolver doesn't read cfg.json). */
+	char old_home[512] = "";
+	char old_xdg_data[512] = "";
+	char old_xdg_cfg[512] = "";
+	const char *h = getenv("HOME");
+	const char *xd = getenv("XDG_DATA_HOME");
+	const char *xc = getenv("XDG_CONFIG_HOME");
+	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
+	if(xd) { strncpy(old_xdg_data, xd, sizeof(old_xdg_data) - 1); }
+	if(xc) { strncpy(old_xdg_cfg, xc, sizeof(old_xdg_cfg) - 1); }
+
+	ensure_tmp_dirs();
+	mkdir(".tmp_files/xdgdatatest", 0755);
+	mkdir(".tmp_files/xdgdatatest/spectrax", 0755);
+	/* Even if HOME points at a valid data dir, XDG must win. */
+	mkdir(".tmp_files/xdgdatatest/home_with_data", 0755);
+	mkdir(".tmp_files/xdgdatatest/home_with_data/.local", 0755);
+	mkdir(".tmp_files/xdgdatatest/home_with_data/.local/share", 0755);
+	mkdir(".tmp_files/xdgdatatest/home_with_data/.local/share/spectrax", 0755);
+	setenv("HOME", ".tmp_files/xdgdatatest/home_with_data", 1);
+	setenv("XDG_DATA_HOME", ".tmp_files/xdgdatatest", 1);
+	unsetenv("XDG_CONFIG_HOME");
+
+	char buf[512];
+	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".tmp_files/xdgdatatest/spectrax") != 0) {
+		printf("FAIL xdg data wins: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	rmdir(".tmp_files/xdgdatatest/spectrax");
+	rmdir(".tmp_files/xdgdatatest/home_with_data/.local/share/spectrax");
+	rmdir(".tmp_files/xdgdatatest/home_with_data/.local/share");
+	rmdir(".tmp_files/xdgdatatest/home_with_data/.local");
+	rmdir(".tmp_files/xdgdatatest/home_with_data");
+	rmdir(".tmp_files/xdgdatatest");
+
+	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
+	if(xd) setenv("XDG_DATA_HOME", old_xdg_data, 1); else unsetenv("XDG_DATA_HOME");
+	if(xc) setenv("XDG_CONFIG_HOME", old_xdg_cfg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return failed;
+}
+
 static int test_resolve_config_dir_truncation(void) {
 	int failed = 0;
 	/* Truncation guard: --config-dir with a value longer than `out`
@@ -428,6 +520,8 @@ int main(void) {
 	failed |= test_resolve_config_dir_flag();
 	failed |= test_resolve_config_dir_home();
 	failed |= test_resolve_config_dir_truncation();
+	failed |= test_resolve_config_dir_xdg();
+	failed |= test_resolve_data_dir_xdg();
 	failed |= test_theme_parse_full();
 	failed |= test_theme_parse_partial();
 	failed |= test_theme_missing_file();
