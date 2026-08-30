@@ -13,6 +13,7 @@ tests/test_vizfx
 .tmp_files/
 .tmp_files/
 third_party/
+!third_party/cjson/
 .clang-format
 rg35xx-copy.sh
 TODO.md
