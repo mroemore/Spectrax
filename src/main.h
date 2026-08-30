@@ -32,6 +32,7 @@ typedef struct {
 	BufferScroller bufferScroller;
 	MixRing mixRing;
 	PresetBank presetBank;
+	char configDir[1024];
 } paTestData;
 
 /* initialise the entire application -- GUI, voice manager, arranger,

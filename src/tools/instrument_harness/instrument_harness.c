@@ -968,7 +968,7 @@ int main(int argc, char **argv) {
 
 	InitGUI();
 
-	paTestData data;
+	paTestData data = { 0 };
 	ApplicationState *appState;
 	initApplication(&data, &appState, NULL);
 	initModSystem();

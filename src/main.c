@@ -189,19 +189,21 @@ int main(int argc, char **argv) {
 	paTestData data;
 	ApplicationState *appState;
 
-	/* Task 9: data-dir resolution + chdir before anything opens files
-	 * (cfg.json, theme file, samples, songs). */
+	/* Task 2 (XDG split): resolve config + data dirs up front, chdir into
+	 * the data dir before anything opens files, and stash configDir so
+	 * the exit path can rebuild absolute cfg.json / clr.json paths. */
+	char cfgDir[1024];
 	char dataDir[1024];
+	resolveConfigDir(argc, argv, cfgDir, sizeof(cfgDir));
 	resolveDataDir(argc, argv, dataDir, sizeof(dataDir));
-	if(!chdirToDataDir(dataDir)) {
-		fprintf(stderr, "spectrax: cannot use data dir '%s'\n", dataDir);
-		return 1;
-	}
+	snprintf(data.configDir, sizeof(data.configDir), "%s", cfgDir);
 
-	/* Load cfg + populate the theme file name. */
+	/* Load cfg from the config dir, populate the theme file name. */
 	Settings settings;
+	char cfgPath[1088];
+	snprintf(cfgPath, sizeof(cfgPath), "%s/cfg.json", cfgDir);
 	createSettings(&settings);
-	loadSettingsJson("cfg.json", &settings, settings.themeFile, sizeof(settings.themeFile));
+	loadSettingsJson(cfgPath, &settings, settings.themeFile, sizeof(settings.themeFile));
 	if(settings.themeFile[0] == '\0') {
 		strncpy(settings.themeFile, "clr.json", sizeof(settings.themeFile) - 1);
 		settings.themeFile[sizeof(settings.themeFile) - 1] = '\0';
@@ -217,12 +219,20 @@ int main(int argc, char **argv) {
 	setFontConfig(&fontCfg);
 
 	/* Only claim "theme loaded" if the file actually exists, so InitGUI
-	 * can fall back to initDefaultColourScheme on a fresh data dir. */
-	FILE *th = fopen(settings.themeFile, "rb");
+	 * can fall back to initDefaultColourScheme on a fresh config dir. */
+	char clrPath[1088];
+	snprintf(clrPath, sizeof(clrPath), "%s/%s", cfgDir, settings.themeFile);
+	FILE *th = fopen(clrPath, "rb");
 	if(th) {
 		fclose(th);
-		loadThemeJson(settings.themeFile, getColourScheme(), getFontConfig());
+		loadThemeJson(clrPath, getColourScheme(), getFontConfig());
 		markThemeLoaded();
+	}
+
+	/* Now chdir to the data dir for samples / songs / presets. */
+	if(!chdirToDataDir(dataDir)) {
+		fprintf(stderr, "spectrax: cannot use data dir '%s'\n", dataDir);
+		return 1;
 	}
 
 	// loading screen
@@ -493,8 +503,14 @@ int main(int argc, char **argv) {
 	CloseWindow();
 	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);
 	if(data.settings) {
-		saveSettingsJson("cfg.json", data.settings, data.settings->themeFile);
-		saveThemeJson(data.settings->themeFile, getColourScheme(), getFontConfig());
+		/* Reconstruct absolute cfg.json + clr.json paths under the
+		 * config dir resolved at startup (cwd is now the data dir). */
+		char cfgPath[1088];
+		char clrPath[1088];
+		snprintf(cfgPath, sizeof(cfgPath), "%s/cfg.json", data.configDir);
+		snprintf(clrPath, sizeof(clrPath), "%s/%s", data.configDir, data.settings->themeFile);
+		saveSettingsJson(cfgPath, data.settings, data.settings->themeFile);
+		saveThemeJson(clrPath, getColourScheme(), getFontConfig());
 	}
 	printf("song save attempt result: %i", saveResult);
 	err = Pa_StopStream(stream);
@@ -526,14 +542,22 @@ error:
 #endif /* SPECTRAX_HARNESS */
 
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui) {
-	/* Settings are loaded here (from the data dir) so data->settings
-	 * reflects cfg.json — the exit path saves this struct, so without
-	 * the load a fresh default-filled Settings would overwrite the
-	 * user's config on every quit. main() separately loads cfg.json
-	 * for the theme name before InitGUI. */
+	/* Task 2 (XDG split): settings come from the config dir, not cwd.
+	 * Fall back to "." so the harness's zero-initialised configDir still
+	 * resolves to a sensible directory when run without main(). */
+	if(data->configDir[0] == '\0') {
+		strncpy(data->configDir, ".", sizeof(data->configDir) - 1);
+		data->configDir[sizeof(data->configDir) - 1] = '\0';
+	}
+	char cfgPath[1088];
+	snprintf(cfgPath, sizeof(cfgPath), "%s/cfg.json", data->configDir);
+	/* Settings are loaded here so data->settings reflects cfg.json — the
+	 * exit path saves this struct, so without the load a fresh default-
+	 * filled Settings would overwrite the user's config on every quit.
+	 * main() separately loads cfg.json for the theme name before InitGUI. */
 	Settings *settings = malloc(sizeof(Settings));
 	createSettings(settings);
-	loadSettingsJson("cfg.json", settings, settings->themeFile, sizeof(settings->themeFile));
+	loadSettingsJson(cfgPath, settings, settings->themeFile, sizeof(settings->themeFile));
 	if(settings->themeFile[0] == '\0') {
 		strncpy(settings->themeFile, "clr.json", sizeof(settings->themeFile) - 1);
 		settings->themeFile[sizeof(settings->themeFile) - 1] = '\0';
