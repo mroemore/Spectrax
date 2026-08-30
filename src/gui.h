@@ -12,6 +12,7 @@
 #include "voice.h"
 #include "vizfx.h"
 #include "gui_layer.h"
+#include "theme.h"
 
 typedef struct {
 	int x;
@@ -19,18 +20,6 @@ typedef struct {
 	int w;
 	int h;
 } Shape;
-
-typedef struct {
-	Color backgroundColor; // 17, 7, 8
-	Color secondaryFontColour;
-	Color fontColour;
-	Color outlineColour;
-	Color defaultCell;
-	Color blankCell;
-	Color highlightedCell;
-	Color selectedCell;
-	Color reddish;
-} ColourScheme;
 
 typedef struct {
 	Texture2D sheet;

@@ -88,6 +88,25 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->selectedCell = (Color){ 235, 161, 75, 255 };
 	colourScheme->blankCell = (Color){ 94, 23, 29, 255 };
 	colourScheme->reddish = (Color){ 170, 38, 49, 255 };
+	colourScheme->panel = (Color){ 80, 35, 10, 255 };
+	colourScheme->panelBorder = (Color){ 30, 12, 3, 255 };
+	colourScheme->valueDisplayBg = (Color){ 40, 18, 6, 255 };
+	colourScheme->label = (Color){ 200, 180, 180, 255 };
+	colourScheme->labelSelected = (Color){ 255, 180, 180, 255 };
+	colourScheme->dial = (Color){ 220, 110, 60, 255 };
+	colourScheme->valueText = (Color){ 255, 220, 180, 255 };
+	colourScheme->vline = (Color){ 60, 255, 150, 255 };
+	colourScheme->poly = (Color){ 255, 80, 80, 255 };
+	colourScheme->waveformBg = (Color){ 0, 0, 0, 255 };
+	colourScheme->waveform = (Color){ 255, 0, 0, 255 };
+	colourScheme->waveformAlt = (Color){ 0, 255, 0, 255 };
+	colourScheme->sampleBg = (Color){ 60, 10, 10, 255 };
+	colourScheme->sampleAltBg = (Color){ 10, 50, 10, 255 };
+	colourScheme->sampleBorder = (Color){ 200, 80, 60, 255 };
+	colourScheme->stepBorder = (Color){ 80, 20, 20, 255 };
+	colourScheme->stepClosed = (Color){ 255, 0, 0, 255 };
+	colourScheme->arrangerPlayhead = (Color){ 220, 60, 17, 255 };
+	colourScheme->arrangerCellText = (Color){ 200, 180, 180, 255 };
 }
 
 void setColourScheme(ColourScheme *colourScheme) {
