@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+void resolveConfigDir(int argc, char **argv, char *out, size_t outsz);
 void resolveDataDir(int argc, char **argv, char *out, size_t outsz);
 bool chdirToDataDir(const char *base);
 

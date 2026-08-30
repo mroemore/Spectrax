@@ -84,16 +84,19 @@ static int test_resolve_data_dir_flag(void) {
 		failed = 1;
 	}
 	/* Missing value: falls through to fallback logic.
-	 * Snapshot HOME/XDG_CONFIG_HOME and unset both so the host's
-	 * ~/.config/spectrax/cfg.json cannot silently satisfy the
-	 * resolution. */
+	 * Snapshot HOME/XDG_DATA_HOME/XDG_CONFIG_HOME and unset all so the
+	 * host's data dirs cannot silently satisfy the resolution. */
 	char old_home2[512] = "";
-	char old_xdg2[512] = "";
+	char old_xdg_data2[512] = "";
+	char old_xdg_cfg2[512] = "";
 	const char *h2 = getenv("HOME");
-	const char *x2 = getenv("XDG_CONFIG_HOME");
+	const char *xd2 = getenv("XDG_DATA_HOME");
+	const char *xc2 = getenv("XDG_CONFIG_HOME");
 	if(h2) { strncpy(old_home2, h2, sizeof(old_home2) - 1); }
-	if(x2) { strncpy(old_xdg2, x2, sizeof(old_xdg2) - 1); }
+	if(xd2) { strncpy(old_xdg_data2, xd2, sizeof(old_xdg_data2) - 1); }
+	if(xc2) { strncpy(old_xdg_cfg2, xc2, sizeof(old_xdg_cfg2) - 1); }
 	unsetenv("HOME");
+	unsetenv("XDG_DATA_HOME");
 	unsetenv("XDG_CONFIG_HOME");
 
 	char *argv2[] = { "spectrax", "--data-dir", NULL };
@@ -104,11 +107,98 @@ static int test_resolve_data_dir_flag(void) {
 	}
 
 	if(h2) setenv("HOME", old_home2, 1); else unsetenv("HOME");
-	if(x2) setenv("XDG_CONFIG_HOME", old_xdg2, 1); else unsetenv("XDG_CONFIG_HOME");
+	if(xd2) setenv("XDG_DATA_HOME", old_xdg_data2, 1); else unsetenv("XDG_DATA_HOME");
+	if(xc2) setenv("XDG_CONFIG_HOME", old_xdg_cfg2, 1); else unsetenv("XDG_CONFIG_HOME");
 	return failed;
 }
 
 static int test_resolve_data_dir_home(void) {
+	int failed = 0;
+	char old_home[512] = "";
+	char old_xdg_data[512] = "";
+	char old_xdg_cfg[512] = "";
+	const char *h = getenv("HOME");
+	const char *xd = getenv("XDG_DATA_HOME");
+	const char *xc = getenv("XDG_CONFIG_HOME");
+	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
+	if(xd) { strncpy(old_xdg_data, xd, sizeof(old_xdg_data) - 1); }
+	if(xc) { strncpy(old_xdg_cfg, xc, sizeof(old_xdg_cfg) - 1); }
+
+	/* $HOME/.local/share/spectrax absent -> cwd.
+	 * The new data dir resolver uses XDG data home semantics:
+	 * gates on directory existence, not cfg.json. */
+	setenv("HOME", ".tmp_files/nonexistent_home", 1);
+	unsetenv("XDG_DATA_HOME");
+	unsetenv("XDG_CONFIG_HOME");
+	char buf[512];
+	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".") != 0) {
+		printf("FAIL home no data dir: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	/* $HOME/.local/share/spectrax EXISTS -> that dir.
+	 * Gate is dir-exists only — no cfg.json needed (and creating
+	 * one would not change behaviour either, because the data-dir
+	 * resolver doesn't read cfg.json). Build the nested path
+	 * (.local/share/spectrax) under tmp_root via mkdir loop. */
+	ensure_tmp_dirs();
+	mkdir(".tmp_files/hometest", 0755);
+	mkdir(".tmp_files/hometest/.local", 0755);
+	mkdir(".tmp_files/hometest/.local/share", 0755);
+	mkdir(".tmp_files/hometest/.local/share/spectrax", 0755);
+	setenv("HOME", ".tmp_files/hometest", 1);
+	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".tmp_files/hometest/.local/share/spectrax") != 0) {
+		printf("FAIL home data dir exists: got '%s'\n", buf);
+		failed = 1;
+	}
+	rmdir(".tmp_files/hometest/.local/share/spectrax");
+	rmdir(".tmp_files/hometest/.local/share");
+	rmdir(".tmp_files/hometest/.local");
+	rmdir(".tmp_files/hometest");
+
+	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
+	if(xd) setenv("XDG_DATA_HOME", old_xdg_data, 1); else unsetenv("XDG_DATA_HOME");
+	if(xc) setenv("XDG_CONFIG_HOME", old_xdg_cfg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return failed;
+}
+
+static int test_resolve_config_dir_flag(void) {
+	int failed = 0;
+	/* --config-dir <dir> always wins, no env isolation needed. */
+	char *argv[] = { "spectrax", "--config-dir", "/tmp/some-cfg", NULL };
+	char buf[512];
+	resolveConfigDir(3, argv, buf, sizeof(buf));
+	if(strcmp(buf, "/tmp/some-cfg") != 0) {
+		printf("FAIL resolve --config-dir: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	/* Missing value: falls through. Snapshot HOME/XDG_CONFIG_HOME
+	 * and unset both so the host's config dirs cannot silently win. */
+	char old_home[512] = "";
+	char old_xdg[512] = "";
+	const char *h = getenv("HOME");
+	const char *x = getenv("XDG_CONFIG_HOME");
+	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
+	if(x) { strncpy(old_xdg, x, sizeof(old_xdg) - 1); }
+	unsetenv("HOME");
+	unsetenv("XDG_CONFIG_HOME");
+
+	char *argv2[] = { "spectrax", "--config-dir", NULL };
+	resolveConfigDir(2, argv2, buf, sizeof(buf));
+	if(strcmp(buf, ".") != 0) {
+		printf("FAIL resolve config-dir missing value: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
+	if(x) setenv("XDG_CONFIG_HOME", old_xdg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return failed;
+}
+
+static int test_resolve_config_dir_home(void) {
 	int failed = 0;
 	char old_home[512] = "";
 	char old_xdg[512] = "";
@@ -116,40 +206,60 @@ static int test_resolve_data_dir_home(void) {
 	const char *x = getenv("XDG_CONFIG_HOME");
 	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
 	if(x) { strncpy(old_xdg, x, sizeof(old_xdg) - 1); }
-
-	/* $HOME/.config/spectrax with no cfg.json -> cwd */
-	setenv("HOME", ".tmp_files/nonexistent_home", 1);
 	unsetenv("XDG_CONFIG_HOME");
+
+	/* $HOME/.config/spectrax absent (no cfg.json) -> cwd. */
+	setenv("HOME", ".tmp_files/cfg_nonexistent_home", 1);
 	char buf[512];
-	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	resolveConfigDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
 	if(strcmp(buf, ".") != 0) {
-		printf("FAIL home no cfg: got '%s'\n", buf);
+		printf("FAIL config home absent: got '%s'\n", buf);
 		failed = 1;
 	}
 
-	/* $HOME/.config/spectrax WITH cfg.json -> that dir.
-	 * Implementation builds "$HOME/.config/spectrax" and checks for
-	 * cfg.json inside it; so HOME=tmp_root gives a config dir at
-	 * tmp_root/.config/spectrax, and we drop cfg.json there. */
+	/* $HOME/.config/spectrax WITH cfg.json -> that dir. */
 	ensure_tmp_dirs();
-	mkdir(".tmp_files/hometest", 0755);
-	mkdir(".tmp_files/hometest/.config", 0755);
-	mkdir(".tmp_files/hometest/.config/spectrax", 0755);
-	FILE *f = fopen(".tmp_files/hometest/.config/spectrax/cfg.json", "wb");
+	mkdir(".tmp_files/cfgtest", 0755);
+	mkdir(".tmp_files/cfgtest/.config", 0755);
+	mkdir(".tmp_files/cfgtest/.config/spectrax", 0755);
+	FILE *f = fopen(".tmp_files/cfgtest/.config/spectrax/cfg.json", "wb");
 	if(f) { fputs("{}", f); fclose(f); }
-	setenv("HOME", ".tmp_files/hometest", 1);
-	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
-	if(strcmp(buf, ".tmp_files/hometest/.config/spectrax") != 0) {
-		printf("FAIL home with cfg: got '%s'\n", buf);
+	setenv("HOME", ".tmp_files/cfgtest", 1);
+	resolveConfigDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".tmp_files/cfgtest/.config/spectrax") != 0) {
+		printf("FAIL config home with cfg: got '%s'\n", buf);
 		failed = 1;
 	}
-	remove(".tmp_files/hometest/.config/spectrax/cfg.json");
-	rmdir(".tmp_files/hometest/.config/spectrax");
-	rmdir(".tmp_files/hometest/.config");
-	rmdir(".tmp_files/hometest");
+
+	/* Dir present but no cfg.json -> cwd (gate is cfg.json). */
+	remove(".tmp_files/cfgtest/.config/spectrax/cfg.json");
+	resolveConfigDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".") != 0) {
+		printf("FAIL config home no cfg: got '%s'\n", buf);
+		failed = 1;
+	}
+
+	rmdir(".tmp_files/cfgtest/.config/spectrax");
+	rmdir(".tmp_files/cfgtest/.config");
+	rmdir(".tmp_files/cfgtest");
 
 	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
 	if(x) setenv("XDG_CONFIG_HOME", old_xdg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return failed;
+}
+
+static int test_resolve_config_dir_truncation(void) {
+	int failed = 0;
+	/* Truncation guard: --config-dir with a value longer than `out`
+	 * must leave `out` untouched (caller can fall back). */
+	char *argv[] = { "spectrax", "--config-dir", "/this/path/is/definitely/longer/than/our/tiny/buffer", NULL };
+	char buf[16];
+	strcpy(buf, "PRESERVE_VALUE");
+	resolveConfigDir(3, argv, buf, sizeof(buf));
+	if(strcmp(buf, "PRESERVE_VALUE") != 0) {
+		printf("FAIL config-dir truncation: got '%s', expected untouched\n", buf);
+		failed = 1;
+	}
 	return failed;
 }
 
@@ -315,6 +425,9 @@ int main(void) {
 	failed |= test_hex_invalid();
 	failed |= test_resolve_data_dir_flag();
 	failed |= test_resolve_data_dir_home();
+	failed |= test_resolve_config_dir_flag();
+	failed |= test_resolve_config_dir_home();
+	failed |= test_resolve_config_dir_truncation();
 	failed |= test_theme_parse_full();
 	failed |= test_theme_parse_partial();
 	failed |= test_theme_missing_file();
