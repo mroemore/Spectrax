@@ -36,6 +36,7 @@ typedef struct {
 	int voiceTypes[MAX_SEQUENCER_CHANNELS];
 	int defaultVoiceCount;
 	int defaultBPM;
+	char themeFile[256];
 } Settings;
 
 Settings *createSettings();

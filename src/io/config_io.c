@@ -1,5 +1,6 @@
 #include "config_io.h"
 #include "cJSON.h"
+#include "settings.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -147,6 +148,70 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 		cJSON_AddStringToObject(colors, names[i], hex);
 	}
 	cJSON_AddItemToObject(doc, "colors", colors);
+
+	char *text = cJSON_Print(doc);
+	cJSON_Delete(doc);
+	if(text) {
+		FILE *f = fopen(path, "wb");
+		if(f) { fputs(text, f); fclose(f); }
+		free(text);
+	}
+}
+
+void loadSettingsJson(const char *path, Settings *s, char *themeOut, size_t themeOutSz) {
+	if(!path || !s || !themeOut || themeOutSz == 0) return;
+	FILE *f = fopen(path, "rb");
+	if(!f) return;
+	fseek(f, 0, SEEK_END);
+	long sz = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	if(sz <= 0 || sz > 1 << 20) { fclose(f); return; }
+	char *buf = malloc((size_t)sz + 1);
+	if(!buf) { fclose(f); return; }
+	if(fread(buf, 1, (size_t)sz, f) != (size_t)sz) { free(buf); fclose(f); return; }
+	buf[sz] = '\0';
+	fclose(f);
+
+	cJSON *doc = cJSON_Parse(buf);
+	free(buf);
+	if(!doc) return;
+
+	cJSON *v;
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "defaultBPM")) && cJSON_IsNumber(v)) s->defaultBPM = v->valueint;
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "enabledChannels")) && cJSON_IsNumber(v)) s->enabledChannels = v->valueint;
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "defaultSequenceLength")) && cJSON_IsNumber(v)) s->defaultSequenceLength = v->valueint;
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "defaultVoiceCount")) && cJSON_IsNumber(v)) s->defaultVoiceCount = v->valueint;
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "voiceTypes")) && cJSON_IsArray(v)) {
+		int n = cJSON_GetArraySize(v);
+		if(n > MAX_SEQUENCER_CHANNELS) n = MAX_SEQUENCER_CHANNELS;
+		for(int i = 0; i < n; i++) {
+			cJSON *el = cJSON_GetArrayItem(v, i);
+			if(cJSON_IsNumber(el)) s->voiceTypes[i] = el->valueint;
+		}
+	}
+	if((v = cJSON_GetObjectItemCaseSensitive(doc, "theme")) && cJSON_IsString(v)) {
+		strncpy(themeOut, v->valuestring, themeOutSz - 1);
+		themeOut[themeOutSz - 1] = '\0';
+	}
+	cJSON_Delete(doc);
+}
+
+void saveSettingsJson(const char *path, const Settings *s, const char *themeFile) {
+	if(!path || !s) return;
+	cJSON *doc = cJSON_CreateObject();
+	if(!doc) return;
+	cJSON_AddNumberToObject(doc, "defaultBPM", s->defaultBPM);
+	cJSON_AddNumberToObject(doc, "enabledChannels", s->enabledChannels);
+	cJSON_AddNumberToObject(doc, "defaultSequenceLength", s->defaultSequenceLength);
+	cJSON_AddNumberToObject(doc, "defaultVoiceCount", s->defaultVoiceCount);
+	cJSON *vt = cJSON_CreateArray();
+	if(vt) {
+		for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+			cJSON_AddItemToArray(vt, cJSON_CreateNumber(s->voiceTypes[i]));
+		}
+		cJSON_AddItemToObject(doc, "voiceTypes", vt);
+	}
+	cJSON_AddStringToObject(doc, "theme", themeFile ? themeFile : "");
 
 	char *text = cJSON_Print(doc);
 	cJSON_Delete(doc);

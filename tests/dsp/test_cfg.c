@@ -6,6 +6,7 @@
 #include "cJSON.h"
 #include "io/config_io.h"
 #include "paths.h"
+#include "settings.h"
 #include "theme.h"
 
 /* Local copy of test_io.c's ensure_tmp_dirs() — creates .tmp_files/ if
@@ -239,6 +240,74 @@ static int test_theme_roundtrip(void) {
 	return 0;
 }
 
+static int test_settings_parse_full(void) {
+	ensure_tmp_dirs();
+	writeFixture(".tmp_files/cfg_full.json",
+		"{ \"defaultBPM\": 120, \"enabledChannels\": 8, \"defaultSequenceLength\": 16,\n"
+		"  \"defaultVoiceCount\": 1, \"voiceTypes\": [4,1,2,1,2,1,2,2], \"theme\": \"clr.json\" }\n");
+	Settings s = { 0 };
+	char theme[256];
+	loadSettingsJson(".tmp_files/cfg_full.json", &s, theme, sizeof(theme));
+	if(s.defaultBPM != 120 || s.enabledChannels != 8 || s.defaultSequenceLength != 16 ||
+	   s.defaultVoiceCount != 1 || s.voiceTypes[0] != 4 || s.voiceTypes[1] != 1 ||
+	   s.voiceTypes[7] != 2 || strcmp(theme, "clr.json") != 0) {
+		printf("FAIL settings full\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_settings_partial(void) {
+	ensure_tmp_dirs();
+	writeFixture(".tmp_files/cfg_partial.json", "{ \"theme\": \"clr.json\" }\n");
+	Settings s = { 0 };
+	s.defaultBPM = 77;
+	s.enabledChannels = 3;
+	char theme[256];
+	loadSettingsJson(".tmp_files/cfg_partial.json", &s, theme, sizeof(theme));
+	if(s.defaultBPM != 77 || s.enabledChannels != 3) {
+		printf("FAIL settings partial must keep defaults\n");
+		return 1;
+	}
+	if(strcmp(theme, "clr.json") != 0) {
+		printf("FAIL settings theme default\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_settings_missing(void) {
+	Settings s = { 0 };
+	s.defaultBPM = 99;
+	char theme[256];
+	loadSettingsJson(".tmp_files/no_such_cfg.json", &s, theme, sizeof(theme));
+	if(s.defaultBPM != 99) {
+		printf("FAIL settings missing file must not mutate\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_settings_roundtrip(void) {
+	ensure_tmp_dirs();
+	Settings s = { 0 };
+	s.defaultBPM = 130;
+	s.enabledChannels = 4;
+	s.defaultSequenceLength = 32;
+	s.defaultVoiceCount = 2;
+	s.voiceTypes[0] = 4; s.voiceTypes[1] = 1; s.voiceTypes[2] = 2; s.voiceTypes[3] = 1;
+	saveSettingsJson(".tmp_files/cfg_rt.json", &s, "clr.json");
+	Settings s2 = { 0 };
+	char theme[256];
+	loadSettingsJson(".tmp_files/cfg_rt.json", &s2, theme, sizeof(theme));
+	if(s2.defaultBPM != 130 || s2.enabledChannels != 4 || s2.defaultSequenceLength != 32 ||
+	   s2.defaultVoiceCount != 2 || s2.voiceTypes[2] != 2 || strcmp(theme, "clr.json") != 0) {
+		printf("FAIL settings roundtrip\n");
+		return 1;
+	}
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_cjson_parse_smoke();
@@ -250,6 +319,10 @@ int main(void) {
 	failed |= test_theme_parse_partial();
 	failed |= test_theme_missing_file();
 	failed |= test_theme_roundtrip();
+	failed |= test_settings_parse_full();
+	failed |= test_settings_partial();
+	failed |= test_settings_missing();
+	failed |= test_settings_roundtrip();
 	if(failed) {
 		printf("test_cfg: FAILURES\n");
 		return 1;
