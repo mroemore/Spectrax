@@ -73,12 +73,13 @@ static int test_hex_invalid(void) {
 }
 
 static int test_resolve_data_dir_flag(void) {
+	int failed = 0;
 	char *argv[] = { "spectrax", "--data-dir", "/tmp/somewhere", NULL };
 	char buf[512];
 	resolveDataDir(3, argv, buf, sizeof(buf));
 	if(strcmp(buf, "/tmp/somewhere") != 0) {
 		printf("FAIL resolve --data-dir: got '%s'\n", buf);
-		return 1;
+		failed = 1;
 	}
 	/* Missing value: falls through to fallback logic.
 	 * Snapshot HOME/XDG_CONFIG_HOME and unset both so the host's
@@ -97,15 +98,16 @@ static int test_resolve_data_dir_flag(void) {
 	resolveDataDir(2, argv2, buf, sizeof(buf));
 	if(strcmp(buf, ".") != 0) {
 		printf("FAIL resolve missing value: got '%s'\n", buf);
-		return 1;
+		failed = 1;
 	}
 
 	if(h2) setenv("HOME", old_home2, 1); else unsetenv("HOME");
 	if(x2) setenv("XDG_CONFIG_HOME", old_xdg2, 1); else unsetenv("XDG_CONFIG_HOME");
-	return 0;
+	return failed;
 }
 
 static int test_resolve_data_dir_home(void) {
+	int failed = 0;
 	char old_home[512] = "";
 	char old_xdg[512] = "";
 	const char *h = getenv("HOME");
@@ -120,7 +122,7 @@ static int test_resolve_data_dir_home(void) {
 	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
 	if(strcmp(buf, ".") != 0) {
 		printf("FAIL home no cfg: got '%s'\n", buf);
-		return 1;
+		failed = 1;
 	}
 
 	/* $HOME/.config/spectrax WITH cfg.json -> that dir.
@@ -137,7 +139,7 @@ static int test_resolve_data_dir_home(void) {
 	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
 	if(strcmp(buf, ".tmp_files/hometest/.config/spectrax") != 0) {
 		printf("FAIL home with cfg: got '%s'\n", buf);
-		return 1;
+		failed = 1;
 	}
 	remove(".tmp_files/hometest/.config/spectrax/cfg.json");
 	rmdir(".tmp_files/hometest/.config/spectrax");
@@ -146,7 +148,7 @@ static int test_resolve_data_dir_home(void) {
 
 	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
 	if(x) setenv("XDG_CONFIG_HOME", old_xdg, 1); else unsetenv("XDG_CONFIG_HOME");
-	return 0;
+	return failed;
 }
 
 int main(void) {
