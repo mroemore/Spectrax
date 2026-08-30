@@ -28,7 +28,13 @@ m = cc.find_library('m', required: false)
 # Every target needs the vendored headers plus the project headers.
 inc = include_directories('include', 'src')
 
-system_deps = [raylib, kissfft, portaudio, gl, x11, rt, dl, m]
+cjson_inc = include_directories('third_party/cjson')
+cjson_lib = static_library('spectrax_cjson', 'third_party/cjson/cJSON.c',
+  include_directories: [inc, cjson_inc],
+)
+cjson_dep = declare_dependency(link_with: cjson_lib, include_directories: cjson_inc)
+
+system_deps = [raylib, kissfft, portaudio, gl, x11, rt, dl, m, cjson_dep]
 
 # Install step copies the freshly built binaries into bin/ so the app can
 # be launched with cwd=bin/ and pick up the cwd-relative resources/ and

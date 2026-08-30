@@ -8,6 +8,7 @@ test_names = [
   'test_modsystem',
   'test_mod_voice',
   'test_graph_nav',
+  'test_cfg',
 ]
 
 foreach name : test_names
