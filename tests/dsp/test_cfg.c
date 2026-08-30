@@ -80,13 +80,28 @@ static int test_resolve_data_dir_flag(void) {
 		printf("FAIL resolve --data-dir: got '%s'\n", buf);
 		return 1;
 	}
-	/* Missing value: falls through to fallback logic */
+	/* Missing value: falls through to fallback logic.
+	 * Snapshot HOME/XDG_CONFIG_HOME and unset both so the host's
+	 * ~/.config/spectrax/cfg.json cannot silently satisfy the
+	 * resolution. */
+	char old_home2[512] = "";
+	char old_xdg2[512] = "";
+	const char *h2 = getenv("HOME");
+	const char *x2 = getenv("XDG_CONFIG_HOME");
+	if(h2) { strncpy(old_home2, h2, sizeof(old_home2) - 1); }
+	if(x2) { strncpy(old_xdg2, x2, sizeof(old_xdg2) - 1); }
+	unsetenv("HOME");
+	unsetenv("XDG_CONFIG_HOME");
+
 	char *argv2[] = { "spectrax", "--data-dir", NULL };
 	resolveDataDir(2, argv2, buf, sizeof(buf));
 	if(strcmp(buf, ".") != 0) {
 		printf("FAIL resolve missing value: got '%s'\n", buf);
 		return 1;
 	}
+
+	if(h2) setenv("HOME", old_home2, 1); else unsetenv("HOME");
+	if(x2) setenv("XDG_CONFIG_HOME", old_xdg2, 1); else unsetenv("XDG_CONFIG_HOME");
 	return 0;
 }
 

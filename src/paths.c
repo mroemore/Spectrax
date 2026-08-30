@@ -10,11 +10,13 @@ static bool dirHasFile(const char *dir, const char *name) {
 	return access(path, F_OK) == 0;
 }
 
+/* On truncation, out is left untouched (caller falls back). */
 void resolveDataDir(int argc, char **argv, char *out, size_t outsz) {
 	/* 1. --data-dir <dir> */
 	for(int i = 1; i < argc - 1; i++) {
 		if(strcmp(argv[i], "--data-dir") == 0) {
-			snprintf(out, outsz, "%s", argv[i + 1]);
+			int n = snprintf(out, outsz, "%s", argv[i + 1]);
+			if(n < 0 || (size_t)n >= outsz) { return; }
 			return;
 		}
 	}
@@ -25,19 +27,22 @@ void resolveDataDir(int argc, char **argv, char *out, size_t outsz) {
 	if(xdg && *xdg) {
 		snprintf(cand, sizeof(cand), "%s/spectrax", xdg);
 		if(dirHasFile(cand, "cfg.json")) {
-			snprintf(out, outsz, "%s", cand);
+			int n = snprintf(out, outsz, "%s", cand);
+			if(n < 0 || (size_t)n >= outsz) { return; }
 			return;
 		}
 	}
 	if(home && *home) {
 		snprintf(cand, sizeof(cand), "%s/.config/spectrax", home);
 		if(dirHasFile(cand, "cfg.json")) {
-			snprintf(out, outsz, "%s", cand);
+			int n = snprintf(out, outsz, "%s", cand);
+			if(n < 0 || (size_t)n >= outsz) { return; }
 			return;
 		}
 	}
 	/* 3. cwd */
-	snprintf(out, outsz, "%s", ".");
+	int n = snprintf(out, outsz, "%s", ".");
+	if(n < 0 || (size_t)n >= outsz) { return; }
 }
 
 bool chdirToDataDir(const char *base) {
