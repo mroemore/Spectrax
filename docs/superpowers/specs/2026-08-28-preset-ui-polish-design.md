@@ -134,37 +134,101 @@ Overwrite reliability:
   length (not a fixed `strncmp(..., 32)`), so short names match without
   false negatives.
 
-### Section D — Dirty flag
+### Section D — Dirty flag (loaded preset instance)
 
-- Add `bool dirty;` to `Instrument` (src/voice.h). Default `false`.
-- In the KM_EDIT + arrow path (main.c + harness), when a dial callback
-  fires successfully (drew + value changed), set `inst->dirty = true`.
-- `guiSavePreset` clears it on success: `inst->dirty = false;`.
-- The LOAD action (`cbOpenLoadList`) checks `inst->dirty` first: if true,
-  open a "DISCARD UNSAVED CHANGES?" modal (a new overlay layer, same
-  rendering pattern as the overwrite modal). YES → `inst->dirty = false`
-  + proceed to the load list. NO → cancel, stay on the instrument screen.
-- The dirty flag is purely in-memory (not persisted to the preset file).
+The dirty flag belongs to the **loaded preset instance** — the snapshot of
+what was loaded — not to the instrument in general. A `LoadedPreset` struct
+captures the reference:
 
-### Section E — Layer primitive
+```c
+typedef struct LoadedPreset {
+    Preset snapshot;       // the patch as loaded (or last saved)
+    bool dirty;            // true when the live instrument has diverged
+    char name[33];         // the name of the loaded preset (for display)
+} LoadedPreset;
+```
 
-- New `src/gui_layer.h` + `src/gui_layer.c` (kept small):
-  - `typedef struct Layer { void (*draw)(void *ctx); void *ctx; int z; bool active; } Layer;`
-  - `typedef struct LayerStack { Layer *items; int count; int cap; } LayerStack;`
-  - `void layerStackInit(LayerStack *ls);`
-  - `void layerStackPush(LayerStack *ls, Layer l);`
-  - `void layerStackRemove(LayerStack *ls, void *ctx);` (for activation
-    toggles).
-  - `void layerStackDraw(LayerStack *ls);` — iterates ascending `z`.
-- `InstrumentGui` gains a `LayerStack overlayLayers;`.
-- The overwrite modal moves from `drawPresetModal` (called inside DrawGUI)
-  into a layer registered by `guiShowOverwriteModal` / `guiHideOverwriteModal`.
-- The load list moves from a graph node into a layer registered by
-  `guiOpenLoadList` (the function that previously set `g_loadListActive`)
-  + a `Layer` whose draw is the existing `drawPresetLoadListNode` body.
-  The load-list graph node is removed; its slot in the PRESET controls row
-  is reclaimed for the bigger row (Section F).
-- Drift viz (and any future overlay) can adopt the same primitive.
+`Instrument` (or `InstrumentGui`) holds a `LoadedPreset loaded;` field.
+
+Lifecycle:
+- **Load** (preset applied to instrument): `loaded.snapshot = presetFromInstrument(inst); loaded.dirty = false; strncpy(loaded.name, preset.name, 32);`.
+- **Edit** (KM_EDIT + arrow on a dial changes a value): `loaded.dirty = true;`. The flag is set, not compared (comparing a full Preset snapshot every edit is too heavy).
+- **Save** (successful): `loaded.snapshot = presetFromInstrument(inst); loaded.dirty = false;`. The snapshot is refreshed so dirty clears and the new state becomes the reference.
+- **Load with dirty**: when the user activates LOAD and `loaded.dirty == true`, open a "DISCARD UNSAVED CHANGES?" layer (Section E). YES → discard (the load proceeds and overwrites the snapshot). NO → cancel, stay on the instrument screen.
+
+The dirty flag is purely in-memory (not persisted to the preset file).
+
+### Section E — Layer system (graph-based)
+
+Each layer is a full **graph** with its own selection / navigation / drawable
+nodes, not a thin draw callback. The screen orchestrates visibility, draw
+order, and which layer captures input.
+
+**Architecture**
+
+```c
+typedef struct Layer {
+    Graph *graph;          // the layer's own graph (selectable + navable)
+    int z;                 // draw + input order (higher = on top)
+    bool visible;          // rendered + receives input when true
+    bool capturesInput;    // intercepts input (vs passthrough to lower z)
+    const char *name;      // for debugging
+} Layer;
+
+typedef struct LayerStack {
+    Layer *items;
+    int count;
+    int cap;
+} LayerStack;
+```
+
+`InstrumentGui` owns a `LayerStack overlays;` (plus the base instrument
+graph as the implicit z=0 layer).
+
+**Overlay layers** (pushed on demand, popped on close):
+- **Overwrite modal** — `guiShowOverwriteModal(name)` pushes a centered
+  panel graph containing two action-button nodes: `YES` (overwrites the
+  bank entry + file) and `NO` (closes the modal, returns to the name
+  entry). KM_SELECT on either node closes the modal. z is above the base
+  layer; `capturesInput = true`.
+- **Dirty confirm modal** — `guiShowDirtyConfirmModal()` pushes a centered
+  panel with `YES` (discard changes, proceed with the load) and `NO`
+  (cancel, stay on the instrument screen). Same shape as the overwrite
+  modal.
+- **Load list** — `guiOpenLoadList()` pushes a scrollable list graph. Rows
+  are selectable action-button nodes (one per on-disk preset, sorted).
+  Up/Down navigate within the layer; KM_START on a row applies that
+  preset and closes the layer; KM_SELECT closes the layer. z above the
+  base; `capturesInput = true`.
+
+**Input routing**
+
+The instrument input handler iterates the layer stack from highest z to
+lowest. The first visible layer with `capturesInput = true` consumes the
+input (its graph's nav + any selected-node handlers). Lower layers do not
+see the input that frame. If no overlay captures input, the base
+instrument graph handles it.
+
+**Draw order**
+
+`DrawGUI` (instrument scene) iterates layers ascending z and calls
+`drawNode(layer.graph->root)` for each visible layer. The instrument
+graph draws first (base); overlays paint on top.
+
+**Removal of the load-list graph node**
+
+The current `LOADLIST` graph node inside the instrument's PRESET
+controls row is removed. Its slot is reclaimed for the bigger row
+(Section F). The load list is now an overlay layer, which also resolves
+the cramping (overlays have their own centered layout, not crammed into
+the instrument graph).
+
+**Why graph-based (not a thin draw-callback layer)**
+
+A thin overlay (`Layer { draw fn; ctx; z }`) would handle rendering but
+not selection/navigation within the overlay. The load list needs up/down
+scrolling + KM_START to load; the overwrite modal needs YES/NO selection.
+Both require a full graph with nav, not just a draw rectangle.
 
 ### Section F — Bigger preset row
 

@@ -214,18 +214,19 @@ static ModList *selectVoiceModList(ModStrip *ms) {
 
 void drawModStrip(ModStrip *ms, Rectangle dest) {
 	float t = GetTime();
-	float theta = 1.8f * sinf(0.6f * t) + 1.2f * sinf(1.5f * t) + 0.8f * sinf(3.1f * t);
-	float dx = 1.8f * cosf(theta);
-	float dy = 1.8f * sinf(theta);
-
+	float tht_x = 1.8f * sinf(0.6f * t) + 1.2f * sinf(1.5f * t) + 0.8f * sinf(3.1f * t);
+	float tht_y = 1.1f * sinf(17.5f * t) + 1.1f * sinf(1.8f * t) + 0.6f * sinf(3.3f * t);
+	float dx = 3.2f * cosf(tht_x);
+	float dy = 4.8f * sinf(tht_y);
+	float clr_mod = sinf(6.6 * t);
 	RenderTexture2D src = ms->pingActive ? ms->ping : ms->pong;
 	RenderTexture2D tgt = ms->pingActive ? ms->pong : ms->ping;
 
 	BeginTextureMode(tgt);
 	ClearBackground(BLACK);
 	DrawTexturePro(src.texture, (Rectangle){ 0, 0, ms->width, ms->height },
-	               (Rectangle){ dx, dy, ms->width, ms->height },
-	               (Vector2){ 0, 0 }, 0.0f, (Color){ 128 + theta * 120.0f, 246, 246, 250 });
+	               (Rectangle){ dx, dy, ms->width -dx, ms->height-dy },
+	               (Vector2){ 0, 0 }, 0.0f, (Color){ fmaxf(249.0f + tht_x * 8.0f, 255.0f), fmaxf(249.0 + 8.0f * tht_y, 255.0f), fmax(255.0f + clr_mod * 5.0f, 255.0f), 255 });
 
 	ModList *modList = selectVoiceModList(ms);
 	if(modList && modList->count > 0) {
@@ -251,8 +252,13 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 			}
 			int halfH = (int)(val * ((ms->height - 6) / 2.0f));
 			int centerY = ms->height / 2;
-			DrawRectangle(x, centerY - halfH, bw, halfH, modStripColor(m->type));
-			DrawRectangle(x, centerY, bw, halfH, modStripColor(m->type));
+			Color base_colour = modStripColor(m->type);
+			base_colour.g = (int)(((float)base_colour.g/255.0f)*val*255.0f);
+			base_colour.b *= 0.5f;
+			base_colour.b += (int)((float)base_colour.b*val);
+			base_colour.a = 250;
+			DrawRectangle(x, centerY - halfH, bw, halfH, base_colour);
+			DrawRectangle(x, centerY, bw, halfH, base_colour);
 		}
 	}
 	EndTextureMode();
