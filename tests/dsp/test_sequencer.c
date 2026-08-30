@@ -149,11 +149,63 @@ static int test_pattern_switch_advances(void) {
     return 0;
 }
 
+/* Adding a blank pattern from the arranger (SELECT held + EDIT): an empty
+ * cell must get a new pattern assigned to it. */
+static int test_add_blank_on_empty_cell(void) {
+    PatternList pl;
+    memset(&pl, 0, sizeof(pl));
+    pl.pattern_count = 0;
+
+    Arranger arr;
+    memset(&arr, 0, sizeof(arr));
+    arr.enabledChannels = 1;
+    for(int c = 0; c < MAX_SEQUENCER_CHANNELS; c++) {
+        for(int r = 0; r < MAX_SONG_LENGTH; r++) {
+            arr.song[c][r] = -1;
+        }
+    }
+
+    addBlankIfEmpty(&pl, &arr, 0, 0);
+    ASSERT_EQ(pl.pattern_count, 1, "one blank pattern created");
+    ASSERT_EQ(arr.song[0][0], 0, "empty cell assigned the new pattern");
+    printf("PASS test_add_blank_on_empty_cell\n");
+    return 0;
+}
+
+/* Adding a blank pattern from the arranger on an OCCUPIED cell: the cell
+ * already has a pattern, so no new pattern may be created (that would leak
+ * an orphan pattern never referenced by the song). */
+static int test_add_blank_on_occupied_cell(void) {
+    PatternList pl;
+    memset(&pl, 0, sizeof(pl));
+    pl.pattern_count = 1;
+    pl.patterns[0].pattern_size = 4;
+
+    Arranger arr;
+    memset(&arr, 0, sizeof(arr));
+    arr.enabledChannels = 1;
+    for(int c = 0; c < MAX_SEQUENCER_CHANNELS; c++) {
+        for(int r = 0; r < MAX_SONG_LENGTH; r++) {
+            arr.song[c][r] = -1;
+        }
+    }
+    arr.song[0][0] = 0;
+
+    addBlankIfEmpty(&pl, &arr, 0, 0);
+    ASSERT_EQ(pl.pattern_count, 1,
+              "occupied cell must NOT create an orphan pattern");
+    ASSERT_EQ(arr.song[0][0], 0, "occupied cell keeps its pattern");
+    printf("PASS test_add_blank_on_occupied_cell\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_increment_scene_requires_selected_pattern();
     fails += test_playhead_does_not_wrap_when_stopped();
     fails += test_pattern_switch_advances();
+    fails += test_add_blank_on_empty_cell();
+    fails += test_add_blank_on_occupied_cell();
     if (fails) {
         fprintf(stderr, "%d sequencer test(s) failed\n", fails);
         return 1;
