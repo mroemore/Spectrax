@@ -570,7 +570,7 @@ git commit -m "feat(theme): expanded ColourScheme + FontConfig in core theme.h"
 **Interfaces:**
 - Consumes: `parseHexColor`, `ColourScheme`, `FontConfig`, `initDefaultColourScheme`.
 - Produces:
-  - `void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font, FontConfig *fontFallback)` — parses `path`; on any failure keeps `*cs`/`*font` untouched (caller pre-fills with defaults). For each present colour key, overrides the matching field. For each present `font.*` key, overrides `*font` (path/size/spacing). Unknown keys ignored.
+  - `void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font)` — parses `path`; on any failure keeps `*cs`/`*font` untouched (caller pre-fills with defaults). For each present colour key, overrides the matching field. For each present `font.*` key, overrides `*font` (path/size/spacing). Unknown keys ignored.
   - `void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *font)` — writes the full theme JSON (all colour keys as `#RRGGBBAA`, all font keys) via cJSON.
   - Internal `static Color *themeFieldByName(ColourScheme *cs, const char *name)` mapping string keys → struct fields via `strcmp` chain (used by both load and the tests' expectations).
   - `static void colorToHex(const Color *c, char out[9])` — `#RRGGBBAA`.
@@ -587,7 +587,7 @@ static int test_theme_parse_full(void) {
 	ColourScheme cs = { 0 };
 	FontConfig font = { { 0 }, 0, 0 };
 	FontConfig fallback = { { 0 }, 9, 1 };
-	loadThemeJson(".tmp_files/theme_full.json", &cs, &font, &fallback);
+	loadThemeJson(".tmp_files/theme_full.json", &cs, &font);
 	if(cs.label.r != 200 || cs.label.g != 180 || cs.dial.r != 255 ||
 	   cs.backgroundColor.r != 207 || cs.arrangerCellText.b != 180) {
 		printf("FAIL theme colours\n");
@@ -607,7 +607,7 @@ static int test_theme_parse_partial(void) {
 	cs.dial = (Color){ 255, 0, 0, 255 };
 	FontConfig font = { { 0 }, 9, 1 };
 	FontConfig fallback = { { 0 }, 9, 1 };
-	loadThemeJson(".tmp_files/theme_partial.json", &cs, &font, &fallback);
+	loadThemeJson(".tmp_files/theme_partial.json", &cs, &font);
 	if(cs.dial.r != 0 || cs.dial.g != 255 || cs.label.r != 200) {
 		printf("FAIL theme partial override\n");
 		return 1;
@@ -625,7 +625,7 @@ static int test_theme_missing_file(void) {
 	Color before = cs.label;
 	FontConfig font = { { 0 }, 9, 1 };
 	FontConfig fallback = { { 0 }, 9, 1 };
-	loadThemeJson(".tmp_files/no_such_theme.json", &cs, &font, &fallback);
+	loadThemeJson(".tmp_files/no_such_theme.json", &cs, &font);
 	if(cs.label.r != before.r || cs.label.g != before.g) {
 		printf("FAIL theme missing file must not mutate\n");
 		return 1;
@@ -643,7 +643,7 @@ static int test_theme_roundtrip(void) {
 	ColourScheme cs2 = { 0 };
 	FontConfig font2 = { { 0 }, 0, 0 };
 	FontConfig fallback = { { 0 }, 9, 1 };
-	loadThemeJson(".tmp_files/theme_rt.json", &cs2, &font2, &fallback);
+	loadThemeJson(".tmp_files/theme_rt.json", &cs2, &font2);
 	if(cs2.label.r != 200 || cs2.label.g != 180 || cs2.dial.a != 78 ||
 	   cs2.backgroundColor.r != 207 || strcmp(font2.path, "myfont.ttf") != 0 ||
 	   font2.size != 12 || font2.spacing != 2) {
@@ -720,8 +720,7 @@ static void colorToHex(const Color *c, char out[9]) {
 	snprintf(out, 9, "#%02X%02X%02X%02X", c->r, c->g, c->b, c->a);
 }
 
-void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font, FontConfig *fontFallback) {
-	(void)fontFallback;
+void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font) {
 	FILE *f = fopen(path, "rb");
 	if(!f) return;
 	fseek(f, 0, SEEK_END);
