@@ -1,7 +1,18 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
 #include "cJSON.h"
 #include "io/config_io.h"
+#include "paths.h"
+
+/* Local copy of test_io.c's ensure_tmp_dirs() — creates .tmp_files/ if
+ * missing. test_cfg.c doesn't share a translation unit with test_io.c,
+ * so the helper must be replicated here. */
+static void ensure_tmp_dirs(void) {
+	mkdir(".tmp_files", 0755);
+}
 
 static int test_cjson_parse_smoke(void) {
 	cJSON *doc = cJSON_Parse("{\"a\": 1, \"b\": [true, \"x\"]}");
@@ -61,11 +72,75 @@ static int test_hex_invalid(void) {
 	return 0;
 }
 
+static int test_resolve_data_dir_flag(void) {
+	char *argv[] = { "spectrax", "--data-dir", "/tmp/somewhere", NULL };
+	char buf[512];
+	resolveDataDir(3, argv, buf, sizeof(buf));
+	if(strcmp(buf, "/tmp/somewhere") != 0) {
+		printf("FAIL resolve --data-dir: got '%s'\n", buf);
+		return 1;
+	}
+	/* Missing value: falls through to fallback logic */
+	char *argv2[] = { "spectrax", "--data-dir", NULL };
+	resolveDataDir(2, argv2, buf, sizeof(buf));
+	if(strcmp(buf, ".") != 0) {
+		printf("FAIL resolve missing value: got '%s'\n", buf);
+		return 1;
+	}
+	return 0;
+}
+
+static int test_resolve_data_dir_home(void) {
+	char old_home[512] = "";
+	char old_xdg[512] = "";
+	const char *h = getenv("HOME");
+	const char *x = getenv("XDG_CONFIG_HOME");
+	if(h) { strncpy(old_home, h, sizeof(old_home) - 1); }
+	if(x) { strncpy(old_xdg, x, sizeof(old_xdg) - 1); }
+
+	/* $HOME/.config/spectrax with no cfg.json -> cwd */
+	setenv("HOME", ".tmp_files/nonexistent_home", 1);
+	unsetenv("XDG_CONFIG_HOME");
+	char buf[512];
+	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".") != 0) {
+		printf("FAIL home no cfg: got '%s'\n", buf);
+		return 1;
+	}
+
+	/* $HOME/.config/spectrax WITH cfg.json -> that dir.
+	 * Implementation builds "$HOME/.config/spectrax" and checks for
+	 * cfg.json inside it; so HOME=tmp_root gives a config dir at
+	 * tmp_root/.config/spectrax, and we drop cfg.json there. */
+	ensure_tmp_dirs();
+	mkdir(".tmp_files/hometest", 0755);
+	mkdir(".tmp_files/hometest/.config", 0755);
+	mkdir(".tmp_files/hometest/.config/spectrax", 0755);
+	FILE *f = fopen(".tmp_files/hometest/.config/spectrax/cfg.json", "wb");
+	if(f) { fputs("{}", f); fclose(f); }
+	setenv("HOME", ".tmp_files/hometest", 1);
+	resolveDataDir(1, (char *[]){"spectrax", NULL}, buf, sizeof(buf));
+	if(strcmp(buf, ".tmp_files/hometest/.config/spectrax") != 0) {
+		printf("FAIL home with cfg: got '%s'\n", buf);
+		return 1;
+	}
+	remove(".tmp_files/hometest/.config/spectrax/cfg.json");
+	rmdir(".tmp_files/hometest/.config/spectrax");
+	rmdir(".tmp_files/hometest/.config");
+	rmdir(".tmp_files/hometest");
+
+	if(h) setenv("HOME", old_home, 1); else unsetenv("HOME");
+	if(x) setenv("XDG_CONFIG_HOME", old_xdg, 1); else unsetenv("XDG_CONFIG_HOME");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_cjson_parse_smoke();
 	failed |= test_hex_rgb();
 	failed |= test_hex_invalid();
+	failed |= test_resolve_data_dir_flag();
+	failed |= test_resolve_data_dir_home();
 	if(failed) {
 		printf("test_cfg: FAILURES\n");
 		return 1;

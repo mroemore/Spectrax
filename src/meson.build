@@ -22,6 +22,7 @@ core_sources = files(
   'io/sequencer_io.c',
   'io/settings_io.c',
   'io/config_io.c',
+  'paths.c',
 )
 
 # Sequencer/appstate/input/settings: needed by the app and by test_sequencer
