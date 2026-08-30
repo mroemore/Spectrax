@@ -526,11 +526,18 @@ error:
 #endif /* SPECTRAX_HARNESS */
 
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui) {
-	/* Task 9: settings are loaded by main() and passed in via
-	 * data->settings. The harness (which calls initApplication directly
-	 * without going through main) gets a default-filled Settings here. */
+	/* Settings are loaded here (from the data dir) so data->settings
+	 * reflects cfg.json — the exit path saves this struct, so without
+	 * the load a fresh default-filled Settings would overwrite the
+	 * user's config on every quit. main() separately loads cfg.json
+	 * for the theme name before InitGUI. */
 	Settings *settings = malloc(sizeof(Settings));
 	createSettings(settings);
+	loadSettingsJson("cfg.json", settings, settings->themeFile, sizeof(settings->themeFile));
+	if(settings->themeFile[0] == '\0') {
+		strncpy(settings->themeFile, "clr.json", sizeof(settings->themeFile) - 1);
+		settings->themeFile[sizeof(settings->themeFile) - 1] = '\0';
+	}
 	data->settings = settings;
 	initSpectrogram(&data->spectrogram, 4096, 256, 5, 1.0);
 	initTimeGraph(&data->timeGraph, 1024, 0, 640, 1024, 128);
