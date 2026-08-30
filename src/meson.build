@@ -51,7 +51,7 @@ vizfx_lib = static_library('spectrax_vizfx', 'vizfx.c',
 )
 
 core_lib = static_library('spectrax_core', core_sources,
-  include_directories: inc,
+  include_directories: [inc, cjson_inc],
   dependencies: [m],
 )
 

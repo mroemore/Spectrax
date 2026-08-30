@@ -6,6 +6,7 @@
 #include "cJSON.h"
 #include "io/config_io.h"
 #include "paths.h"
+#include "theme.h"
 
 /* Local copy of test_io.c's ensure_tmp_dirs() — creates .tmp_files/ if
  * missing. test_cfg.c doesn't share a translation unit with test_io.c,
@@ -151,6 +152,93 @@ static int test_resolve_data_dir_home(void) {
 	return failed;
 }
 
+static void writeFixture(const char *path, const char *content) {
+	FILE *f = fopen(path, "wb");
+	if(f) {
+		fputs(content, f);
+		fclose(f);
+	}
+}
+
+static int test_theme_parse_full(void) {
+	ensure_tmp_dirs();
+	writeFixture(".tmp_files/theme_full.json",
+		"{\n"
+		"  \"font\": { \"path\": \"resources/fonts/console.ttf\", \"size\": 9, \"spacing\": 1 },\n"
+		"  \"colors\": {\n"
+		"    \"background\": \"#cf6e3a\", \"label\": \"#c8b4b4\", \"dial\": \"#ff0000\",\n"
+		"    \"arrangerCellText\": \"#c8b4b4\"\n"
+		"  }\n"
+		"}\n");
+	ColourScheme cs = { 0 };
+	FontConfig font = { { 0 }, 0, 0 };
+	loadThemeJson(".tmp_files/theme_full.json", &cs, &font);
+	if(cs.label.r != 200 || cs.label.g != 180 || cs.dial.r != 255 ||
+	   cs.backgroundColor.r != 207 || cs.arrangerCellText.b != 180) {
+		printf("FAIL theme colours\n");
+		return 1;
+	}
+	if(strcmp(font.path, "resources/fonts/console.ttf") != 0 || font.size != 9 || font.spacing != 1) {
+		printf("FAIL theme font\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_theme_parse_partial(void) {
+	ensure_tmp_dirs();
+	writeFixture(".tmp_files/theme_partial.json",
+		"{ \"colors\": { \"dial\": \"#00ff00\" } }\n");
+	/* Pre-fill with defaults; only the dial key present -> everything else stays default. */
+	ColourScheme cs = { 0 };
+	cs.label = (Color){ 200, 180, 180, 255 };
+	cs.dial = (Color){ 255, 0, 0, 255 };
+	FontConfig font = { { 0 }, 9, 1 };
+	loadThemeJson(".tmp_files/theme_partial.json", &cs, &font);
+	if(cs.dial.r != 0 || cs.dial.g != 255 || cs.label.r != 200) {
+		printf("FAIL theme partial override\n");
+		return 1;
+	}
+	if(font.size != 9) {
+		printf("FAIL theme font unchanged when absent\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_theme_missing_file(void) {
+	ColourScheme cs = { 0 };
+	cs.label = (Color){ 1, 2, 3, 4 };
+	Color before = cs.label;
+	FontConfig font = { { 0 }, 9, 1 };
+	loadThemeJson(".tmp_files/no_such_theme.json", &cs, &font);
+	if(cs.label.r != before.r || cs.label.g != before.g) {
+		printf("FAIL theme missing file must not mutate\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_theme_roundtrip(void) {
+	ensure_tmp_dirs();
+	ColourScheme cs = { 0 };
+	cs.backgroundColor = (Color){ 207, 110, 58, 255 };
+	cs.label = (Color){ 200, 180, 180, 255 };
+	cs.dial = (Color){ 12, 34, 56, 78 };
+	FontConfig font = { "myfont.ttf", 12, 2 };
+	saveThemeJson(".tmp_files/theme_rt.json", &cs, &font);
+	ColourScheme cs2 = { 0 };
+	FontConfig font2 = { { 0 }, 0, 0 };
+	loadThemeJson(".tmp_files/theme_rt.json", &cs2, &font2);
+	if(cs2.label.r != 200 || cs2.label.g != 180 || cs2.dial.a != 78 ||
+	   cs2.backgroundColor.r != 207 || strcmp(font2.path, "myfont.ttf") != 0 ||
+	   font2.size != 12 || font2.spacing != 2) {
+		printf("FAIL theme roundtrip\n");
+		return 1;
+	}
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_cjson_parse_smoke();
@@ -158,6 +246,10 @@ int main(void) {
 	failed |= test_hex_invalid();
 	failed |= test_resolve_data_dir_flag();
 	failed |= test_resolve_data_dir_home();
+	failed |= test_theme_parse_full();
+	failed |= test_theme_parse_partial();
+	failed |= test_theme_missing_file();
+	failed |= test_theme_roundtrip();
 	if(failed) {
 		printf("test_cfg: FAILURES\n");
 		return 1;
