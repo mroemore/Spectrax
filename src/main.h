@@ -18,6 +18,7 @@ typedef struct {
 	int samples_per_beat;
 	int samples_elapsed;
 	int active_sequencer_index;
+	Settings *settings;
 	Arranger *arranger;
 	PatternList *patternList;
 	Sequencer *sequencer;

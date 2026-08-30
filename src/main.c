@@ -2,6 +2,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 #include "portaudio.h"
 #include "raylib.h"
 #include "settings.h"
@@ -14,6 +15,8 @@
 #include "gui.h"
 #include "io.h"
 #include "io/preset_io.h"
+#include "io/config_io.h"
+#include "paths.h"
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"
@@ -180,13 +183,49 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 }
 
 #ifndef SPECTRAX_HARNESS
-int main(void) {
+int main(int argc, char **argv) {
 	PaStream *stream;
 	PaError err;
 	paTestData data;
 	ApplicationState *appState;
-	// loading screen
 
+	/* Task 9: data-dir resolution + chdir before anything opens files
+	 * (cfg.json, theme file, samples, songs). */
+	char dataDir[1024];
+	resolveDataDir(argc, argv, dataDir, sizeof(dataDir));
+	if(!chdirToDataDir(dataDir)) {
+		printf("Could not enter data dir '%s'.\n", dataDir);
+		return 1;
+	}
+
+	/* Load cfg + populate the theme file name. */
+	Settings settings;
+	createSettings(&settings);
+	loadSettingsJson("cfg.json", &settings, settings.themeFile, sizeof(settings.themeFile));
+	if(settings.themeFile[0] == '\0') {
+		strncpy(settings.themeFile, "clr.json", sizeof(settings.themeFile) - 1);
+		settings.themeFile[sizeof(settings.themeFile) - 1] = '\0';
+	}
+
+	/* Seed FontConfig with hardcoded defaults so it stays usable even if
+	 * loadThemeJson can't find the theme file. */
+	FontConfig fontCfg;
+	strncpy(fontCfg.path, "resources/fonts/console.ttf", sizeof(fontCfg.path) - 1);
+	fontCfg.path[sizeof(fontCfg.path) - 1] = '\0';
+	fontCfg.size = 9;
+	fontCfg.spacing = 0;
+	setFontConfig(&fontCfg);
+
+	/* Only claim "theme loaded" if the file actually exists, so InitGUI
+	 * can fall back to initDefaultColourScheme on a fresh data dir. */
+	FILE *th = fopen(settings.themeFile, "rb");
+	if(th) {
+		fclose(th);
+		loadThemeJson(settings.themeFile, getColourScheme(), getFontConfig());
+		markThemeLoaded();
+	}
+
+	// loading screen
 	InitGUI();
 	Texture2D loadingImage = LoadTexture("resources/images/spectrax_splash5_fix_2x.png");
 
@@ -449,7 +488,10 @@ int main(void) {
 	freeBufferScroller(&data.bufferScroller);
 	CloseWindow();
 	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);
-	saveColourScheme("CLR.dat", getColourScheme());
+	if(data.settings) {
+		saveSettingsJson("cfg.json", data.settings, data.settings->themeFile);
+		saveThemeJson(data.settings->themeFile, getColourScheme(), getFontConfig());
+	}
 	printf("song save attempt result: %i", saveResult);
 	err = Pa_StopStream(stream);
 	if(err != paNoError)
@@ -480,8 +522,12 @@ error:
 #endif /* SPECTRAX_HARNESS */
 
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui) {
-	Settings *settings = createSettings();
-	loadColourSchemeTxt("colourscheme2.txt", getColorSchemeAsPointerArray(), 9);
+	/* Task 9: settings are loaded by main() and passed in via
+	 * data->settings. The harness (which calls initApplication directly
+	 * without going through main) gets a default-filled Settings here. */
+	Settings *settings = malloc(sizeof(Settings));
+	createSettings(settings);
+	data->settings = settings;
 	initSpectrogram(&data->spectrogram, 4096, 256, 5, 1.0);
 	initTimeGraph(&data->timeGraph, 1024, 0, 640, 1024, 128);
 	initBufferScroller(&data->bufferScroller);

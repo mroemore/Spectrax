@@ -84,8 +84,17 @@ Graph *getSelectedInstGraph();
 
 void initDefaultColourScheme(ColourScheme *colourScheme);
 void setColourScheme(ColourScheme *colourScheme);
-Color **getColorSchemeAsPointerArray();
 ColourScheme *getColourScheme();
+
+/* Font config (Task 9): copied into gui.c file-scope gFontConfig. Call
+ * BEFORE InitGUI so the window/raylib context exists when fonts load. */
+void setFontConfig(const FontConfig *cfg);
+FontConfig *getFontConfig(void);
+
+/* Theme-loaded flag: once set, InitGUI() leaves the colour scheme alone
+ * (no default-init) and uses gFontConfig for pixelFont. */
+void markThemeLoaded(void);
+bool isThemeLoaded(void);
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 

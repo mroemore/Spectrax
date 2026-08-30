@@ -36,6 +36,8 @@ Font textFont;
 Font symbolFont;
 Font pixelFont;
 ColourScheme cs;
+static FontConfig gFontConfig;
+static bool gThemeLoaded;
 SpriteSheet *instrumentIcons;
 Texture2D dial;
 Texture2D btnOn;
@@ -121,24 +123,27 @@ void setColourScheme(ColourScheme *colourScheme) {
 	cs = *colourScheme;
 }
 
-Color **getColorSchemeAsPointerArray() {
-	Color **colourScheme = malloc(sizeof(Color *) * 9);
-	if(!colourScheme) return NULL;
-
-	colourScheme[0] = &cs.backgroundColor;
-	colourScheme[1] = &cs.fontColour;
-	colourScheme[2] = &cs.secondaryFontColour;
-	colourScheme[3] = &cs.outlineColour;
-	colourScheme[4] = &cs.defaultCell;
-	colourScheme[5] = &cs.highlightedCell;
-	colourScheme[6] = &cs.selectedCell;
-	colourScheme[7] = &cs.blankCell;
-	colourScheme[8] = &cs.reddish;
-	return colourScheme;
-}
-
 ColourScheme *getColourScheme() {
 	return &cs;
+}
+
+void setFontConfig(const FontConfig *cfg) {
+	if(!cfg) {
+		return;
+	}
+	gFontConfig = *cfg;
+}
+
+FontConfig *getFontConfig(void) {
+	return &gFontConfig;
+}
+
+void markThemeLoaded(void) {
+	gThemeLoaded = true;
+}
+
+bool isThemeLoaded(void) {
+	return gThemeLoaded;
 }
 
 void clearBg() {
@@ -149,12 +154,23 @@ void InitGUI(void) {
 	const int screenWidth = SCREEN_W;
 	const int screenHeight = SCREEN_H;
 
-	initDefaultColourScheme(&cs);
+	if(!gThemeLoaded) {
+		initDefaultColourScheme(&cs);
+	}
+
+	/* Fall back to hardcoded defaults if main() never set gFontConfig.
+	 * The harness boots directly into InitGUI without going through the
+	 * cfg/theme loader path, so it relies on these fallbacks. */
+	if(gFontConfig.path[0] == '\0') {
+		strncpy(gFontConfig.path, "resources/fonts/console.ttf", sizeof(gFontConfig.path) - 1);
+		gFontConfig.path[sizeof(gFontConfig.path) - 1] = '\0';
+		gFontConfig.size = 9;
+		gFontConfig.spacing = 0;
+	}
 
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	textFont = LoadFont("resources/fonts/setback.png");
-	// pixelFont = LoadFontEx("resources/fonts/04B_03__.TTF", 12, 0, 255);
-	pixelFont = LoadFontEx("resources/fonts/console.ttf", 9, 0, 255);
+	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
 	instrumentIcons = createSpriteSheet("resources/images/synthicon_sheet.png", 64, 64);
 	Image dialimg = LoadImage("resources/images/dial2.png");

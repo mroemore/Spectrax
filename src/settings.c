@@ -2,21 +2,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-Settings *createSettings() {
-	// printf("creating settings.\n");
-	Settings *settings = (Settings *)malloc(sizeof(Settings));
-	if(!settings) {
-		printf("could not allocate memory for settings.\n");
-		return NULL;
+void createSettings(Settings *s) {
+	if(!s) {
+		return;
 	}
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-		settings->voiceTypes[i] = i % 3;
-		printf("V%i :%i\n", i, settings->voiceTypes[i]);
+		s->voiceTypes[i] = i % 3;
 	}
-	settings->voiceTypes[0] = 4;
-	settings->defaultSequenceLength = 16;
-	settings->enabledChannels = 8;
-	settings->defaultVoiceCount = 1;
-	settings->defaultBPM = 120;
-	return settings;
+	s->voiceTypes[0] = 4;
+	s->defaultSequenceLength = 16;
+	s->enabledChannels = 8;
+	s->defaultVoiceCount = 1;
+	s->defaultBPM = 120;
+	s->themeFile[0] = '\0';
 }

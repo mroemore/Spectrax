@@ -39,5 +39,5 @@ typedef struct {
 	char themeFile[256];
 } Settings;
 
-Settings *createSettings();
+void createSettings(Settings *s);
 #endif

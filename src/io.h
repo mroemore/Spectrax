@@ -62,34 +62,6 @@ void loadSamplesfromDirectory(const char *path, SamplePool *sp);
 // Sample load_raw_sample(const char *filename, int sample_rate);
 void load_wav_sample(const char *filename, SamplePool *sp);
 /**
- * @brief Saves a colour scheme to a binary file
- * @param filename Path to save the colour scheme file
- * @param colourScheme Pointer to ColourScheme structure to save
- * @return FileResult indicating success (FILE_OK) or specific error codes:
- *         - FILE_ERROR_OPEN if file cannot be created/opened for writing
- */
-FileResult saveColourScheme(const char *filename, ColourScheme *colourScheme);
-/**
- * @brief Loads a colour scheme from a binary file
- * @param filename Path to the colour scheme file to load
- * @param colourScheme Pointer to ColourScheme structure to populate
- * @return FileResult indicating success (FILE_OK) or specific error codes:
- *         - FILE_ERROR_OPEN if file cannot be opened
- *         - FILE_ERROR_FORMAT if file has invalid magic number
- *         - FILE_ERROR_READ if reading colour scheme data fails
- */
-FileResult loadColourScheme(const char *filename, ColourScheme *colourScheme);
-/**
- * @brief Loads a colour scheme from a text file format
- * @param filename Path to the text-based colour scheme file
- * @param colourScheme Pointer to ColourScheme structure to populate
- * @return FileResult indicating success (FILE_OK) or specific error codes:
- *         - FILE_ERROR_OPEN if file cannot be opened
- *         - FILE_ERROR_FORMAT if file format is invalid
- *         - FILE_ERROR_READ if reading colour data fails
- */
-FileResult loadColourSchemeTxt(const char *filename, Color *colourArray[], int arraySize);
-/**
  * @brief Loads the complete sequencer state from a binary file
  * @param filename Path to the sequencer state file to load
  * @param arranger Pointer to Arranger structure to populate with playhead, channel and song data
