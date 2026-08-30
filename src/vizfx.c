@@ -1,5 +1,7 @@
 #include <math.h>
 
+#include "gui.h"
+#include "theme.h"
 #include "vizfx.h"
 #include "voice.h"
 
@@ -55,7 +57,7 @@ void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char 
 
 void packScrollerColumn(const unsigned char *lo, const unsigned char *hi, int columnHeight, Color *out, Color waveColour) {
 	for(int r = 0; r < columnHeight; r++) {
-		out[r] = (Color){ 0, 0, 0, 255 };
+		out[r] = getColourScheme()->waveformBg;
 	}
 	for(int r = 0; r < columnHeight; r++) {
 		for(int y = lo[r]; y <= hi[r]; y++) {
@@ -65,7 +67,7 @@ void packScrollerColumn(const unsigned char *lo, const unsigned char *hi, int co
 }
 
 void initBufferScroller(BufferScroller *bs) {
-	bs->image = GenImageColor(SCROLLER_WIDTH, SCROLLER_COLUMN_HEIGHT, (Color){ 0, 0, 0, 255 });
+	bs->image = GenImageColor(SCROLLER_WIDTH, SCROLLER_COLUMN_HEIGHT, getColourScheme()->waveformBg);
 	bs->texture = LoadTextureFromImage(bs->image);
 	SetTextureFilter(bs->texture, TEXTURE_FILTER_POINT);
 	bs->writeColumn = 0;
@@ -117,7 +119,7 @@ void updateBufferScrollerData(BufferScroller *bs) {
 		return;
 	}
 	Color *px = (Color *)bs->image.data;
-	const Color waveColour = (Color){ 60, 255, 150, 255 };
+	const Color waveColour = getColourScheme()->vline;
 	Color packed[SCROLLER_COLUMN_HEIGHT];
 	while(bs->pendingCount > 0) {
 		int col = bs->writeColumn;
@@ -160,15 +162,15 @@ void freeBufferScroller(BufferScroller *bs) {
 static Color modStripColor(ModType type) {
 	switch(type) {
 		case MT_LFO:
-			return (Color){ 0, 255, 255, 255 };
+			return getColourScheme()->modStripLfo;
 		case MT_ENV:
-			return (Color){ 130, 255, 130, 255 };
+			return getColourScheme()->modStripEnv;
 		case MT_RND:
-			return (Color){ 255, 80, 255, 255 };
+			return getColourScheme()->modStripRnd;
 		case MT_OFS:
-			return (Color){ 190, 190, 190, 255 };
+			return getColourScheme()->modStripOfs;
 		default:
-			return (Color){ 210, 210, 210, 255 };
+			return getColourScheme()->modStripDefault;
 	}
 }
 
@@ -300,7 +302,7 @@ void drawSampleWaveLines(const MixRing *r, Rectangle dest) {
 	int w = (int)dest.width;
 	int h = (int)dest.height;
 	int centerY = dest.y + h / 2;
-	Color col = (Color){ 60, 255, 150, 255 };
+	Color col = getColourScheme()->vline;
 	for(int x = 0; x < w; x++) {
 		int k = (int)((long)x * MIX_RING_LEN / w);
 		float s = mixRingClamped(r, k);
@@ -314,7 +316,7 @@ void drawSampleWavePolyline(const MixRing *r, Rectangle dest) {
 	int centerY = dest.y + h / 2;
 	float xScale = dest.width / (float)(MIX_RING_LEN - 1);
 	float yScale = h / 2.0f;
-	Color col = (Color){ 255, 80, 80, 255 };
+	Color col = getColourScheme()->poly;
 	Vector2 prev = { dest.x, centerY + mixRingClamped(r, 0) * yScale };
 	for(int i = 1; i < MIX_RING_LEN; i++) {
 		Vector2 cur;

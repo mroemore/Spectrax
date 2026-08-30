@@ -26,6 +26,8 @@
 
 #include "raylib.h"
 #include "graph_gui.h"
+#include "gui.h"
+#include "theme.h"
 
 void initLayerStack(LayerStack *stack) {
 	stack->layers = NULL;
@@ -126,7 +128,7 @@ void layerStackDraw(const LayerStack *stack) {
 			 * region with a translucent black. We pick a fairly heavy
 			 * alpha so the lower graph recedes but is still readable
 			 * for visual continuity. */
-			DrawRectangle(l->x, l->y, l->w, l->h, (Color){ 0, 0, 0, 170 });
+			DrawRectangle(l->x, l->y, l->w, l->h, getColourScheme()->layerDim);
 		}
 		if(l->graph && l->graph->root) {
 			drawNode(l->graph->root);

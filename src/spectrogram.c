@@ -1,5 +1,7 @@
 #include "spectrogram.h"
 #include "raylib.h"
+#include "gui.h"
+#include "theme.h"
 #include <math.h>
 
 void initSpectro(Spectro *sp, int fftSize, int framesPerBuffer, int toAverage, float imageScale) {
@@ -9,7 +11,7 @@ void initSpectro(Spectro *sp, int fftSize, int framesPerBuffer, int toAverage, f
 	sp->imageScale = imageScale;
 	sp->imageWidth = 256;
 	sp->imageHeight = sp->fft.freqCount;
-	sp->specImage = GenImageColor(sp->imageWidth, sp->imageHeight, (Color){ 0, 0, 0, 100 });
+	sp->specImage = GenImageColor(sp->imageWidth, sp->imageHeight, getColourScheme()->waveformBg);
 	sp->specTexture = LoadTextureFromImage(sp->specImage);
 	sp->textureDestination = (Rectangle){ 0, 0, 1024, 512 };
 }
@@ -42,7 +44,7 @@ void updateSpectroImageData(Spectro *sp) {
 
 void drawSpectro(Spectro *sp) {
 	DrawTexturePro(sp->specTexture, (Rectangle){ 0, 0, sp->imageWidth, sp->imageHeight }, sp->textureDestination, (Vector2){ 0, 0 }, 0.0f, WHITE);
-	DrawLine(sp->textureDestination.x + 1 + sp->imageWriteIndex * 4, sp->textureDestination.y, sp->textureDestination.x + 1 + sp->imageWriteIndex * 4, sp->textureDestination.y + sp->imageHeight, RED);
+	DrawLine(sp->textureDestination.x + 1 + sp->imageWriteIndex * 4, sp->textureDestination.y, sp->textureDestination.x + 1 + sp->imageWriteIndex * 4, sp->textureDestination.y + sp->imageHeight, getColourScheme()->spectrogramPlayhead);
 	char debugData[255];
 	sprintf(debugData, "Window: %s, writeIndex: %i, rowcount: %i", sp->fft.windowFuncName, sp->imageWriteIndex, sp->fft.rowCount);
 	DrawText(debugData, 14, SCREEN_H - 14, 12, WHITE);

@@ -108,6 +108,13 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->arrangerPlayhead = (Color){ 255, 0, 0, 255 };
 	colourScheme->arrangerCellText = (Color){ 200, 180, 180, 255 };
 	colourScheme->wrapperBorder = (Color){ 10, 5, 5, 255 };
+	colourScheme->modStripLfo = (Color){ 0, 255, 255, 255 };
+	colourScheme->modStripEnv = (Color){ 130, 255, 130, 255 };
+	colourScheme->modStripRnd = (Color){ 255, 80, 255, 255 };
+	colourScheme->modStripOfs = (Color){ 190, 190, 190, 255 };
+	colourScheme->modStripDefault = (Color){ 210, 210, 210, 255 };
+	colourScheme->layerDim = (Color){ 0, 0, 0, 170 };
+	colourScheme->spectrogramPlayhead = (Color){ 255, 0, 0, 255 };
 }
 
 void setColourScheme(ColourScheme *colourScheme) {

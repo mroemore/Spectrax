@@ -33,6 +33,13 @@ typedef struct {
 	Color arrangerPlayhead;
 	Color arrangerCellText;
 	Color wrapperBorder;
+	Color modStripLfo;
+	Color modStripEnv;
+	Color modStripRnd;
+	Color modStripOfs;
+	Color modStripDefault;
+	Color layerDim;
+	Color spectrogramPlayhead;
 } ColourScheme;
 
 typedef struct {

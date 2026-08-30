@@ -71,6 +71,13 @@ static Color *themeFieldByName(ColourScheme *cs, const char *name) {
 	if(!strcmp(name, "arrangerPlayhead")) return &cs->arrangerPlayhead;
 	if(!strcmp(name, "arrangerCellText")) return &cs->arrangerCellText;
 	if(!strcmp(name, "wrapperBorder")) return &cs->wrapperBorder;
+	if(!strcmp(name, "modStripLfo")) return &cs->modStripLfo;
+	if(!strcmp(name, "modStripEnv")) return &cs->modStripEnv;
+	if(!strcmp(name, "modStripRnd")) return &cs->modStripRnd;
+	if(!strcmp(name, "modStripOfs")) return &cs->modStripOfs;
+	if(!strcmp(name, "modStripDefault")) return &cs->modStripDefault;
+	if(!strcmp(name, "layerDim")) return &cs->layerDim;
+	if(!strcmp(name, "spectrogramPlayhead")) return &cs->spectrogramPlayhead;
 	return NULL;
 }
 
@@ -137,7 +144,9 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 		"panel", "panelBorder", "valueDisplayBg", "label", "labelSelected", "dial",
 		"valueText", "vline", "poly", "waveformBg", "waveform", "waveformAlt",
 		"sampleBg", "sampleAltBg", "sampleBorder", "stepBorder", "stepClosed",
-		"arrangerPlayhead", "arrangerCellText", "wrapperBorder" };
+		"arrangerPlayhead", "arrangerCellText", "wrapperBorder",
+		"modStripLfo", "modStripEnv", "modStripRnd", "modStripOfs",
+		"modStripDefault", "layerDim", "spectrogramPlayhead" };
 	size_t n = sizeof(names) / sizeof(names[0]);
 	for(size_t i = 0; i < n; i++) {
 		/* Cast away const for the lookup helper (it only dereferences for read,

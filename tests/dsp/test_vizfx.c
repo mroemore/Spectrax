@@ -1,7 +1,31 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "raylib.h"
+#include "theme.h"
 #include "vizfx.h"
+
+/* vizfx.c now resolves colours through getColourScheme() (gui.c symbol).
+ * gui.c lives in app_only_sources and is not linked by this test (which
+ * only links core_lib + vizfx_lib). Provide a stub that returns a static
+ * default ColourScheme so the symbol resolves. The defaults here need not
+ * match the app defaults — vizfx's data ops never read colours, so this
+ * stub exists purely to satisfy the linker. See test_sequencer.c for the
+ * same pattern around rebuildPatternGraph(). */
+static ColourScheme test_vizfx_default_scheme = {
+	.waveformBg = { 0, 0, 0, 255 },
+	.vline = { 60, 255, 150, 255 },
+	.poly = { 255, 80, 80, 255 },
+	.modStripLfo = { 0, 255, 255, 255 },
+	.modStripEnv = { 130, 255, 130, 255 },
+	.modStripRnd = { 255, 80, 255, 255 },
+	.modStripOfs = { 190, 190, 190, 255 },
+	.modStripDefault = { 210, 210, 210, 255 },
+};
+
+ColourScheme *getColourScheme(void) {
+	return &test_vizfx_default_scheme;
+}
 
 #define ASSERT_TRUE(cond) do { \
 	if(!(cond)) { \
