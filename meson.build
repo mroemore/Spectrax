@@ -39,7 +39,7 @@ system_deps = [raylib, kissfft, portaudio, gl, x11, rt, dl, m, cjson_dep]
 # Install step copies the freshly built binaries into bin/ so the app can
 # be launched with cwd=bin/ and pick up the cwd-relative resources/ and
 # data/ paths (see run-from-bin convention).
-meson.add_install_script('meson/install_bins.py')
+meson.add_install_script('meson/install.sh')
 
 subdir('src')
 subdir('tests')
