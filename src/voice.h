@@ -198,12 +198,27 @@ typedef struct {
 	 * See LoadedPreset above for the full layout. */
 	LoadedPreset loaded;
 	VoiceManager *vm;
+	/* Channel index used by the voice-count dial's onChange callback
+	 * to look up the right channel in the VoiceManager. Assigned by
+	 * createVoiceManager (boot) and setInstrumentVoiceType (type
+	 * change rebuilds the Instrument so the field is refreshed).
+	 * -1 means "unset" (e.g. during construction between the malloc
+	 * and the index assignment). */
+	int metaChannel;
 	/* Set by the GUI thread while the instrument's param/mod lists and
 	 * voice pool are being rebuilt (applyInstrumentPreset / voice
 	 * rebuild). The PortAudio callback checks it and skips this channel
 	 * while true -- without it, the audio thread derefs freed params
 	 * mid-rebuild and segfaults on preset change (e.g. NEXT). */
 	volatile bool rebuilding;
+	/* Task 6: instrument-page meta-row voice-count dial. Range 1..8
+	 * (clamped by Parameter on every write). Synced to
+	 * vm->voiceCount[channel] via the onChange callback
+	 * (`cb_setVoiceCount`); both paths write the param's baseValue too
+	 * so a programmatic setChannelVoiceCount can't desync the
+	 * displayed dial from the live voice pool. Owned by the instrument's
+	 * paramList (freed with the instrument). */
+	Parameter *voiceCountParam;
 	union {
 		SamplerInstrumentData sampler;
 		FmInstrumentData fm;

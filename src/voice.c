@@ -31,6 +31,10 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		init_instrument(&vm->instruments[i], VOICE_TYPE_SAMPLE, sp, pb);
 		vm->instruments[i]->vm = vm;
+		/* Task 6: voice-count dial needs to know its channel index.
+		 * Set it right after vm is wired so the param's onChange
+		 * can find the channel in vm->instruments[] on first edit. */
+		vm->instruments[i]->metaChannel = i;
 		/* Task 6: the boot preset is a stand-in for "no preset yet"
 		 * (presetBank starts empty — patches[0].name is uninitialised).
 		 * Zero the name so applyInstrumentPreset's trailing
@@ -419,6 +423,9 @@ bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 		return false;
 	}
 	fresh->vm = vm;
+	/* Task 6: copy the channel index across the type swap so the new
+	 * instrument's voice-count dial onChange knows where to look. */
+	fresh->metaChannel = channel;
 	if(old) {
 		fresh->presetBank = old->presetBank;
 	}
@@ -429,14 +436,44 @@ bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 	return true;
 }
 
+/* Task 6: the voice-count dial's onChange. The dial edits the
+ * Instrument's `voiceCountParam`; whenever `setParameterBaseValue`
+ * notes a change, this fires. We resolve the channel from
+ * `inst->metaChannel` (set by createVoiceManager + by
+ * setInstrumentVoiceType), read the snapped value, and pipe it
+ * through setChannelVoiceCount so the audio-thread pool is rebuilt
+ * with the `rebuilding` flag guarding the swap. A subsequent
+ * rebuildInstrumentGraph call (gui.c) pulls the new voice pool
+ * count through to the meta-row dial on the next frame. */
+static void cb_setVoiceCount(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	if(!inst || !inst->vm || !inst->voiceCountParam) {
+		return;
+	}
+	if(inst->metaChannel < 0 || inst->metaChannel >= inst->vm->enabledChannels) {
+		return;
+	}
+	float v = getParameterValue(inst->voiceCountParam);
+	int n = (int)roundf(v);
+	if(n < 1) n = 1;
+	if(n > MAX_VOICES_PER_CHANNEL) n = MAX_VOICES_PER_CHANNEL;
+	(void)setChannelVoiceCount(inst->vm, inst->metaChannel, n);
+}
+
 /* Task 2: instrument-chip "voice-count resize" — re-allocate the
  * channel's voice pool to `count` (clamped 1..MAX_VOICES_PER_CHANNEL
  * by the caller; initVoicePool additionally caps at
  * MAX_VOICES_PER_CHANNEL but does not floor to 1, so we reject 0
  * here rather than silently passing it through). Returns false for
- * invalid args / out-of-range count. The instrument's rebuilding flag
- * is set during the resize so the audio thread skips the channel
+ * invalid args / out-of-range count. The instrument's rebuilding flag is
+ * set during the resize so the audio thread skips the channel
  * while voices are being torn down and re-initialized.
+ *
+ * Task 6: also writes `inst->voiceCountParam` so any future dial read
+ * (after a programmatic resize, e.g. presets / load) reflects the
+ * real voice pool size. Writes the same value back → onChange
+ * callback fires only on real change (setParameterBaseValue
+ * thresholds at 0.001f), so no feedback loop.
  *
  * NOTE: the existing initVoicePool only re-allocates the first
  * `count` slots; any voices beyond the new count in voicePools[ch][]
@@ -449,7 +486,16 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 	Instrument *inst = vm->instruments[channel];
 	if(inst) inst->rebuilding = true;
 	initVoicePool(vm, channel, count, inst);
-	if(inst) inst->rebuilding = false;
+	if(inst) {
+		/* Keep the param in sync so the dial doesn't lie about what
+		 * the voice pool is doing. Safe to write the same value
+		 * (no onChange firing); necessary when a load preset
+		 * resizes the pool out from under us. */
+		if(inst->voiceCountParam) {
+			setParameterBaseValue(inst->voiceCountParam, (float)count);
+		}
+		inst->rebuilding = false;
+	}
 	return true;
 }
 
@@ -768,6 +814,15 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->presetBank = pb;
+	/* Task 6: meta-row voice-count dial. Range 1..8 (the user-facing
+	 * upper bound — MAX_VOICES_PER_CHANNEL caps at 16 but a 1..8
+	 * dial is the most usable for live resizing; setChannelVoiceCount
+	 * still rejects out-of-range). onChange rebuilds the channel's
+	 * voice pool + the instrument graph. metaChannel is set by
+	 * createVoiceManager / setInstrumentVoiceType right after this
+	 * returns; -1 here means "not yet wired". */
+	(*instrument)->metaChannel = -1;
+	(*instrument)->voiceCountParam = createParameterPro((*instrument)->paramList, "voiceCount", 1.0f, 1.0f, 8.0f, 1.0f, 1.0f, (*instrument), cb_setVoiceCount);
 
 	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (float)(PRESET_BANK_SLOTS - 1), 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
 	switch(vt) {
