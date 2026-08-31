@@ -23,6 +23,15 @@ Graph *agui;
  * two layers deep: root → gridColumn → chipRow → chip — a fragile walk
  * that would break the moment Task 5+ adds anything else into chipRow).
  * NULL slots (disabled channels / out-of-range) are skipped. */
+
+/* Task 5: shared arcade char table for chip label editing. Defined up
+ * here so the chip helpers below can use it; the original definition
+ * for the preset-name node lives at line ~1517 and is a no-op
+ * re-definition of the same literal (C allows identical #define
+ * re-declarations). This keeps both consumers' char cycles in lock-
+ * step without forcing the preset-node fixtures to share an
+ * implementation. */
+#define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
 static GuiNode *g_chipNodes[MAX_SEQUENCER_CHANNELS];
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
@@ -846,6 +855,54 @@ void drawInstChipGuiNode(void *self) {
 		Color c = (v && v->active) ? cs.outlineColour : cs.wrapperBorder;
 		DrawRectangle(startX + i * (dotSize + dotGap), dotY, dotSize, dotSize, c);
 	}
+
+	/* Task 5: expanded overlay. When `expanded` is true, render the 8
+	 * colour swatches + the 8-char label input directly ABOVE the chip's
+	 * rectangle so the chip itself stays visible underneath. The strip
+	 * is 32px tall: top 16px = swatches, bottom 16px = label input row.
+	 * Geometry is bounded by the chip's own (x, y, w): the swatches and
+	 * label input are never wider than the chip and never bleed above
+	 * y=0 — callers must guarantee that, just like the chip itself. */
+	if(!chip->expanded) return;
+
+	int swatchH = 16;
+	int labelH = 16;
+	int stripTopY = gn->y - swatchH - labelH;
+	if(stripTopY < 0) stripTopY = 0;  /* defensive clamp; pin to 0 */
+
+	/* Swatches: 8 squares side by side. Width per swatch = gn->w / 8. */
+	int swW = gn->w / 8;
+	for(int i = 0; i < 8; i++) {
+		int sx = gn->x + i * swW;
+		DrawRectangle(sx, stripTopY, swW, swatchH, chipPalette[i]);
+		if(i == chip->swatchFocus) {
+			/* inverted cursor block + outline so the focused swatch is
+			 * obvious even when its colour is the same as the chip's bg */
+			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 2.0f, cs.outlineColour);
+		} else {
+			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 1.0f, cs.wrapperBorder);
+		}
+	}
+
+	/* Label input: 8 cells mirroring the preset-name node's model.
+	 * Each cell is swW wide, labelH tall, drawn as the char with an
+	 * inverted cursor block when i == chip->cursor. The visible label
+	 * is bounded to 8 chars; positions beyond the current NUL show as
+	 * blanks so the user can see there's room to extend. */
+	const char *label = chip->arranger->label[chip->channel];
+	int labelLen = (int)strlen(label);
+	if(labelLen > 8) labelLen = 8;
+	int inputY = stripTopY + swatchH;
+	for(int i = 0; i < 8; i++) {
+		int cx = gn->x + i * swW;
+		char ch = (i < labelLen) ? label[i] : ' ';
+		if(i == chip->cursor) {
+			DrawRectangle(cx, inputY, swW, labelH, cs.outlineColour);
+			DrawTextEx(pixelFont, (char[]){ ch, '\0' }, (Vector2){ cx + 1, inputY + 2 }, 12, 1, BLACK);
+		} else {
+			DrawTextEx(pixelFont, (char[]){ ch, '\0' }, (Vector2){ cx + 1, inputY + 2 }, 12, 1, cs.label);
+		}
+	}
 }
 
 bool isInstChipNode(const GuiNode *n) {
@@ -887,6 +944,139 @@ bool isChipExpanded(int channel) {
 	return ((InstChipGuiNode *)node)->expanded;
 }
 
+/* Task 5: cap on the chip label length. label[channel] is char[9] in
+ * Arranger (8 chars + NUL); the cursor is bounded to 0..8 inclusive
+ * so the user can sit at the end and insert one more. */
+#define CHIP_LABEL_MAX 8
+
+/* Task 5: find the index of `c` in the arcade NAME_CHARS table, with
+ * a-z folded to A-Z the same way the preset-node helper does. Returns
+ * 0 for chars not in the table so cycling wraps to 'A'. Declared in
+ * gui.h so tests/dsp/test_mod_voice.c can unit-test the cycle logic
+ * directly; the preset node keeps its own identical helper to avoid
+ * sharing fixture-critical code. */
+int chipLabelCharIndex(char c) {
+	if(c >= 'a' && c <= 'z') {
+		c = (char)(c - 32);
+	}
+	for(int i = 0; i < (int)strlen(NAME_CHARS); i++) {
+		if(NAME_CHARS[i] == c) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+/* Task 5: cycle the char at chip->cursor through NAME_CHARS by `delta`
+ * (+1 for UP, -1 for DOWN). The slot is whatever it currently holds —
+ * NUL (cursor sits past the end of the label) is treated as index 0,
+ * so UP lands on NAME_CHARS[1] = 'B' (not 'A', since 0 is already
+ * where NUL maps). This mirrors the preset node's cycleNameChar
+ * exactly so the two surfaces behave identically. */
+static void chipLabelCycleChar(InstChipGuiNode *chip, int delta) {
+	int count = (int)strlen(NAME_CHARS);
+	int idx = chipLabelCharIndex(chip->arranger->label[chip->channel][chip->cursor]);
+	idx = (idx + delta + count) % count;
+	chip->arranger->label[chip->channel][chip->cursor] = NAME_CHARS[idx];
+	/* ensure NUL stays at position CHIP_LABEL_MAX */
+	chip->arranger->label[chip->channel][CHIP_LABEL_MAX] = '\0';
+}
+
+/* Task 5: pure helper — cycle the char at *slot through NAME_CHARS by
+ * `dir` (typically +1 for UP, -1 for DOWN). Treats '\0' (NUL) as 'A'
+ * so cycling past the end of a label lands on 'A', same as the preset
+ * node's cycleNameChar. The slot is left untouched if the table is
+ * empty (defensive — NAME_CHARS is a string literal so it's never
+ * empty in practice, but the function must not UB if that changes). */
+void chipLabelCycleCharAt(char *slot, int dir) {
+	if(!slot) return;
+	int count = (int)strlen(NAME_CHARS);
+	if(count <= 0) return;
+	int idx = chipLabelCharIndex(*slot);
+	idx = (idx + dir + count) % count;
+	*slot = NAME_CHARS[idx];
+}
+
+/* Task 5: pure helper — move *cursor by `dir` (-1 left, +1 right),
+ * bounded to [0..strlen(label)] AND [0..maxLen] so a corrupt strlen
+ * (label somehow larger than the buffer) can never push the cursor
+ * past the array end. Anything outside {-1, +1} is silently ignored
+ * so the input layer can be forgiving. */
+void chipLabelCursorMove(int *cursor, const char *label, int maxLen, int dir) {
+	if(!cursor) return;
+	if(dir != -1 && dir != 1) return;
+	int len = label ? (int)strlen(label) : 0;
+	if(len > maxLen) len = maxLen;
+	int next = *cursor + dir;
+	if(next < 0) next = 0;
+	if(next > len) next = len;
+	if(next > maxLen) next = maxLen;
+	*cursor = next;
+}
+
+/* Task 5: route input for the expanded chip. When KM_EDIT is NOT held:
+ * LEFT/RIGHT move the swatch focus + write labelColourIdx live. When
+ * KM_EDIT IS held: LEFT/RIGHT move the cursor (bounded to strlen),
+ * UP/DOWN cycle the char under the cursor through NAME_CHARS. Bare
+ * KM_EDIT / KM_SELECT / KM_START collapse (expandChip(channel, false)).
+ * Returns nothing — the caller (main.c SCENE_ARRANGER KM_EDIT branch)
+ * is responsible for routing when this function should fire. */
+void handleExpandedChipInput(int channel, int km, bool editHeld) {
+	if(!agui) return;
+	if(channel < 0 || channel >= MAX_SEQUENCER_CHANNELS) return;
+	GuiNode *node = g_chipNodes[channel];
+	if(!node || !isInstChipNode(node)) return;
+	InstChipGuiNode *chip = (InstChipGuiNode *)node;
+	if(!chip->arranger) return;
+
+	/* Collapse: SELECT / START (and bare EDIT, which is what flips
+	 * back to the normal chip view). Bare EDIT means KM_EDIT without
+	 * an arrow — callers check that with isKeyJustPressed alone. */
+	if(km == KM_SELECT || km == KM_START || km == KM_EDIT) {
+		expandChip(channel, false);
+		return;
+	}
+
+	if(editHeld) {
+		/* KM_EDIT + arrow: label edit, mirrors the preset-name node's
+		 * model exactly. LEFT/RIGHT = cursor (bounded by the pure
+		 * helper), UP/DOWN = char cycle. Cursor is bounded to
+		 * [0..len] so it can sit one past NUL. */
+		if(km == KM_LEFT) {
+			chipLabelCursorMove(&chip->cursor,
+				chip->arranger->label[channel], CHIP_LABEL_MAX, -1);
+			return;
+		}
+		if(km == KM_RIGHT) {
+			chipLabelCursorMove(&chip->cursor,
+				chip->arranger->label[channel], CHIP_LABEL_MAX, 1);
+			return;
+		}
+		if(km == KM_UP) {
+			chipLabelCycleChar(chip, 1);
+			return;
+		}
+		if(km == KM_DOWN) {
+			chipLabelCycleChar(chip, -1);
+			return;
+		}
+		return;
+	}
+
+	/* Bare arrow: swatch navigation. LEFT/RIGHT move the focus +
+	 * commit the colour live so the chip's bg tint updates instantly. */
+	if(km == KM_LEFT) {
+		chip->swatchFocus = (chip->swatchFocus + 7) % 8;
+		chip->arranger->labelColourIdx[channel] = chip->swatchFocus;
+		return;
+	}
+	if(km == KM_RIGHT) {
+		chip->swatchFocus = (chip->swatchFocus + 1) % 8;
+		chip->arranger->labelColourIdx[channel] = chip->swatchFocus;
+		return;
+	}
+}
+
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger) {
 	InstChipGuiNode *chip = (InstChipGuiNode *)malloc(sizeof(InstChipGuiNode));
 	if(!chip) return NULL;
@@ -901,6 +1091,10 @@ GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct
 	chip->arranger = arranger;
 	chip->expanded = false;
 	chip->swatchFocus = 0;
+	/* Task 5: cursor starts at 0 (first slot of the 8-char label).
+	 * Bounded at runtime by handleExpandedChipInput + chipLabelMaxLen
+	 * so the cursor never indexes past the NUL. */
+	chip->cursor = 0;
 	return &chip->base;
 }
 

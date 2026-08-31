@@ -291,7 +291,23 @@ int main(int argc, char **argv) {
 		}
 		// Scene specific controls
 		switch(appState->currentScene) {
-			case SCENE_ARRANGER:
+			case SCENE_ARRANGER: {
+				/* Task 5: chip-expanded collapse from the "global"
+				 * modifiers. KM_SELECT and KM_START both collapse a
+				 * chip when JUST pressed AND KM_EDIT is NOT held —
+				 * otherwise the SELECT+EDIT "add blank" combo below
+				 * would unintentionally collapse a chip the user is
+				 * actively editing. This sits BEFORE the modifier-held
+				 * branches so it takes precedence on the press frame. */
+				int chForCollapse = getSelectedChipChannel();
+				if(chForCollapse >= 0 && isChipExpanded(chForCollapse)
+						&& !isKeyHeld(appState->inputState, KM_EDIT)) {
+					if(isKeyJustPressed(appState->inputState, KM_SELECT)) {
+						handleExpandedChipInput(chForCollapse, KM_SELECT, false);
+					} else if(isKeyJustPressed(appState->inputState, KM_START)) {
+						handleExpandedChipInput(chForCollapse, KM_START, false);
+					}
+				}
 				if(isKeyHeld(appState->inputState, KM_SELECT)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
 						addBlankIfEmpty(data.patternList, data.arranger, appState->selectedArrangerCell[0], appState->selectedArrangerCell[1]);
@@ -314,13 +330,42 @@ int main(int argc, char **argv) {
 					 * falls through to the dial-edit dispatch below. */
 					int chipChannel = getSelectedChipChannel();
 					if(chipChannel >= 0) {
-						if(isKeyJustPressed(appState->inputState, KM_LEFT) || isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-							appState->selectedArrangerCell[0] = chipChannel;
-							appState->selectedArrangerCell[1] = data.arranger->selected_y;
-							appState->currentScene = SCENE_INSTRUMENT;
-						}
-						if(isKeyJustPressed(appState->inputState, KM_UP)) {
-							expandChip(chipChannel, !isChipExpanded(chipChannel));
+						/* Task 5: when the chip is expanded, route every
+						 * arrow + the bare EDIT just-pressed to the
+						 * expanded-chip dispatcher. handleExpandedChipInput
+						 * itself decides swatch / cursor / char cycle / collapse
+						 * based on whether KM_EDIT is held + the arrow dir.
+						 * Bare EDIT (no arrow) collapses. This sits BEFORE
+						 * the Task 4 chip-jump branch so a chip that's
+						 * expanded stays in expanded mode — EDIT+LEFT must
+						 * move the cursor, not jump to the instrument page. */
+						if(isChipExpanded(chipChannel)) {
+							if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+								handleExpandedChipInput(chipChannel, KM_LEFT, true);
+							} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+								handleExpandedChipInput(chipChannel, KM_RIGHT, true);
+							} else if(isKeyJustPressed(appState->inputState, KM_UP)) {
+								handleExpandedChipInput(chipChannel, KM_UP, true);
+							} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+								handleExpandedChipInput(chipChannel, KM_DOWN, true);
+							}
+							/* Bare EDIT just-pressed (no arrow) collapses. */
+							if(isKeyJustPressed(appState->inputState, KM_EDIT)
+									&& !isKeyJustPressed(appState->inputState, KM_LEFT)
+									&& !isKeyJustPressed(appState->inputState, KM_RIGHT)
+									&& !isKeyJustPressed(appState->inputState, KM_UP)
+									&& !isKeyJustPressed(appState->inputState, KM_DOWN)) {
+								handleExpandedChipInput(chipChannel, KM_EDIT, false);
+							}
+						} else {
+							if(isKeyJustPressed(appState->inputState, KM_LEFT) || isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+								appState->selectedArrangerCell[0] = chipChannel;
+								appState->selectedArrangerCell[1] = data.arranger->selected_y;
+								appState->currentScene = SCENE_INSTRUMENT;
+							}
+							if(isKeyJustPressed(appState->inputState, KM_UP)) {
+								expandChip(chipChannel, !isChipExpanded(chipChannel));
+							}
 						}
 					} else {
 						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
@@ -337,6 +382,19 @@ int main(int argc, char **argv) {
 						}
 					}
 				} else {
+					/* Task 5: bare-arrow navigation. If a chip is expanded,
+					 * LEFT/RIGHT move the swatch focus + write the colour
+					 * live; UP/DOWN still navigate the arranger graph
+					 * (chips don't own vertical swatch navigation — there
+					 * are only 8 colours laid out horizontally). */
+					if(isChipExpanded(getSelectedChipChannel())) {
+						int ch = getSelectedChipChannel();
+						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+							handleExpandedChipInput(ch, KM_LEFT, false);
+						} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+							handleExpandedChipInput(ch, KM_RIGHT, false);
+						}
+					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						navigateArrangerGraph(KM_LEFT);
 					}
@@ -350,7 +408,7 @@ int main(int argc, char **argv) {
 						navigateArrangerGraph(KM_DOWN);
 					}
 				}
-
+				}
 				break;
 			case SCENE_PATTERN:
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {

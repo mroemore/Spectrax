@@ -12,6 +12,10 @@
 #include "sample.h"
 #include "notes.h"
 #include "../src/io/preset_io.h"
+/* Task 5: pull in the chip label-edit pure helpers declared in gui.h.
+ * The meson test target for test_mod_voice now links gui.c + raylib
+ * etc. (see tests/meson.build) so these calls resolve at link time. */
+#include "../src/gui.h"
 
 #define ASSERT_TRUE(cond, msg) do { \
     if (!(cond)) { \
@@ -1032,6 +1036,94 @@ static int test_set_channel_voice_count(void) {
     return 0;
 }
 
+/* Task 5: unit-test the chip label-edit pure helpers exposed in
+ * gui.h. These are the cycle/cursor math that drives the expanded
+ * chip's KM_EDIT + arrow input. Tested directly (no GUI node, no
+ * Arranger) because the helpers are intentionally pure — they take
+ * a string + an int and return a result, no side effects beyond
+ * the cursor/slot they touch. The test asserts:
+ *   1. chipLabelCursorMove clamps at 0 / strlen + respects maxLen
+ *      so a corrupt strlen can never push the cursor past the array.
+ *   2. chipLabelCursorMove ignores bogus directions (anything other
+ *      than -1 or +1 is a no-op, so input layer mistakes are safe).
+ *   3. chipLabelCycleCharAt cycles an 'A' forward to 'B' and back.
+ *   4. chipLabelCycleCharAt on a NUL slot lands on the LAST char
+ *      when stepping backward, or NAME_CHARS[1] forward — because
+ *      charIndex(NUL)=0, +1 wraps past index 0.
+ *   5. chipLabelCharIndex folds a-z to the upper-case slot.
+ *   6. chipLabelCharIndex returns 0 for chars not in the table.
+ * If any assertion fails the test prints the line + returns non-zero
+ * so meson flags it (same shape as the other tests in this file). */
+static int test_chip_label_edit(void) {
+    /* 1. cursor clamped at 0 + at strlen */
+    int cursor = 0;
+    chipLabelCursorMove(&cursor, "ABC", 8, -1);
+    ASSERT_EQ(cursor, 0, "cursor clamps at 0 going left");
+    cursor = 2;
+    chipLabelCursorMove(&cursor, "ABC", 8, +1);
+    ASSERT_EQ(cursor, 3, "cursor can sit one past NUL");
+    chipLabelCursorMove(&cursor, "ABC", 8, +1);
+    ASSERT_EQ(cursor, 3, "cursor clamps at strlen going right");
+    /* 1b. cursor also clamped at maxLen (defensive against corrupt
+     * strlen — verify with a label that reports 3 chars but a maxLen
+     * that only allows 2 indices). */
+    cursor = 0;
+    chipLabelCursorMove(&cursor, "ABC", 2, +1);
+    ASSERT_EQ(cursor, 1, "cursor under maxLen");
+    chipLabelCursorMove(&cursor, "ABC", 2, +1);
+    ASSERT_EQ(cursor, 2, "cursor at maxLen boundary");
+    chipLabelCursorMove(&cursor, "ABC", 2, +1);
+    ASSERT_EQ(cursor, 2, "cursor clamps at maxLen, not strlen");
+
+    /* 2. bogus directions are ignored */
+    cursor = 3;
+    chipLabelCursorMove(&cursor, "ABC", 8, 0);
+    ASSERT_EQ(cursor, 3, "dir=0 ignored");
+    chipLabelCursorMove(&cursor, "ABC", 8, 5);
+    ASSERT_EQ(cursor, 3, "dir=+5 ignored");
+    chipLabelCursorMove(&cursor, "ABC", 8, -7);
+    ASSERT_EQ(cursor, 3, "dir=-7 ignored");
+
+    /* 3. char cycle forward / backward on 'A' */
+    char slot = 'A';
+    chipLabelCycleCharAt(&slot, +1);
+    ASSERT_EQ(slot, 'B', "A +1 = B");
+    chipLabelCycleCharAt(&slot, -1);
+    ASSERT_EQ(slot, 'A', "B -1 = A");
+
+    /* 4. char cycle on NUL: chipLabelCharIndex(NUL) returns 0 (NUL is
+     * not in the table), so cycle +1 lands on NAME_CHARS[1] = 'B'
+     * (NOT 'A' — index 0 is 'A' but NUL already maps to 0, so +1
+     * wraps past it). cycle -1 lands on NAME_CHARS[count-1] = ' '
+     * (the last char in the table). This matches the preset-name
+     * node's behaviour exactly (its cycleNameChar uses the same
+     * charIndex function). Each step uses a fresh slot so we don't
+     * conflate state from the previous sub-assertion. */
+    {
+        char slot = '\0';
+        chipLabelCycleCharAt(&slot, +1);
+        ASSERT_EQ(slot, 'B', "NUL +1 = B (charIndex(NUL)=0, +1 wraps to 1)");
+    }
+    {
+        char slot = '\0';
+        chipLabelCycleCharAt(&slot, -1);
+        ASSERT_EQ(slot, ' ', "NUL -1 = last char in table (space)");
+    }
+
+    /* 5. chipLabelCharIndex folds a-z to upper-case slot */
+    ASSERT_EQ(chipLabelCharIndex('a'), chipLabelCharIndex('A'), "a folds to A");
+    ASSERT_EQ(chipLabelCharIndex('z'), chipLabelCharIndex('Z'), "z folds to Z");
+    ASSERT_EQ(chipLabelCharIndex('A'), 0, "A is at index 0");
+
+    /* 6. charIndex returns 0 for chars not in the table */
+    ASSERT_EQ(chipLabelCharIndex('!'), 0, "! not in table returns 0");
+    ASSERT_EQ(chipLabelCharIndex('?'), 0, "? not in table returns 0");
+    ASSERT_EQ(chipLabelCharIndex('\0'), 0, "NUL not in table returns 0");
+
+    printf("PASS test_chip_label_edit\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1066,6 +1158,9 @@ int main(void) {
     fails += test_loaded_preset_clean_after_load();
     fails += test_loaded_preset_dirty_after_edit();
     fails += test_loaded_preset_clean_after_save();
+
+    /* Task 5 — chip label-edit char cycle + cursor bounds */
+    fails += test_chip_label_edit();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

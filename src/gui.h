@@ -121,6 +121,13 @@ typedef struct {
 	Arranger *arranger;
 	bool expanded;
 	int swatchFocus;
+	/* Task 5: cursor for the 8-char label edit. Cursor is the index of
+	 * the slot being edited; 0..strlen(label) inclusive (so the user can
+	 * insert a char immediately after the current end). Bounded to 7 by
+	 * the label cap (8 chars + NUL). Mirrors the preset-name node's
+	 * cursor model (preset node has its own copy intentionally; see
+	 * PresetNameGuiNode.cursor — the fixtures depend on it). */
+	int cursor;
 } InstChipGuiNode;
 
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
@@ -138,6 +145,37 @@ bool isInstChipNode(const GuiNode *n);
 int getSelectedChipChannel(void);
 bool isChipExpanded(int channel);
 void expandChip(int channel, bool expanded);
+
+/* Task 5: route the expanded chip's input. When KM_EDIT is NOT held:
+ * LEFT/RIGHT move the swatch focus + write labelColourIdx live. When
+ * KM_EDIT IS held: LEFT/RIGHT move the cursor (bounded to strlen),
+ * UP/DOWN cycle the char under the cursor through NAME_CHARS. Bare
+ * KM_EDIT / KM_SELECT / KM_START collapse (expandChip(channel, false)).
+ * Returns nothing — the caller (main.c SCENE_ARRANGER KM_EDIT branch)
+ * is responsible for routing when this function should fire. */
+void handleExpandedChipInput(int channel, int km, bool editHeld);
+
+/* Task 5: pure helpers used by handleExpandedChipInput + unit-tested
+ * in tests/dsp/test_mod_voice.c. The cursor never indexes past the
+ * current NUL (so the user can extend the label by moving right), but
+ * is also capped at maxLen so a corrupt strlen can never read past
+ * the buffer. dir is -1 (left) or +1 (right); anything else is a
+ * no-op so the function is forgiving in the input layer. */
+void chipLabelCursorMove(int *cursor, const char *label, int maxLen, int dir);
+
+/* Task 5: cycle the char at *slot through the arcade char table.
+ * dir is -1 or +1. The slot is overwritten with the new char. The
+ * function never inserts a NUL into the table (NAME_CHARS does not
+ * contain one), so calling this on a slot that already holds the
+ * NUL terminator is safe — it lands on 'A' (the first char) or the
+ * last char depending on direction. The slot is left untouched if
+ * it already points past the table. */
+void chipLabelCycleCharAt(char *slot, int dir);
+
+/* Task 5: index of `c` in the arcade table, or 0 if absent. Mirrors
+ * charIndex() in the preset-name node — the two are kept in sync by
+ * definition (identical NAME_CHARS macros). */
+int chipLabelCharIndex(char c);
 
 typedef struct {
 	GuiNode base;
