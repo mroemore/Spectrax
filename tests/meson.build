@@ -11,10 +11,17 @@ test_names = [
   'test_cfg',
 ]
 
+# Task 3: gui.c hosts the instrument chip node + creator + recogniser.
+# test_graph_nav exercises the chip row layout, so it must link gui.o
+# + gui_layer.o (which gui.c references). Other tests don't need this.
+test_graph_nav_extra = files('../src/gui.c', '../src/gui_layer.c')
+
 foreach name : test_names
+  extra_srcs = name == 'test_graph_nav' ? test_graph_nav_extra : files()
   exe = executable(name,
     files('dsp' / name + '.c'),
-    link_with: core_lib,
+    extra_srcs,
+    link_with: name == 'test_graph_nav' ? [core_lib, seq_lib, vizfx_lib] : core_lib,
     include_directories: inc,
     dependencies: system_deps,
   )

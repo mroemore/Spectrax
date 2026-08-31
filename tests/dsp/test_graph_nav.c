@@ -1,6 +1,10 @@
 /* test_graph_nav.c — graph_navigation unit tests. Layered:
  *   Task 1: test scaffolding (rect wiring + tree shape). GREEN.
  *   Task 2: navigateGraphRefined + changeGraphSelection fix.
+ *   Task 3: chip-row nav — RIGHT walks chip->chip, DOWN lands on the
+ *           grid row beneath. Chips are built with NULL vm/arranger to
+ *           keep the test free of raylib/voice init; the chip draw
+ *           guards against NULL refs.
  *
  * See docs/superpowers/plans/2026-08-26-nav-refinement.md.
  */
@@ -9,6 +13,14 @@
 #include <string.h>
 #include <math.h>
 #include "graph_gui.h"
+
+/* Task 3: forward-decls for the chip creator + recogniser so we don't
+ * need to pull raylib/voice into the test TU. Symbols resolve from
+ * core_lib (which already includes gui.o). */
+struct VoiceManager;
+/* Arranger is already typedef'd via graph_gui.h's sequencer.h include chain. */
+GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
+bool isInstChipNode(const GuiNode *n);
 
 /* ASSERT_* macros — verbatim copy of the style used in
  * tests/dsp/test_modsystem.c (same arity-dispatch trick, same
@@ -294,6 +306,88 @@ static int test_null_safety(void) {
     return 0;
 }
 
+/* ----- Task 3: instrument-chip row nav -----
+ *
+ * Mirrors the production layout:
+ *   root (na_vertical)
+ *     gridColumn (na_vertical, wrapper)
+ *       chipRow (na_horizontal) -- [chip0, chip1, chip2]  (selectable, weight 1 each)
+ *       grid   (na_vertical)    -- [gridCell0, gridCell1] (selectable, weight 1 each)
+ *
+ * chipRow sits ABOVE grid in the column; chipRow is horizontal so
+ * RIGHT within chips walks chip0 -> chip1 -> chip2; DOWN from a chip
+ * should land in the topmost grid cell (the geometrically nearest row
+ * below).
+ *
+ * Chips are built with NULL vm/arranger. The draw function must
+ * early-return on NULL so a stray nav test can run without raylib /
+ * voice setup. We assert the early-return by calling draw directly
+ * after nav to ensure no crash, then assert the chip recogniser works.
+ */
+static Graph *build_chip_row_graph(void) {
+    Graph *g = createGraph(na_vertical);
+    GuiNode *gridColumn = createGuiNode(0, 0, 100, 100, 2, na_vertical, "gcol", false, false);
+    GuiNode *chipRow = createGuiNode(0, 0, 100, 30, 2, na_horizontal, "chipr", false, false);
+    GuiNode *c0 = createInstChipGuiNode(10, 0, 30, 30, false, NULL, 0, NULL);
+    GuiNode *c1 = createInstChipGuiNode(40, 0, 30, 30, false, NULL, 1, NULL);
+    GuiNode *c2 = createInstChipGuiNode(70, 0, 30, 30, false, NULL, 2, NULL);
+    appendItem(chipRow, c0, 1);
+    appendItem(chipRow, c1, 1);
+    appendItem(chipRow, c2, 1);
+    GuiNode *grid = createGuiNode(0, 50, 100, 50, 2, na_vertical, "grid", false, false);
+    GuiNode *g0 = createGuiNode(10, 50, 40, 20, 2, na_vertical, "g0", true, false);
+    GuiNode *g1 = createGuiNode(60, 50, 40, 20, 2, na_vertical, "g1", true, false);
+    appendItem(grid, g0, 1);
+    appendItem(grid, g1, 1);
+    appendItem(gridColumn, chipRow, 1);
+    appendItem(gridColumn, grid, 8);
+    appendItem(g->root, gridColumn, 1);
+    /* pin rects AFTER all appendItem reflows */
+    c0->x = 10; c0->y = 0; c0->w = 30; c0->h = 30;
+    c1->x = 40; c1->y = 0; c1->w = 30; c1->h = 30;
+    c2->x = 70; c2->y = 0; c2->w = 30; c2->h = 30;
+    g0->x = 10; g0->y = 50; g0->w = 40; g0->h = 20;
+    g1->x = 60; g1->y = 50; g1->w = 40; g1->h = 20;
+    return g;
+}
+
+static int test_chip_row_nav(void) {
+    Graph *g = build_chip_row_graph();
+    ASSERT_TRUE(g != NULL, "chip-row graph built");
+    /* First selection: DFS pre-order -> first chip (c0). */
+    navigateGraphRefined(g, KM_DOWN);
+    ASSERT_TRUE(g->selected != NULL, "first selection established");
+    ASSERT_TRUE(isInstChipNode(g->selected), "first selected node is a chip");
+    ASSERT_TRUE(strcmp(g->selected->name, "chip") == 0, "first chip name is 'chip'");
+    /* RIGHT walks within chipRow: c0 -> c1 -> c2. */
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(isInstChipNode(g->selected), "RIGHT stays in chip row");
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(isInstChipNode(g->selected), "RIGHT stays in chip row");
+    /* RIGHT at the end of chip row is a boundary — selection stays on c2. */
+    navigateGraphRefined(g, KM_RIGHT);
+    ASSERT_TRUE(isInstChipNode(g->selected), "RIGHT at right edge: still a chip");
+    /* LEFT walks back to c1 then c0. */
+    navigateGraphRefined(g, KM_LEFT);
+    ASSERT_TRUE(isInstChipNode(g->selected), "LEFT within chip row");
+    /* DOWN from a chip lands in the grid (the next selectable row in
+     * the gridColumn container). We don't pin the exact name because
+     * geometry depends on cone alignment; what matters is that we
+     * leave the chip row. */
+    navigateGraphRefined(g, KM_DOWN);
+    ASSERT_TRUE(!isInstChipNode(g->selected),
+                "DOWN from chip row leaves chip row");
+    /* Invoking draw on a NULL-vm chip must not crash — this is the
+     * contract that lets the nav test run without a VoiceManager. */
+    GuiNode *chip0 = *(GuiNode **)((GuiNode **)g->root->items->head->data);
+    GuiNode *chipRow = *(GuiNode **)chip0->items->head->data;
+    GuiNode *c0 = *(GuiNode **)chipRow->items->head->data;
+    if(c0->draw) c0->draw(c0);
+    teardown_graph(g);
+    printf("PASS test_chip_row_nav\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
@@ -306,6 +400,7 @@ int main(void) {
     fails += test_custom_nav_precedence();
     fails += test_custom_nav_fallthrough();
     fails += test_null_safety();
+    fails += test_chip_row_nav();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;

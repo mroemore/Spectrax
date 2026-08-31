@@ -280,8 +280,24 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	appendItem(agui->root, pad1, 1);
 
 	appendItem(arrWrap, songControls, 1);
-	appendItem(arrWrap, gn, 4);
 	appendItem(arrWrap, margin2, 1);
+
+	/* Task 3: instrument chip row sits above the arranger grid. One chip
+	 * per enabled sequencer channel; chipRow is horizontal, the grid
+	 * gets the lion's share (weight 8). */
+	GuiNode *gridColumn = createGuiNode(0, 0, 100, 100, 2, na_vertical, "gcol", 0, 0);
+	gridColumn->drawable = true;
+	gridColumn->draw = drawWrapperNode;
+	GuiNode *chipRow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "chipr", 0, 0);
+	chipRow->drawable = true;
+	chipRow->draw = drawWrapperNode;
+	for(int ch = 0; ch < a->enabledChannels; ch++) {
+		GuiNode *chip = createInstChipGuiNode(0, 0, 100, 40, false, a->vm, ch, a);
+		appendItem(chipRow, chip, 1);
+	}
+	appendItem(gridColumn, chipRow, 1);
+	appendItem(gridColumn, gn, 8);
+	appendItem(arrWrap, gridColumn, 4);
 	appendItem(agui->root, arrWrap, 15);
 
 	GuiNode *demoStack = createGuiNode(0, 0, 100, 100, 0, na_vertical, "demo", 0, 0);
@@ -729,6 +745,115 @@ void drawWrapperNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, cs.panel);
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.wrapperBorder);
+}
+
+/* Task 3: per-instrument chip row. Drawn for each enabled channel above
+ * the arranger grid. Bg colour comes from a fixed 8-colour palette keyed
+ * by the arranger's per-channel labelColourIdx. Content shows V:{count}
+ * top-left, type tag (FM/SMP/BLP) top-right, 8-char channel label
+ * centred, current patch name bottom-left, and a voice-active light
+ * bottom-right per voice in vm->voiceCount[ch].
+ *
+ * IMPORTANT: this MUST early-return when vm or inst is NULL — the nav
+ * test in tests/dsp/test_graph_nav.c builds chips with NULL refs so it
+ * can exercise the graph layout (chipRow RIGHT/DOWN navigation) without
+ * needing a real VoiceManager or Instrument. */
+static const Color chipPalette[8] = {
+	{ 70, 130, 180, 255 }, /* steel-blue   */
+	{ 200, 120, 60, 255 }, /* amber        */
+	{ 90, 160, 90, 255 },  /* moss         */
+	{ 170, 80, 130, 255 }, /* mulberry     */
+	{ 210, 180, 70, 255 }, /* gold         */
+	{ 110, 90, 170, 255 }, /* violet       */
+	{ 80, 160, 160, 255 }, /* teal         */
+	{ 180, 90, 90, 255 },  /* brick        */
+};
+
+static const char *voiceTypeTag(VoiceType t) {
+	switch(t) {
+		case VOICE_TYPE_FM:     return "FM";
+		case VOICE_TYPE_BLEP:   return "BLP";
+		case VOICE_TYPE_GRAIN:  return "GRN";
+		case VOICE_TYPE_SPECTRAL: return "SPC";
+		case VOICE_TYPE_SAMPLE:
+		default:                return "SMP";
+	}
+}
+
+void drawInstChipGuiNode(void *self) {
+	InstChipGuiNode *chip = (InstChipGuiNode *)self;
+	if(!chip->vm || !chip->arranger) return;
+	Instrument *inst = chip->vm->instruments[chip->channel];
+	if(!inst) return;
+
+	GuiNode *gn = &chip->base;
+	int paletteIdx = chip->arranger->labelColourIdx[chip->channel];
+	if(paletteIdx < 0) paletteIdx = 0;
+	if(paletteIdx >= 8) paletteIdx = paletteIdx % 8;
+	Color bg = chipPalette[paletteIdx];
+	DrawRectangle(gn->x, gn->y, gn->w, gn->h, bg);
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, gn->selected ? cs.outlineColour : cs.wrapperBorder);
+
+	/* top-left: voice count */
+	char vbuf[16];
+	snprintf(vbuf, sizeof(vbuf), "V:%d", chip->vm->voiceCount[chip->channel]);
+	DrawTextEx(pixelFont, vbuf, (Vector2){ gn->x + 4, gn->y + 2 }, 9, 1, cs.label);
+
+	/* top-right: type tag */
+	const char *tag = voiceTypeTag(inst->voiceType);
+	int tagW = MeasureText(tag, 9);
+	DrawTextEx(pixelFont, tag, (Vector2){ gn->x + gn->w - tagW - 4, gn->y + 2 }, 9, 1, cs.label);
+
+	/* centre: 8-char channel label */
+	const char *lbl = chip->arranger->label[chip->channel];
+	char lblBuf[9];
+	strncpy(lblBuf, lbl, 8);
+	lblBuf[8] = '\0';
+	int lblW = MeasureText(lblBuf, 12);
+	DrawTextEx(pixelFont, lblBuf, (Vector2){ gn->x + (gn->w - lblW) / 2, gn->y + (gn->h - 12) / 2 }, 12, 1, cs.label);
+
+	/* bottom-left: patch name (inst->loaded.name) */
+	const char *patch = inst->loaded.name;
+	if(!patch) patch = "";
+	char patchBuf[32];
+	strncpy(patchBuf, patch, sizeof(patchBuf) - 1);
+	patchBuf[sizeof(patchBuf) - 1] = '\0';
+	DrawTextEx(pixelFont, patchBuf, (Vector2){ gn->x + 4, gn->y + gn->h - 11 }, 8, 1, cs.label);
+
+	/* bottom-right: voice-active light per voice */
+	int n = chip->vm->voiceCount[chip->channel];
+	int dotSize = 4;
+	int dotGap = 2;
+	int rowW = n * dotSize + (n > 0 ? (n - 1) * dotGap : 0);
+	int startX = gn->x + gn->w - rowW - 3;
+	int dotY = gn->y + gn->h - dotSize - 3;
+	for(int i = 0; i < n; i++) {
+		Voice *v = chip->vm->voicePools[chip->channel][i];
+		Color c = (v && v->active) ? cs.outlineColour : cs.wrapperBorder;
+		DrawRectangle(startX + i * (dotSize + dotGap), dotY, dotSize, dotSize, c);
+	}
+}
+
+bool isInstChipNode(const GuiNode *n) {
+	if(!n) return false;
+	return n->draw == drawInstChipGuiNode;
+}
+
+GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger) {
+	InstChipGuiNode *chip = (InstChipGuiNode *)malloc(sizeof(InstChipGuiNode));
+	if(!chip) return NULL;
+	memset(chip, 0, sizeof(InstChipGuiNode));
+	if(!initGuiNode(&chip->base, x, y, w, h, 2, na_horizontal, "chip", true, selected)) {
+		free(chip);
+		return NULL;
+	}
+	chip->base.draw = drawInstChipGuiNode;
+	chip->vm = vm;
+	chip->channel = channel;
+	chip->arranger = arranger;
+	chip->expanded = false;
+	chip->swatchFocus = 0;
+	return &chip->base;
 }
 
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList

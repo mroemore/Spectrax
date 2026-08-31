@@ -108,6 +108,24 @@ typedef struct {
 	int border_size;
 } ArrangerGuiNode;
 
+/* Task 3: per-instrument chip row above the arranger grid. Drawn for
+ * each enabled channel; bg colour comes from the per-channel label
+ * palette index, content shows the type tag, voice count, label, and
+ * current patch + voice-active state. The draw early-returns when vm
+ * or inst is NULL so the nav sanity test in tests/dsp/test_graph_nav.c
+ * can build chips with NULL refs without crashing. */
+typedef struct {
+	GuiNode base;
+	struct VoiceManager *vm;
+	int channel;
+	Arranger *arranger;
+	bool expanded;
+	int swatchFocus;
+} InstChipGuiNode;
+
+GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
+bool isInstChipNode(const GuiNode *n);
+
 typedef struct {
 	GuiNode base;
 	Instrument *instrument;
