@@ -750,48 +750,48 @@ static void processScriptAssert(const ScriptStep *s) {
  * as nav_harness). GetWindowHandle() returns a GLFW struct, not the X
  * Window id -- walk the root's children and match by size.
  */
-static Window findWin(Display *dpy, int w, int h) {
-	Window root = DefaultRootWindow(dpy);
-	Window parent;
-	Window *kids = NULL;
-	unsigned int n = 0;
-	Window found = 0;
-	if(!XQueryTree(dpy, root, &root, &parent, &kids, &n)) {
-		return 0;
-	}
-	for(unsigned int i = 0; i < n; i++) {
-		XWindowAttributes a;
-		if(XGetWindowAttributes(dpy, kids[i], &a) &&
-		   a.map_state == IsViewable && a.width == w && a.height == h) {
-			found = kids[i];
-			break;
-		}
-	}
-	if(kids) {
-		XFree(kids);
-	}
-	return found;
-}
-
 static int shotX11(const char *path) {
 	Display *dpy = XOpenDisplay(NULL);
 	if(!dpy) {
 		return 1;
 	}
-	Window win = findWin(dpy, SCREEN_W, SCREEN_H);
-	if(!win) {
+	/* Capture the app's window at its CURRENT geometry (the window may
+	 * have been resized — the app renders at a fixed 640x480 content
+	 * resolution and letterboxes it into the window). Under Xvfb the
+	 * harness window is the only visible one. */
+	Window root = DefaultRootWindow(dpy);
+	Window parent;
+	Window *kids = NULL;
+	unsigned int n = 0;
+	Window win = 0;
+	XWindowAttributes a;
+	memset(&a, 0, sizeof(a));
+	if(XQueryTree(dpy, root, &root, &parent, &kids, &n)) {
+		for(unsigned int i = 0; i < n; i++) {
+			if(XGetWindowAttributes(dpy, kids[i], &a) && a.map_state == IsViewable) {
+				win = kids[i];
+				break;
+			}
+		}
+	}
+	if(kids) {
+		XFree(kids);
+	}
+	if(!win || a.width <= 0 || a.height <= 0) {
 		XCloseDisplay(dpy);
 		return 1;
 	}
-	XImage *img = XGetImage(dpy, win, 0, 0, SCREEN_W, SCREEN_H, AllPlanes, ZPixmap);
+	int W = a.width;
+	int H = a.height;
+	XImage *img = XGetImage(dpy, win, 0, 0, W, H, AllPlanes, ZPixmap);
 	if(!img) {
 		XCloseDisplay(dpy);
 		return 1;
 	}
 	int bpp = img->bits_per_pixel / 8;
-	unsigned char *pix = malloc((size_t)SCREEN_W * SCREEN_H * 4);
+	unsigned char *pix = malloc((size_t)W * H * 4);
 	unsigned char *src = (unsigned char *)img->data;
-	for(int i = 0; i < SCREEN_W * SCREEN_H; i++) {
+	for(int i = 0; i < W * H; i++) {
 		unsigned char *s = src + (size_t)i * bpp;
 		pix[i * 4 + 0] = s[2];
 		pix[i * 4 + 1] = s[1];
@@ -801,8 +801,8 @@ static int shotX11(const char *path) {
 	XDestroyImage(img);
 	XCloseDisplay(dpy);
 	Image ri = { 0 };
-	ri.width = SCREEN_W;
-	ri.height = SCREEN_H;
+	ri.width = W;
+	ri.height = H;
 	ri.mipmaps = 1;
 	ri.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
 	ri.data = pix;
@@ -900,18 +900,22 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 /* ----- Entry points ---------------------------------------------------- */
 
 static void runInteractive(paTestData *data, ApplicationState *appState) {
+	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
-		BeginDrawing();
+		BeginTextureMode(gfx);
 		clearBg();
 		handleInstrumentInput(data, appState);
 		DrawGUI(appState->currentScene);
-		EndDrawing();
+		EndTextureMode();
+		presentFrame(gfx);
 	}
+	UnloadRenderTexture(gfx);
 	CloseWindow();
 }
 
 static void runScripted(paTestData *data, ApplicationState *appState) {
+	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose() && g_scriptState == SCRIPT_RUNNING) {
 		ScriptStep *s = &g_script.steps[g_scriptStepIdx];
 
@@ -922,11 +926,12 @@ static void runScripted(paTestData *data, ApplicationState *appState) {
 		clearInjectedKeys(appState->inputState);
 		applyScriptEventInjection(appState->inputState, s, g_scriptSubframe);
 
-		BeginDrawing();
+		BeginTextureMode(gfx);
 		clearBg();
 		handleInstrumentInput(data, appState);
 		DrawGUI(appState->currentScene);
-		EndDrawing();
+		EndTextureMode();
+		presentFrame(gfx);
 
 		g_scriptSubframe++;
 		if(g_scriptSubframe >= s->frames) {
@@ -954,6 +959,7 @@ static void runScripted(paTestData *data, ApplicationState *appState) {
 			break;
 		}
 	}
+	UnloadRenderTexture(gfx);
 	CloseWindow();
 }
 

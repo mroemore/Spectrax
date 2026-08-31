@@ -25,8 +25,14 @@ for rel in \
     "src/tools/sample_analyser/inspectro_wavget"; do
     src="$BUILD_ROOT/$rel"
     if [ -f "$src" ]; then
-        cp "$src" "$BIN/$(basename "$rel")"
-        echo "installed $(basename "$rel") -> bin/"
+        # cp + mv (not a direct cp): a running copy of the binary keeps the
+        # old inode, so a plain cp would fail with ETXTBSY ("text file busy")
+        # and set -e would abort the whole install.
+        name="$(basename "$rel")"
+        tmp="$BIN/.$name.tmp.$$"
+        cp "$src" "$tmp"
+        mv -f "$tmp" "$BIN/$name"
+        echo "installed $name -> bin/"
     else
         echo "skipped $rel (not built)"
     fi

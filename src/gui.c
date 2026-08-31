@@ -150,6 +150,24 @@ void clearBg() {
 	ClearBackground(cs.backgroundColor);
 }
 
+RenderTexture2D createPresentTarget(void) {
+	return LoadRenderTexture(SCREEN_W, SCREEN_H);
+}
+
+void presentFrame(RenderTexture2D gfx) {
+	BeginDrawing();
+	ClearBackground(BLACK);
+	int sw = GetScreenWidth();
+	int sh = GetScreenHeight();
+	float s = fminf((float)sw / SCREEN_W, (float)sh / SCREEN_H);
+	int dw = (int)(SCREEN_W * s);
+	int dh = (int)(SCREEN_H * s);
+	DrawTexturePro(gfx.texture, (Rectangle){ 0, 0, SCREEN_W, -SCREEN_H },
+	               (Rectangle){ (sw - dw) / 2, (sh - dh) / 2, dw, dh },
+	               (Vector2){ 0, 0 }, 0.0f, WHITE);
+	EndDrawing();
+}
+
 void InitGUI(void) {
 	const int screenWidth = SCREEN_W;
 	const int screenHeight = SCREEN_H;
@@ -168,6 +186,7 @@ void InitGUI(void) {
 		gFontConfig.spacing = 0;
 	}
 
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	textFont = LoadFont("resources/fonts/setback.png");
 	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
@@ -578,11 +597,18 @@ void drawValueDisplay(int x, int y, int w, int h, char *text) {
 }
 
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
-	DrawRectangleRounded((Rectangle){ x, y, w, h }, roundness, 12, cs.panel);
+	/* Square panel with a drop shadow (offset by the border width)
+	 * instead of the old rounded-rectangle border. The shadow is drawn
+	 * first so it reads as an edge behind the panel. */
+	(void)roundness;
+	int o = (int)line_w;
+	Color shadowColour = highlighted ? (Color){ 0, 0, 0, 200 } : (Color){ 0, 0, 0, 140 };
+	DrawRectangle(x + o, y + o, w, h, shadowColour);
+	DrawRectangle(x, y, w, h, cs.panel);
 	if(highlighted) {
-		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, cs.highlightedCell);
+		DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, cs.highlightedCell);
 	} else {
-		DrawRectangleRoundedLinesEx((Rectangle){ x, y, w, h }, roundness, 12, line_w, cs.panelBorder);
+		DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, cs.panelBorder);
 	}
 }
 
@@ -1515,8 +1541,8 @@ static void drawPresetNameGuiNode(void *self) {
 		n = 32;
 	}
 	int cellW = gn->w / 32;
-	if(cellW < 4) {
-		cellW = 4;
+	if(cellW < 20) {
+		cellW = 20;
 	}
 	for(int i = 0; i < 32; i++) {
 		int cx = gn->x + i * cellW;
@@ -1524,9 +1550,9 @@ static void drawPresetNameGuiNode(void *self) {
 		char ch = (i < (int)strlen(pn->name)) ? pn->name[i] : ' ';
 		if(pn->editing && i == pn->cursor) {
 			DrawRectangle(cx, cy, cellW, gn->h, RED);          /* inverted cursor block */
-			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 5, 10, BLACK);
+			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 15, 30, BLACK);
 		} else {
-			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 5, 10, RED);
+			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 15, 30, RED);
 		}
 	}
 }
@@ -2186,7 +2212,11 @@ void drawArrangerGuiNode(void *self) {
 
 	tmpy += cellH + aGui->grid_padding;
 	cursory += cellH + aGui->grid_padding;
-	DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, cellW + (aGui->border_size * 2), cellH + (aGui->border_size * 2), cs.outlineColour);
+	/* The cell cursor is only drawn while the grid itself is the focused
+	 * graph node — selecting the tempo/swing controls hides it. */
+	if(gn->selected) {
+		DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, cellW + (aGui->border_size * 2), cellH + (aGui->border_size * 2), cs.outlineColour);
+	}
 	int fontSize = cellW / 3;
 	for(int i = 0; i < arranger->enabledChannels; i++) {
 		// int px = i % arranger->enabledChannels;

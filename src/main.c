@@ -268,9 +268,10 @@ int main(int argc, char **argv) {
 	if(err != paNoError)
 		goto error;
 	SetTraceLogLevel(LOG_WARNING);
+	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
-		BeginDrawing();
+		BeginTextureMode(gfx);
 		clearBg();
 		updateSpectrogramData(&data.spectrogram);
 		updateTimeGraphData(&data.timeGraph);
@@ -494,11 +495,13 @@ int main(int argc, char **argv) {
 		drawSpectrogram(&data.spectrogram);
 		drawTimeGraph(&data.timeGraph);
 		DrawFPS(SCREEN_W - 80, 5);
-		EndDrawing();
+		EndTextureMode();
+		presentFrame(gfx);
 	}
 	/* GL resource cleanup must run BEFORE CloseWindow destroys the GL
 	 * context — UnloadTexture after CloseWindow segfaults in
 	 * rlUnloadTexture (rlgl derefs the dead context). */
+	UnloadRenderTexture(gfx);
 	freeBufferScroller(&data.bufferScroller);
 	CloseWindow();
 	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);

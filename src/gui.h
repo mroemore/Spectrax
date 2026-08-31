@@ -260,6 +260,12 @@ void drawSongMinimapGui(void *self);
 void InitGUI(void);
 void DrawGUI(int currentScene);
 
+/* Window-resize support: the app renders its content into a fixed-size
+ * render target (640x480) and presents it scaled to the (resizable)
+ * window, preserving the base resolution + aspect ratio. */
+RenderTexture2D createPresentTarget(void);
+void presentFrame(RenderTexture2D gfx);
+
 /* Task 7: layer stack accessors used by main.c, the harness, and the
  * per-modal builders. getInstrumentOverlayLayers() returns the live
  * LayerStack so callers can push/pop. */
