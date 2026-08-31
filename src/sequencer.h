@@ -51,6 +51,8 @@ typedef struct
 	int playing;
 	int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
 	int channelSlots[MAX_SEQUENCER_CHANNELS];
+	int labelColourIdx[MAX_SEQUENCER_CHANNELS];
+	char label[MAX_SEQUENCER_CHANNELS][9];
 	AppstateCallback onCellSelect;
 	AppstateCallback onPatternSelection;
 	VoiceManager *vm;

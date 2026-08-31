@@ -399,7 +399,10 @@ static int test_save_sequencer_ok(void) {
         + (long long)(MAX_SEQUENCER_CHANNELS * sizeof(int))  /* playhead_indices */
         + 6LL * (long long)sizeof(int)                       /* enabled, selx, sely, loop, bpm, playing */
         + (long long)(MAX_SEQUENCER_CHANNELS * sizeof(int))  /* channelSlots (V2) */
-        + (long long)(MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH * sizeof(int)); /* song */
+        + (long long)(MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH * sizeof(int)) /* song */
+        + 4                                                 /* LABL (V2) */
+        + (long long)(MAX_SEQUENCER_CHANNELS * sizeof(int))  /* labelColourIdx (V2) */
+        + (long long)(MAX_SEQUENCER_CHANNELS * 9);           /* label[8]+NUL per channel (V2) */
     ASSERT_EQ(file_size(path), expected);
 
     remove(path);
@@ -633,6 +636,137 @@ static int test_save_sequencer_seq2_magic(void) {
     remove(path);
     free_seq_env(&e);
     printf("PASS test_save_sequencer_seq2_magic\n");
+    return 0;
+}
+
+/* ---- arranger label tests (Task 1 — instrument chips LABL chunk) ------- */
+
+/* Self-contained Arranger setup for the LABL tests: real bpm Parameter
+ * (loadSequencerState calls setParameterBaseValue on it), and a
+ * calloc'd Arranger — createArranger is not linked into the test binary,
+ * so we follow the same approach as make_seq_env. */
+typedef struct {
+    ParamList *pl;
+    Parameter *bpm;
+    Arranger *arranger;
+} ArrEnv;
+
+static int make_arr_env(ArrEnv *e) {
+    memset(e, 0, sizeof(*e));
+    e->pl = createParamList();
+    if (!e->pl) return 1;
+    e->bpm = createParameterPro(e->pl, "BPM", 120.0f, 1.0f, 1000.0f,
+                                1.0f, 10.0f, NULL, NULL);
+    if (!e->bpm) return 1;
+    e->arranger = (Arranger *)calloc(1, sizeof(Arranger));
+    if (!e->arranger) return 1;
+    e->arranger->tempoSettings.bpm = e->bpm;
+    e->arranger->enabledChannels = 1;
+    e->arranger->playing = 0;
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        for (int j = 0; j < MAX_SONG_LENGTH; j++) {
+            e->arranger->song[i][j] = -1;
+        }
+    }
+    return 0;
+}
+
+static void free_arr_env(ArrEnv *e) {
+    if (!e) return;
+    if (e->arranger) { free(e->arranger); e->arranger = NULL; }
+    if (e->bpm)      { free(e->bpm);      e->bpm = NULL; }
+    if (e->pl)       { free(e->pl);       e->pl = NULL; }
+}
+
+/* A full round-trip: every channel's colour index + 8-char label survives
+ * saveSequencerState → loadSequencerState. The save/load are called with
+ * patterns == NULL so the pattern section is skipped — the loader must
+ * tolerate that. */
+static int test_arranger_labels_roundtrip(void) {
+    ensure_tmp_dirs();
+
+    ArrEnv e1, e2;
+    ASSERT_EQ(make_arr_env(&e1), 0);
+    ASSERT_EQ(make_arr_env(&e2), 0);
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        e1.arranger->labelColourIdx[i] = i % 8;
+        snprintf(e1.arranger->label[i], 9, "CH%02d", i);
+    }
+
+    const char *f = TMP_DIR "arr_labels.sng";
+    remove(f);
+    ASSERT_EQ(saveSequencerState(f, e1.arranger, NULL), SEQ_OK);
+
+    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL), SEQ_OK);
+
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        ASSERT_EQ_MSG(e2.arranger->labelColourIdx[i], e1.arranger->labelColourIdx[i],
+                      "label colour roundtrip");
+        ASSERT_TRUE(strcmp(e2.arranger->label[i], e1.arranger->label[i]) == 0,
+                    "label text roundtrip");
+    }
+
+    remove(f);
+    free_arr_env(&e1);
+    free_arr_env(&e2);
+    printf("PASS test_arranger_labels_roundtrip\n");
+    return 0;
+}
+
+/* An SEQ1/old file without the LABL chunk must load with defaults:
+ * every colour index is 0, every label is an empty string. We build a
+ * minimal SEQ1 file by hand with only PATT (count=0) + ARRG sections, so
+ * the loader must default the missing LABL fields rather than read
+ * garbage from the next bytes. */
+static int test_arranger_labels_old_file_defaults(void) {
+    ensure_tmp_dirs();
+
+    const char *f = TMP_DIR "arr_labels_old.sng";
+    remove(f);
+
+    FILE *fp = fopen(f, "wb");
+    ASSERT_TRUE(fp != NULL, "open old sng for write");
+    ASSERT_TRUE(writeChunkHeader(fp, SEQ_MAGIC_HEADER), "SEQ1 magic");
+    ASSERT_TRUE(writeChunkHeader(fp, PATTERN_SECTION), "PATT section");
+    int zero = 0;
+    fwrite(&zero, sizeof(int), 1, fp);
+    ASSERT_TRUE(writeChunkHeader(fp, ARRANGER_SECTION), "ARRG section");
+    int playheads[MAX_SEQUENCER_CHANNELS] = {0};
+    fwrite(playheads, sizeof(int), MAX_SEQUENCER_CHANNELS, fp);
+    int enabled = 1;
+    fwrite(&enabled, sizeof(int), 1, fp);
+    int selx = 0, sely = 0, loop = 0, bpmv = 120, playing = 0;
+    fwrite(&selx, sizeof(int), 1, fp);
+    fwrite(&sely, sizeof(int), 1, fp);
+    fwrite(&loop, sizeof(int), 1, fp);
+    fwrite(&bpmv, sizeof(int), 1, fp);
+    fwrite(&playing, sizeof(int), 1, fp);
+    int song[MAX_SEQUENCER_CHANNELS][MAX_SONG_LENGTH];
+    memset(song, -1, sizeof(song));
+    fwrite(song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, fp);
+    fclose(fp);
+
+    /* Pre-fill a2's label fields with sentinel non-default values so a
+     * correctly-defaulting loader must zero them. */
+    ArrEnv e2;
+    ASSERT_EQ(make_arr_env(&e2), 0);
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        e2.arranger->labelColourIdx[i] = 7;                /* non-zero sentinel */
+        memset(e2.arranger->label[i], 'X', 9);             /* non-empty sentinel */
+        e2.arranger->label[i][8] = '\0';
+    }
+
+    /* patterns=NULL: the loader must skip the pattern block. */
+    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL), SEQ_OK);
+
+    for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        ASSERT_EQ_MSG(e2.arranger->labelColourIdx[i], 0, "default colour after old file load");
+        ASSERT_EQ_MSG(e2.arranger->label[i][0], '\0', "default label after old file load");
+    }
+
+    remove(f);
+    free_arr_env(&e2);
+    printf("PASS test_arranger_labels_old_file_defaults\n");
     return 0;
 }
 
@@ -1002,6 +1136,8 @@ int main(void) {
     failed |= test_seq_channel_slots_roundtrip();
     failed |= test_seq_v1_loads_with_zero_slots();
     failed |= test_save_sequencer_seq2_magic();
+    failed |= test_arranger_labels_roundtrip();
+    failed |= test_arranger_labels_old_file_defaults();
     failed |= test_settings_roundtrip();
     failed |= test_settings_missing();
     failed |= test_sanitize_filename();
@@ -1011,6 +1147,6 @@ int main(void) {
     failed |= test_overwrite_replaces_file_and_bank();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 25, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 27, failed ? ">=1 failed" : "all passed");
     return failed;
 }
