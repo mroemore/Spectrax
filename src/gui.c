@@ -515,6 +515,9 @@ void navigateArrangerGraph(int keymapping) {
 }
 
 void arrangerGraphControlInput(int keymapping) {
+	if(!agui || !agui->selected || !agui->selected->callback) {
+		return;
+	}
 	switch(keymapping) {
 		case KM_LEFT:
 			agui->selected->callback(agui->selected->p, -0.1f);
@@ -1093,6 +1096,7 @@ GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct
 		return NULL;
 	}
 	chip->base.draw = drawInstChipGuiNode;
+	chip->base.drawable = true;
 	chip->vm = vm;
 	chip->channel = channel;
 	chip->arranger = arranger;

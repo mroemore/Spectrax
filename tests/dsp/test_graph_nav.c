@@ -388,6 +388,38 @@ static int test_chip_row_nav(void) {
     return 0;
 }
 
+/* Regression: the chip row rendered as an empty cs.panel strip because
+ * createInstChipGuiNode set `draw` but never `drawable` (initGuiNode
+ * leaves drawable = 0). Chips were selectable + navigable but never
+ * drawn. */
+static int test_chip_node_is_drawable(void) {
+    GuiNode *c = createInstChipGuiNode(10, 0, 30, 30, false, NULL, 0, NULL);
+    ASSERT_TRUE(c != NULL, "chip created");
+    ASSERT_TRUE(c->drawable, "chip node is drawable (draw will run)");
+    ASSERT_TRUE(c->draw != NULL, "chip has a draw fn");
+    free(c->name);
+    freeList(c->items);
+    freeList(c->itemWeights);
+    free(c);
+    printf("PASS test_chip_node_is_drawable\n");
+    return 0;
+}
+
+/* Regression: initGuiNode left `callback` uninitialised (malloc garbage).
+ * createArrangerGuiNode then had a non-NULL garbage callback pointer,
+ * and arrangerGraphControlInput(KM_*) called it -> SEGV on EDIT+arrows
+ * over the grid. initGuiNode must always NULL the callback. */
+static int test_init_gui_node_null_callback(void) {
+    GuiNode n;
+    ASSERT_TRUE(initGuiNode(&n, 0, 0, 50, 50, 0, na_vertical, "probe", false, false), "init ok");
+    ASSERT_TRUE(n.callback == NULL, "callback defaults to NULL");
+    free(n.name);
+    freeList(n.items);
+    freeList(n.itemWeights);
+    printf("PASS test_init_gui_node_null_callback\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
@@ -401,6 +433,8 @@ int main(void) {
     fails += test_custom_nav_fallthrough();
     fails += test_null_safety();
     fails += test_chip_row_nav();
+    fails += test_chip_node_is_drawable();
+    fails += test_init_gui_node_null_callback();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;

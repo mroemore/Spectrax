@@ -190,30 +190,36 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 	}
 
 	if(is_v2) {
-		// V2: chip labels. The file is expected to have a LABL chunk
-		// immediately after ARRG. Any V2 file written by this build has
-		// one, so a missing/short LABL is a read error.
-		if(!readAndVerifyChunkHeader(file, CHIP_LABELS_SECTION)) {
-			fclose(file);
-			printf("error reading LABL chunk header (V2)\n");
-			return SEQ_ERROR_FORMAT;
-		}
-		if(fread(arranger->labelColourIdx, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
-			fclose(file);
-			printf("error reading labelColourIdx (V2)\n");
-			return SEQ_ERROR_READ;
-		}
-		// Defensive clamp: chip palette has 8 entries, so any out-of-range
-		// value on disk would index past the LUT and read garbage.
-		for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-			if(arranger->labelColourIdx[i] < 0 || arranger->labelColourIdx[i] > 7) {
-				arranger->labelColourIdx[i] = 0;
+		/* LABL chunk (chip labels) is OPTIONAL — older V2 files predate
+		 * it (e.g. the shipped bin/s1.sng). Peek the magic; if it's
+		 * LABL read the body, otherwise default + rewind so any future
+		 * trailing content still reads from the right offset. */
+		long lablPos = ftell(file);
+		char labl_magic[4];
+		if(fread(labl_magic, 1, 4, file) == 4 && memcmp(labl_magic, CHIP_LABELS_SECTION, 4) == 0) {
+			if(fread(arranger->labelColourIdx, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
+				fclose(file);
+				printf("error reading labelColourIdx (V2)\n");
+				return SEQ_ERROR_READ;
 			}
-		}
-		if(fread(arranger->label, sizeof(char), MAX_SEQUENCER_CHANNELS * 9, file) != MAX_SEQUENCER_CHANNELS * 9) {
-			fclose(file);
-			printf("error reading label strings (V2)\n");
-			return SEQ_ERROR_READ;
+			// Defensive clamp: chip palette has 8 entries, so any out-of-range
+			// value on disk would index past the LUT and read garbage.
+			for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+				if(arranger->labelColourIdx[i] < 0 || arranger->labelColourIdx[i] > 7) {
+					arranger->labelColourIdx[i] = 0;
+				}
+			}
+			if(fread(arranger->label, sizeof(char), MAX_SEQUENCER_CHANNELS * 9, file) != MAX_SEQUENCER_CHANNELS * 9) {
+				fclose(file);
+				printf("error reading label strings (V2)\n");
+				return SEQ_ERROR_READ;
+			}
+		} else {
+			fseek(file, lablPos, SEEK_SET);
+			for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+				arranger->labelColourIdx[i] = 0;
+				memset(arranger->label[i], 0, 9);
+			}
 		}
 	} else {
 		// V1 / legacy file: no LABL chunk. Default every channel's chip
