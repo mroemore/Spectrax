@@ -921,6 +921,13 @@ int getSelectedChipChannel(void) {
 	return chip->channel;
 }
 
+/* Task 7: expose the arranger graph's selected GuiNode so the scripted
+ * harness's runAssertSelected() can read it from outside gui.c. */
+GuiNode *getArrangerSelectedNode(void) {
+	if(!agui) return NULL;
+	return agui->selected;
+}
+
 /* Task 4: set the chip's `expanded` flag by channel. Channels with no
  * registered chip (disabled or out-of-range) are no-ops. Task 5+ will
  * render the expanded chip content; for now this just flips the flag

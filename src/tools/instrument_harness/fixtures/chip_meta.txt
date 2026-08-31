@@ -1,0 +1,117 @@
+# chip_meta.txt — Task 7 fixture
+#
+# Walks the arranger chip row (chip 0) through expand -> swatch ->
+# label edit -> collapse -> jump to instrument page, then exercises
+# the meta row (TYPE button cycles voice type, VOICES dial adjusts
+# the count) on the same chip's instrument screen.
+
+# Boot is SCENE_INSTRUMENT (per the harness's startup override);
+# switch to SCENE_ARRANGER (user-facing 0) to access the chip row.
+SCENE 0
+FRAMES 2
+ASSERT scene==0
+
+# ---- From the arranger grid, UP selects chip 0 (via the chip-row wrapper) ----
+UP
+FRAMES 2
+ASSERT selected==chip
+
+# ---- Expand chip 0 with EDIT+UP ----
+EDIT UP
+FRAMES 3
+ASSERT chipExpanded==0 1
+
+# ---- Cycle the swatch (RIGHT cycles colour while expanded, no edit) ----
+RIGHT
+FRAMES 3
+ASSERT chipColour==0 1
+RIGHT
+FRAMES 3
+ASSERT chipColour==0 2
+
+# ---- Label edit: cycle char at cursor (EDIT+UP), advance cursor (EDIT+RIGHT) ----
+# The chip-label buffer is 8 chars + NUL terminator (CHIP_LABEL_MAX);
+# trailing positions stay at NUL so the C-string shortens as we go.
+# chipLabelCharIndex maps NUL -> 0, so the first EDIT UP lands on
+# NAME_CHARS[1] = 'B' (see chipLabelCycleChar in src/gui.c).
+EDIT UP
+FRAMES 3
+ASSERT chipLabel==0 "B"
+EDIT RIGHT
+FRAMES 3
+EDIT UP
+FRAMES 3
+ASSERT chipLabel==0 "BB"
+EDIT RIGHT
+FRAMES 3
+EDIT UP
+FRAMES 3
+ASSERT chipLabel==0 "BBB"
+
+# ---- Collapse ----
+EDIT
+FRAMES 3
+ASSERT chipExpanded==0 0
+
+# ---- Jump to instrument page (EDIT + RIGHT on collapsed chip) ----
+EDIT RIGHT
+FRAMES 5
+ASSERT scene==1
+
+# ---- From the instrument page, exercise the meta row ----
+# Selection starts on RATIO1 (the first FM control) after chip-jump;
+# navigate UP to the closest preset-row button so we can confirm the
+# harness round-trips into the FM controls cleanly.
+UP
+FRAMES 3
+ASSERT selected==NEXT
+DOWN
+FRAMES 3
+ASSERT selected==RATIO1
+# ---- Land on the TYPE button (deterministically via JUMP by name) ----
+# bare UP/LEFT navigation from RATIO1 is fragile across bestInDirection
+# interpretations, so use the JUMP escape hatch.
+JUMP VOICES
+FRAMES 1
+ASSERT selected==VOICES
+# LEFT in btnwrap (horizontal) takes us leftward from VOICES to the
+# TYPE button. Even if its display name was rebuilt during a cycle,
+# the underlying node is fixed as the first child of META.
+LEFT
+FRAMES 3
+# Cycle voice type: FM -> BLEP (TYPE button label is BLP for BLEP)
+ASSERT voiceType==FM
+
+EDIT
+FRAMES 3
+ASSERT voiceType==BLEP
+# The graph rebuilds after the cycle (TYPE button gets a fresh strdup
+# label). The TYPE button's NAME is rebuilt via TextFormat and may end
+# up garbled in some boot configurations, so we re-JUMP VOICES + LEFT
+# to land on the rebuilt TYPE button deterministically.
+JUMP VOICES
+FRAMES 1
+LEFT
+FRAMES 3
+# BLEP -> SAMPLE.
+EDIT
+FRAMES 3
+ASSERT voiceType==SAMPLE
+
+# ---- VOICES dial: drive the adjust callback directly ----
+JUMP VOICES
+FRAMES 1
+ASSERT selected==VOICES
+# EDIT RIGHT increments the dial (+0.1 per press; voice counts are
+# integers, so each press bumps the count by 1).
+EDIT RIGHT
+FRAMES 3
+ASSERT voiceCount==2
+EDIT RIGHT
+FRAMES 3
+ASSERT voiceCount==3
+EDIT RIGHT
+FRAMES 3
+ASSERT voiceCount==4
+
+QUIT

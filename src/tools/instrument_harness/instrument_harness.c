@@ -103,6 +103,14 @@ typedef enum {
 	SOP_ASSERT_TOPLAYER_SELECTED, /* Task 7: topmost overlay layer's graph
 	                            * selected->name == "NAME". Falls back to the
 	                            * instrument graph when no layer is active. */
+	SOP_SET_SCENE,      /* Task 7: assign appState->currentScene = N (0=ARRANGER, 1=INSTRUMENT) */
+	SOP_ASSERT_SCENE,   /* Task 7: appState->currentScene == N */
+	SOP_ASSERT_CHIP_EXPANDED, /* Task 7: isChipExpanded(CH) == N (0|1) */
+	SOP_SELECT_NAMED,        /* Task 7: changeGraphSelection(getSelectedInstGraph(), findSelectableByName(...)) */
+	SOP_ASSERT_CHIP_LABEL,    /* Task 7: strcmp(arranger->label[CH], name) == 0 */
+	SOP_ASSERT_CHIP_COLOUR,   /* Task 7: arranger->labelColourIdx[CH] == N */
+	SOP_ASSERT_VOICE_TYPE,    /* Task 7: inst->voiceType == N (matches VOICE_TYPE_* enum) */
+	SOP_ASSERT_VOICE_COUNT,   /* Task 7: roundf(inst->voiceCountParam->baseValue) == N */
 	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
 	SOP_QUIT
 } ScriptOpKind;
@@ -115,14 +123,16 @@ typedef struct {
 		KeyMapping key; /* for SOP_KEY */
 		KeyMapping arrow; /* for SOP_EDIT_ARROW */
 		int n;          /* for SOP_FRAMES, SOP_ASSERT_ENVCOUNT, SOP_ASSERT_PRESETCOUNT,
-		                 * SOP_ASSERT_ALGO; and N for modulators */
+		                 * SOP_ASSERT_ALGO, chipChannel, labelColourIdx, voiceType;
+		                 * and N for modulators */
 		int op;         /* for SOP_ASSERT_MODULATORS: operator index 0..3 */
 		int kind;       /* for SOP_ASSERT_MODULATORS: 0=fb 1=rat 2=lvl */
 	} a;
 	union {
-		int n;          /* secondary int (modulator_count) */
+		int n;          /* secondary int (modulator_count), voiceCount, expanded-flag 0|1, scene index */
 	} b;
-	char name[64];       /* for SOP_ASSERT_SELECTED, SOP_ASSERT_PRESET, SOP_ASSERT_FILE */
+	char name[64];       /* for SOP_ASSERT_SELECTED, SOP_ASSERT_PRESET, SOP_ASSERT_FILE,
+	                      * SOP_ASSERT_CHIP_LABEL */
 } ScriptStep;
 
 typedef struct {
@@ -232,16 +242,29 @@ static int parseKeyName(const char *s, KeyMapping *out) {
 
 /* ----- Script parser --------------------------------------------------- *
  * One ScriptStep per line. Each line is either:
- *   ADD | REMOVE | LEFT | RIGHT | UP | DOWN
+ *   ADD | REMOVE | LEFT | RIGHT | UP | DOWN | SELECT | START | FUNCTION | EDIT
  *   EDIT <LEFT|RIGHT|UP|DOWN>
  *   FRAMES <N>
+ *   SCENE <N>                       -- appState->currentScene = N (0=ARRANGER, 1=INSTRUMENT)
  *   ASSERT envcount==<N>
  *   ASSERT modulators==(<op>,<kind>,<N>)
  *   ASSERT selected==<NAME>
+ *   ASSERT topLayerSelected==<NAME>
  *   ASSERT preset==<NAME>           -- presetBank has patch named NAME
  *   ASSERT file==<NAME>             -- data/instrument_presets/<san NAME>.ipb exists
  *   ASSERT presetCount==<N>         -- presetBank->presetCount == N
  *   ASSERT algo==<N>                -- FM selectedAlgorithm baseValue == N
+ *   ASSERT ratio1==<N>              -- FM op0 ratio baseValue (as int)
+ *   ASSERT loadListActive==<0|1>
+ *   ASSERT savedFlash==<0|1>
+ *   ASSERT scene==<N>               -- appState->currentScene == N
+ *   ASSERT chipExpanded==<CH> <0|1> -- isChipExpanded(CH) == 0|1
+ *   ASSERT chipLabel==<CH> "<TXT>"  -- strcmp(arranger->label[CH], TXT) == 0
+ *   ASSERT chipColour==<CH> <N>     -- arranger->labelColourIdx[CH] == N
+ *   ASSERT voiceType==<SAMPLE|FM|BLEP|GRAIN|SPECTRAL>
+ *                                   -- inst->voiceType == VOICE_TYPE_<...>
+ *   ASSERT voiceCount==<N>          -- roundf(inst->voiceCountParam->baseValue) == N
+ *   SHOT <path>
  *   QUIT
  * On any syntax error, set g_scriptState=SCRIPT_FAIL with a message and
  * let the main loop bail.
@@ -334,6 +357,43 @@ static void parseScript(const char *path) {
 				return;
 			}
 			s->op = SOP_FRAMES; s->a.n = n; s->frames = n;
+		} else if(strcmp(op, "SCENE") == 0) {
+			/* SCENE <N>: assign appState->currentScene = N. 0=ARRANGER,
+			 * 1=INSTRUMENT. Effects are observed next frame (input
+			 * dispatcher switches on scene at the start of each
+			 * handleInstrumentInput). One-frame step — assignment takes
+			 * effect immediately so the frame the next keypress is on
+			 * already routes correctly. */
+			if(nt < 2) {
+				fclose(fp);
+				failScript(lineno, "SCENE requires N (0=ARRANGER, 1=INSTRUMENT)");
+				return;
+			}
+			int n = atoi(tokens[1]);
+			Scene target;
+			if(n == 0) {
+				target = SCENE_ARRANGER;
+			} else if(n == 1) {
+				target = SCENE_INSTRUMENT;
+			} else {
+				fclose(fp);
+				failScript(lineno, "SCENE N must be 0 (ARRANGER) or 1 (INSTRUMENT)");
+				return;
+			}
+			s->op = SOP_SET_SCENE; s->b.n = (int)target; s->frames = 1;
+		} else if(strcmp(op, "JUMP") == 0) {
+			/* JUMP <name>: deterministic navigation aid. The plain SELECT
+			 * verb collides with the KM_SELECT key parser — rename to
+			 * JUMP. Searches the instrument graph for a selectable node
+			 * whose `name` matches and reassigns selection. */
+			if(nt < 2) {
+				fclose(fp);
+				failScript(lineno, "JUMP requires a node name");
+				return;
+			}
+			s->op = SOP_SELECT_NAMED; s->frames = 1;
+			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
+			s->name[sizeof(s->name) - 1] = '\0';
 		} else if(strcmp(op, "SHOT") == 0) {
 			/* SHOT <path>: capture the window to a PNG via X11. */
 			if(nt < 2) {
@@ -472,9 +532,115 @@ static void parseScript(const char *path) {
 				}
 				s->op = SOP_ASSERT_SAVEDFLASH;
 				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "scene") == 0) {
+				/* ASSERT scene == <N> : appState->currentScene matches. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT scene==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_SCENE;
+				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "chipExpanded") == 0) {
+				/* ASSERT chipExpanded == <CH> <0|1> : isChipExpanded(CH) == 0|1. */
+				if(nt < 5 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipExpanded==<CH> <0|1>");
+					return;
+				}
+				int ch = atoi(tokens[3]);
+				if(ch < 0 || ch >= MAX_SEQUENCER_CHANNELS) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipExpanded CH %d out of range", ch);
+					return;
+				}
+				int flag = atoi(tokens[4]);
+				s->op = SOP_ASSERT_CHIP_EXPANDED;
+				s->a.n = ch;
+				s->b.n = flag;
+			} else if(strcmp(tokens[1], "chipLabel") == 0) {
+				/* ASSERT chipLabel == <CH> "<TEXT>" : arranger->label[CH] matches. */
+				if(nt < 5 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipLabel==<CH> \"<TEXT>\"");
+					return;
+				}
+				int ch = atoi(tokens[3]);
+				if(ch < 0 || ch >= MAX_SEQUENCER_CHANNELS) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipLabel CH %d out of range", ch);
+					return;
+				}
+				/* The whitespace tokenizer leaves the optional quotes
+				 * around tokens[4] ("B" stays as one token). Strip them
+				 * so the C-string compared in runAssertChipLabel doesn't
+				 * have straggling leading/trailing '"' characters. */
+				const char *t = tokens[4];
+				size_t tlen = strlen(t);
+				if(tlen >= 2 && t[0] == '"' && t[tlen - 1] == '"') {
+					t++;
+					tlen -= 2;
+				}
+				s->op = SOP_ASSERT_CHIP_LABEL;
+				s->a.n = ch;
+				if(tlen >= sizeof(s->name)) tlen = sizeof(s->name) - 1;
+				memcpy(s->name, t, tlen);
+				s->name[tlen] = '\0';
+			} else if(strcmp(tokens[1], "chipColour") == 0) {
+				/* ASSERT chipColour == <CH> <N> : arranger->labelColourIdx[CH] == N. */
+				if(nt < 5 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipColour==<CH> <N>");
+					return;
+				}
+				int ch = atoi(tokens[3]);
+				if(ch < 0 || ch >= MAX_SEQUENCER_CHANNELS) {
+					fclose(fp);
+					failScript(lineno, "ASSERT chipColour CH %d out of range", ch);
+					return;
+				}
+				s->op = SOP_ASSERT_CHIP_COLOUR;
+				s->a.n = ch;
+				s->b.n = atoi(tokens[4]);
+			} else if(strcmp(tokens[1], "voiceType") == 0) {
+				/* ASSERT voiceType == <SAMPLE|FM|BLEP|GRAIN|SPECTRAL> :
+				 * inst->voiceType matches VOICE_TYPE_<...>. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT voiceType==<SAMPLE|FM|BLEP|GRAIN|SPECTRAL>");
+					return;
+				}
+				int vt;
+				if(strcmp(tokens[3], "SAMPLE") == 0) {
+					vt = VOICE_TYPE_SAMPLE;
+				} else if(strcmp(tokens[3], "FM") == 0) {
+					vt = VOICE_TYPE_FM;
+				} else if(strcmp(tokens[3], "BLEP") == 0) {
+					vt = VOICE_TYPE_BLEP;
+				} else if(strcmp(tokens[3], "GRAIN") == 0) {
+					vt = VOICE_TYPE_GRAIN;
+				} else if(strcmp(tokens[3], "SPECTRAL") == 0) {
+					vt = VOICE_TYPE_SPECTRAL;
+				} else {
+					fclose(fp);
+					failScript(lineno, "ASSERT voiceType '%s' unknown (SAMPLE|FM|BLEP|GRAIN|SPECTRAL)", tokens[3]);
+					return;
+				}
+				s->op = SOP_ASSERT_VOICE_TYPE;
+				s->a.n = vt;
+			} else if(strcmp(tokens[1], "voiceCount") == 0) {
+				/* ASSERT voiceCount == <N> :
+				 * roundf(inst->voiceCountParam->baseValue) == N. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT voiceCount==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_VOICE_COUNT;
+				s->a.n = atoi(tokens[3]);
 			} else {
 				fclose(fp);
-				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive|savedFlash)", tokens[1]);
+				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive|savedFlash|scene|chipExpanded|chipLabel|chipColour|voiceType|voiceCount)", tokens[1]);
 				return;
 			}
 		} else if(strcmp(op, "QUIT") == 0) {
@@ -538,9 +704,26 @@ static void runAssertModulators(int lineno, int opIdx, int kind, int expected) {
 	}
 }
 
+/* Task 7: file-static pointer to the live ApplicationState installed by
+ * runScripted at entry. Used by runAssertSelected() (scene-aware) and
+ * the new scene/chip/voice asserts so we don't have to thread paTestData
+ * through every helper signature. */
+static ApplicationState *s_scriptAppState = NULL;
+static paTestData *s_scriptData = NULL;
+
 static void runAssertSelected(int lineno, const char *expected) {
-	Graph *g = getSelectedInstGraph();
-	const char *got = (g && g->selected && g->selected->name) ? g->selected->name : "(null)";
+	/* Task 7: scene-aware — when we're in SCENE_ARRANGER the 'selected'
+	 * the fixture cares about lives in the arranger graph (chip row vs
+	 * chip vs grid). In SCENE_INSTRUMENT it lives in the instrument
+	 * graph as before. */
+	const char *got;
+	if(s_scriptAppState && (int)s_scriptAppState->currentScene == (int)SCENE_ARRANGER) {
+		GuiNode *sel = getArrangerSelectedNode();
+		got = (sel && sel->name) ? sel->name : "(null)";
+	} else {
+		Graph *g = getSelectedInstGraph();
+		got = (g && g->selected && g->selected->name) ? g->selected->name : "(null)";
+	}
 	if(strcmp(got, expected) != 0) {
 		failScript(lineno, "ASSERT selected==%s failed: got %s", expected, got);
 	}
@@ -656,6 +839,126 @@ static void runAssertLoadListActive(int lineno, int expected) {
 	}
 }
 
+/* Task 7: scene assertion. The fixture uses SCENE 0/1 to switch
+ * between ARRANGER and INSTRUMENT; this checks the assignment stuck.
+ * Reads via the file-static s_scriptAppState pointer set in runScripted
+ * entry (see runScripted) so we don't have to thread the pointer
+ * through every assert helper. */
+static void runAssertScene(int lineno, int expected) {
+	if(!s_scriptAppState) {
+		failScript(lineno, "ASSERT scene==%d: no script state", expected);
+		return;
+	}
+	/* Translate the Scene enum (SCENE_ARRANGER=1, SCENE_INSTRUMENT=3)
+	 * back to the user-facing 0/1 form the fixture uses. */
+	int gotEnum = (int)s_scriptAppState->currentScene;
+	int got;
+	if(gotEnum == (int)SCENE_ARRANGER) {
+		got = 0;
+	} else if(gotEnum == (int)SCENE_INSTRUMENT) {
+		got = 1;
+	} else {
+		got = gotEnum;
+	}
+	if(got != expected) {
+		failScript(lineno, "ASSERT scene==%d failed: got %d", expected, got);
+	}
+}
+
+/* Task 7: assert isChipExpanded(CH) == expected (0 collapsed, 1
+ * expanded). Reads through the public isChipExpanded() getter. */
+static void runAssertChipExpanded(int lineno, int channel, int expected) {
+	int got = isChipExpanded(channel) ? 1 : 0;
+	if(got != expected) {
+		failScript(lineno, "ASSERT chipExpanded==%d %d failed: got %d",
+		           channel, expected, got);
+	}
+}
+
+/* Task 7: deep-search the graph root for the first selectable node whose
+ * `name` matches `want` (exact match). Returns the GuiNode* or NULL.
+ * Mirrors the static collectSelectables in graph_gui.c but stops early
+ * when a match is found. */
+static GuiNode *findSelectableByName(GuiNode *root, const char *want) {
+	if(!root || !want) {
+		return NULL;
+	}
+	if(root->selectable && root->name && strcmp(root->name, want) == 0) {
+		return root;
+	}
+	if(!root->items) {
+		return NULL;
+	}
+	ListElement *l = root->items->head;
+	while(l != NULL) {
+		GuiNode *child = *(GuiNode **)l->data;
+		GuiNode *match = findSelectableByName(child, want);
+		if(match) {
+			return match;
+		}
+		l = l->next;
+	}
+	return NULL;
+}
+
+/* Task 7: assert arranger->label[CH] matches the (8-char max) string
+ * recorded in s->name. Reads through s_scriptData->arranger — the
+ * arranger struct is reachable via the paTestData pointer cached at
+ * the top of runScripted. */
+static void runAssertChipLabel(int lineno, int channel, const char *expected) {
+	if(!s_scriptData || !s_scriptData->arranger) {
+		failScript(lineno, "ASSERT chipLabel==%d \"%s\": arranger NULL", channel, expected);
+		return;
+	}
+	const char *got = s_scriptData->arranger->label[channel];
+	if(strcmp(got, expected) != 0) {
+		failScript(lineno, "ASSERT chipLabel==%d \"%s\" failed: got \"%s\"",
+		           channel, expected, got);
+	}
+}
+
+/* Task 7: assert arranger->labelColourIdx[CH] == expected. Index 0..7. */
+static void runAssertChipColour(int lineno, int channel, int expected) {
+	if(!s_scriptData || !s_scriptData->arranger) {
+		failScript(lineno, "ASSERT chipColour==%d %d: arranger NULL", channel, expected);
+		return;
+	}
+	int got = s_scriptData->arranger->labelColourIdx[channel];
+	if(got != expected) {
+		failScript(lineno, "ASSERT chipColour==%d %d failed: got %d",
+		           channel, expected, got);
+	}
+}
+
+/* Task 7: assert inst->voiceType == expected (one of VOICE_TYPE_*).
+ * Compared against an enum int cast. */
+static void runAssertVoiceType(int lineno, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst) {
+		failScript(lineno, "ASSERT voiceType==%d: no instrument", expected);
+		return;
+	}
+	int got = (int)inst->voiceType;
+	if(got != expected) {
+		failScript(lineno, "ASSERT voiceType==%d failed: got %d", expected, got);
+	}
+}
+
+/* Task 7: assert roundf(inst->voiceCountParam->baseValue) == expected.
+ * The voice-count param is a float in the model; the harness rounds it
+ * so the fixture reads back an int. */
+static void runAssertVoiceCount(int lineno, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || !inst->voiceCountParam) {
+		failScript(lineno, "ASSERT voiceCount==%d: no instrument/param", expected);
+		return;
+	}
+	int got = (int)roundf(inst->voiceCountParam->baseValue);
+	if(got != expected) {
+		failScript(lineno, "ASSERT voiceCount==%d failed: got %d", expected, got);
+	}
+}
+
 /* Zero the keys array; used as the resting state between scripted events. */
 static void clearInjectedKeys(InputState *state) {
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
@@ -668,6 +971,7 @@ static void clearInjectedKeys(InputState *state) {
  * After this returns the caller invokes the same instrument-input
  * block the interactive loop uses. */
 static void applyScriptEventInjection(InputState *state, const ScriptStep *s, int subframe) {
+	(void)state;
 	switch(s->op) {
 		case SOP_KEY:
 			/* single-frame just-pressed */
@@ -685,11 +989,34 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 			}
 			break;
 		}
+		case SOP_SET_SCENE:
+			/* Idempotent on subframe 0. The scene switch happens
+			 * BEFORE handleInstrumentInput runs that frame, so the
+			 * new scene is in effect for the very first dispatch. */
+			if(subframe == 0 && s_scriptAppState) {
+				s_scriptAppState->currentScene = (Scene)s->b.n;
+			}
+			break;
 		case SOP_FRAMES:
 		case SOP_QUIT:
 		case SOP_ASSERT_ENVCOUNT:
 		case SOP_ASSERT_MODULATORS:
 		case SOP_ASSERT_SELECTED:
+		case SOP_ASSERT_TOPLAYER_SELECTED:
+		case SOP_ASSERT_PRESET:
+		case SOP_ASSERT_FILE:
+		case SOP_ASSERT_PRESETCOUNT:
+		case SOP_ASSERT_ALGO:
+		case SOP_ASSERT_RATIO1:
+		case SOP_ASSERT_LOADLISTACTIVE:
+		case SOP_ASSERT_SAVEDFLASH:
+		case SOP_ASSERT_SCENE:
+		case SOP_ASSERT_CHIP_EXPANDED:
+		case SOP_ASSERT_CHIP_LABEL:
+		case SOP_ASSERT_CHIP_COLOUR:
+		case SOP_ASSERT_VOICE_TYPE:
+		case SOP_ASSERT_VOICE_COUNT:
+		case SOP_SHOT:
 		default:
 			break;
 	}
@@ -734,6 +1061,40 @@ static void processScriptAssert(const ScriptStep *s) {
 		case SOP_ASSERT_SAVEDFLASH:
 			runAssertSavedFlash(s->lineno, s->a.n);
 			break;
+		case SOP_ASSERT_SCENE:
+			runAssertScene(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_CHIP_EXPANDED:
+			runAssertChipExpanded(s->lineno, s->a.n, s->b.n);
+			break;
+		case SOP_ASSERT_CHIP_LABEL:
+			runAssertChipLabel(s->lineno, s->a.n, s->name);
+			break;
+		case SOP_ASSERT_CHIP_COLOUR:
+			runAssertChipColour(s->lineno, s->a.n, s->b.n);
+			break;
+		case SOP_ASSERT_VOICE_TYPE:
+			runAssertVoiceType(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_VOICE_COUNT:
+			runAssertVoiceCount(s->lineno, s->a.n);
+			break;
+		case SOP_SELECT_NAMED: {
+			/* Task 7: deterministic navigation — find a selectable by name
+			 * in the current instrument graph and reassign selection. */
+			Graph *cg = getSelectedInstGraph();
+			if(!cg) {
+				failScript(s->lineno, "SELECT %s: no instrument graph", s->name);
+			} else {
+				GuiNode *match = findSelectableByName(cg->root, s->name);
+				if(!match) {
+					failScript(s->lineno, "JUMP %s: no selectable with that name", s->name);
+				} else {
+					changeGraphSelection(cg, match);
+				}
+			}
+			break;
+		}
 		case SOP_SHOT:
 			if(shotX11(s->name) != 0) {
 				failScript(s->lineno, "SHOT %s: capture failed", s->name);
@@ -813,10 +1174,114 @@ static int shotX11(const char *path) {
 
 /* ----- Shared input handler (used by both interactive and scripted) --- */
 
-/* Mirrors main.c's SCENE_INSTRUMENT branch. Has the optional arg
- * `data` so the FUNCTION+LEFT/RIGHT arranger cell selector still has
- * access to paTestData. Defensively guards currentGraph->selected NULL. */
+/* Mirrors main.c's SCENE_ARRANGER branch — chip row + expanded chip
+ * input routing. Same priority order as the live engine: KM_SELECT +
+ * KM_START collapses a chip (when KM_EDIT is not held), then KM_EDIT
+ * held dispatches per-chip arrows + swatch + label-edit, and bare
+ * arrows navigate the arranger graph (or the swatch when the chip
+ * is expanded). */
+static void handleArrangerInput(paTestData *data, ApplicationState *appState) {
+	(void)data;
+	int chForCollapse = getSelectedChipChannel();
+
+	/* Chip-expanded collapse from the global modifiers (mirrors main.c
+	 * L302-310): KM_SELECT and KM_START collapse a chip when JUST
+	 * pressed AND KM_EDIT is NOT held. */
+	if(chForCollapse >= 0 && isChipExpanded(chForCollapse)
+			&& !isKeyHeld(appState->inputState, KM_EDIT)) {
+		if(isKeyJustPressed(appState->inputState, KM_SELECT)) {
+			handleExpandedChipInput(chForCollapse, KM_SELECT, false);
+		} else if(isKeyJustPressed(appState->inputState, KM_START)) {
+			handleExpandedChipInput(chForCollapse, KM_START, false);
+		}
+	}
+
+	if(isKeyHeld(appState->inputState, KM_EDIT)) {
+		int chipChannel = getSelectedChipChannel();
+		if(chipChannel >= 0) {
+			if(isChipExpanded(chipChannel)) {
+				if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+					handleExpandedChipInput(chipChannel, KM_LEFT, true);
+				} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+					handleExpandedChipInput(chipChannel, KM_RIGHT, true);
+				} else if(isKeyJustPressed(appState->inputState, KM_UP)) {
+					handleExpandedChipInput(chipChannel, KM_UP, true);
+				} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+					handleExpandedChipInput(chipChannel, KM_DOWN, true);
+				}
+				/* Bare EDIT just-pressed (no arrow) collapses. */
+				if(isKeyJustPressed(appState->inputState, KM_EDIT)
+						&& !isKeyJustPressed(appState->inputState, KM_LEFT)
+						&& !isKeyJustPressed(appState->inputState, KM_RIGHT)
+						&& !isKeyJustPressed(appState->inputState, KM_UP)
+						&& !isKeyJustPressed(appState->inputState, KM_DOWN)) {
+					handleExpandedChipInput(chipChannel, KM_EDIT, false);
+				}
+			} else {
+				/* Task 4: collapsed chip — EDIT+LEFT/RIGHT jumps to the
+				 * instrument page (mirrors main.c L361-365). EDIT+UP
+				 * toggles the chip's expanded flag. */
+				if(isKeyJustPressed(appState->inputState, KM_LEFT) || isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+					appState->selectedArrangerCell[0] = chipChannel;
+					appState->selectedArrangerCell[1] = data->arranger->selected_y;
+					appState->currentScene = SCENE_INSTRUMENT;
+				}
+				if(isKeyJustPressed(appState->inputState, KM_UP)) {
+					expandChip(chipChannel, !isChipExpanded(chipChannel));
+				}
+			}
+		} else {
+			/* No chip selected — EDIT+arrows go through the arranger
+			 * control-input handler. */
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				arrangerGraphControlInput(KM_LEFT);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				arrangerGraphControlInput(KM_RIGHT);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_UP)) {
+				arrangerGraphControlInput(KM_UP);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+				arrangerGraphControlInput(KM_DOWN);
+			}
+		}
+	} else {
+		/* Bare arrow: if a chip IS expanded, it owns horizontal nav
+		 * (swatch focus). Otherwise plain graph navigation. */
+		int bareCh = getSelectedChipChannel();
+		bool chipExpanded = (bareCh >= 0) && isChipExpanded(bareCh);
+		if(chipExpanded) {
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				handleExpandedChipInput(bareCh, KM_LEFT, false);
+			} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				handleExpandedChipInput(bareCh, KM_RIGHT, false);
+			}
+		} else {
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				navigateArrangerGraph(KM_LEFT);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				navigateArrangerGraph(KM_RIGHT);
+			}
+		}
+		if(isKeyJustPressed(appState->inputState, KM_UP)) {
+			navigateArrangerGraph(KM_UP);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+			navigateArrangerGraph(KM_DOWN);
+		}
+	}
+}
+
 static void handleInstrumentInput(paTestData *data, ApplicationState *appState) {
+	/* Task 7: scene dispatch. Chip/meta row lives in SCENE_ARRANGER;
+	 * the instrument page lives in SCENE_INSTRUMENT. */
+	if(appState->currentScene == SCENE_ARRANGER) {
+		handleArrangerInput(data, appState);
+		return;
+	}
+
 	if(isKeyJustPressed(appState->inputState, KM_ADD)) {
 		Instrument *inst = getSelectedInstInstrument();
 		if(inst && inst->voiceType == VOICE_TYPE_FM) {
@@ -916,6 +1381,12 @@ static void runInteractive(paTestData *data, ApplicationState *appState) {
 
 static void runScripted(paTestData *data, ApplicationState *appState) {
 	RenderTexture2D gfx = createPresentTarget();
+	/* Task 7: cache the live paTestData pointer so the scene/chip/voice
+	 * assert helpers can read arranger->label[CH], arranger->...
+	 * and the currently selected Instrument without threading
+	 * `data` through every helper signature. */
+	s_scriptData = data;
+	s_scriptAppState = appState;
 	while(!WindowShouldClose() && g_scriptState == SCRIPT_RUNNING) {
 		ScriptStep *s = &g_script.steps[g_scriptStepIdx];
 

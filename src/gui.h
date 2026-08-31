@@ -143,6 +143,11 @@ bool isInstChipNode(const GuiNode *n);
  * g_chipNodes[] array in gui.c, so expandChip indexes directly rather
  * than walking the agui tree (which is fragile across Task 3+). */
 int getSelectedChipChannel(void);
+
+/* Task 7: selected GuiNode in the arranger graph (or NULL). Used by
+ * the scripted harness so chip-flow fixtures can compare against the
+ * arranger side (chipr, chip, arr) rather than the instrument graph. */
+GuiNode *getArrangerSelectedNode(void);
 bool isChipExpanded(int channel);
 void expandChip(int channel, bool expanded);
 
