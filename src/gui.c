@@ -2203,7 +2203,7 @@ void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, Voice
 	/* TYPE label is the current voiceType tag. built once per rebuild;
 	 * initGuiNode strdup's the name so the stack buffer is safe. */
 	char typeLabel[8];
-	TextFormat(typeLabel, sizeof(typeLabel), "%s", voiceTypeTag(inst->voiceType));
+	snprintf(typeLabel, sizeof(typeLabel), "%s", voiceTypeTag(inst->voiceType));
 	GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 1, na_horizontal, typeLabel, selected, cbCycleVoiceType, vm);
 
 	/* VOICES dial: inst->voiceCountParam was created in init_instrument

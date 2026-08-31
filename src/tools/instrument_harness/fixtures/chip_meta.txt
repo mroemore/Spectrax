@@ -86,9 +86,9 @@ EDIT
 FRAMES 3
 ASSERT voiceType==BLEP
 # The graph rebuilds after the cycle (TYPE button gets a fresh strdup
-# label). The TYPE button's NAME is rebuilt via TextFormat and may end
-# up garbled in some boot configurations, so we re-JUMP VOICES + LEFT
-# to land on the rebuilt TYPE button deterministically.
+# label). The TYPE button's NAME is the type tag itself (e.g. "FM"),
+# not "TYPE", so re-JUMP VOICES + LEFT to land on the rebuilt TYPE
+# button deterministically.
 JUMP VOICES
 FRAMES 1
 LEFT
