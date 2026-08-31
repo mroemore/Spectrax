@@ -17,6 +17,13 @@
 
 InstrumentGui *igui;
 Graph *agui;
+/* Task 4: chip node registry. createArrangerGraph populates g_chipNodes[ch]
+ * with the InstChipGuiNode for each enabled channel. expandChip() indexes
+ * this array directly instead of walking the agui tree (Task 3 nests chips
+ * two layers deep: root → gridColumn → chipRow → chip — a fragile walk
+ * that would break the moment Task 5+ adds anything else into chipRow).
+ * NULL slots (disabled channels / out-of-range) are skipped. */
+static GuiNode *g_chipNodes[MAX_SEQUENCER_CHANNELS];
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
 
@@ -291,8 +298,15 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	GuiNode *chipRow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "chipr", 0, 0);
 	chipRow->drawable = true;
 	chipRow->draw = drawWrapperNode;
+	/* Task 4: zero the chip registry so any channel that doesn't get a
+	 * chip this build (e.g. enabledChannels shrank between rebuilds)
+	 * doesn't keep a stale pointer. */
+	for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+		g_chipNodes[ch] = NULL;
+	}
 	for(int ch = 0; ch < a->enabledChannels; ch++) {
 		GuiNode *chip = createInstChipGuiNode(0, 0, 100, 40, false, a->vm, ch, a);
+		g_chipNodes[ch] = chip;
 		appendItem(chipRow, chip, 1);
 	}
 	appendItem(gridColumn, chipRow, 1);
@@ -837,6 +851,40 @@ void drawInstChipGuiNode(void *self) {
 bool isInstChipNode(const GuiNode *n) {
 	if(!n) return false;
 	return n->draw == drawInstChipGuiNode;
+}
+
+/* Task 4: returns the channel of the currently-selected chip in agui,
+ * or -1 when the selection isn't a chip (or agui hasn't been built yet).
+ * Used by main.c's SCENE_ARRANGER EDIT+arrows handler to decide whether
+ * to do chip-specific input (jump to instrument page / expand chip) or
+ * fall through to the dial-edit dispatch. */
+int getSelectedChipChannel(void) {
+	if(!agui || !agui->selected || !isInstChipNode(agui->selected)) return -1;
+	InstChipGuiNode *chip = (InstChipGuiNode *)agui->selected;
+	return chip->channel;
+}
+
+/* Task 4: set the chip's `expanded` flag by channel. Channels with no
+ * registered chip (disabled or out-of-range) are no-ops. Task 5+ will
+ * render the expanded chip content; for now this just flips the flag
+ * so the wiring is verifiable. */
+void expandChip(int channel, bool expanded) {
+	if(!agui) return;
+	if(channel < 0 || channel >= MAX_SEQUENCER_CHANNELS) return;
+	GuiNode *node = g_chipNodes[channel];
+	if(!node || !isInstChipNode(node)) return;
+	((InstChipGuiNode *)node)->expanded = expanded;
+}
+
+/* Task 4: read the chip's current `expanded` flag. Used by the
+ * EDIT+UP handler to toggle. Returns false for unknown / unregistered
+ * channels. */
+bool isChipExpanded(int channel) {
+	if(!agui) return false;
+	if(channel < 0 || channel >= MAX_SEQUENCER_CHANNELS) return false;
+	GuiNode *node = g_chipNodes[channel];
+	if(!node || !isInstChipNode(node)) return false;
+	return ((InstChipGuiNode *)node)->expanded;
 }
 
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger) {

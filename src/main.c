@@ -305,17 +305,36 @@ int main(int argc, char **argv) {
 						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
-					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						arrangerGraphControlInput(KM_LEFT);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						arrangerGraphControlInput(KM_RIGHT);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						arrangerGraphControlInput(KM_UP);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						arrangerGraphControlInput(KM_DOWN);
+					/* Task 4: chip EDIT+arrows behaviour. When the selected
+					 * node is a chip, EDIT+LEFT/RIGHT jumps to the instrument
+					 * page for that channel (selectedArrangerCell[0] drives
+					 * igui->selectedInstrument, which DrawGUI uses to pick the
+					 * right instrumentScreenGraph). EDIT+UP toggles the chip's
+					 * expanded flag. Anything else (DOWN, or no chip selected)
+					 * falls through to the dial-edit dispatch below. */
+					int chipChannel = getSelectedChipChannel();
+					if(chipChannel >= 0) {
+						if(isKeyJustPressed(appState->inputState, KM_LEFT) || isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+							appState->selectedArrangerCell[0] = chipChannel;
+							appState->selectedArrangerCell[1] = data.arranger->selected_y;
+							appState->currentScene = SCENE_INSTRUMENT;
+						}
+						if(isKeyJustPressed(appState->inputState, KM_UP)) {
+							expandChip(chipChannel, !isChipExpanded(chipChannel));
+						}
+					} else {
+						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+							arrangerGraphControlInput(KM_LEFT);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+							arrangerGraphControlInput(KM_RIGHT);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_UP)) {
+							arrangerGraphControlInput(KM_UP);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+							arrangerGraphControlInput(KM_DOWN);
+						}
 					}
 				} else {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

@@ -126,6 +126,19 @@ typedef struct {
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
 bool isInstChipNode(const GuiNode *n);
 
+/* Task 4: chip input routing. getSelectedChipChannel() returns the
+ * channel of the currently-selected chip in agui (or -1 if the
+ * selection isn't a chip). expandChip() sets the chip's `expanded`
+ * flag by channel; used by EDIT+UP to reveal the expanded chip
+ * content (Task 5+ will render the expanded state). isChipExpanded()
+ * reads the current flag so the EDIT+UP handler can toggle. The chip
+ * node pointers are registered in createArrangerGraph into a file-static
+ * g_chipNodes[] array in gui.c, so expandChip indexes directly rather
+ * than walking the agui tree (which is fragile across Task 3+). */
+int getSelectedChipChannel(void);
+bool isChipExpanded(int channel);
+void expandChip(int channel, bool expanded);
+
 typedef struct {
 	GuiNode base;
 	Instrument *instrument;
