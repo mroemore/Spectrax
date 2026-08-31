@@ -386,20 +386,30 @@ int main(int argc, char **argv) {
 					 * LEFT/RIGHT move the swatch focus + write the colour
 					 * live; UP/DOWN still navigate the arranger graph
 					 * (chips don't own vertical swatch navigation — there
-					 * are only 8 colours laid out horizontally). */
-					if(isChipExpanded(getSelectedChipChannel())) {
-						int ch = getSelectedChipChannel();
+					 * are only 8 colours laid out horizontally).
+					 *
+					 * Important (review feedback, task 5): when a chip IS
+					 * expanded, the chip owns horizontal nav entirely, so
+					 * skip the navigateArrangerGraph LEFT/RIGHT calls —
+					 * otherwise the same frame would both cycle the swatch
+					 * AND jump to the adjacent chip. UP/DOWN are still
+					 * delegated to the graph because handleExpandedChipInput
+					 * is a no-op for bare vertical arrows. */
+					int bareCh = getSelectedChipChannel();
+					bool chipExpanded = (bareCh >= 0) && isChipExpanded(bareCh);
+					if(chipExpanded) {
 						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-							handleExpandedChipInput(ch, KM_LEFT, false);
+							handleExpandedChipInput(bareCh, KM_LEFT, false);
 						} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-							handleExpandedChipInput(ch, KM_RIGHT, false);
+							handleExpandedChipInput(bareCh, KM_RIGHT, false);
 						}
-					}
-					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						navigateArrangerGraph(KM_LEFT);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						navigateArrangerGraph(KM_RIGHT);
+					} else {
+						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+							navigateArrangerGraph(KM_LEFT);
+						}
+						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+							navigateArrangerGraph(KM_RIGHT);
+						}
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
 						navigateArrangerGraph(KM_UP);
