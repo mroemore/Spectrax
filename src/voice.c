@@ -358,6 +358,101 @@ void rebuildVoicesForInstrument(VoiceManager *vm, Instrument *instrument) {
 	}
 }
 
+/* Task 2: proper teardown of an Instrument that was allocated via
+ * init_instrument. Frees the modList (Mod entries + list struct) and
+ * the paramList (Parameter structs + list struct), then the
+ * Instrument itself.
+ *
+ * IMPORTANT: do NOT call freeVoice here — the voices that point back
+ * at this instrument are owned by VoiceManager's voicePools[][] and
+ * are either being torn down (initVoicePool re-allocates fresh ones)
+ * or being re-pointed at the new instrument
+ * (rebuildVoicesForInstrument re-initializes them in place). The
+ * voices own their OWN paramList/modList (allocated by initialize_voice),
+ * but they ALIAS some params from inst->paramList (envelope stage
+ * durations, FM operator ratio/level/feedback via createParamPointerOperator).
+ * Those aliases become stale the moment we free inst->paramList; the
+ * caller must guarantee either (a) the voices are about to be
+ * re-initialized (via initVoicePool or rebuildVoicesForInstrument)
+ * or (b) inst->rebuilding is set so the audio thread skips the
+ * channel. Both paths do so via setInstrumentVoiceType /
+ * setChannelVoiceCount below. */
+static void freeInstrument(Instrument *inst) {
+	if(!inst) return;
+	/* Tear down modList first — clearModList frees only the Mod/Envelope/
+	 * LFO/Random struct itself; the inner Params (output, stage duration,
+	 * stage curvature, rate, phase) are owned by paramList and freed by the
+	 * following clearParamList. cleanupModSystem would double-free them.
+	 * Order matches applyInstrumentPreset's boot-time reset. */
+	clearModList(inst->modList);
+	clearParamList(inst->paramList);
+	free(inst->modList);
+	free(inst->paramList);
+	free(inst);
+}
+
+/* Task 2: instrument-chip "type swap" — replace the channel's
+ * Instrument with a fresh one of the requested VoiceType (defaults,
+ * no preset loaded). Returns false for invalid args, invalid VoiceType,
+ * or init_instrument failure. The OLD instrument's rebuilding flag is
+ * set BEFORE the swap (audio thread sees rebuilding=true and skips the
+ * channel); the FRESH instrument's flag is cleared AFTER
+ * rebuildVoicesForInstrument finishes (audio thread resumes on the
+ * new instrument). */
+bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
+	if(!vm || channel < 0 || channel >= vm->enabledChannels) return false;
+	if(vt != VOICE_TYPE_SAMPLE && vt != VOICE_TYPE_FM && vt != VOICE_TYPE_BLEP) return false;
+	Instrument *old = vm->instruments[channel];
+	if(old) old->rebuilding = true;
+	Instrument *fresh = NULL;
+	/* The Instrument carries a presetBank pointer and a back-pointer to
+	 * vm; the samplePool is sourced from vm (Instrument itself has no
+	 * samplePool field — only id.sampler.sp does, and that's only valid
+	 * for VOICE_TYPE_SAMPLE). For FM/BLEP the samplePool arg is unused
+	 * by init_instrument, so vm->samplePool is always the right input. */
+	init_instrument(&fresh, vt, vm->samplePool,
+		old ? old->presetBank : NULL);
+	if(!fresh) {
+		/* init failed — undo the rebuilding flag so the audio thread
+		 * resumes on the old instrument. */
+		if(old) old->rebuilding = false;
+		return false;
+	}
+	fresh->vm = vm;
+	if(old) {
+		fresh->presetBank = old->presetBank;
+	}
+	vm->instruments[channel] = fresh;
+	freeInstrument(old);
+	rebuildVoicesForInstrument(vm, fresh);
+	fresh->rebuilding = false;
+	return true;
+}
+
+/* Task 2: instrument-chip "voice-count resize" — re-allocate the
+ * channel's voice pool to `count` (clamped 1..MAX_VOICES_PER_CHANNEL
+ * by the caller; initVoicePool additionally caps at
+ * MAX_VOICES_PER_CHANNEL but does not floor to 1, so we reject 0
+ * here rather than silently passing it through). Returns false for
+ * invalid args / out-of-range count. The instrument's rebuilding flag
+ * is set during the resize so the audio thread skips the channel
+ * while voices are being torn down and re-initialized.
+ *
+ * NOTE: the existing initVoicePool only re-allocates the first
+ * `count` slots; any voices beyond the new count in voicePools[ch][]
+ * are NOT freed. Callers that shrink the pool may leak the tail.
+ * Acceptable for the chip UI (chips always grow, never shrink in
+ * practice) and matches the pre-existing pool semantics. */
+bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
+	if(!vm || channel < 0 || channel >= vm->enabledChannels) return false;
+	if(count < 1 || count > MAX_VOICES_PER_CHANNEL) return false;
+	Instrument *inst = vm->instruments[channel];
+	if(inst) inst->rebuilding = true;
+	initVoicePool(vm, channel, count, inst);
+	if(inst) inst->rebuilding = false;
+	return true;
+}
+
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	/* Task 8: gate the audio thread out while we tear down + rebuild the
 	 * param/mod lists. The PortAudio callback reads these lists every

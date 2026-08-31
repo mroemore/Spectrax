@@ -20,6 +20,13 @@
     } \
 } while (0)
 
+#define ASSERT_FALSE(cond, msg) do { \
+    if ((cond)) { \
+        fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, (msg)); \
+        return 1; \
+    } \
+} while (0)
+
 #define ASSERT_EQ_2(actual, expected) do { \
     long long _a = (long long)(actual); \
     long long _e = (long long)(expected); \
@@ -962,6 +969,69 @@ static int test_loaded_preset_clean_after_save(void) {
     return 0;
 }
 
+/* Task 2: instrument type swap. setInstrumentVoiceType creates a
+ * fresh Instrument of the requested VoiceType, swaps it into the
+ * channel, frees the old instrument (including its modList/paramList),
+ * and rebuilds voices so envelope aliases point at the new params. The
+ * rebuilding flag is set on the OLD instrument before the swap so the
+ * audio thread skips the channel during the teardown, and is cleared
+ * on the FRESH instrument after the voice rebuild completes.
+ *
+ * NOTE: VOICE_TYPE_GRAIN is rejected — only SAMPLE/FM/BLEP are valid
+ * chip types today (GRAIN/SPECTRAL are placeholders in the enum, the
+ * chip UI will not offer them). */
+static int test_set_instrument_voice_type(void) {
+    SamplePool *sp = createSamplePool();
+    WavetablePool *wtp = createWavetablePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Settings s = { .enabledChannels = 1, .defaultVoiceCount = 2, .defaultBPM = 120 };
+    VoiceManager *vm = createVoiceManager(&s, sp, wtp, &pb);
+    ASSERT_TRUE(vm != NULL, "createVoiceManager");
+    ASSERT_TRUE(setInstrumentVoiceType(vm, 0, VOICE_TYPE_FM), "switch to FM");
+    ASSERT_EQ(vm->instruments[0]->voiceType, VOICE_TYPE_FM, "type applied");
+    ASSERT_TRUE(setInstrumentVoiceType(vm, 0, VOICE_TYPE_BLEP), "switch to BLEP");
+    ASSERT_EQ(vm->instruments[0]->voiceType, VOICE_TYPE_BLEP, "type applied 2");
+    ASSERT_FALSE(setInstrumentVoiceType(vm, 0, VOICE_TYPE_GRAIN), "GRAIN rejected");
+    ASSERT_TRUE(vm->voicePools[0][0] != NULL, "voices rebuilt onto new instrument");
+    freeVoiceManager(vm);
+    freeWavetablePool(wtp);
+    freeSamplePool(sp);
+    printf("PASS test_set_instrument_voice_type\n");
+    return 0;
+}
+
+/* Task 2: voice pool resize. setChannelVoiceCount re-allocates the
+ * channel's voice pool (frees existing voices via initVoicePool's
+ * fresh malloc path + rebuildVoicesForInstrument), clamped to
+ * [1, MAX_VOICES_PER_CHANNEL]. The instrument's rebuilding flag is
+ * set during the resize so the audio thread skips the channel while
+ * the voice pool is being torn down and re-built.
+ *
+ * NOTE: freeVoiceManager only frees the voice pool up to voiceCount
+ * entries, so if we tried to grow past MAX_VOICES_PER_CHANNEL the
+ * extra voices would silently leak. The clamp test pins this
+ * contract: an over-the-cap value is rejected, the count is left
+ * unchanged on rejection, and a zero value is also rejected. */
+static int test_set_channel_voice_count(void) {
+    SamplePool *sp = createSamplePool();
+    WavetablePool *wtp = createWavetablePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Settings s = { .enabledChannels = 1, .defaultVoiceCount = 2, .defaultBPM = 120 };
+    VoiceManager *vm = createVoiceManager(&s, sp, wtp, &pb);
+    ASSERT_TRUE(setChannelVoiceCount(vm, 0, 4), "resize to 4");
+    ASSERT_EQ(vm->voiceCount[0], 4, "count applied");
+    ASSERT_FALSE(setChannelVoiceCount(vm, 0, 99), "over-8 rejected");
+    ASSERT_EQ(vm->voiceCount[0], 4, "unchanged on reject");
+    ASSERT_FALSE(setChannelVoiceCount(vm, 0, 0), "zero rejected");
+    freeVoiceManager(vm);
+    freeWavetablePool(wtp);
+    freeSamplePool(sp);
+    printf("PASS test_set_channel_voice_count\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -971,6 +1041,10 @@ int main(void) {
     fails += test_clear_paramlist_frees();
     fails += test_preset_load_rebuilds_voices();
     fails += test_preset_param_survives_apply();
+
+    /* Task 2 — instrument-chip meta primitives */
+    fails += test_set_instrument_voice_type();
+    fails += test_set_channel_voice_count();
 
     /* Task 2 — applyInstrumentPreset fidelity */
     fails += test_apply_preset_writes_fm_op_data();

@@ -295,6 +295,16 @@ void freeVoiceManager(VoiceManager *vm);
  * freshly-allocated Param structs after a runtime preset change. */
 void rebuildVoicesForInstrument(VoiceManager *vm, Instrument *inst);
 Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
+/* Task 2: instrument-chip meta primitives. Both set the channel
+ * instrument's `rebuilding` flag during the swap/resize so the audio
+ * thread skips the channel while params/voices are being torn down
+ * and rebuilt (see Instrument::rebuilding for the audio-thread side).
+ * `setInstrumentVoiceType` swaps the instrument to a fresh one of the
+ * requested VoiceType (defaults, no preset loaded) and frees the old
+ * instrument. `setChannelVoiceCount` re-allocates the channel's voice
+ * pool, clamped to [1, MAX_VOICES_PER_CHANNEL]. */
+bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt);
+bool setChannelVoiceCount(VoiceManager *vm, int channel, int count);
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
 
