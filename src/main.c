@@ -285,6 +285,21 @@ int main(int argc, char **argv) {
 		updateSpectrogramData(&data.spectrogram);
 		updateTimeGraphData(&data.timeGraph);
 		updateBufferScrollerData(&data.bufferScroller);
+		/* Task 3: playhead-follow. While the song is playing, push the
+		 * arranger window so the active playhead row stays in view.
+		 * Without this, scrolling the window away while playing would
+		 * hide the row that's currently audible. We only follow the
+		 * channel-0 playhead; multi-channel playheads can be handled in
+		 * a later task. */
+		if(data.arranger->playing) {
+			int playheadRow = data.arranger->playhead_indices[0];
+			int *vs = &data.arranger->visibleStart;
+			if(playheadRow < *vs) {
+				*vs = playheadRow;
+			} else if(playheadRow >= *vs + ARRANGER_WINDOW_ROWS) {
+				*vs = playheadRow - ARRANGER_WINDOW_ROWS + 1;
+			}
+		}
 		// printf("checking inputs...\n");
 		// Global Navigation Controls
 		if(isKeyJustPressed(appState->inputState, KM_START)) {
@@ -414,17 +429,17 @@ int main(int argc, char **argv) {
 						}
 					} else {
 						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-							navigateArrangerGraph(KM_LEFT);
+							navigateArrangerGraphTo(KM_LEFT);
 						}
 						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-							navigateArrangerGraph(KM_RIGHT);
+							navigateArrangerGraphTo(KM_RIGHT);
 						}
 					}
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
-						navigateArrangerGraph(KM_UP);
+						navigateArrangerGraphTo(KM_UP);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-						navigateArrangerGraph(KM_DOWN);
+						navigateArrangerGraphTo(KM_DOWN);
 					}
 				}
 				}

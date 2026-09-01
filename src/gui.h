@@ -70,7 +70,6 @@ typedef struct {
 } InstrumentGui;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
-void navigateArrangerGraph(int keymapping);
 void arrangerGraphControlInput(int keymapping);
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep);
 void navigatePatternGraph(int keymapping);
@@ -97,16 +96,6 @@ void markThemeLoaded(void);
 bool isThemeLoaded(void);
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
-
-typedef struct {
-	GuiNode base;
-	Arranger *arranger;
-	PatternList *patternList;
-	int grid_padding;
-	int iconx;
-	int icony;
-	int border_size;
-} ArrangerGuiNode;
 
 /* Task 3: per-instrument chip row above the arranger grid. Drawn for
  * each enabled channel; bg colour comes from the per-channel label
@@ -160,6 +149,35 @@ void scrollArrangerWindow(Arranger *a, int delta);
  * range. Useful for nav tests that need to assert "RIGHT from row
  * r went to the cell on the right", without walking the tree. */
 GuiNode *getArrangerRowCell(int rowIdx, int ch);
+
+/* Task 3 (arranger window rework): pure helper — pick a
+ * `visibleStart` that keeps song row `row` somewhere inside the
+ * rendered window [visibleStart, visibleStart + ARRANGER_WINDOW_ROWS).
+ * Clamps to [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. Used by
+ * the playhead-follow rule in main.c's main loop. NULL `a` is a
+ * no-op (returns 0) — keeps the function safe to call before init. */
+int arrangerWindowStart(Arranger *a, int row);
+
+/* Task 3: copy the (ch, row) of agui->selected into the Arranger
+ * state (selected_x/selected_y + visibleStart). Falls back to the
+ * existing selected_x/selected_y if the current selection isn't a
+ * cell (chip row / preset row). NULL `a` is a no-op. */
+void syncArrangerSelectionTo(Arranger *a, Graph *agui);
+
+/* Task 3: navigateArrangerGraphTo is the geometry-based nav pipeline.
+ * Runs navigateGraphRefined on `agui`, then syncArrangerSelectionTo so
+ * arranger state always matches the visual cursor. Edge-scroll is
+ * folded into the syncing rule: when the selection leaves the window,
+ * visibleStart shifts to keep the row in view. NULL `agui` is a no-op.
+ * The legacy per-node navigateArrangerGuiNode + placeholder
+ * navigateArrangerGraph are deleted. */
+void navigateArrangerGraphTo(int keymapping);
+
+/* Task 3: test seam. The arranger nav pipeline reads the file-static
+ * g_arranger + agui; tests need to seed both without running
+ * createArrangerGraph. Stores the pointers — g_arranger is also
+ * written by createArrangerGraph in production. */
+void setArrangerNavState(Arranger *a, Graph *agui);
 
 /* Task 4: chip input routing. getSelectedChipChannel() returns the
  * channel of the currently-selected chip in agui (or -1 if the
@@ -337,8 +355,6 @@ void guiBuildLoadListLayer(InstrumentGui *ig);
 bool guiPopOverlay(InstrumentGui *ig);
 SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
 void drawSampleWaveformGuiNode(void *self);
-ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList);
-bool navigateArrangerGuiNode(void *self, int keymapping);
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 void drawValueDisplay(int x, int y, int w, int h, char *text);
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
@@ -358,7 +374,6 @@ void removeSelectedEnvelope(void);
 Instrument *getSelectedInstInstrument(void);
 
 void clearBg();
-void drawArrangerGuiNode(void *self);
 void drawSongMinimapGui(void *self);
 void InitGUI(void);
 void DrawGUI(int currentScene);

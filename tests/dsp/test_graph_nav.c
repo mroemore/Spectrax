@@ -22,6 +22,10 @@ struct VoiceManager;
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
 bool isInstChipNode(const GuiNode *n);
 
+/* Task 3: forward-decl setArrangerNavState (gui.h declares it after
+ * the chip section). The symbol resolves from gui.c via core_lib. */
+void setArrangerNavState(Arranger *a, Graph *agui);
+
 /* Task 1 (arranger window rework): cell node primitives. The creator
  * takes an Arranger* + channel + row; the recogniser + coord getter let
  * later nav tasks identify which song cell is currently selected without
@@ -39,6 +43,28 @@ void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
  * zero-init Arranger to keep the test free of raylib/voice init). */
 void scrollArrangerWindow(Arranger *a, int delta);
 GuiNode *getArrangerRowCell(int rowIdx, int ch);
+
+/* Task 3 (arranger window rework): per-axis window offset for the
+ * playhead-follow rule. Returns the visibleStart value that aligns
+ * the cell at song-row `row` somewhere inside the rendered window
+ * (i.e. visibleStart such that row - visibleStart is in
+ * [0, ARRANGER_WINDOW_ROWS)). The pure-state test calls it on a
+ * zero-init Arranger to keep the test free of raylib/voice init —
+ * the function must not dereference graph state. */
+int arrangerWindowStart(Arranger *a, int row);
+
+/* Task 3 (arranger window rework): syncArrangerSelectionTo writes
+ * arranger->cursorX/cursorY + visibleStart so the cursor matches the
+ * currently-selected GuiNode in the arranger graph. The pure-state
+ * test exercises it with a built graph to confirm the cursor + window
+ * both move together. */
+void syncArrangerSelectionTo(Arranger *a, Graph *agui);
+
+/* Task 3 (arranger window rework): navigateArrangerGraphTo combines
+ * navigateGraphRefined (geometry-based nav) with syncArrangerSelectionTo
+ * + edge-scroll so the arranger state always matches the visual cursor.
+ * The pure-state test exercises it against a built graph. */
+void navigateArrangerGraphTo(int keymapping);
 
 /* ASSERT_* macros — verbatim copy of the style used in
  * tests/dsp/test_modsystem.c (same arity-dispatch trick, same
@@ -424,9 +450,9 @@ static int test_chip_node_is_drawable(void) {
 }
 
 /* Regression: initGuiNode left `callback` uninitialised (malloc garbage).
- * createArrangerGuiNode then had a non-NULL garbage callback pointer,
- * and arrangerGraphControlInput(KM_*) called it -> SEGV on EDIT+arrows
- * over the grid. initGuiNode must always NULL the callback. */
+ * The legacy createArrangerGuiNode then had a non-NULL garbage callback
+ * pointer, and arrangerGraphControlInput(KM_*) called it -> SEGV on
+ * EDIT+arrows over the grid. initGuiNode must always NULL the callback. */
 static int test_init_gui_node_null_callback(void) {
     GuiNode n;
     ASSERT_TRUE(initGuiNode(&n, 0, 0, 50, 50, 0, na_vertical, "probe", false, false), "init ok");
@@ -498,6 +524,152 @@ static int test_arranger_cell_node(void) {
     return 0;
 }
 
+/* ----- Task 3 (arranger window rework): edge-scroll + selection sync -----
+ *
+ * The three new tests exercise the per-frame nav pipeline:
+ *   - arrangerWindowStart(a, row): pure-state clamp helper used by the
+ *     main loop playhead-follow rule.
+ *   - syncArrangerSelectionTo(a, agui): walks the current GuiNode
+ *     selection, reads (ch, row) off it, writes cursorX/cursorY +
+ *     visibleStart.
+ *   - navigateArrangerGraphTo(KM_*): runs navigateGraphRefined, then
+ *     syncArrangerSelectionTo so the Arranger state always matches the
+ *     visual cursor.
+ *
+ * These functions live in gui.c and take raylib-coupled types, but the
+ * test never invokes a draw / raylib call so it stays header-light. */
+
+/* arrangerWindowStart must clamp to [0, MAX_SONG_LENGTH - 8] and pick
+ * the largest visibleStart that still keeps `row` inside the window.
+ * No graph is built — the function is pure arithmetic on the Arranger.
+ */
+static int test_arranger_window_start(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.visibleStart = 0;
+    /* row well inside the window — return the current visibleStart */
+    ASSERT_EQ(arrangerWindowStart(&a, 3), 0, "row 3 stays at visibleStart 0");
+    /* row at the bottom edge — visibleStart must shift so row is still visible */
+    ASSERT_EQ(arrangerWindowStart(&a, 8), 1, "row 8 scrolls visibleStart to 1");
+    /* row past the bottom — anchor so the row is at the bottom edge of the window */
+    int maxStart = MAX_SONG_LENGTH - 8;
+    ASSERT_EQ(arrangerWindowStart(&a, 100), 100 - 8 + 1, "row 100 anchors at bottom edge");
+    ASSERT_EQ(arrangerWindowStart(&a, maxStart + 100), maxStart, "way-past clamps at max");
+    /* visibleStart already past row — pull window back so row 0 is visible */
+    a.visibleStart = maxStart;
+    ASSERT_EQ(arrangerWindowStart(&a, 0), 0, "row 0 pulls window back to 0");
+    printf("PASS test_arranger_window_start\n");
+    return 0;
+}
+
+/* syncArrangerSelectionTo writes the cursor + visibleStart from the
+ * currently-selected GuiNode. We build a minimal arranger graph by
+ * hand (no createArrangerGraph — that needs raylib) with two cell
+ * nodes on a single channel at song rows 0 and 5. After nav selects
+ * the (ch=0, row=5) cell, the sync must write selected_x=0, selected_y=5,
+ * visibleStart=0 (row 5 is inside the window).
+ *
+ * Uses the Arranger struct's existing selected_x/selected_y fields
+ * rather than cursorX/cursorY (the Arranger struct keeps the legacy
+ * names; syncArrangerSelectionTo is the new syncing entry point that
+ * writes them from the visual selection).
+ */
+static int test_sync_arranger_selection(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.enabledChannels = 2;
+    a.visibleStart = 0;
+    a.selected_x = 0;
+    a.selected_y = 0;
+    for(int c = 0; c < 2; c++) for(int r = 0; r < 12; r++) a.song[c][r] = -1;
+    /* build a tiny graph: root -> col -> row0, row1 */
+    Graph *g = createGraph(na_vertical);
+    GuiNode *col = createGuiNode(0, 0, 100, 100, 2, na_vertical, "gcol", false, false);
+    GuiNode *row0 = createGuiNode(0, 0, 100, 20, 2, na_horizontal, "row0", false, false);
+    GuiNode *row1 = createGuiNode(0, 50, 100, 20, 2, na_horizontal, "row1", false, false);
+    GuiNode *c0_0 = createArrangerCellGuiNode(0, 0, 50, 20, true, &a, 0, 0);
+    GuiNode *c0_1 = createArrangerCellGuiNode(50, 0, 50, 20, true, &a, 1, 0);
+    GuiNode *c1_0 = createArrangerCellGuiNode(0, 50, 50, 20, true, &a, 0, 5);
+    GuiNode *c1_1 = createArrangerCellGuiNode(50, 50, 50, 20, true, &a, 1, 5);
+    appendItem(row0, c0_0, 1);
+    appendItem(row0, c0_1, 1);
+    appendItem(row1, c1_0, 1);
+    appendItem(row1, c1_1, 1);
+    appendItem(col, row0, 1);
+    appendItem(col, row1, 1);
+    appendItem(g->root, col, 1);
+    /* select the (ch=0, row=5) cell — bottom-left of the grid */
+    g->selected = c1_0;
+    syncArrangerSelectionTo(&a, g);
+    ASSERT_EQ(a.selected_x, 0, "selected_x synced to selected cell channel");
+    ASSERT_EQ(a.selected_y, 5, "selected_y synced to selected cell row");
+    ASSERT_EQ(a.visibleStart, 0, "visibleStart stays 0 (row 5 inside window)");
+    /* now select the (ch=1, row=5) cell — right column same row */
+    g->selected = c1_1;
+    syncArrangerSelectionTo(&a, g);
+    ASSERT_EQ(a.selected_x, 1, "selected_x tracks new selection");
+    ASSERT_EQ(a.selected_y, 5, "selected_y still 5");
+    /* select a cell with row well past visibleStart + 8 — visibleStart must shift */
+    GuiNode *far_cell = createArrangerCellGuiNode(0, 0, 50, 20, true, &a, 0, 12);
+    g->selected = far_cell;
+    syncArrangerSelectionTo(&a, g);
+    ASSERT_EQ(a.selected_x, 0, "selected_x tracks far cell");
+    ASSERT_EQ(a.selected_y, 12, "selected_y tracks far cell");
+    ASSERT_TRUE(a.visibleStart > 0, "visibleStart shifts to keep row 12 visible");
+    free(far_cell->name); freeList(far_cell->items); freeList(far_cell->itemWeights); free(far_cell);
+    teardown_graph(g);
+    printf("PASS test_sync_arranger_selection\n");
+    return 0;
+}
+
+/* navigateArrangerGraphTo exercises the wiring without raylib. We
+ * stub g_arranger + agui via a local Graph* and check that nav
+ * selects a cell node + syncs the cursor. The test calls the global
+ * pipeline through a thin harness: a Graph is built with one cell,
+ * g_arranger / agui are pointed at it, then a single DOWN is fired.
+ * After it returns, g_arranger->selected_x/Y + visibleStart must
+ * reflect the selected cell's coords.
+ *
+ * Implementation note: navigateArrangerGraphTo reads the file-static
+ * g_arranger + agui, so the test must seed those before calling. We
+ * expose a setter for the test to use — see gui.h's
+ * setArrangerNavState(). */
+static int test_navigate_arranger_graph_to(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.enabledChannels = 2;
+    a.visibleStart = 0;
+    a.selected_x = 0;
+    a.selected_y = 0;
+    for(int c = 0; c < 2; c++) for(int r = 0; r < 12; r++) a.song[c][r] = -1;
+    Graph *g = createGraph(na_vertical);
+    GuiNode *col = createGuiNode(0, 0, 100, 100, 2, na_vertical, "gcol", false, false);
+    GuiNode *row0 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "row0", false, false);
+    GuiNode *c0_0 = createArrangerCellGuiNode(0, 0, 100, 100, true, &a, 0, 0);
+    GuiNode *c0_1 = createArrangerCellGuiNode(0, 0, 100, 100, true, &a, 1, 0);
+    appendItem(row0, c0_0, 1);
+    appendItem(row0, c0_1, 1);
+    appendItem(col, row0, 1);
+    appendItem(g->root, col, 1);
+    /* point the global nav state at our graph + arranger */
+    setArrangerNavState(&a, g);
+    /* First call seeds the initial selection (no prior selection → picks
+     * first selectable, c0_0). Second call actually moves RIGHT to c0_1. */
+    navigateArrangerGraphTo(KM_RIGHT);
+    navigateArrangerGraphTo(KM_RIGHT);
+    ASSERT_TRUE(g->selected != NULL, "after RIGHT, selection is set");
+    ASSERT_TRUE(isArrangerCellNode(g->selected), "selection is a cell");
+    int cx, cy;
+    getArrangerCellCoords(g->selected, &cx, &cy);
+    ASSERT_EQ(cx, 1, "after RIGHT: channel = 1");
+    ASSERT_EQ(a.selected_x, 1, "selected_x synced to selected cell channel");
+    ASSERT_EQ(a.selected_y, 0, "selected_y synced to selected cell row");
+    navigateArrangerGraphTo(KM_LEFT);
+    getArrangerCellCoords(g->selected, &cx, &cy);
+    ASSERT_EQ(cx, 0, "after LEFT: channel = 0");
+    ASSERT_EQ(a.selected_x, 0, "selected_x back to 0");
+    teardown_graph(g);
+    printf("PASS test_navigate_arranger_graph_to\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
@@ -515,6 +687,9 @@ int main(void) {
     fails += test_init_gui_node_null_callback();
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
+    fails += test_arranger_window_start();
+    fails += test_sync_arranger_selection();
+    fails += test_navigate_arranger_graph_to();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;

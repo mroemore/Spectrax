@@ -59,7 +59,6 @@ Font pixelFont;
 ColourScheme cs;
 static FontConfig gFontConfig;
 static bool gThemeLoaded;
-SpriteSheet *instrumentIcons;
 Texture2D dial;
 Texture2D btnOn;
 Texture2D btnOff;
@@ -212,7 +211,6 @@ void InitGUI(void) {
 	textFont = LoadFont("resources/fonts/setback.png");
 	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
-	instrumentIcons = createSpriteSheet("resources/images/synthicon_sheet.png", 64, 64);
 	Image dialimg = LoadImage("resources/images/dial2.png");
 	Image btnimg1 = LoadImage("resources/images/btn-on-s.png");
 	Image btnimg2 = LoadImage("resources/images/btn-off-s.png");
@@ -295,9 +293,6 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	appendItem(songControls, pad2, 8);
 
 	GuiNode *margin2 = createNamedBlankGuiNode("Marge!");
-	ArrangerGuiNode *agn = createArrangerGuiNode(0, 0, SCREEN_W * 0.75, SCREEN_H, 5, na_vertical, "arr", true, a, pl);
-	GuiNode *gn = (GuiNode *)agn;
-	agui->selected = gn;
 	appendItem(agui->root, pad1, 1);
 
 	appendItem(arrWrap, songControls, 1);
@@ -543,10 +538,6 @@ void setSongMinimapGui(SongMinimapGui *smg) {
 	smgui = smg;
 }
 
-void navigateArrangerGraph(int keymapping) {
-	navigateGraph(agui, keymapping);
-}
-
 void arrangerGraphControlInput(int keymapping) {
 	if(!agui || !agui->selected || !agui->selected->callback) {
 		return;
@@ -577,7 +568,7 @@ SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, i
 	SampleWaveformGuiNode *swgn = malloc(sizeof(SampleWaveformGuiNode));
 	GuiNode *gn = (GuiNode *)swgn;
 	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, selected)) {
-		printf("ArrangerGuiNode init problem, returning NULL.\n");
+		printf("SampleWaveformGuiNode init problem, returning NULL.\n");
 		return NULL;
 	}
 
@@ -618,47 +609,86 @@ void drawSampleWaveformGuiNode(void *self) {
 	DrawTextEx(pixelFont, swgn->instrument->id.sampler.sample->name, (Vector2){ gn->x + gn->padding, gn->y + gn->padding }, 12, 2, swgn->wfAltColour);
 }
 
-ArrangerGuiNode *createArrangerGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Arranger *arranger, PatternList *patternList) {
-	ArrangerGuiNode *agn = malloc(sizeof(ArrangerGuiNode));
-	GuiNode *gn = (GuiNode *)agn;
-	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, selected)) {
-		printf("ArrangerGuiNode init problem, returning NULL.\n");
-		return NULL;
+/* Task 3: pure helper — pick a `visibleStart` that keeps song row
+ * `row` somewhere inside the rendered window [visibleStart,
+ * visibleStart + ARRANGER_WINDOW_ROWS). Clamps to
+ * [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. NULL `a` is a
+ * no-op (returns 0) so main.c's playhead-follow is safe to call
+ * before the arranger is initialised. */
+int arrangerWindowStart(Arranger *a, int row) {
+	if(!a) {
+		return 0;
 	}
-	gn->draw = drawArrangerGuiNode;
-	gn->drawable = true;
-	gn->customNav = navigateArrangerGuiNode;
-	agn->grid_padding = 5;
-	agn->arranger = arranger;
-
-	agn->patternList = patternList;
-	agn->border_size = 3;
-	agn->iconx = gn->x;
-	agn->icony = gn->y - 30;
-	return agn;
+	int maxStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
+	if(maxStart < 0) {
+		maxStart = 0;
+	}
+	/* If the row is at or above the window top, anchor the window so
+	 * the row lands at the top (preserves the "scroll to follow" rule
+	 * when the playhead races forward). If the row is below the
+	 * window bottom, shift the window down so the row lands at the
+	 * bottom (still visible, not hidden under the playhead). */
+	int top = a->visibleStart;
+	if(row < top) {
+		top = row;
+	} else if(row >= top + ARRANGER_WINDOW_ROWS) {
+		top = row - ARRANGER_WINDOW_ROWS + 1;
+	}
+	if(top < 0) {
+		top = 0;
+	}
+	if(top > maxStart) {
+		top = maxStart;
+	}
+	return top;
 }
 
-bool navigateArrangerGuiNode(void *self, int keymapping) {
-	ArrangerGuiNode *agn = (ArrangerGuiNode *)self;
-
-	bool navSuccess = false;
-	switch(keymapping) {
-		case KM_LEFT:
-			navSuccess = selectArrangerCell(agn->arranger, 0, -1, 0);
-			break;
-		case KM_RIGHT:
-			navSuccess = selectArrangerCell(agn->arranger, 0, 1, 0);
-			break;
-		case KM_UP:
-			navSuccess = selectArrangerCell(agn->arranger, 0, 0, -1);
-			break;
-		case KM_DOWN:
-			navSuccess = selectArrangerCell(agn->arranger, 0, 0, 1);
-			break;
-		default:
-			break;
+/* Task 3: copy the (ch, row) of agui->selected into the Arranger
+ * state, and re-aim visibleStart so the row stays visible. Falls back
+ * to the existing selected_x/selected_y if the selection isn't a cell
+ * (chip row, preset row). NULL `a` is a no-op. */
+void syncArrangerSelectionTo(Arranger *a, Graph *agui) {
+	if(!a || !agui || !agui->selected) {
+		return;
 	}
-	return navSuccess;
+	int ch, row;
+	if(isArrangerCellNode(agui->selected)) {
+		getArrangerCellCoords(agui->selected, &ch, &row);
+		a->selected_x = ch;
+		a->selected_y = row;
+	} else {
+		ch = a->selected_x;
+		row = a->selected_y;
+	}
+	a->visibleStart = arrangerWindowStart(a, row);
+}
+
+/* Task 3: setArrangerNavState seeds the file-static g_arranger +
+ * agui from outside gui.c. Used by tests so they can drive
+ * navigateArrangerGraphTo without spinning up the full
+ * createArrangerGraph raylib path. */
+void setArrangerNavState(Arranger *a, Graph *navGraph) {
+	g_arranger = a;
+	agui = navGraph;
+}
+
+/* Task 3: navigateArrangerGraphTo is the geometry-based nav pipeline.
+ * Runs navigateGraphRefined on `agui` (geometry-based nav that
+ * understands the cell-grid layout, so LEFT/RIGHT across rows
+ * wraps around correctly), then syncArrangerSelectionTo so the
+ * arranger state always mirrors the visual cursor. Edge-scroll is
+ * folded into syncArrangerSelectionTo: when the selected cell's
+ * row leaves the window, visibleStart shifts so it stays visible.
+ * NULL agui is a no-op — keep the call site in main.c's input
+ * handler safe when no arranger graph is built. The legacy
+ * per-node navigateArrangerGuiNode + placeholder
+ * navigateArrangerGraph are deleted. */
+void navigateArrangerGraphTo(int keymapping) {
+	if(!agui) {
+		return;
+	}
+	navigateGraphRefined(agui, keymapping);
+	syncArrangerSelectionTo(g_arranger, agui);
 }
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
@@ -2893,63 +2923,6 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 		appendBlankNode(instGraph->root, 4);
 	}
 	return instGraph;
-}
-
-void drawArrangerGuiNode(void *self) {
-	ArrangerGuiNode *aGui = (ArrangerGuiNode *)self;
-	Arranger *arranger = (Arranger *)aGui->arranger;
-	char *cellText = malloc(sizeof(char) * 4);
-	GuiNode *gn = (GuiNode *)aGui;
-	int tmpx = gn->x;
-	int tmpy = gn->y;
-	int cellW = (gn->w - aGui->grid_padding * arranger->enabledChannels) / arranger->enabledChannels;
-	int cellH = cellW;
-	int cursorx = tmpx + arranger->selected_x * (cellW + aGui->grid_padding);
-	int cursory = tmpy + arranger->selected_y * (cellH + aGui->grid_padding);
-
-	for(int i = 0; i < arranger->enabledChannels; i++) {
-		switch(arranger->vm->instruments[i]->voiceType) {
-			case VOICE_TYPE_BLEP:
-				drawSprite(instrumentIcons, 0, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
-				break;
-			case VOICE_TYPE_SAMPLE:
-				drawSprite(instrumentIcons, 1, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
-				break;
-			case VOICE_TYPE_FM:
-				drawSprite(instrumentIcons, 2, tmpx + i * (cellW + aGui->grid_padding), tmpy, cellW, cellH);
-				break;
-			default:
-				break;
-		}
-	}
-
-	tmpy += cellH + aGui->grid_padding;
-	cursory += cellH + aGui->grid_padding;
-	/* The cell cursor is only drawn while the grid itself is the focused
-	 * graph node — selecting the tempo/swing controls hides it. */
-	if(gn->selected) {
-		DrawRectangle(cursorx - aGui->border_size, cursory - aGui->border_size, cellW + (aGui->border_size * 2), cellH + (aGui->border_size * 2), cs.outlineColour);
-	}
-	int fontSize = cellW / 3;
-	for(int i = 0; i < arranger->enabledChannels; i++) {
-		// int px = i % arranger->enabledChannels;
-		int newx = tmpx + (i * (cellW + aGui->grid_padding));
-		for(int j = 0; j < MAX_SONG_LENGTH; j++) {
-			int newy = tmpy + (j * (cellH + aGui->grid_padding));
-			if(arranger->song[i][j] > -1) {
-				sprintf(cellText, "%02i", arranger->song[i][j]);
-				if(arranger->playhead_indices[i] == j && arranger->playing) {
-					DrawRectangle(newx, newy, cellW, cellH, cs.arrangerPlayhead);
-				} else {
-					DrawRectangle(newx, newy, cellW, cellH, cs.defaultCell);
-				}
-				DrawTextEx(pixelFont, cellText, (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, cs.arrangerCellText);
-			} else {
-				DrawRectangle(newx, newy, cellW, cellH, cs.blankCell);
-				DrawTextEx(pixelFont, "--", (Vector2){ newx + fontSize, newy + fontSize }, fontSize, 1, cs.arrangerCellText);
-			}
-		}
-	}
 }
 
 void drawSongMinimapGui(void *self) {

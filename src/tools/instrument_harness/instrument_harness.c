@@ -1259,17 +1259,17 @@ static void handleArrangerInput(paTestData *data, ApplicationState *appState) {
 			}
 		} else {
 			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-				navigateArrangerGraph(KM_LEFT);
+				navigateArrangerGraphTo(KM_LEFT);
 			}
 			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-				navigateArrangerGraph(KM_RIGHT);
+				navigateArrangerGraphTo(KM_RIGHT);
 			}
 		}
 		if(isKeyJustPressed(appState->inputState, KM_UP)) {
-			navigateArrangerGraph(KM_UP);
+			navigateArrangerGraphTo(KM_UP);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-			navigateArrangerGraph(KM_DOWN);
+			navigateArrangerGraphTo(KM_DOWN);
 		}
 	}
 }
