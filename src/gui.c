@@ -1129,10 +1129,33 @@ typedef struct {
 } ArrangerCellGuiNode;
 
 static void drawArrangerCellGuiNode(void *self) {
-	GuiNode *n = (GuiNode *)self;
-	Color fill = n->selected ? cs.selectedCell : cs.defaultCell;
-	DrawRectangle(n->x, n->y, n->w, n->h, fill);
-	DrawRectangleLines(n->x, n->y, n->w, n->h, cs.outlineColour);
+	ArrangerCellGuiNode *cell = (ArrangerCellGuiNode *)self;
+	if(cell->arranger == NULL) {
+		return;
+	}
+	GuiNode *gn = &cell->base;
+	Arranger *a = cell->arranger;
+	Color bg;
+	if(a->playhead_indices[cell->ch] == cell->row && a->playing) {
+		bg = cs.arrangerPlayhead;
+	} else if(a->song[cell->ch][cell->row] > -1) {
+		bg = cs.defaultCell;
+	} else {
+		bg = cs.blankCell;
+	}
+	DrawRectangle(gn->x, gn->y, gn->w, gn->h, bg);
+	int fs = (gn->h / 3 > 6) ? gn->h / 3 : 6;
+	char buf[8];
+	if(a->song[cell->ch][cell->row] > -1) {
+		snprintf(buf, sizeof(buf), "%02i", a->song[cell->ch][cell->row]);
+	} else {
+		snprintf(buf, sizeof(buf), "--");
+	}
+	int tw = MeasureText(buf, fs);
+	DrawTextEx(pixelFont, buf, (Vector2){ gn->x + (gn->w - tw) / 2, gn->y + (gn->h - fs) / 2 }, fs, 1, cs.arrangerCellText);
+	if(gn->selected) {
+		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.outlineColour);
+	}
 }
 
 bool isArrangerCellNode(const GuiNode *n) {
