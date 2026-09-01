@@ -143,6 +143,14 @@ void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
  * graph. */
 void scrollArrangerWindow(Arranger *a, int delta);
 
+/* Task 3 (arranger window rework): jump the visible window to the
+ * absolute song row `targetStart` (clamped to [0,
+ * MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]). Same graph retarget as
+ * scrollArrangerWindow but driven by an absolute target instead of a
+ * delta. Used by main.c's playhead-follow rule so the rendered cells
+ * track the playhead without losing the user's focus cell. */
+void scrollArrangerWindowTo(Arranger *a, int targetStart);
+
 /* Task 2: read-only accessor for the cell GuiNode at the given
  * (visible-row, channel) in the currently-built arranger graph.
  * Returns NULL if no graph is built or (rowIdx, ch) is out of
@@ -150,34 +158,27 @@ void scrollArrangerWindow(Arranger *a, int delta);
  * r went to the cell on the right", without walking the tree. */
 GuiNode *getArrangerRowCell(int rowIdx, int ch);
 
-/* Task 3 (arranger window rework): pure helper — pick a
- * `visibleStart` that keeps song row `row` somewhere inside the
- * rendered window [visibleStart, visibleStart + ARRANGER_WINDOW_ROWS).
- * Clamps to [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. Used by
- * the playhead-follow rule in main.c's main loop. NULL `a` is a
- * no-op (returns 0) — keeps the function safe to call before init. */
-int arrangerWindowStart(Arranger *a, int row);
+/* Task 3: copy the (ch, row) of g->selected into the Arranger
+ * state (selected_x/selected_y) AND fire the selection callbacks
+ * (onCellSelect + onPatternSelection) so the pattern screen and the
+ * app state follow arranger navigation. Falls back to the existing
+ * selected_x/selected_y if the current selection isn't a cell (chip
+ * row / preset row). Does NOT re-aim visibleStart; that is the job
+ * of scrollArrangerWindow / scrollArrangerWindowTo. NULL guards
+ * make every path a no-op. */
+void syncArrangerSelectionTo(Graph *g, Arranger *a);
 
-/* Task 3: copy the (ch, row) of agui->selected into the Arranger
- * state (selected_x/selected_y + visibleStart). Falls back to the
- * existing selected_x/selected_y if the current selection isn't a
- * cell (chip row / preset row). NULL `a` is a no-op. */
-void syncArrangerSelectionTo(Arranger *a, Graph *agui);
+/* Task 3: geometry-based nav pipeline. Runs navigateGraphRefined on
+ * `g`, then edge-scrolls `a`'s visible window if the resulting
+ * selection lands at the top/bottom row (UP at top scrolls back,
+ * DOWN at bottom scrolls forward), and finally syncs selection +
+ * callbacks. NULL `g` is a no-op. */
+void navigateArrangerGraphTo(Graph *g, Arranger *a, int keymapping);
 
-/* Task 3: navigateArrangerGraphTo is the geometry-based nav pipeline.
- * Runs navigateGraphRefined on `agui`, then syncArrangerSelectionTo so
- * arranger state always matches the visual cursor. Edge-scroll is
- * folded into the syncing rule: when the selection leaves the window,
- * visibleStart shifts to keep the row in view. NULL `agui` is a no-op.
- * The legacy per-node navigateArrangerGuiNode + placeholder
- * navigateArrangerGraph are deleted. */
-void navigateArrangerGraphTo(int keymapping);
-
-/* Task 3: test seam. The arranger nav pipeline reads the file-static
- * g_arranger + agui; tests need to seed both without running
- * createArrangerGraph. Stores the pointers — g_arranger is also
- * written by createArrangerGraph in production. */
-void setArrangerNavState(Arranger *a, Graph *agui);
+/* Task 3: thin wrapper around navigateArrangerGraphTo using the
+ * file-static g_arranger + agui. Kept so main.c + instrument_harness.c
+ * don't have to know about the graph plumbing. */
+void navigateArrangerGraph(int keymapping);
 
 /* Task 4: chip input routing. getSelectedChipChannel() returns the
  * channel of the currently-selected chip in agui (or -1 if the

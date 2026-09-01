@@ -609,86 +609,69 @@ void drawSampleWaveformGuiNode(void *self) {
 	DrawTextEx(pixelFont, swgn->instrument->id.sampler.sample->name, (Vector2){ gn->x + gn->padding, gn->y + gn->padding }, 12, 2, swgn->wfAltColour);
 }
 
-/* Task 3: pure helper — pick a `visibleStart` that keeps song row
- * `row` somewhere inside the rendered window [visibleStart,
- * visibleStart + ARRANGER_WINDOW_ROWS). Clamps to
- * [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. NULL `a` is a
- * no-op (returns 0) so main.c's playhead-follow is safe to call
- * before the arranger is initialised. */
-int arrangerWindowStart(Arranger *a, int row) {
-	if(!a) {
-		return 0;
-	}
-	int maxStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
-	if(maxStart < 0) {
-		maxStart = 0;
-	}
-	/* If the row is at or above the window top, anchor the window so
-	 * the row lands at the top (preserves the "scroll to follow" rule
-	 * when the playhead races forward). If the row is below the
-	 * window bottom, shift the window down so the row lands at the
-	 * bottom (still visible, not hidden under the playhead). */
-	int top = a->visibleStart;
-	if(row < top) {
-		top = row;
-	} else if(row >= top + ARRANGER_WINDOW_ROWS) {
-		top = row - ARRANGER_WINDOW_ROWS + 1;
-	}
-	if(top < 0) {
-		top = 0;
-	}
-	if(top > maxStart) {
-		top = maxStart;
-	}
-	return top;
-}
-
-/* Task 3: copy the (ch, row) of agui->selected into the Arranger
- * state, and re-aim visibleStart so the row stays visible. Falls back
- * to the existing selected_x/selected_y if the selection isn't a cell
- * (chip row, preset row). NULL `a` is a no-op. */
-void syncArrangerSelectionTo(Arranger *a, Graph *agui) {
-	if(!a || !agui || !agui->selected) {
+/* Task 3: copy the (ch, row) of g->selected into the Arranger
+ * state (selected_x/selected_y) and fire the selection callbacks
+ * (onCellSelect + onPatternSelection) so the pattern screen + the
+ * app state follow arranger navigation. Falls back to the existing
+ * selected_x/selected_y if the selection isn't a cell (chip row /
+ * preset row). Does NOT re-aim visibleStart — that's the job of
+ * scrollArrangerWindow / scrollArrangerWindowTo / the edge-scroll
+ * branch in navigateArrangerGraphTo. NULL guards make every path
+ * a no-op. */
+void syncArrangerSelectionTo(Graph *g, Arranger *a) {
+	if(!g || !g->selected || !a) {
 		return;
 	}
-	int ch, row;
-	if(isArrangerCellNode(agui->selected)) {
-		getArrangerCellCoords(agui->selected, &ch, &row);
-		a->selected_x = ch;
-		a->selected_y = row;
-	} else {
-		ch = a->selected_x;
-		row = a->selected_y;
+	if(isArrangerCellNode(g->selected)) {
+		int x = 0;
+		int y = 0;
+		getArrangerCellCoords(g->selected, &x, &y);
+		a->selected_x = x;
+		a->selected_y = y;
+		int cell[2] = { x, y };
+		if(a->onCellSelect.f) {
+			a->onCellSelect.f(a->onCellSelect.appstateRef, cell);
+		}
+		int patternIndex = a->song[x][y];
+		if(a->onPatternSelection.f) {
+			a->onPatternSelection.f(a->onPatternSelection.appstateRef, &patternIndex);
+		}
 	}
-	a->visibleStart = arrangerWindowStart(a, row);
 }
 
-/* Task 3: setArrangerNavState seeds the file-static g_arranger +
- * agui from outside gui.c. Used by tests so they can drive
- * navigateArrangerGraphTo without spinning up the full
- * createArrangerGraph raylib path. */
-void setArrangerNavState(Arranger *a, Graph *navGraph) {
-	g_arranger = a;
-	agui = navGraph;
-}
-
-/* Task 3: navigateArrangerGraphTo is the geometry-based nav pipeline.
- * Runs navigateGraphRefined on `agui` (geometry-based nav that
- * understands the cell-grid layout, so LEFT/RIGHT across rows
- * wraps around correctly), then syncArrangerSelectionTo so the
- * arranger state always mirrors the visual cursor. Edge-scroll is
- * folded into syncArrangerSelectionTo: when the selected cell's
- * row leaves the window, visibleStart shifts so it stays visible.
- * NULL agui is a no-op — keep the call site in main.c's input
- * handler safe when no arranger graph is built. The legacy
- * per-node navigateArrangerGuiNode + placeholder
- * navigateArrangerGraph are deleted. */
-void navigateArrangerGraphTo(int keymapping) {
-	if(!agui) {
+/* Task 3: geometry-based nav pipeline. Runs navigateGraphRefined on
+ * `g` (geometry-based nav that understands the cell-grid layout, so
+ * LEFT/RIGHT across rows wraps around correctly), then edge-scrolls
+ * `a`'s visible window if the resulting selection lands at the
+ * top/bottom row (UP at top scrolls back, DOWN at bottom scrolls
+ * forward), and finally syncs selection + callbacks. NULL `g` is a
+ * no-op so main.c + instrument_harness.c are safe when no arranger
+ * graph is built yet. */
+void navigateArrangerGraphTo(Graph *g, Arranger *a, int keymapping) {
+	if(!g) {
 		return;
 	}
-	navigateGraphRefined(agui, keymapping);
-	syncArrangerSelectionTo(g_arranger, agui);
+	navigateGraphRefined(g, keymapping);
+	if(g->selected && isArrangerCellNode(g->selected) && a) {
+		int x;
+		int y;
+		getArrangerCellCoords(g->selected, &x, &y);
+		if(keymapping == KM_UP && y == a->visibleStart && a->visibleStart > 0) {
+			scrollArrangerWindow(a, -1);
+		}
+		if(keymapping == KM_DOWN && y == a->visibleStart + ARRANGER_WINDOW_ROWS - 1
+				&& a->visibleStart < MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS) {
+			scrollArrangerWindow(a, 1);
+		}
+	}
+	syncArrangerSelectionTo(g, a);
+}
+
+/* Task 3: thin wrapper used by main.c + instrument_harness.c — pulls
+ * the file-static g_arranger + agui so callers don't have to know
+ * about the graph plumbing. */
+void navigateArrangerGraph(int keymapping) {
+	navigateArrangerGraphTo(agui, g_arranger, keymapping);
 }
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
@@ -1305,6 +1288,41 @@ GuiNode *getArrangerRowCell(int rowIdx, int ch) {
 	return NULL;
 }
 
+/* Task 3: shared cell-retarget walk used by both scrollArrangerWindow
+ * (delta-driven) and scrollArrangerWindowTo (absolute-driven). After a
+ * visibleStart change, walk the grid column's children, skip the chip
+ * row at index 0, then for each of the ARRANGER_WINDOW_ROWS row
+ * containers reassign every cell's `row` to `newStart + r` and toggle
+ * its `selected` flag against the Arranger's (selected_x,
+ * selected_y) so the user's focus cell follows the scroll. No-op if
+ * no arranger graph is built yet. */
+static void retargetWindowCells(Arranger *a, int newStart) {
+	if(!g_arranger || !agui || !a) return;
+	GuiNode *gc = findGridColumn();
+	if(!gc || gc->itemCount < 1 + ARRANGER_WINDOW_ROWS) return;
+	ListElement *e = gc->items->head;
+	/* skip chipRow (index 0) */
+	e = e->next;
+	for(int r = 0; r < ARRANGER_WINDOW_ROWS && e; r++) {
+		GuiNode *row = *(GuiNode **)e->data;
+		if(row && row->items) {
+			ListElement *ce = row->items->head;
+			for(int c = 0; c < row->itemCount && ce; c++) {
+				GuiNode *cell = *(GuiNode **)ce->data;
+				if(cell) {
+					ArrangerCellGuiNode *ac = (ArrangerCellGuiNode *)cell;
+					int songRow = newStart + r;
+					ac->row = songRow;
+					bool sel = (c == a->selected_x && songRow == a->selected_y);
+					ac->base.selected = sel;
+				}
+				ce = ce->next;
+			}
+		}
+		e = e->next;
+	}
+}
+
 /* Task 2: scroll the visible arranger window by `delta` rows. The
  * visible slice [visibleStart, visibleStart + ARRANGER_WINDOW_ROWS) is
  * clamped into [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. If an
@@ -1322,31 +1340,24 @@ void scrollArrangerWindow(Arranger *a, int delta) {
 	if(next < 0) next = 0;
 	if(next > maxStart) next = maxStart;
 	a->visibleStart = next;
-	if(!g_arranger || !agui) return;
-	/* Retarget each visible cell's row + selection flag. */
-	GuiNode *gc = findGridColumn();
-	if(!gc || gc->itemCount < 1 + ARRANGER_WINDOW_ROWS) return;
-	ListElement *e = gc->items->head;
-	/* skip chipRow (index 0) */
-	e = e->next;
-	for(int r = 0; r < ARRANGER_WINDOW_ROWS && e; r++) {
-		GuiNode *row = *(GuiNode **)e->data;
-		if(row && row->items) {
-			ListElement *ce = row->items->head;
-			for(int c = 0; c < row->itemCount && ce; c++) {
-				GuiNode *cell = *(GuiNode **)ce->data;
-				if(cell) {
-					ArrangerCellGuiNode *ac = (ArrangerCellGuiNode *)cell;
-					int songRow = next + r;
-					ac->row = songRow;
-					bool sel = (c == a->selected_x && songRow == a->selected_y);
-					ac->base.selected = sel;
-				}
-				ce = ce->next;
-			}
-		}
-		e = e->next;
-	}
+	retargetWindowCells(a, next);
+}
+
+/* Task 3: jump the visible arranger window to the absolute song row
+ * `targetStart` (clamped to [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]).
+ * Used by main.c's playhead-follow so the rendered cells track the
+ * playhead without losing the user's focus cell. Same retarget walk
+ * as scrollArrangerWindow — extracted into retargetWindowCells so
+ * the two stay in sync. */
+void scrollArrangerWindowTo(Arranger *a, int targetStart) {
+	if(!a) return;
+	int maxStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
+	if(maxStart < 0) maxStart = 0;
+	if(targetStart < 0) targetStart = 0;
+	if(targetStart > maxStart) targetStart = maxStart;
+	if(targetStart == a->visibleStart) return;
+	a->visibleStart = targetStart;
+	retargetWindowCells(a, targetStart);
 }
 
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList
