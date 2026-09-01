@@ -1287,6 +1287,8 @@ void scrollArrangerWindow(Arranger *a, int delta) {
 	if(!a) return;
 	int next = a->visibleStart + delta;
 	int maxStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
+	if(maxStart < 0) maxStart = 0; /* defensive — MAX_SONG_LENGTH could
+								   * in theory be < ARRANGER_WINDOW_ROWS */
 	if(next < 0) next = 0;
 	if(next > maxStart) next = maxStart;
 	a->visibleStart = next;
@@ -1315,11 +1317,6 @@ void scrollArrangerWindow(Arranger *a, int delta) {
 		}
 		e = e->next;
 	}
-	/* Keep the user's logical selection on-screen. If selected_y is
-	 * outside the new visible window, clamp it to the nearest row in
-	 * the window. */
-	if(a->selected_y < next) a->selected_y = next;
-	if(a->selected_y >= next + ARRANGER_WINDOW_ROWS) a->selected_y = next + ARRANGER_WINDOW_ROWS - 1;
 }
 
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList
