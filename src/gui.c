@@ -1410,9 +1410,11 @@ static void cbLoadListPick(void *ctx) {
 			inst->selectedPresetIndex->currentValue = (float)slot;
 		}
 		if(inst->vm) {
+			pthread_mutex_lock(&g_audioLock);
 			inst->rebuilding = true;
 			rebuildVoicesForInstrument(inst->vm, inst);
 			inst->rebuilding = false;
+			pthread_mutex_unlock(&g_audioLock);
 		}
 		rebuildInstrumentGraph();
 	}
@@ -2376,7 +2378,9 @@ static void routeOnChange(void *data) {
 		return;
 	}
 	/* Task 8: rewireModulation mutates the modList the audio thread
-	 * iterates; hold the rebuilding flag across the swap. */
+	 * iterates; hold the rebuilding flag across the swap. The audio
+	 * lock closes the flag's check-then-use race. */
+	pthread_mutex_lock(&g_audioLock);
 	if(inst) {
 		inst->rebuilding = true;
 	}
@@ -2391,6 +2395,7 @@ static void routeOnChange(void *data) {
 	if(inst) {
 		inst->rebuilding = false;
 	}
+	pthread_mutex_unlock(&g_audioLock);
 }
 
 static void incRouteIndex(Parameter *p, float step) {
@@ -2427,7 +2432,9 @@ void addRuntimeEnvelope(Instrument *inst) {
 		return;
 	}
 	/* Task 8: the audio thread iterates inst->paramList/modList every
-	 * buffer; hold the rebuilding flag while we mutate the lists. */
+	 * buffer; hold the rebuilding flag while we mutate the lists. The
+	 * audio lock closes the flag's check-then-use race. */
+	pthread_mutex_lock(&g_audioLock);
 	if(inst) {
 		inst->rebuilding = true;
 	}
@@ -2444,6 +2451,7 @@ void addRuntimeEnvelope(Instrument *inst) {
 	if(inst) {
 		inst->rebuilding = false;
 	}
+	pthread_mutex_unlock(&g_audioLock);
 	/* voices alias core envelopes only; runtime envelopes route via
 	 * inst->paramList which all voices share; no rebuild needed */
 }
@@ -2453,7 +2461,9 @@ void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
 		return;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate + free from the
-	 * modList/paramList the audio thread iterates. */
+	 * modList/paramList the audio thread iterates. The audio lock
+	 * closes the flag's check-then-use race. */
+	pthread_mutex_lock(&g_audioLock);
 	if(inst) {
 		inst->rebuilding = true;
 	}
@@ -2472,6 +2482,7 @@ void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
 	if(inst) {
 		inst->rebuilding = false;
 	}
+	pthread_mutex_unlock(&g_audioLock);
 	/* voices alias core envelopes only; runtime envelopes route via
 	 * inst->paramList which all voices share; no rebuild needed */
 }

@@ -34,6 +34,14 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	float *out = (float *)outputBuffer;
 	unsigned int i = 0;
 	unsigned int j = 0;
+	/* Hold the audio lock for the whole buffer: every deref of the
+	 * instrument lists / voice pool below is shared with the GUI thread,
+	 * whose type-swap / preset-apply / resize paths free them under the
+	 * same lock. Without it the `rebuilding` flag leaves a check-then-use
+	 * window where the audio thread touches a freed voice (type-cycle
+	 * segfault). Non-contended in practice — the GUI only takes it during
+	 * a reconfiguration, which skips a buffer at worst. */
+	pthread_mutex_lock(&g_audioLock);
 	float max_output = 0.0f;
 	(void)inputBuffer;
 	clock_t start, end;
@@ -179,6 +187,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	end = clock();
 	cpu_time_used = (((double)(end - start)) / CLOCKS_PER_SEC) * 1000.0f;
 	pushTimeGraphMeasurement(&data->timeGraph, cpu_time_used);
+	pthread_mutex_unlock(&g_audioLock);
 	return 0;
 }
 

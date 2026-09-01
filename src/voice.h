@@ -2,6 +2,7 @@
 #define VOICE_H
 #include <stdlib.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "kiss_fft.h"
 #include "settings.h"
 #include "oscillator.h"
@@ -298,6 +299,14 @@ typedef struct VoiceManager {
 	SamplePool *samplePool;
 	AllocationBehaviour voiceAllocation[MAX_SEQUENCER_CHANNELS];
 } VoiceManager;
+
+/* Audio/GUI thread hand-off. The PortAudio callback locks this for the
+ * whole buffer's processing; every GUI-thread mutation of the instrument
+ * param/mod lists or the voice pool (type swap, preset apply, voice-count
+ * resize, route/delete) holds it across its free+rebuild window. Without
+ * it the `rebuilding` flag is a soft guard that still lets the audio
+ * thread deref a freed voice/list (check-then-use race). */
+extern pthread_mutex_t g_audioLock;
 
 VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, PresetBank *pb);
 void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrument *inst);

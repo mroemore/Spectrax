@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/* Shared with the PortAudio callback (see voice.h). Static initializer. */
+pthread_mutex_t g_audioLock = PTHREAD_MUTEX_INITIALIZER;
+
 VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, PresetBank *pb) {
 	// printf("creating voiceManager.\n");
 
@@ -406,6 +409,7 @@ static void freeInstrument(Instrument *inst) {
 bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 	if(!vm || channel < 0 || channel >= vm->enabledChannels) return false;
 	if(vt != VOICE_TYPE_SAMPLE && vt != VOICE_TYPE_FM && vt != VOICE_TYPE_BLEP) return false;
+	pthread_mutex_lock(&g_audioLock);
 	Instrument *old = vm->instruments[channel];
 	if(old) old->rebuilding = true;
 	Instrument *fresh = NULL;
@@ -420,6 +424,7 @@ bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 		/* init failed — undo the rebuilding flag so the audio thread
 		 * resumes on the old instrument. */
 		if(old) old->rebuilding = false;
+		pthread_mutex_unlock(&g_audioLock);
 		return false;
 	}
 	fresh->vm = vm;
@@ -433,6 +438,7 @@ bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 	freeInstrument(old);
 	rebuildVoicesForInstrument(vm, fresh);
 	fresh->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
 	return true;
 }
 
@@ -483,6 +489,7 @@ static void cb_setVoiceCount(void *ctx) {
 bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 	if(!vm || channel < 0 || channel >= vm->enabledChannels) return false;
 	if(count < 1 || count > MAX_VOICES_PER_CHANNEL) return false;
+	pthread_mutex_lock(&g_audioLock);
 	Instrument *inst = vm->instruments[channel];
 	if(inst) inst->rebuilding = true;
 	initVoicePool(vm, channel, count, inst);
@@ -496,6 +503,7 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 		}
 		inst->rebuilding = false;
 	}
+	pthread_mutex_unlock(&g_audioLock);
 	return true;
 }
 
@@ -504,7 +512,10 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * param/mod lists. The PortAudio callback reads these lists every
 	 * buffer; freeing them from the GUI thread while it iterates is a
 	 * use-after-free. The flag is cleared at the end of this function;
-	 * callers that ALSO rebuild the voice pool wrap that separately. */
+	 * callers that ALSO rebuild the voice pool wrap that separately. The
+	 * audio lock is held for the whole window so the flag's check-then-use
+	 * race is closed outright. */
+	pthread_mutex_lock(&g_audioLock);
 	if(instrument) {
 		instrument->rebuilding = true;
 	}
@@ -608,6 +619,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	if(instrument) {
 		instrument->rebuilding = false;
 	}
+	pthread_mutex_unlock(&g_audioLock);
 }
 
 /* Task 6: stamp `inst->loaded` with the on-disk identity so the
@@ -734,11 +746,14 @@ void cb_setInstrumentPreset(void *instrument) {
 	/* voices that previously aliased those Param structs must be rebuilt so
 	 * their pointers track the new ones. The audio thread iterates the
 	 * voice pool every buffer -- hold the rebuilding flag across the
-	 * free/malloc so it doesn't deref a freed Voice. */
+	 * free/malloc so it doesn't deref a freed Voice. The audio lock is
+	 * held for the same reason (closes the flag's check-then-use race). */
 	if(i->vm) {
+		pthread_mutex_lock(&g_audioLock);
 		i->rebuilding = true;
 		rebuildVoicesForInstrument(i->vm, i);
 		i->rebuilding = false;
+		pthread_mutex_unlock(&g_audioLock);
 	}
 }
 
