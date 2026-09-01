@@ -33,6 +33,11 @@ Graph *agui;
  * implementation. */
 #define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
 static GuiNode *g_chipNodes[MAX_SEQUENCER_CHANNELS];
+/* Task 2 (arranger window rework): currently-active Arranger. Set
+ * inside createArrangerGraph so scrollArrangerWindow / getArrangerRowCell
+ * can find the cell rows without re-passing the arranger every call.
+ * NULL when no arranger graph has been built (unit-test path). */
+static Arranger *g_arranger;
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
 
@@ -318,10 +323,38 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 		g_chipNodes[ch] = chip;
 		appendItem(chipRow, chip, 1);
 	}
-	appendItem(gridColumn, chipRow, 1);
-	appendItem(gridColumn, gn, 8);
+	appendItem(gridColumn, chipRow, 2);
+	/* Task 2 (arranger window rework): the grid slice. The arranger
+	 * song array is MAX_SONG_LENGTH rows deep, but the GUI only renders
+	 * ARRANGER_WINDOW_ROWS of them at a time — the visible slice is
+	 * [a->visibleStart, a->visibleStart + ARRANGER_WINDOW_ROWS). One
+	 * row container per visible row; each container holds one
+	 * ArrangerCellGuiNode per enabled channel. scrollArrangerWindow
+	 * later retargets the cell nodes' row field when visibleStart
+	 * moves. */
+	GuiNode *selectedCell = NULL;
+	for(int r = 0; r < ARRANGER_WINDOW_ROWS; r++) {
+		GuiNode *rowc = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "row", 0, 0);
+		rowc->drawable = true;
+		rowc->draw = drawWrapperNode;
+		for(int ch = 0; ch < a->enabledChannels; ch++) {
+			bool sel = (ch == a->selected_x && a->visibleStart + r == a->selected_y);
+			GuiNode *cell = createArrangerCellGuiNode(0, 0, 100, 100, sel, a, ch, a->visibleStart + r);
+			if(sel) {
+				selectedCell = cell;
+			}
+			appendItem(rowc, cell, 1);
+		}
+		appendItem(gridColumn, rowc, 1);
+	}
+	g_arranger = a;
 	appendItem(arrWrap, gridColumn, 4);
 	appendItem(agui->root, arrWrap, 15);
+	/* Task 2: prefer the cell that matches the current selection; fall
+	 * back to the legacy gn selection if no cell matches (which can
+	 * happen on the first build before selected_x/_y are in range, or
+	 * for arranger modes that don't use the cell grid). */
+	agui->selected = selectedCell ? selectedCell : agui->selected;
 
 	GuiNode *demoStack = createGuiNode(0, 0, 100, 100, 0, na_vertical, "demo", 0, 0);
 	GuiNode *linesNode = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "vline", 0, 0);
@@ -1187,6 +1220,106 @@ GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Ar
 	cell->ch = ch;
 	cell->row = row;
 	return &cell->base;
+}
+
+/* Task 2 (arranger window rework): locate the gridColumn node inside
+ * the built arranger graph. Walks agui->root → first horizontal child
+ * (arrWrap) → gridColumn (named "gcol"). Returns NULL if anything is
+ * missing. The graph layout is fixed (see createArrangerGraph), so a
+ * linear walk is enough. */
+static GuiNode *findGridColumn(void) {
+	if(!agui || !agui->root || !agui->root->items || agui->root->itemCount <= 0) {
+		return NULL;
+	}
+	ListElement *e = agui->root->items->head;
+	for(int i = 0; i < agui->root->itemCount; i++) {
+		GuiNode *top = *(GuiNode **)e->data;
+		if(!top || !top->items) {
+			e = e->next;
+			continue;
+		}
+		ListElement *fe = top->items->head;
+		for(int j = 0; j < top->itemCount; j++) {
+			GuiNode *cand = *(GuiNode **)fe->data;
+			if(cand && cand->name && strcmp(cand->name, "gcol") == 0) {
+				return cand;
+			}
+			fe = fe->next;
+		}
+		e = e->next;
+	}
+	return NULL;
+}
+
+/* Task 2: return the cell GuiNode at visible-row `rowIdx`, channel `ch`
+ * in the currently-built arranger graph. Returns NULL if no graph is
+ * built or the indices are out of range. Layout: gridColumn children
+ * are [chipRow, row0, row1, ..., rowN-1] — rows start at index 1. */
+GuiNode *getArrangerRowCell(int rowIdx, int ch) {
+	if(!g_arranger) return NULL;
+	GuiNode *gc = findGridColumn();
+	if(!gc || rowIdx < 0 || rowIdx >= ARRANGER_WINDOW_ROWS) return NULL;
+	/* gridColumn children: [chipRow, row0, ..., rowN-1] */
+	ListElement *e = gc->items->head;
+	for(int skip = 0; skip <= rowIdx && e; skip++) {
+		if(skip == rowIdx) {
+			GuiNode *row = *(GuiNode **)e->data;
+			if(!row || !row->items || ch < 0 || ch >= row->itemCount) return NULL;
+			ListElement *ce = row->items->head;
+			for(int c = 0; c < ch && ce; c++) ce = ce->next;
+			if(!ce) return NULL;
+			return *(GuiNode **)ce->data;
+		}
+		e = e->next;
+	}
+	return NULL;
+}
+
+/* Task 2: scroll the visible arranger window by `delta` rows. The
+ * visible slice [visibleStart, visibleStart + ARRANGER_WINDOW_ROWS) is
+ * clamped into [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. If an
+ * arranger graph is currently built, every cell row is retargeted to
+ * its new song row, and selection is moved to the cell at
+ * (selected_x, selected_y) so the user's focus point follows the scroll
+ * (clamped to the new window). If no graph is built, only the
+ * arithmetic clamp runs — the unit test relies on this. */
+void scrollArrangerWindow(Arranger *a, int delta) {
+	if(!a) return;
+	int next = a->visibleStart + delta;
+	int maxStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
+	if(next < 0) next = 0;
+	if(next > maxStart) next = maxStart;
+	a->visibleStart = next;
+	if(!g_arranger || !agui) return;
+	/* Retarget each visible cell's row + selection flag. */
+	GuiNode *gc = findGridColumn();
+	if(!gc || gc->itemCount < 1 + ARRANGER_WINDOW_ROWS) return;
+	ListElement *e = gc->items->head;
+	/* skip chipRow (index 0) */
+	e = e->next;
+	for(int r = 0; r < ARRANGER_WINDOW_ROWS && e; r++) {
+		GuiNode *row = *(GuiNode **)e->data;
+		if(row && row->items) {
+			ListElement *ce = row->items->head;
+			for(int c = 0; c < row->itemCount && ce; c++) {
+				GuiNode *cell = *(GuiNode **)ce->data;
+				if(cell) {
+					ArrangerCellGuiNode *ac = (ArrangerCellGuiNode *)cell;
+					int songRow = next + r;
+					ac->row = songRow;
+					bool sel = (c == a->selected_x && songRow == a->selected_y);
+					ac->base.selected = sel;
+				}
+				ce = ce->next;
+			}
+		}
+		e = e->next;
+	}
+	/* Keep the user's logical selection on-screen. If selected_y is
+	 * outside the new visible window, clamp it to the nearest row in
+	 * the window. */
+	if(a->selected_y < next) a->selected_y = next;
+	if(a->selected_y >= next + ARRANGER_WINDOW_ROWS) a->selected_y = next + ARRANGER_WINDOW_ROWS - 1;
 }
 
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList

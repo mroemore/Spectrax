@@ -30,6 +30,16 @@ GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Ar
 bool isArrangerCellNode(const GuiNode *n);
 void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
 
+/* Task 2 (arranger window rework): window scroll + row-cell getter.
+ * scrollArrangerWindow adjusts arranger->visibleStart (clamped to
+ * [0, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]) and re-targets the
+ * window's cell rows. getArrangerRowCell returns the cell GuiNode at
+ * the given visible (rowIdx, ch). Both must be safe to call without a
+ * built arranger graph (the unit test calls scrollArrangerWindow on a
+ * zero-init Arranger to keep the test free of raylib/voice init). */
+void scrollArrangerWindow(Arranger *a, int delta);
+GuiNode *getArrangerRowCell(int rowIdx, int ch);
+
 /* ASSERT_* macros — verbatim copy of the style used in
  * tests/dsp/test_modsystem.c (same arity-dispatch trick, same
  * `return 1` on failure so main can sum fails). */
@@ -428,6 +438,34 @@ static int test_init_gui_node_null_callback(void) {
     return 0;
 }
 
+/* ----- Task 2 (arranger window rework): scrollArrangerWindow ----- *
+ *
+ * Pure-state test: scrollArrangerWindow operates on `arranger->visibleStart`
+ * with no dependency on the graph being built (it has its own NULL-graph
+ * early-return inside gui.c so the production path is still safe). The
+ * test exercises the clamp boundaries so a regression in either direction
+ * shows up immediately. ARRANGER_WINDOW_ROWS lives in gui.h which pulls
+ * raylib — hard-code the literal here to keep this TU header-light.
+ */
+static int test_scroll_arranger_window(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.enabledChannels = 2;
+    a.visibleStart = 0;
+    a.playing = 0;
+    for(int c = 0; c < 2; c++) for(int r = 0; r < 12; r++) a.song[c][r] = -1;
+    scrollArrangerWindow(&a, 1);
+    ASSERT_EQ(a.visibleStart, 1, "scroll down");
+    scrollArrangerWindow(&a, -1);
+    ASSERT_EQ(a.visibleStart, 0, "scroll up");
+    scrollArrangerWindow(&a, -5);
+    ASSERT_EQ(a.visibleStart, 0, "clamped at 0");
+    a.visibleStart = MAX_SONG_LENGTH - 8; /* ARRANGER_WINDOW_ROWS */
+    scrollArrangerWindow(&a, 3);
+    ASSERT_EQ(a.visibleStart, MAX_SONG_LENGTH - 8, "clamped at max");
+    printf("PASS test_scroll_arranger_window\n");
+    return 0;
+}
+
 /* ----- Task 1 (arranger window rework): cell node primitive -----
  *
  * createArrangerCellGuiNode builds a drawable, selectable GuiNode that
@@ -475,6 +513,7 @@ int main(void) {
     fails += test_chip_row_nav();
     fails += test_chip_node_is_drawable();
     fails += test_init_gui_node_null_callback();
+    fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");

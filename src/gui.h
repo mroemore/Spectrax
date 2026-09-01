@@ -144,6 +144,23 @@ GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Ar
 bool isArrangerCellNode(const GuiNode *n);
 void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
 
+/* Task 2 (arranger window rework): scroll the visible window by
+ * `delta` rows. Clamps arranger->visibleStart into [0,
+ * MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS]. If `agui` is built,
+ * re-targets the visibleStart on each cell row AND re-builds the
+ * per-row cell layout (so nav keeps pointing at the same (ch, row)
+ * pair after the scroll). Early-returns after the clamp if agui is
+ * NULL — the unit test calls this on a stub Arranger without a
+ * graph. */
+void scrollArrangerWindow(Arranger *a, int delta);
+
+/* Task 2: read-only accessor for the cell GuiNode at the given
+ * (visible-row, channel) in the currently-built arranger graph.
+ * Returns NULL if no graph is built or (rowIdx, ch) is out of
+ * range. Useful for nav tests that need to assert "RIGHT from row
+ * r went to the cell on the right", without walking the tree. */
+GuiNode *getArrangerRowCell(int rowIdx, int ch);
+
 /* Task 4: chip input routing. getSelectedChipChannel() returns the
  * channel of the currently-selected chip in agui (or -1 if the
  * selection isn't a chip). expandChip() sets the chip's `expanded`
