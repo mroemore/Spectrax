@@ -1109,6 +1109,63 @@ GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct
 	return &chip->base;
 }
 
+/* ----- Task 1: arranger cell node primitive -----
+ *
+ * One ArrangerCellGuiNode = one song[ch][row] cell rendered in the
+ * arranger grid. It's a tiny GuiNode: base init + (ch, row) + backref
+ * to the Arranger. We don't need an InstChipGuiNode-style embedded
+ * GuiNode because there's nothing graph-children-related to manage —
+ * the arranger window builds a flat grid of these directly.
+ *
+ * Draw: cell outline, tinted fill when selected. Text content + the
+ * playhead marker are intentionally deferred — they're window-level
+ * concerns that layer on once visibleStart is wired up in later tasks.
+ */
+typedef struct {
+	GuiNode base;
+	Arranger *arranger;
+	int ch;
+	int row;
+} ArrangerCellGuiNode;
+
+static void drawArrangerCellGuiNode(void *self) {
+	GuiNode *n = (GuiNode *)self;
+	Color fill = n->selected ? cs.selectedCell : cs.defaultCell;
+	DrawRectangle(n->x, n->y, n->w, n->h, fill);
+	DrawRectangleLines(n->x, n->y, n->w, n->h, cs.outlineColour);
+}
+
+bool isArrangerCellNode(const GuiNode *n) {
+	return n != NULL && n->draw == drawArrangerCellGuiNode;
+}
+
+void getArrangerCellCoords(const GuiNode *n, int *x, int *y) {
+	if(!n || !isArrangerCellNode(n)) {
+		if(x) *x = -1;
+		if(y) *y = -1;
+		return;
+	}
+	const ArrangerCellGuiNode *cell = (const ArrangerCellGuiNode *)n;
+	if(x) *x = cell->ch;
+	if(y) *y = cell->row;
+}
+
+GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Arranger *arranger, int ch, int row) {
+	ArrangerCellGuiNode *cell = (ArrangerCellGuiNode *)malloc(sizeof(ArrangerCellGuiNode));
+	if(!cell) return NULL;
+	memset(cell, 0, sizeof(ArrangerCellGuiNode));
+	if(!initGuiNode(&cell->base, x, y, w, h, 0, na_horizontal, "cell", true, selected)) {
+		free(cell);
+		return NULL;
+	}
+	cell->base.draw = drawArrangerCellGuiNode;
+	cell->base.drawable = true;
+	cell->arranger = arranger;
+	cell->ch = ch;
+	cell->row = row;
+	return &cell->base;
+}
+
 /* Task 9: preset-load-list state. g_loadList is populated by guiOpenLoadList
  * by enumerating data/instrument_presets/ .ipb files, stripping the
  * extension, and sorting alphabetically. While g_loadListActive is true,

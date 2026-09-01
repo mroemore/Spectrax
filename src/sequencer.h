@@ -56,6 +56,11 @@ typedef struct
 	AppstateCallback onCellSelect;
 	AppstateCallback onPatternSelection;
 	VoiceManager *vm;
+	/* Task 1 (arranger window rework): top row of the currently-visible
+	 * window into song[]. Later tasks slice song[ch][visibleStart ..
+	 * visibleStart+ARRANGER_WINDOW_ROWS] when building the grid. 0 at
+	 * startup; clamped to [0, MAX_SONG_LENGTH-ARRANGER_WINDOW_ROWS]. */
+	int visibleStart;
 } Arranger;
 
 typedef struct

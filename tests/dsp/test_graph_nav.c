@@ -22,6 +22,14 @@ struct VoiceManager;
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
 bool isInstChipNode(const GuiNode *n);
 
+/* Task 1 (arranger window rework): cell node primitives. The creator
+ * takes an Arranger* + channel + row; the recogniser + coord getter let
+ * later nav tasks identify which song cell is currently selected without
+ * reaching into the GuiNode internals. */
+GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Arranger *arranger, int ch, int row);
+bool isArrangerCellNode(const GuiNode *n);
+void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
+
 /* ASSERT_* macros — verbatim copy of the style used in
  * tests/dsp/test_modsystem.c (same arity-dispatch trick, same
  * `return 1` on failure so main can sum fails). */
@@ -420,6 +428,38 @@ static int test_init_gui_node_null_callback(void) {
     return 0;
 }
 
+/* ----- Task 1 (arranger window rework): cell node primitive -----
+ *
+ * createArrangerCellGuiNode builds a drawable, selectable GuiNode that
+ * renders one arranger song cell. isArrangerCellNode identifies them
+ * by draw fn pointer. getArrangerCellCoords reads the (channel, row)
+ * back out without forcing callers to know the struct internals.
+ *
+ * The test allocates a stub Arranger by hand (memset to zero, then
+ * populate the few fields the draw path consults) so we don't need
+ * to spin up createArranger() / a VoiceManager / pattern state. The
+ * draw fn never actually runs in the test — the test only verifies
+ * the node was built, recognised, and exposes its coords.
+ */
+static int test_arranger_cell_node(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.enabledChannels = 4;
+    a.visibleStart = 0;
+    for(int c = 0; c < 4; c++) for(int r = 0; r < 12; r++) a.song[c][r] = -1;
+    a.song[1][3] = 42;
+    GuiNode *c0 = createArrangerCellGuiNode(0, 0, 50, 20, true, &a, 1, 3);
+    ASSERT_TRUE(c0 != NULL, "cell created");
+    ASSERT_TRUE(isArrangerCellNode(c0), "is a cell node");
+    ASSERT_TRUE(c0->drawable, "cell is drawable");
+    int x = -1, y = -1;
+    getArrangerCellCoords(c0, &x, &y);
+    ASSERT_EQ(x, 1, "cell x");
+    ASSERT_EQ(y, 3, "cell y");
+    free(c0->name); freeList(c0->items); freeList(c0->itemWeights); free(c0);
+    printf("PASS test_arranger_cell_node\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
@@ -435,6 +475,7 @@ int main(void) {
     fails += test_chip_row_nav();
     fails += test_chip_node_is_drawable();
     fails += test_init_gui_node_null_callback();
+    fails += test_arranger_cell_node();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;

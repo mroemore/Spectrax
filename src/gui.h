@@ -133,6 +133,17 @@ typedef struct {
 GuiNode *createInstChipGuiNode(int x, int y, int w, int h, bool selected, struct VoiceManager *vm, int channel, Arranger *arranger);
 bool isInstChipNode(const GuiNode *n);
 
+/* Task 1 (arranger window rework): per-cell selectable draw node.
+ * One ArrangerCellGuiNode renders a single song[ch][row] cell. The
+ * window slices ARRANGER_WINDOW_ROWS consecutive rows starting at
+ * arranger->visibleStart, building one cell per (channel, row) pair.
+ * Later tasks will reflow the arranger grid against this primitive;
+ * for now it stands alone as the unit-tested building block. */
+#define ARRANGER_WINDOW_ROWS 8
+GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Arranger *arranger, int ch, int row);
+bool isArrangerCellNode(const GuiNode *n);
+void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
+
 /* Task 4: chip input routing. getSelectedChipChannel() returns the
  * channel of the currently-selected chip in agui (or -1 if the
  * selection isn't a chip). expandChip() sets the chip's `expanded`
