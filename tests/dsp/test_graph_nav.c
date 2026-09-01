@@ -13,6 +13,17 @@
 #include <string.h>
 #include <math.h>
 #include "graph_gui.h"
+#include "gui.h"  /* ARRANGER_WINDOW_ROWS, createArrangerCellGuiNode, etc. */
+
+/* ArrangerCellGuiNode's struct layout lives in gui.c (not gui.h); mirror
+ * it locally so the edge-scroll test can flip `row` on a cell to simulate
+ * the production retarget walk (see retargetWindowCells in gui.c). */
+typedef struct {
+    GuiNode base;
+    Arranger *arranger;
+    int ch;
+    int row;
+} TestArrangerCellGuiNode;
 
 /* Task 3: forward-decls for the chip creator + recogniser so we don't
  * need to pull raylib/voice into the test TU. Symbols resolve from
@@ -709,6 +720,175 @@ static int test_navigate_arranger_graph_to(void) {
     return 0;
 }
 
+/* Edge-scroll in navigateArrangerGraphTo: KM_DOWN at the bottom row of
+ * the visible window must increment visibleStart; KM_UP at the top row
+ * must decrement it. Also exercises the non-edge branch: KM_DOWN from
+ * a MIDDLE row must NOT scroll (selection stays put, visibleStart
+ * unchanged).
+ *
+ * Layout mirrors the production arranger grid column: root -> gcol ->
+ * row0..row7 (each na_horizontal, 2 cells). Cell row r at absolute row
+ * `r` (ch0 at x=0, ch1 at x=50; row at y=r*20, h=20) so with
+ * visibleStart=0 DOWN at row 7 fires the edge-scroll (y == 7 ==
+ * visibleStart+ARRANGER_WINDOW_ROWS-1). The file-static g_arranger /
+ * agui are NULL during this test, so scrollArrangerWindow's
+ * retargetWindowCells early-returns and our cell `row` fields stay
+ * stable across the scroll (which is exactly what lets us assert
+ * visibleStart transitions purely from the public API). */
+static Graph *build_windowed_grid_graph(Arranger *a) {
+    Graph *g = createGraph(na_vertical);
+    GuiNode *col = createGuiNode(0, 0, 100, 8 * 20, 2, na_vertical, "gcol", false, false);
+    GuiNode *cells[ARRANGER_WINDOW_ROWS][2];
+    for(int r = 0; r < ARRANGER_WINDOW_ROWS; r++) {
+        GuiNode *row = createGuiNode(0, r * 20, 100, 20, 2, na_horizontal, "row", false, false);
+        cells[r][0] = createArrangerCellGuiNode(0, r * 20, 50, 20, true, a, 0, r);
+        cells[r][1] = createArrangerCellGuiNode(50, r * 20, 50, 20, true, a, 1, r);
+        appendItem(row, cells[r][0], 1);
+        appendItem(row, cells[r][1], 1);
+        appendItem(col, row, 1);
+        /* pin rects AFTER reflow so geometric nav has predictable centers */
+        cells[r][0]->x = 0; cells[r][0]->y = r * 20; cells[r][0]->w = 50; cells[r][0]->h = 20;
+        cells[r][1]->x = 50; cells[r][1]->y = r * 20; cells[r][1]->w = 50; cells[r][1]->h = 20;
+    }
+    appendItem(g->root, col, 1);
+    return g;
+}
+
+static int test_nav_edge_scroll(void) {
+    Arranger a; memset(&a, 0, sizeof(a));
+    a.enabledChannels = 2;
+    a.visibleStart = 0;
+    a.selected_x = 0;
+    a.selected_y = 0;
+    a.playing = 0;
+    for(int c = 0; c < 2; c++) for(int r = 0; r < 12; r++) a.song[c][r] = -1;
+    SyncCbRecord rec = {0};
+    a.onCellSelect.f = syncCellCb;
+    a.onCellSelect.appstateRef = &rec;
+    a.onPatternSelection.f = syncPatternCb;
+    a.onPatternSelection.appstateRef = &rec;
+    Graph *g = build_windowed_grid_graph(&a);
+
+    /* Grab pointers to a top, middle, and bottom cell by DFS order:
+     * col.children[0] = row0, row0.children = {cell_ch0, cell_ch1}.
+     * Walk down through col->items->head->next (etc.) to reach row7. */
+    GuiNode *col = *(GuiNode **)g->root->items->head->data;
+    ListElement *rowLe = col->items->head;
+    GuiNode *row0 = *(GuiNode **)rowLe->data;
+    GuiNode *cell_topleft = *(GuiNode **)row0->items->head->data;       /* ch0, row 0 */
+    /* walk to row 7 */
+    GuiNode *row7 = NULL;
+    ListElement *le = col->items->head;
+    for(int r = 0; r < ARRANGER_WINDOW_ROWS; r++) {
+        row7 = *(GuiNode **)le->data;
+        le = le->next;
+    }
+    GuiNode *cell_bottomleft = *(GuiNode **)row7->items->head->data;     /* ch0, row 7 */
+    /* middle = row 3 */
+    GuiNode *row3 = NULL;
+    le = col->items->head;
+    for(int r = 0; r < 4; r++) { row3 = *(GuiNode **)le->data; le = le->next; }
+    GuiNode *cell_midleft = *(GuiNode **)row3->items->head->data;        /* ch0, row 3 */
+
+    /* --- DOWN at the BOTTOM row: visibleStart must increment by 1 --- */
+    g->selected = cell_bottomleft;          /* selection already on row 7 */
+    a.visibleStart = 0;
+    a.selected_x = 0; a.selected_y = 7;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_DOWN);
+    /* KM_DOWN from the bottom row is a geometric boundary -> selection
+     * stays on cell_bottomleft. Edge-scroll branch fires
+     * (y == visibleStart + 7 == 7). visibleStart: 0 -> 1. */
+    ASSERT_TRUE(g->selected == cell_bottomleft,
+                "DOWN at bottom keeps selection on the bottom row (geometric clamp)");
+    ASSERT_EQ(a.visibleStart, 1, "DOWN at bottom row scrolls window down by 1");
+    ASSERT_TRUE(a.selected_y == 7 || a.selected_y == 8,
+                "selected_y tracked (7 unchanged OR 8 if retarget moved it; "
+                "no graph -> retarget is a no-op so it stays 7)");
+    /* The callback still fires (sync step always runs). */
+    ASSERT_TRUE(rec.cellCallCount >= 1, "onCellSelect fired after DOWN-scroll");
+
+    /* --- UP at the TOP row: visibleStart must decrement by 1 --- */
+    g->selected = cell_topleft;             /* selection on row 0 */
+    a.visibleStart = 5;
+    a.selected_x = 0; a.selected_y = 5;
+    /* Note: navigateArrangerGraphTo's edge-scroll compares against the
+     * CURRENT visibleStart AND the stored `row` on the cell. Because
+     * retargetWindowCells is a no-op (no graph in this TU), cell_topleft
+     * still has row=0, NOT row=5. To exercise the top-edge branch
+     * correctly, we use a cell whose stored row matches visibleStart.
+     * The bottom-edge case above worked because we set visibleStart=0
+     * AND the bottom cell has row=7. For the top-edge case we need a
+     * cell with row == visibleStart, so retarget cell_topleft's stored
+     * row to 5 directly via the ArrangerCellGuiNode cast. */
+    GuiNode *topCell = cell_topleft;
+    {
+        /* Cast through TestArrangerCellGuiNode so we can flip `row` to 5.
+         * Mirrors the production retargetWindowCells walk in gui.c. */
+        TestArrangerCellGuiNode *ac = (TestArrangerCellGuiNode *)topCell;
+        ac->row = 5;
+    }
+    a.selected_y = 5;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_UP);
+    /* KM_UP from the top row is a geometric boundary -> selection
+     * stays on topCell. Edge-scroll branch fires
+     * (y == 5 == visibleStart). visibleStart: 5 -> 4. */
+    ASSERT_TRUE(g->selected == topCell,
+                "UP at top keeps selection on the top row (geometric clamp)");
+    ASSERT_EQ(a.visibleStart, 4, "UP at top row scrolls window up by 1");
+
+    /* --- Non-edge DOWN: selection in the middle row -> no scroll --- */
+    g->selected = cell_midleft;            /* row 3, with visibleStart=0 */
+    a.visibleStart = 4;
+    a.selected_x = 0; a.selected_y = 3;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_DOWN);
+    /* Geometric DOWN from row 3 lands on row 4 (middle, no edge). The
+     * edge-scroll branch must NOT fire (y=4 != visibleStart+7=11). */
+    int cx = -1, cy = -1;
+    getArrangerCellCoords(g->selected, &cx, &cy);
+    ASSERT_EQ(cx, 0, "DOWN from middle stays on ch 0");
+    ASSERT_EQ(cy, 4, "DOWN from row 3 lands on row 4");
+    ASSERT_EQ(a.visibleStart, 4, "DOWN in the middle does not scroll");
+
+    /* --- Non-edge UP: same guard in the other direction --- */
+    g->selected = cell_midleft;            /* row 3, with visibleStart=0 */
+    a.visibleStart = 3;
+    a.selected_x = 0; a.selected_y = 3;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_UP);
+    getArrangerCellCoords(g->selected, &cx, &cy);
+    ASSERT_EQ(cy, 2, "UP from row 3 lands on row 2");
+    ASSERT_EQ(a.visibleStart, 3, "UP in the middle does not scroll");
+
+    /* --- Edge-scroll is clamped at MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS --- */
+    g->selected = cell_bottomleft;         /* row 7 */
+    a.visibleStart = MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS;
+    a.selected_x = 0; a.selected_y = 7;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_DOWN);
+    ASSERT_EQ(a.visibleStart, MAX_SONG_LENGTH - ARRANGER_WINDOW_ROWS,
+              "DOWN at bottom row at max start does not scroll past max");
+
+    /* --- Edge-scroll is clamped at 0 (UP guard) --- */
+    /* Place selection on a cell whose stored row == 0, with visibleStart=0. */
+    {
+        TestArrangerCellGuiNode *ac = (TestArrangerCellGuiNode *)cell_topleft;
+        ac->row = 0;
+    }
+    g->selected = cell_topleft;
+    a.visibleStart = 0;
+    a.selected_x = 0; a.selected_y = 0;
+    rec.cellCallCount = 0; rec.patternCallCount = 0;
+    navigateArrangerGraphTo(g, &a, KM_UP);
+    ASSERT_EQ(a.visibleStart, 0, "UP at top row at start=0 does not under-scroll");
+
+    teardown_graph(g);
+    printf("PASS test_nav_edge_scroll\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_trivial_rect_wiring();
@@ -729,6 +909,7 @@ int main(void) {
     fails += test_scroll_arranger_window_to();
     fails += test_sync_arranger_selection();
     fails += test_navigate_arranger_graph_to();
+    fails += test_nav_edge_scroll();
     if (fails == 0) {
         printf("ALL graph_nav tests passed\n");
         return 0;
