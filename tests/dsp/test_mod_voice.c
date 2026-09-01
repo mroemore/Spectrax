@@ -1124,6 +1124,29 @@ static int test_chip_label_edit(void) {
     return 0;
 }
 
+/* Task 4: meta-row type cycle order. SAMPLE->FM->BLEP->SAMPLE forward,
+ * BLEP->FM->SAMPLE backward. The cycle helpers live in gui.c (next to
+ * the cbTypePrev/cbTypeNext callbacks that drive the new PREV/NEXT
+ * action buttons on the instrument-screen meta row) but the cycle order
+ * is the load-bearing part — pin it here so a future tweak to the GUI
+ * layer can't quietly change which type a PREV/NEXT click lands on.
+ *
+ * nextVoiceType/prevVoiceType are declared in src/gui.h and defined
+ * with `default: VOICE_TYPE_FM` so any VoiceType we don't know about
+ * lands on FM. We don't test the default-branch fallthrough (no
+ * spurious VoiceType exists in the public enum), only the three
+ * visible types. */
+static int test_type_cycle_order(void) {
+    ASSERT_EQ(nextVoiceType(VOICE_TYPE_SAMPLE), VOICE_TYPE_FM, "sample->fm");
+    ASSERT_EQ(nextVoiceType(VOICE_TYPE_FM), VOICE_TYPE_BLEP, "fm->blep");
+    ASSERT_EQ(nextVoiceType(VOICE_TYPE_BLEP), VOICE_TYPE_SAMPLE, "blep->sample");
+    ASSERT_EQ(prevVoiceType(VOICE_TYPE_SAMPLE), VOICE_TYPE_BLEP, "sample->blep");
+    ASSERT_EQ(prevVoiceType(VOICE_TYPE_BLEP), VOICE_TYPE_FM, "blep->fm");
+    ASSERT_EQ(prevVoiceType(VOICE_TYPE_FM), VOICE_TYPE_SAMPLE, "fm->sample");
+    printf("PASS test_type_cycle_order\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1161,6 +1184,9 @@ int main(void) {
 
     /* Task 5 — chip label-edit char cycle + cursor bounds */
     fails += test_chip_label_edit();
+
+    /* Task 4 — meta-row type cycle (SAMPLE->FM->BLEP->SAMPLE) */
+    fails += test_type_cycle_order();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

@@ -1880,7 +1880,6 @@ static void commitPresetName(PresetNameGuiNode *pn) {
 /* Forward decls so handlePresetUiInput can activate the SAVE/LOAD buttons. */
 static void cbFocusNameNode(void *ctx);
 static void cbOpenLoadList(void *ctx);
-static void cbCycleVoiceType(void *ctx);
 static void cbPresetPrev(void *ctx);
 static void cbPresetNext(void *ctx);
 
@@ -1921,37 +1920,83 @@ static void cbPresetNext(void *ctx) {
  * swap succeeds we tear down + rebuild the affected instrument screen so
  * the new voice-type-specific row (appendFMInstControlNode / appendSample
  * / appendBlep) appears below the meta row, and the dial / preset bindings
- * move onto the new Instrument's params. */
-static void cbCycleVoiceType(void *ctx) {
-	VoiceManager *vm = (VoiceManager *)ctx;
-	if(!vm || vm->enabledChannels <= 0) {
-		return;
+ * move onto the new Instrument's params.
+ *
+ * Task 4: replaced by cbTypePrev / cbTypeNext (PREV/NEXT action buttons on
+ * the meta row). The cycle order is identical; the old single-button
+ * `cbCycleVoiceType` is gone, but the behaviour is split into ±1 steps so
+ * the user can step backward if they overshoot. */
+
+/* Task 4: voiceType cycle helpers. The META row's PREV/NEXT buttons
+ * step the focused instrument's voiceType through the 3-element ring
+ * SAMPLE -> FM -> BLEP (and the reverse). Exposed for the unit test
+ * test_type_cycle_order (gui.h). Unknown types fall through to FM so
+ * the caller's `setInstrumentVoiceType` always lands on a valid type. */
+VoiceType nextVoiceType(VoiceType t) {
+	switch(t) {
+		case VOICE_TYPE_SAMPLE: return VOICE_TYPE_FM;
+		case VOICE_TYPE_FM:     return VOICE_TYPE_BLEP;
+		case VOICE_TYPE_BLEP:   return VOICE_TYPE_SAMPLE;
+		default:                return VOICE_TYPE_FM;
 	}
-	Instrument *sel = getSelectedInstInstrument();
-	if(!sel) {
-		return;
+}
+
+VoiceType prevVoiceType(VoiceType t) {
+	switch(t) {
+		case VOICE_TYPE_SAMPLE: return VOICE_TYPE_BLEP;
+		case VOICE_TYPE_BLEP:   return VOICE_TYPE_FM;
+		case VOICE_TYPE_FM:     return VOICE_TYPE_SAMPLE;
+		default:                return VOICE_TYPE_FM;
 	}
-	int channel = -1;
+}
+
+/* Task 4: resolve the channel whose Instrument is `sel` by pointer
+ * identity. Returns -1 if no match. Both cbTypePrev and cbTypeNext
+ * call this; the channel must be captured BEFORE setInstrumentVoiceType
+ * because that call frees the old Instrument. */
+static int resolveTypeChannel(VoiceManager *vm, Instrument *sel) {
+	if(!vm || !sel) return -1;
 	for(int i = 0; i < vm->enabledChannels; i++) {
-		if(vm->instruments[i] == sel) {
-			channel = i;
-			break;
-		}
+		if(vm->instruments[i] == sel) return i;
 	}
-	if(channel < 0) {
-		return;
-	}
-	VoiceType cur = sel->voiceType;
-	VoiceType next;
-	switch(cur) {
-		case VOICE_TYPE_SAMPLE: next = VOICE_TYPE_FM;   break;
-		case VOICE_TYPE_FM:     next = VOICE_TYPE_BLEP; break;
-		case VOICE_TYPE_BLEP:   next = VOICE_TYPE_SAMPLE; break;
-		default:                next = VOICE_TYPE_FM;   break;
-	}
-	if(setInstrumentVoiceType(vm, channel, next)) {
+	return -1;
+}
+
+static void cbTypePrev(void *ctx) {
+	VoiceManager *vm = (VoiceManager *)ctx;
+	Instrument *sel = getSelectedInstInstrument();
+	int ch = resolveTypeChannel(vm, sel);
+	if(ch < 0) return;
+	if(setInstrumentVoiceType(vm, ch, prevVoiceType(sel->voiceType))) {
 		rebuildInstrumentGraph();
 	}
+}
+
+static void cbTypeNext(void *ctx) {
+	VoiceManager *vm = (VoiceManager *)ctx;
+	Instrument *sel = getSelectedInstInstrument();
+	int ch = resolveTypeChannel(vm, sel);
+	if(ch < 0) return;
+	if(setInstrumentVoiceType(vm, ch, nextVoiceType(sel->voiceType))) {
+		rebuildInstrumentGraph();
+	}
+}
+
+/* Task 4: the type-tag label drawn between the PREV and NEXT action
+ * buttons on the instrument-screen META row. It's a static text node
+ * (not an action button and not a dial) — the tag updates every time
+ * the graph rebuilds after a PREV/NEXT click, so we re-derive it from
+ * the currently focused Instrument. The selected outline matches the
+ * action buttons so the cursor is visible when the user navigates onto
+ * the label cell. */
+static void drawTypeLabelGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	/* the current tag comes from the selected instrument's voiceType */
+	Instrument *inst = getSelectedInstInstrument();
+	const char *tag = inst ? voiceTypeTag(inst->voiceType) : "--";
+	int tw = MeasureText(tag, 10);
+	DrawTextEx(pixelFont, tag, (Vector2){ gn->x + (gn->w - tw) / 2, gn->y + (gn->h - 10) / 2 }, 10, 1, cs.label);
+	if(gn->selected) DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.outlineColour);
 }
 
 /* Task 4: number of valid cursor slots for the preset name node. name[33]
@@ -2114,14 +2159,14 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		 * nodes). */
 		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode
 		   || sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext
-		   || sel->actionCb == cbCycleVoiceType) {
+		   || sel->actionCb == cbTypePrev || sel->actionCb == cbTypeNext) {
 			sel->actionCb(sel->actionCtx);
 			/* PREV/NEXT apply a preset, which rebuilds the paramList;
 			 * the graph's dials still point at the freed params. Rebuild
 			 * the graph so the dials re-address the new params and the
-			 * UI reflects the applied preset. cbCycleVoiceType already
-			 * rebuilds internally (it swaps the Instrument on the VM),
-			 * so it does not belong in this branch. */
+			 * UI reflects the applied preset. cbTypePrev/cbTypeNext
+			 * already rebuild internally (they swap the Instrument on
+			 * the VM), so they do not belong in this branch. */
 			if(sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
 				rebuildInstrumentGraph();
 			}
@@ -2418,18 +2463,19 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	}
 }
 
-/* Task 6: meta row (TYPE toggle + VOICES dial + WIDTH placeholder).
- * Sits at the top of instwrap, above the preset row and the
- * voice-type-specific control row. Mirrors the horizontal wrapper +
- * action-buttons + dial layout of appendPresetControlNode so the
- * visual rhythm matches.
+/* Task 4: meta row (PREV action btn | TYPE label | NEXT action btn |
+ * VOICES dial | WIDTH blank). Sits at the top of instwrap, above the
+ * preset row and the voice-type-specific control row. Mirrors the
+ * horizontal wrapper + action-buttons + dial layout of
+ * appendPresetControlNode so the visual rhythm matches.
  *
- * TYPE is an action button (not a dial) because the value domain is
- * a 3-element enum (SAMPLE/FM/BLEP) and the arcade input grammar uses
- * KM_EDIT to fire an action and arrow keys to walk between controls.
- * Its label is the current voiceTypeTag at graph-build time — the
- * callback rebuilds the graph, which re-runs this builder and re-derives
- * the new tag.
+ * PREV / NEXT are action buttons (cbTypePrev / cbTypeNext) that step
+ * the focused instrument's voiceType ±1 through the 3-element ring
+ * SAMPLE -> FM -> BLEP. The label cell between them is a static text
+ * node (drawTypeLabelGuiNode) that re-derives its tag from the
+ * currently selected instrument on every graph rebuild — PREV/NEXT
+ * both call setInstrumentVoiceType + rebuildInstrumentGraph, so the
+ * tag always shows the post-step type.
  *
  * VOICES is a dial bound to inst->voiceCountParam (range 1..8, created
  * in init_instrument with cb_setVoiceCount wired via createParameterPro).
@@ -2438,10 +2484,12 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
  * dial and the actual voiceCount stay in lockstep (setChannelVoiceCount
  * clamps + rewrites, which absorbs the dial's fp jitter).
  *
- * WIDTH is a 6-weight blank placeholder reserved for future stereo
- * width / unison-spread dial. Keeping it in the tree now means we
- * preserve the visual proportions of the row and the future dial just
- * needs a swap, not a layout change.
+ * WIDTH is a 2-weight blank placeholder reserved for a future stereo
+ * width / unison-spread dial. Keeping it in the tree now preserves the
+ * visual proportions of the row and the future dial just needs a swap,
+ * not a layout change. (Was weight 6 in the old single-button layout;
+ * the new PREV+TAG+NEXT trio eats more horizontal space so 2 is the
+ * biggest weight that keeps the row from looking lopsided.)
  *
  * SELECTION: passing `selected=false` is intentional. createInstGraph
  * passes `true` only to the voice-type-specific row (appendFMInst
@@ -2453,28 +2501,30 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected) {
 	(void)g;
 	(void)channel;
-	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "META", 0, 0);
+	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "META", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
 
-	/* TYPE label is the current voiceType tag. built once per rebuild;
-	 * initGuiNode strdup's the name so the stack buffer is safe. */
-	char typeLabel[8];
-	snprintf(typeLabel, sizeof(typeLabel), "%s", voiceTypeTag(inst->voiceType));
-	GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 1, na_horizontal, typeLabel, selected, cbCycleVoiceType, vm);
+	GuiNode *prevBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "TPREV", selected, cbTypePrev, vm);
+	GuiNode *tag = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "TYPE", 0, 0);
+	tag->draw = drawTypeLabelGuiNode;
+	tag->drawable = true;
+	GuiNode *nextBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "TNEXT", 0, cbTypeNext, vm);
 
 	/* VOICES dial: inst->voiceCountParam was created in init_instrument
 	 * (Task 6 voice.c) with onChange = cb_setVoiceCount. The default
 	 * range is 1..8 (MAX_VOICES_PER_CHANNEL). incParameterBaseValue
 	 * is the standard adjust callback used by every other dial in the
 	 * instrument screen, so left/right + KM_EDIT+arrow work uniformly. */
-	GuiNode *voicesDial = createDialGuiNode(0, 0, 100, 100, 1, na_horizontal, "VOICES", selected, incParameterBaseValue, inst->voiceCountParam);
+	GuiNode *voicesDial = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "VOICES", 0, incParameterBaseValue, inst->voiceCountParam);
 
 	GuiNode *widthPad = createBlankGuiNode();
 
-	appendItem(btnwrap, typeBtn, 1);
+	appendItem(btnwrap, prevBtn, 1);
+	appendItem(btnwrap, tag, 2);
+	appendItem(btnwrap, nextBtn, 1);
 	appendItem(btnwrap, voicesDial, 1);
-	appendItem(btnwrap, widthPad, 6);
+	appendItem(btnwrap, widthPad, 2);
 	appendItem(container, btnwrap, weight);
 }
 
@@ -2883,15 +2933,16 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	GuiNode *pad2 = createBlankGuiNode();
 
 	GuiNode *instwrap = createGuiNode(0, 0, 100, 100, 5, na_vertical, "inst_wrap", 0, 0);
-	/* Task 6: meta row sits at the TOP of instwrap, above presetWrap.
-	 * Weight is intentionally small (1) so the voice-type-specific row
-	 * below it (FM/Sample/Blep, weight 8) keeps most of the vertical
-	 * space — the meta row is a thin ribbon of TYPE + VOICES controls.
-	 * selected=false: never assign g->selected here, see the long
-	 * comment on appendMetaControlNode for the fixture-compatibility
-	 * reasoning. */
-	appendMetaControlNode(instGraph, instwrap, inst, vm, channel, 1, false);
-	appendItem(instwrap, presetWrap, 5);
+	/* Task 4: meta row sits at the TOP of instwrap with weight 4 so it
+	 * is one standard control row tall (~35px / 31px content), matching
+	 * the AD-env dial row height. The old weight=1 shrank it to 4px —
+	 * effectively invisible, breaking cursor navigation onto the row.
+	 * presetWrap weight is dropped from 5 to 4 in the call below so
+	 * both rows stay the same standard height. selected=false: never
+	 * assign g->selected here, see the long comment on
+	 * appendMetaControlNode for the fixture-compatibility reasoning. */
+	appendMetaControlNode(instGraph, instwrap, inst, vm, channel, 4, false);
+	appendItem(instwrap, presetWrap, 4);
 	switch(inst->voiceType) {
 		case VOICE_TYPE_FM:
 			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 8, true, inst);

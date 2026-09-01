@@ -112,6 +112,7 @@ typedef enum {
 	SOP_ASSERT_VOICE_TYPE,    /* Task 7: inst->voiceType == N (matches VOICE_TYPE_* enum) */
 	SOP_ASSERT_VOICE_COUNT,   /* Task 7: roundf(inst->voiceCountParam->baseValue) == N */
 	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
+	SOP_REPORT,        /* Task 4: print a GuiNode's rect (x y w h) to stdout */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -402,6 +403,20 @@ static void parseScript(const char *path) {
 				return;
 			}
 			s->op = SOP_SHOT; s->frames = 1;
+			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
+			s->name[sizeof(s->name) - 1] = '\0';
+		} else if(strcmp(op, "REPORT") == 0) {
+			/* REPORT <name>: Task 4 size verification. Print the rect
+			 * (x y w h) of the GuiNode whose name matches — works for
+			 * any node (selectable or wrapper). Used to confirm the
+			 * META row is ~35px after the meta-row rework, and that
+			 * the preset row matches the AD-env row heights. */
+			if(nt < 2) {
+				fclose(fp);
+				failScript(lineno, "REPORT requires a node name");
+				return;
+			}
+			s->op = SOP_REPORT; s->frames = 1;
 			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
 			s->name[sizeof(s->name) - 1] = '\0';
 		} else if(strcmp(op, "ASSERT") == 0) {
@@ -901,6 +916,32 @@ static GuiNode *findSelectableByName(GuiNode *root, const char *want) {
 	return NULL;
 }
 
+/* Task 4: like findSelectableByName but matches any GuiNode regardless
+ * of the `selectable` flag — needed to inspect wrapper rows like the
+ * "META" or "presetwrappa" containers whose `selectable` is false.
+ * Recurses the same way and stops at the first name match. */
+static GuiNode *findNodeByName(GuiNode *root, const char *want) {
+	if(!root || !want) {
+		return NULL;
+	}
+	if(root->name && strcmp(root->name, want) == 0) {
+		return root;
+	}
+	if(!root->items) {
+		return NULL;
+	}
+	ListElement *l = root->items->head;
+	while(l != NULL) {
+		GuiNode *child = *(GuiNode **)l->data;
+		GuiNode *match = findNodeByName(child, want);
+		if(match) {
+			return match;
+		}
+		l = l->next;
+	}
+	return NULL;
+}
+
 /* Task 7: assert arranger->label[CH] matches the (8-char max) string
  * recorded in s->name. Reads through s_scriptData->arranger — the
  * arranger struct is reachable via the paTestData pointer cached at
@@ -1017,6 +1058,7 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 		case SOP_ASSERT_VOICE_TYPE:
 		case SOP_ASSERT_VOICE_COUNT:
 		case SOP_SHOT:
+		case SOP_REPORT:
 		default:
 			break;
 	}
@@ -1100,6 +1142,24 @@ static void processScriptAssert(const ScriptStep *s) {
 				failScript(s->lineno, "SHOT %s: capture failed", s->name);
 			}
 			break;
+		case SOP_REPORT: {
+			/* Task 4 size verification — find the named GuiNode (any
+			 * depth, selectable or wrapper) and print its rect. Doesn't
+			 * fail the script: a missing node is just an empty result so
+			 * the harness log makes the size evidence easy to read. */
+			Graph *cg = getSelectedInstGraph();
+			if(!cg) {
+				printf("[REPORT] %s: no instrument graph\n", s->name);
+				break;
+			}
+			GuiNode *match = findNodeByName(cg->root, s->name);
+			if(!match) {
+				printf("[REPORT] %s: not found\n", s->name);
+				break;
+			}
+			printf("[REPORT] %s: x=%d y=%d w=%d h=%d\n", s->name, match->x, match->y, match->w, match->h);
+			break;
+		}
 		default:
 			break;
 	}

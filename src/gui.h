@@ -229,6 +229,16 @@ void chipLabelCycleCharAt(char *slot, int dir);
  * definition (identical NAME_CHARS macros). */
 int chipLabelCharIndex(char c);
 
+/* Task 4: meta-row type cycle. The instrument screen's META row has
+ * PREV/NEXT action buttons that step the focused instrument's
+ * voiceType through SAMPLE -> FM -> BLEP (forward) and the reverse
+ * (backward). The cycle is a 3-element ring; any VoiceType outside
+ * {SAMPLE, FM, BLEP} falls through to FM so a stray value still lands
+ * on a known type. Exposed (non-static) for the unit test
+ * test_type_cycle_order. */
+VoiceType nextVoiceType(VoiceType t);
+VoiceType prevVoiceType(VoiceType t);
+
 typedef struct {
 	GuiNode base;
 	Instrument *instrument;
