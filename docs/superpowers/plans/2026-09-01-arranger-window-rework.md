@@ -619,6 +619,130 @@ git commit -m "test(harness): arranger window + meta-row PREV/NEXT fixtures"
 
 ---
 
+### Task 6: Window-scale keyboard controls (Ctrl+=/- and Ctrl+Shift+=/-)
+
+**Files:**
+- Modify: `src/input.h` (KeyMapping enum, KEYBOARD_MAP, GAMEPAD_MAP, KEY_NAMES)
+- Modify: `src/gui.c`, `src/gui.h` (scale state + adjust helpers)
+- Modify: `src/main.c` (the keybind)
+- Test: `tests/dsp/test_graph_nav.c`
+
+**Interfaces:**
+- Consumes: the InputState `isKeyHeld`/`isKeyJustPressed` (input.h), `SetWindowSize` (raylib), `SCREEN_W`/`SCREEN_H` (settings.h).
+- Produces: new KeyMappings `KM_CTRL`, `KM_SHIFT`, `KM_EQUAL`, `KM_MINUS` (appended before `KEY_MAPPING_COUNT`). `float getWindowScale(void)` + `void setWindowScale(float scale)` in gui.c/gui.h (clamps + calls `SetWindowSize((int)roundf(SCREEN_W*scale), (int)roundf(SCREEN_H*scale))`). Pure helpers `float nextWholeScale(float)` + `float prevWholeScale(float)` in gui.c/gui.h for the whole-step math (tested).
+
+- [ ] **Step 1: Write the failing tests**
+
+`tests/dsp/test_graph_nav.c`:
+```c
+static int test_window_scale_helpers(void) {
+	ASSERT_EQ_F(nextWholeScale(1.0f), 2.0f, "1.0 whole-up -> 2");
+	ASSERT_EQ_F(nextWholeScale(1.5f), 2.0f, "1.5 whole-up -> 2");
+	ASSERT_EQ_F(nextWholeScale(3.0f), 4.0f, "3.0 whole-up -> 4");
+	ASSERT_EQ_F(prevWholeScale(2.0f), 1.0f, "2.0 whole-down -> 1");
+	ASSERT_EQ_F(prevWholeScale(1.75f), 1.0f, "1.75 whole-down -> 1");
+	ASSERT_EQ_F(prevWholeScale(1.0f), 0.25f, "1.0 whole-down -> 0.25 (clamped floor)");
+	printf("PASS test_window_scale_helpers\n");
+	return 0;
+}
+```
+(Add an `ASSERT_EQ_F` float-comparison macro to the file if none exists — compare with a 1e-4 tolerance.) Register it in `main()`.
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `ninja -C build && build/tests/test_graph_nav`
+Expected: FAIL (nextWholeScale undefined).
+
+- [ ] **Step 3: Implement**
+
+`src/input.h` — append to the KeyMapping enum before `KEY_MAPPING_COUNT`:
+```c
+	KM_CTRL,
+	KM_SHIFT,
+	KM_EQUAL,
+	KM_MINUS,
+	KEY_MAPPING_COUNT
+```
+KEYBOARD_MAP (append):
+```c
+	KEY_LEFT_CONTROL,
+	KEY_LEFT_SHIFT,
+	KEY_EQUAL,
+	KEY_MINUS
+```
+GAMEPAD_MAP (append 4 entries — keyboard-only, no pad buttons):
+```c
+	0,
+	0,
+	0,
+	0
+```
+KEY_NAMES (append):
+```c
+	"CTRL",
+	"SHIFT",
+	"=",
+	"-"
+```
+(raylib defines `KEY_EQUAL` (61) and `KEY_MINUS` (45); they come through raylib.h.)
+
+`src/gui.c` — near the present machinery:
+```c
+static float g_windowScale = 1.0f;
+
+float nextWholeScale(float s) {
+	float n = floorf(s) + 1.0f;
+	if(n < 0.25f) n = 0.25f;
+	return n;
+}
+float prevWholeScale(float s) {
+	float n = ceilf(s) - 1.0f;
+	if(n < 0.25f) n = 0.25f;
+	return n;
+}
+float getWindowScale(void) { return g_windowScale; }
+void setWindowScale(float scale) {
+	if(scale < 0.25f) scale = 0.25f;
+	if(scale > 8.0f) scale = 8.0f;
+	g_windowScale = scale;
+	SetWindowSize((int)roundf(SCREEN_W * scale), (int)roundf(SCREEN_H * scale));
+}
+```
+Declare the four in `src/gui.h`.
+
+`src/main.c` — in the main loop, right after `updateInputState` (before the scene-specific handling), add the global keybind:
+```c
+		if(isKeyHeld(appState->inputState, KM_CTRL)) {
+			bool shift = isKeyHeld(appState->inputState, KM_SHIFT);
+			if(isKeyJustPressed(appState->inputState, KM_EQUAL)) {
+				extern float getWindowScale(void);
+				extern void setWindowScale(float);
+				extern float nextWholeScale(float);
+				setWindowScale(shift ? getWindowScale() + 0.25f : nextWholeScale(getWindowScale()));
+			}
+			if(isKeyJustPressed(appState->inputState, KM_MINUS)) {
+				extern float getWindowScale(void);
+				extern void setWindowScale(float);
+				extern float prevWholeScale(float);
+				setWindowScale(shift ? getWindowScale() - 0.25f : prevWholeScale(getWindowScale()));
+			}
+		}
+```
+(The externs are only needed if gui.h isn't already included in main.c — it is, so drop the externs and rely on the gui.h declarations.)
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: build + `meson test -C build` (8/8) + boot. Verify the keybind manually under Xvfb (a temp hook that calls `setWindowScale(2.0f)` then confirms `GetScreenWidth() == 1280` — or add a temp auto-drive that fires the Ctrl+= path and prints the window size; remove it after).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/input.h src/gui.c src/gui.h src/main.c tests/dsp/test_graph_nav.c
+git commit -m "feat(gui): window-scale keybinds (Ctrl+=/- whole steps, Ctrl+Shift+=/- quarter steps)"
+```
+
+---
+
 ## Notes for the implementer
 
 - The `demoStack` (vline/poly) + the `songControls` (BPM/Swing) stay untouched.
