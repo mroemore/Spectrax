@@ -65,7 +65,11 @@ static const char *KEY_NAMES[] = {
 	"SCN>",
 	"MOD",
 	"ADD",
-	"DEL"
+	"DEL",
+	"CTRL",
+	"SHIFT",
+	"=",
+	"-"
 };
 
 static const int GAMEPAD_MAP[] = {
