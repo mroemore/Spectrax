@@ -15,9 +15,10 @@
 # within a few px of R_1's h. The fixture captures a SHOT PNG as
 # additional visual evidence and exits cleanly.
 #
-# The nav section (UP from RATIO1 should reach the META row's PREV/TYPE/
-# NEXT/VOICES children, then UP again should leave the meta row) proves
-# the cursor can move onto AND off the meta row.
+# The nav section (UP from RATIO1 should reach the META row's TPREV/
+# TNEXT/VOICES children, then DOWN walks back through the preset row
+# into FM_CONTROLS, landing on RATIO3) proves the cursor can move
+# onto AND off the meta row.
 #
 # Initial state after initApplication(): selection = RATIO1.
 
@@ -75,49 +76,25 @@ REPORT TPREV
 REPORT TNEXT
 REPORT VOICES
 
-# DOWN many times: should leave the meta row, re-enter the preset row,
-# then re-enter FM_CONTROLS. The exact landing node depends on the
-# nav-impl's UP/DOWN ordering (FM has two dial rows + 3 preset buttons
-# + 4 meta selectables, so 30 DOWNs from the topmost meta child lands
-# on a node near RATIO3 by spec, not RATIO1). What matters is that the
-# cursor DOES leave the meta row — so we assert the final selection is
-# NOT one of the meta row's selectable children. (The harness log also
-# shows the selected name after each step, so the full trace is in
-# the captured stdout for human review.)
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
+# DOWN three times: should leave the meta row (VOICES), drop through
+# the preset row, then land on RATIO3 in FM_CONTROLS (the first dial
+# of the second FM dial row, R_2). The cursor trace for a fresh
+# FM-instrument state is:
+#   VOICES (top meta) -DOWN-> PREV (preset) -DOWN-> RATIO1 (R_1)
+#                                            -DOWN-> RATIO3 (R_2)
+# So 3 DOWNs is the exact count to land on RATIO3. (The original
+# spec called for 30 DOWNs to walk the full graph round-trip, but
+# that loops past FM_CONTROLS into the mod_wrap AD-env nodes
+# (ATTACK, DECAY, ...) and asserted a wrong target — the reviewer's
+# flag for Task 5. Tightening to 3 still proves the cursor left the
+# meta row, lands on a KNOWN FM dial, and exercises the
+# meta -> preset -> FM_CONTROLS traversal.)
 DOWN
 DOWN
 DOWN
 FRAMES 2
-# Assert we're back in the body (not stuck on the meta row). The
-# picked node will be one of the FM dial/preset nodes, not TPREV/
-# TNEXT/VOICES.
+# Assert we're back in FM_CONTROLS (R_2 first dial), proving the
+# cursor left the meta row and traversed preset -> FM.
 ASSERT selected == RATIO3
 
 # Capture the screen for the human-readable evidence trail.

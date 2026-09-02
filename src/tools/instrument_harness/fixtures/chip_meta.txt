@@ -1,15 +1,40 @@
-# chip_meta.txt — Task 7 fixture
+# chip_meta.txt — Task 7 fixture (Task 5 update)
 #
 # Walks the arranger chip row (chip 0) through expand -> swatch ->
 # label edit -> collapse -> jump to instrument page, then exercises
-# the meta row (TYPE button cycles voice type, VOICES dial adjusts
-# the count) on the same chip's instrument screen.
+# the meta row (TNEXT cycles voice type, VOICES dial adjusts the
+# count) on the same chip's instrument screen.
+#
+# Task 5 rework notes:
+#   * The arranger grid is now a scrollable window of per-cell graph
+#     nodes. The single legacy ArrangerGuiNode grid is GONE. The
+#     initial selected cell column is whatever s1.sng persisted in
+#     selectedArrangerCell[0] (last-run state). We LEFT x5 first to
+#     drive selected_x to 0 so the subsequent UP lands on chip 0
+#     (column-matched nav from the windowed grid).
+#   * The instrument meta row is now [TPREV] [TYPE-tag label
+#     (non-selectable)] [TNEXT] [VOICES] [WIDTH] — the old single
+#     cycling TYPE button is gone. JUMP VOICES + LEFT now lands on
+#     TNEXT (the next-type action button), and EDIT on TNEXT fires
+#     cbTypeNext, cycling voice type FM -> BLEP -> SAMPLE.
 
 # Boot is SCENE_INSTRUMENT (per the harness's startup override);
 # switch to SCENE_ARRANGER (user-facing 0) to access the chip row.
 SCENE 0
 FRAMES 2
 ASSERT scene==0
+
+# ---- Drive the column to 0 so UP lands on chip 0 (column-matched nav) ----
+LEFT
+FRAMES 1
+LEFT
+FRAMES 1
+LEFT
+FRAMES 1
+LEFT
+FRAMES 1
+LEFT
+FRAMES 1
 
 # ---- From the arranger grid, UP selects chip 0 (via the chip-row wrapper) ----
 UP
@@ -68,27 +93,27 @@ ASSERT selected==NEXT
 DOWN
 FRAMES 3
 ASSERT selected==RATIO1
-# ---- Land on the TYPE button (deterministically via JUMP by name) ----
-# bare UP/LEFT navigation from RATIO1 is fragile across bestInDirection
+# ---- Land on the TNEXT action button (deterministically via JUMP by name) ----
+# The meta row is [TPREV] [TYPE-tag label (non-selectable)] [TNEXT] [VOICES]
+# [WIDTH]. JUMP VOICES + LEFT skips VOICES -> TNEXT (the type-cycle button,
+# not the old single TYPE button — Task 5 rework removed that). Bare
+# UP/LEFT navigation from RATIO1 is fragile across bestInDirection
 # interpretations, so use the JUMP escape hatch.
 JUMP VOICES
 FRAMES 1
 ASSERT selected==VOICES
-# LEFT in btnwrap (horizontal) takes us leftward from VOICES to the
-# TYPE button. Even if its display name was rebuilt during a cycle,
-# the underlying node is fixed as the first child of META.
+# LEFT in btnwrap (horizontal) takes us leftward from VOICES to TNEXT.
 LEFT
 FRAMES 3
-# Cycle voice type: FM -> BLEP (TYPE button label is BLP for BLEP)
+# Cycle voice type: FM -> BLEP (TNEXT fires cbTypeNext)
 ASSERT voiceType==FM
 
 EDIT
 FRAMES 3
 ASSERT voiceType==BLEP
-# The graph rebuilds after the cycle (TYPE button gets a fresh strdup
-# label). The TYPE button's NAME is the type tag itself (e.g. "FM"),
-# not "TYPE", so re-JUMP VOICES + LEFT to land on the rebuilt TYPE
-# button deterministically.
+# After the cycle, the TYPE tag label is rebuilt (drawTypeLabelGuiNode
+# re-renders with the new voice-type tag). The TNEXT button itself is
+# stable, but to be safe we re-JUMP VOICES + LEFT to land deterministically.
 JUMP VOICES
 FRAMES 1
 LEFT
