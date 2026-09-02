@@ -280,6 +280,18 @@ int main(int argc, char **argv) {
 	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
+		/* Task 6: window-scale keybinds. Ctrl+=/- steps the window scale
+		 * in whole multiples of the base (1x->2x->3x...); adding Shift
+		 * steps in 0.25 increments. Global (all scenes). */
+		if(isKeyHeld(appState->inputState, KM_CTRL)) {
+			bool scaleShift = isKeyHeld(appState->inputState, KM_SHIFT);
+			if(isKeyJustPressed(appState->inputState, KM_EQUAL)) {
+				setWindowScale(scaleShift ? getWindowScale() + 0.25f : nextWholeScale(getWindowScale()));
+			}
+			if(isKeyJustPressed(appState->inputState, KM_MINUS)) {
+				setWindowScale(scaleShift ? getWindowScale() - 0.25f : prevWholeScale(getWindowScale()));
+			}
+		}
 		BeginTextureMode(gfx);
 		clearBg();
 		updateSpectrogramData(&data.spectrogram);

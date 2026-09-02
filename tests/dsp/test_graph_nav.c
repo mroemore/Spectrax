@@ -123,6 +123,27 @@ void navigateArrangerGraphTo(Graph *g, Arranger *a, int keymapping);
 #define ASSERT_NEAR_GET(_1, _2, _3, _4, NAME, ...) NAME
 #define ASSERT_NEAR(...) ASSERT_NEAR_GET(__VA_ARGS__, ASSERT_NEAR_4, ASSERT_NEAR_3, MISSING, MISSING)(__VA_ARGS__)
 
+#define ASSERT_EQ_F(actual, expected, msg) do { \
+    float _a = (float)(actual); \
+    float _e = (float)(expected); \
+    if (fabsf(_a - _e) > 1e-4f) { \
+        fprintf(stderr, "FAIL %s:%d: %s — expected %.4f, got %.4f (tol %.4f)\n", \
+                __FILE__, __LINE__, (msg), _e, _a, 1e-4f); \
+        return 1; \
+    } \
+} while (0)
+
+static int test_window_scale_helpers(void) {
+	ASSERT_EQ_F(nextWholeScale(1.0f), 2.0f, "1.0 whole-up -> 2");
+	ASSERT_EQ_F(nextWholeScale(1.5f), 2.0f, "1.5 whole-up -> 2");
+	ASSERT_EQ_F(nextWholeScale(3.0f), 4.0f, "3.0 whole-up -> 4");
+	ASSERT_EQ_F(prevWholeScale(2.0f), 1.0f, "2.0 whole-down -> 1");
+	ASSERT_EQ_F(prevWholeScale(1.75f), 1.0f, "1.75 whole-down -> 1");
+	ASSERT_EQ_F(prevWholeScale(1.0f), 0.25f, "1.0 whole-down -> 0.25 (clamped floor)");
+	printf("PASS test_window_scale_helpers\n");
+	return 0;
+}
+
 /* freeGuiNode recurses through items + itemWeights, frees name. */
 static void teardown_graph(Graph *g) {
     freeGuiNode(g->root);
@@ -891,6 +912,7 @@ static int test_nav_edge_scroll(void) {
 
 int main(void) {
     int fails = 0;
+    fails += test_window_scale_helpers();
     fails += test_trivial_rect_wiring();
     fails += test_first_selection();
     fails += test_col_up_down();

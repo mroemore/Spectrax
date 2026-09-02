@@ -174,6 +174,32 @@ RenderTexture2D createPresentTarget(void) {
 	return LoadRenderTexture(SCREEN_W, SCREEN_H);
 }
 
+/* Task 6: window-scale keyboard controls. nextWholeScale/prevWholeScale
+ * are pure step math (pinned by test_window_scale_helpers);
+ * setWindowScale clamps to [0.25, 8] and resizes the window. */
+static float g_windowScale = 1.0f;
+
+float nextWholeScale(float s) {
+	float n = floorf(s) + 1.0f;
+	if(n < 0.25f) n = 0.25f;
+	return n;
+}
+
+float prevWholeScale(float s) {
+	float n = ceilf(s) - 1.0f;
+	if(n < 0.25f) n = 0.25f;
+	return n;
+}
+
+float getWindowScale(void) { return g_windowScale; }
+
+void setWindowScale(float scale) {
+	if(scale < 0.25f) scale = 0.25f;
+	if(scale > 8.0f) scale = 8.0f;
+	g_windowScale = scale;
+	SetWindowSize((int)roundf(SCREEN_W * scale), (int)roundf(SCREEN_H * scale));
+}
+
 void presentFrame(RenderTexture2D gfx) {
 	BeginDrawing();
 	ClearBackground(BLACK);

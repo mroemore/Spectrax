@@ -80,6 +80,11 @@ void setArrangerMixRing(MixRing *r);
 void drawStepGuiNode(void *self);
 void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene);
 Graph *getSelectedInstGraph();
+/* Task 6: window-scale helpers. */
+float getWindowScale(void);
+void setWindowScale(float scale);
+float nextWholeScale(float s);
+float prevWholeScale(float s);
 
 void initDefaultColourScheme(ColourScheme *colourScheme);
 void setColourScheme(ColourScheme *colourScheme);
