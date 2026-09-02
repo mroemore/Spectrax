@@ -1,0 +1,5 @@
+# visual_instrument.txt - capture instrument meta row + preset row
+# Default boot is SCENE_INSTRUMENT, selection on the channel's first dial.
+FRAMES 4
+SHOT /tmp/spectrax_instrument.png
+QUIT

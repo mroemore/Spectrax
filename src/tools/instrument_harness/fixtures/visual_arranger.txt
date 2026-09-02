@@ -1,0 +1,6 @@
+# visual_arranger.txt - capture arranger + chip row rendering
+# Boots to instrument scene, then jumps to arranger scene + captures.
+SCENE 0
+FRAMES 4
+SHOT /tmp/spectrax_arranger.png
+QUIT

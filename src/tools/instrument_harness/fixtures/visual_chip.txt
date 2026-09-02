@@ -1,0 +1,14 @@
+# visual_chip.txt - show the arranger + expand a chip to verify the chip row + expanded overlay render
+# Go to SCENE_ARRANGER (scene 0), move to chip 0 (col 0), then UP+EDIT to expand it.
+SCENE 0
+FRAMES 2
+LEFT
+LEFT
+LEFT
+LEFT
+LEFT
+UP
+EDIT UP
+FRAMES 4
+SHOT /tmp/spectrax_chip.png
+QUIT
