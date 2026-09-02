@@ -2941,8 +2941,8 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	 * both rows stay the same standard height. selected=false: never
 	 * assign g->selected here, see the long comment on
 	 * appendMetaControlNode for the fixture-compatibility reasoning. */
-	appendMetaControlNode(instGraph, instwrap, inst, vm, channel, 4, false);
-	appendItem(instwrap, presetWrap, 4);
+	appendMetaControlNode(instGraph, instwrap, inst, vm, channel, 5, false);
+	appendItem(instwrap, presetWrap, 5);
 	switch(inst->voiceType) {
 		case VOICE_TYPE_FM:
 			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 8, true, inst);
