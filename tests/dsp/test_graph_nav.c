@@ -910,8 +910,41 @@ static int test_nav_edge_scroll(void) {
     return 0;
 }
 
+/* Regression: empty arranger cells must NOT show the playhead colour.
+ * startPlaying seeds playhead_indices[i] = selected_y for EVERY channel,
+ * so non-running channels keep a stale playhead index pointing at a row
+ * whose song cell is empty. The fill decision gates the playhead
+ * highlight on the cell actually holding a pattern (song > -1). */
+static int test_arranger_cell_fill(void) {
+    Color playhead = (Color){ 255, 0, 0, 255 };
+    Color def = (Color){ 0, 255, 0, 255 };
+    Color blank = (Color){ 0, 0, 255, 255 };
+    Color got;
+
+    /* filled cell, playhead on its row, playing -> playhead */
+    got = arrangerCellFill(3, 1, 1, true, playhead, def, blank);
+    ASSERT_EQ(got.r, playhead.r, "filled+playhead -> playhead (r)");
+    ASSERT_EQ(got.g, playhead.g, "filled+playhead -> playhead (g)");
+
+    /* filled cell, playhead elsewhere -> default */
+    got = arrangerCellFill(3, 5, 1, true, playhead, def, blank);
+    ASSERT_EQ(got.g, def.g, "filled, playhead elsewhere -> default");
+
+    /* EMPTY cell, playhead index coincidentally on its row -> blank (the bug) */
+    got = arrangerCellFill(-1, 1, 1, true, playhead, def, blank);
+    ASSERT_EQ(got.b, blank.b, "empty + stale playhead index -> blank (b)");
+
+    /* EMPTY cell, not playing -> blank */
+    got = arrangerCellFill(-1, 1, 1, false, playhead, def, blank);
+    ASSERT_EQ(got.b, blank.b, "empty, stopped -> blank");
+
+    printf("PASS test_arranger_cell_fill\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
+    fails += test_arranger_cell_fill();
     fails += test_window_scale_helpers();
     fails += test_trivial_rect_wiring();
     fails += test_first_selection();

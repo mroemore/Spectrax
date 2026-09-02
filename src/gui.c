@@ -755,7 +755,7 @@ void drawDialGuiNode(void *self) {
 	tmpx += 28;
 	tmpy += 2;
 	drawValueDisplay(tmpx, tmpy, 38, 14, paramValue);
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, cs.label);
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
 }
 
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
@@ -836,7 +836,7 @@ void drawDiscreteDialGuiNode(void *self) {
 	tmpy += 5;
 	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
 
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, cs.label);
+	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
 }
 
 void drawWrapperNode(void *self) {
@@ -1200,6 +1200,21 @@ typedef struct {
 	int row;
 } ArrangerCellGuiNode;
 
+/* Arranger cell fill colour decision, exposed for unit tests. The
+ * playhead highlight only applies to cells that actually hold a pattern
+ * (song value > -1) — empty cells stay blank even if the channel's
+ * playhead index happens to coincide with their row (non-playing
+ * channels keep a stale playhead index from startPlaying). */
+Color arrangerCellFill(int cellValue, int playheadIndex, int row, bool playing, Color playhead, Color defaultC, Color blankC) {
+	if(cellValue > -1 && playheadIndex == row && playing) {
+		return playhead;
+	}
+	if(cellValue > -1) {
+		return defaultC;
+	}
+	return blankC;
+}
+
 static void drawArrangerCellGuiNode(void *self) {
 	ArrangerCellGuiNode *cell = (ArrangerCellGuiNode *)self;
 	if(cell->arranger == NULL) {
@@ -1207,14 +1222,7 @@ static void drawArrangerCellGuiNode(void *self) {
 	}
 	GuiNode *gn = &cell->base;
 	Arranger *a = cell->arranger;
-	Color bg;
-	if(a->playhead_indices[cell->ch] == cell->row && a->playing) {
-		bg = cs.arrangerPlayhead;
-	} else if(a->song[cell->ch][cell->row] > -1) {
-		bg = cs.defaultCell;
-	} else {
-		bg = cs.blankCell;
-	}
+	Color bg = arrangerCellFill(a->song[cell->ch][cell->row], a->playhead_indices[cell->ch], cell->row, a->playing, cs.arrangerPlayhead, cs.defaultCell, cs.blankCell);
 	DrawRectangle(gn->x, gn->y, gn->w, gn->h, bg);
 	int fs = (gn->h / 3 > 6) ? gn->h / 3 : 6;
 	char buf[8];

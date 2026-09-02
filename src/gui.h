@@ -137,6 +137,7 @@ bool isInstChipNode(const GuiNode *n);
 GuiNode *createArrangerCellGuiNode(int x, int y, int w, int h, bool selected, Arranger *arranger, int ch, int row);
 bool isArrangerCellNode(const GuiNode *n);
 void getArrangerCellCoords(const GuiNode *n, int *x, int *y);
+Color arrangerCellFill(int cellValue, int playheadIndex, int row, bool playing, Color playhead, Color defaultC, Color blankC);
 
 /* Task 2 (arranger window rework): scroll the visible window by
  * `delta` rows. Clamps arranger->visibleStart into [0,
