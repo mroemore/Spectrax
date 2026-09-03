@@ -1,0 +1,5 @@
+LOADB src/tools/vizulobe/smoke_viz.frag
+LOADL src/tools/vizulobe/smoke_viz.c
+WAIT 5
+SHOT vizulobe_smoke.png
+QUIT

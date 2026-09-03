@@ -53,4 +53,19 @@ if xvfb.found()
     args: ['-a', '-s', '-screen 0 640x480x24', t],
     timeout: 60,
   )
+
+  smoke = executable('vizulobe_smoke',
+    files('test_smoke.c', 'viz.c', 'audio.c', 'rect.c'),
+    c_args: ['-DVIZ_INCLUDE_DIR="' + vizulobe_inc_dir + '"', '-DVIZ_HARNESS'],
+    link_args: ['-rdynamic'],
+    link_with: [vizulobe_core, core_lib],
+    include_directories: inc,
+    dependencies: [system_deps, cjson, cc.find_library('dl', required: false)],
+  )
+  test('vizulobe_smoke', xvfb,
+    args: ['-a', '-s', '-screen 0 1280x800x24', smoke,
+      '--script', meson.current_source_dir() / 'smoke_script.txt'],
+    workdir: meson.project_source_root(),
+    timeout: 60,
+  )
 endif
