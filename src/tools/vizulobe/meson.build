@@ -1,24 +1,24 @@
 # vizulobe — audio-reactive visualisation sandbox.
 # Build: ninja -C build vizulobe
 
-vizulobe_inc_dir = meson.project_source_root() / 'include'
-
-scene_lib = static_library('vizulobe_scene',
-  files('scene.c'),
+vizulobe_core = static_library('vizulobe_core',
+  files('scene.c', 'analysis.c'),
   include_directories: inc,
 )
 
 vizulobe = executable('vizulobe',
   files('main.c'),
-  link_with: scene_lib,
+  link_with: [vizulobe_core],
   include_directories: inc,
   dependencies: system_deps,
 )
 
-t = executable('test_scene',
-  files('test_scene.c'),
-  link_with: scene_lib,
-  include_directories: inc,
-  dependencies: system_deps,
-)
-test('vizulobe_test_scene', t)
+foreach tname : ['test_scene', 'test_analysis']
+  t = executable(tname,
+    files(tname + '.c'),
+    link_with: [vizulobe_core, core_lib],
+    include_directories: inc,
+    dependencies: system_deps,
+  )
+  test('vizulobe_' + tname, t)
+endforeach
