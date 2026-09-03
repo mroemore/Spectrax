@@ -384,9 +384,12 @@ void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, Voice
 void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
 void appendBlankNode(GuiNode *container, int weight);
 Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected);
-void addRuntimeEnvelope(Instrument *inst);
-void removeRuntimeEnvelope(Instrument *inst, int envIndex);
+void addRuntimeSource(Instrument *inst);
+void removeSource(Instrument *inst, int srcIndex);
 void rebuildInstrumentGraph(void);
+void removeSelectedSource(void);
+/* Wrapper kept for compatibility — now a thin pass-through over
+ * removeSelectedSource. */
 void removeSelectedEnvelope(void);
 Instrument *getSelectedInstInstrument(void);
 

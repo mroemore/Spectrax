@@ -505,11 +505,11 @@ int main(int argc, char **argv) {
 				if(isKeyJustPressed(appState->inputState, KM_ADD)) {
 					Instrument *inst = getSelectedInstInstrument();
 					if(inst->voiceType == VOICE_TYPE_FM) {
-						addRuntimeEnvelope(inst);
+						addRuntimeSource(inst);
 					}
 				}
 				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-					removeSelectedEnvelope();
+					removeSelectedSource();
 				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

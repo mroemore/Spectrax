@@ -103,6 +103,50 @@ static int test_init_fm_instrument(void) {
     return 0;
 }
 
+/* Task 3: addRuntimeSource / removeSource — the source list is
+ * inst->modList, and inst->envelopeCount must stay synced to
+ * inst->modList->count so the harness ASSERT envcount line and the
+ * existing add_route_delete fixture remain correct. Core sources
+ * (indices 0..coreEnvelopeCount-1) are immutable; out-of-range is
+ * rejected; runtime-added sources can be removed. The teardown uses
+ * bare free(inst) because freeInstrument is static in src/voice.c —
+ * this matches every other init_instrument test in this file. */
+static int test_runtime_source_lifecycle(void) {
+    SamplePool *sp = createSamplePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_FM, sp, &pb);
+    ASSERT_TRUE(inst != NULL, "init_instrument FM");
+    int core = inst->coreEnvelopeCount;   /* 4 for FM */
+    int before = inst->modList->count;
+    (void)core; /* referenced in brief; kept for traceability */
+
+    addRuntimeSource(inst);
+    ASSERT_EQ(inst->modList->count, before + 1, "addRuntimeSource appends a source");
+    ASSERT_EQ(inst->envelopeCount, inst->modList->count, "envelopeCount tracks modList count");
+    Mod *m = inst->modList->mods[before];
+    ASSERT_EQ(m->type, MT_ENV, "default source is an envelope");
+    Envelope *env = (Envelope *)m;
+    ASSERT_EQ(env->stageCount, 2, "default source has an AD shape");
+
+    /* core sources cannot be removed */
+    removeSource(inst, 0);
+    ASSERT_EQ(inst->modList->count, before + 1, "core source removal rejected");
+    /* out-of-range rejected */
+    removeSource(inst, inst->modList->count);
+    ASSERT_EQ(inst->modList->count, before + 1, "out-of-range removal rejected");
+    /* runtime source removed */
+    removeSource(inst, before);
+    ASSERT_EQ(inst->modList->count, before, "runtime source removed");
+    ASSERT_EQ(inst->envelopeCount, before, "envelopeCount synced after removal");
+
+    free(inst);
+    freeSamplePool(sp);
+    printf("PASS test_runtime_source_lifecycle\n");
+    return 0;
+}
+
 /* Task 9: clearParamList must free its contents (not just zero the
  * count), and the list must remain usable for re-insertion. Before
  * the fix, clearParamList only zeroed count while leaking every
@@ -1169,6 +1213,7 @@ int main(void) {
     fails += test_preset_from_instrument_roundtrip();
 
     /* Task 10 integration suite */
+    fails += test_runtime_source_lifecycle();
     fails += test_route_to_fm_param_affects_value();
     fails += test_remove_modulation_is_surgical();
     fails += test_rewire_modulation_swaps_source();

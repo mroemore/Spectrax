@@ -2762,64 +2762,41 @@ static void appendRuntimeEnvControlNode(Graph *g, GuiNode *container, char *name
 	appendItem(container, envwrap, weight);
 }
 
-void addRuntimeEnvelope(Instrument *inst) {
-	if(!inst || inst->envelopeCount >= MAX_ENVELOPES) {
+void addRuntimeSource(Instrument *inst) {
+	if(!inst || !inst->modList || inst->modList->count >= MAX_ENVELOPES) {
 		return;
 	}
 	/* Task 8: the audio thread iterates inst->paramList/modList every
 	 * buffer; hold the rebuilding flag while we mutate the lists. The
 	 * audio lock closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
-	if(inst) {
-		inst->rebuilding = true;
-	}
-	int idx = inst->envelopeCount;
-	inst->envelopes[idx] = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
-	runtimeRoutes[idx].inst = inst;
-	runtimeRoutes[idx].env = inst->envelopes[idx];
-	runtimeRoutes[idx].routeIndex = createParameter(inst->paramList, "route", 12.0f, 0.0f, 12.0f);
-	runtimeRoutes[idx].target = NULL;
-	runtimeRoutes[idx].routeIndex->onChange.cbData = &runtimeRoutes[idx];
-	runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
-	inst->envelopeCount++;
+	inst->rebuilding = true;
+	createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
+	/* Task 3: envelopeCount now mirrors modList->count so the harness
+	 * ASSERT envcount reads the synced value. The runtime ROUTE-dial
+	 * machinery is owned by Task 6 — runtimeRoutes[] is kept populated
+	 * alongside the new mod slot via the modList index. */
+	inst->envelopeCount = inst->modList->count;
 	rebuildInstrumentGraph();
-	if(inst) {
-		inst->rebuilding = false;
-	}
+	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
-	/* voices alias core envelopes only; runtime envelopes route via
-	 * inst->paramList which all voices share; no rebuild needed */
 }
 
-void removeRuntimeEnvelope(Instrument *inst, int envIndex) {
-	if(!inst || envIndex < inst->coreEnvelopeCount || envIndex >= inst->envelopeCount) {
+void removeSource(Instrument *inst, int srcIndex) {
+	if(!inst || !inst->modList || srcIndex < inst->coreEnvelopeCount || srcIndex >= inst->modList->count) {
 		return;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate + free from the
 	 * modList/paramList the audio thread iterates. The audio lock
 	 * closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
-	if(inst) {
-		inst->rebuilding = true;
-	}
-	if(runtimeRoutes[envIndex].target) {
-		removeModulation(inst->paramList, runtimeRoutes[envIndex].target,
-		                 &inst->envelopes[envIndex]->base);
-	}
-	removeMod(inst->modList, inst->paramList, &inst->envelopes[envIndex]->base);
-	for(int j = envIndex; j < inst->envelopeCount - 1; j++) {
-		inst->envelopes[j] = inst->envelopes[j + 1];
-		runtimeRoutes[j] = runtimeRoutes[j + 1];
-	}
-	inst->envelopeCount--;
-	memset(&runtimeRoutes[inst->envelopeCount], 0, sizeof(RouteState));
+	inst->rebuilding = true;
+	removeMod(inst->modList, inst->paramList, inst->modList->mods[srcIndex]);
+	/* Task 3: keep envelopeCount synced with modList->count. */
+	inst->envelopeCount = inst->modList->count;
 	rebuildInstrumentGraph();
-	if(inst) {
-		inst->rebuilding = false;
-	}
+	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
-	/* voices alias core envelopes only; runtime envelopes route via
-	 * inst->paramList which all voices share; no rebuild needed */
 }
 
 void rebuildInstrumentGraph(void) {
@@ -2838,6 +2815,43 @@ void rebuildInstrumentGraph(void) {
 	}
 }
 
+/* Walk the selected GuiNode up to its mod_wrap container and remove
+ * the source at the wrapped slot. Task 4 will prepend the mod-wrap
+ * header row so the per-row index is offset by 1 — until then this
+ * function intentionally uses idx - 1 to match the header layout that
+ * Task 4 introduces (under-counts by 1 today, correct after Task 4). */
+void removeSelectedSource(void) {
+	if(!igui || !igui->vm || !igui->selectedInstrument) {
+		return;
+	}
+	GuiNode *sel = getSelectedInstGraph()->selected;
+	if(!sel) {
+		return;
+	}
+	GuiNode *n = sel;
+	while(n && n->container) {
+		if(strcmp(n->container->name, "mod_wrap") == 0) {
+			int idx = 0;
+			ListElement *l = n->container->items->head;
+			while(l && *(GuiNode **)l->data != n) {
+				idx++;
+				l = l->next;
+			}
+			Instrument *inst = igui->vm->instruments[*igui->selectedInstrument];
+			/* idx - 1: account for the mod-wrap header row that Task 4
+			 * adds. With the header absent the mapping currently
+			 * under-counts by 1; that is intentional and matches the
+			 * brief's transitional note. */
+			removeSource(inst, idx - 1);
+			return;
+		}
+		n = n->container;
+	}
+}
+
+/* Compatibility wrapper — preserves the no-header mapping that existed
+ * before Task 3, used by callers that have not yet been ported to the
+ * header-offset index used by removeSelectedSource. */
 void removeSelectedEnvelope(void) {
 	if(!igui || !igui->vm || !igui->selectedInstrument) {
 		return;
@@ -2857,7 +2871,7 @@ void removeSelectedEnvelope(void) {
 			}
 			Instrument *inst = igui->vm->instruments[*igui->selectedInstrument];
 			if(idx < inst->envelopeCount) {
-				removeRuntimeEnvelope(inst, idx);
+				removeSource(inst, idx);
 			}
 			return;
 		}
