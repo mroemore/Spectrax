@@ -86,6 +86,26 @@ static void teardown(ParamList *pl, ModList *ml) {
     }
 }
 
+/* Task 1 helpers: used by changeModType tests to verify a route still
+ * survives the swap and a param is still registered. */
+static int hasRouteFrom(ParamList *pl, Parameter *dest, Mod *src) {
+    if(!pl || !dest || !src) return 0;
+    ModConnection *c = dest->modulators;
+    while(c) {
+        if(c->source == src) return 1;
+        c = c->next;
+    }
+    return 0;
+}
+
+static int paramRegistered(ParamList *pl, Parameter *p) {
+    if(!pl || !p) return 0;
+    for(int i = 0; i < pl->count; i++) {
+        if(pl->params[i] == p) return 1;
+    }
+    return 0;
+}
+
 static int test_create_lists(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
@@ -780,6 +800,105 @@ static int test_generated_output_survives_apply(void) {
 	return 0;
 }
 
+/* changeModType preserves the output param + existing routes and swaps
+ * the type-specific params. Test list: the same modList slot is reused
+ * (apply-pass order preserved). */
+static int test_change_mod_type(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Parameter *dest = createParameter(pl, "dest", 0.5f, 0.0f, 1.0f);
+    Parameter *dest2 = createParameter(pl, "dest2", 0.5f, 0.0f, 1.0f);
+
+    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    Mod *m0 = &env->base;
+    Parameter *out = m0->output;
+    ASSERT_TRUE(out != NULL, "env has an output param");
+    ASSERT_TRUE(addModulation(pl, m0, dest, 1.0f, MO_ADD), "route env->dest");
+    ASSERT_TRUE(addModulation(pl, m0, dest2, 1.0f, MO_MUL), "route env->dest2");
+    int before = ml->count;
+    int beforeIdx = -1;
+    for(int i = 0; i < ml->count; i++) if(ml->mods[i] == m0) beforeIdx = i;
+    ASSERT_TRUE(beforeIdx >= 0, "env is registered in modList");
+
+    /* ENV -> LFO */
+    ASSERT_TRUE(changeModType(ml, m0, MT_LFO, pl), "ENV->LFO succeeds");
+    Mod *m1 = ml->mods[beforeIdx];
+    ASSERT_TRUE(m1 != m0, "a fresh struct was allocated");
+    ASSERT_EQ(m1->type, MT_LFO, "type is now LFO");
+    ASSERT_TRUE(m1->output == out, "output param is preserved (same pointer)");
+    ASSERT_EQ(ml->count, before, "modList count unchanged");
+    /* routes survived + rewired */
+    ASSERT_TRUE(hasRouteFrom(pl, dest, m1), "dest still modulated by the (new) source");
+    ASSERT_TRUE(hasRouteFrom(pl, dest2, m1), "dest2 still modulated by the (new) source");
+    /* old type params are gone from the list */
+    LFO *lfo = (LFO *)m1;
+    ASSERT_TRUE(paramRegistered(pl, lfo->rate), "new LFO rate registered");
+    ASSERT_TRUE(paramRegistered(pl, lfo->phase), "new LFO phase registered");
+    ASSERT_TRUE(!env->stages[0].duration || !paramRegistered(pl, env->stages[0].duration), "old env stage params removed");
+    int found = 0;
+    for(int i = 0; i < pl->count; i++) {
+        if(pl->params[i] && pl->params[i]->name && strcmp(pl->params[i]->name, "dest") == 0) found++;
+    }
+    ASSERT_EQ(found, 1, "dest param still present once");
+
+    /* LFO -> RND */
+    ASSERT_TRUE(changeModType(ml, m1, MT_RND, pl), "LFO->RND succeeds");
+    Mod *m2 = ml->mods[beforeIdx];
+    ASSERT_EQ(m2->type, MT_RND, "type is now RND");
+    ASSERT_TRUE(m2->output == out, "output preserved again");
+    ASSERT_TRUE(hasRouteFrom(pl, dest, m2), "dest still routed after LFO->RND");
+
+    /* RND -> ENV (fresh AD) */
+    ASSERT_TRUE(changeModType(ml, m2, MT_ENV, pl), "RND->ENV succeeds");
+    Mod *m3 = ml->mods[beforeIdx];
+    ASSERT_EQ(m3->type, MT_ENV, "type is now ENV");
+    ASSERT_TRUE(m3->output == out, "output preserved");
+    Envelope *env2 = (Envelope *)m3;
+    ASSERT_EQ(env2->stageCount, 2, "fresh env has 2 AD stages");
+    ASSERT_TRUE(hasRouteFrom(pl, dest, m3), "dest still routed after RND->ENV");
+
+    /* invalid type rejected */
+    ASSERT_TRUE(!changeModType(ml, m3, MT_OFS, pl), "MT_OFS rejected");
+    ASSERT_TRUE(!changeModType(ml, m3, MT_COUNT, pl), "MT_COUNT rejected");
+
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_change_mod_type\n");
+    return 0;
+}
+
+static int test_change_mod_type_same_type(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    Mod *m0 = &env->base;
+    int count = ml->count;
+    ASSERT_TRUE(changeModType(ml, m0, MT_ENV, pl), "same-type change is a no-op");
+    ASSERT_EQ(ml->count, count, "no structural change");
+    ASSERT_TRUE(ml->mods[0] == m0, "same pointer kept");
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_change_mod_type_same_type\n");
+    return 0;
+}
+
+static int test_change_mod_type_null(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    ASSERT_TRUE(!changeModType(NULL, &env->base, MT_LFO, pl), "NULL list rejected");
+    ASSERT_TRUE(!changeModType(ml, NULL, MT_LFO, pl), "NULL mod rejected");
+    ASSERT_TRUE(!changeModType(ml, &env->base, MT_LFO, NULL), "NULL paramList rejected");
+    /* unregistered mod rejected */
+    Envelope *stray = createEnvelope(pl, ml, "stray2");
+    removeFromModList(ml, &stray->base);
+    ASSERT_TRUE(!changeModType(ml, &stray->base, MT_LFO, pl), "unregistered mod rejected");
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_change_mod_type_null\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -807,6 +926,9 @@ fails += test_wrap_increment();
 	fails += test_paramlist_full_drop();
 	fails += test_remove_failure_modes();
 	fails += test_clear_null_and_empty();
+    fails += test_change_mod_type();
+    fails += test_change_mod_type_same_type();
+    fails += test_change_mod_type_null();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;
