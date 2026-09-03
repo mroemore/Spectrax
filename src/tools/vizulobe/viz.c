@@ -29,13 +29,13 @@ static int ensure_dir(const char *dir) {
 	return mkdir(dir, 0755);
 }
 
-static void path_basename(const char *path, char *out, size_t n) {
-	const char *base = strrchr(path, '/');
-	if(base) {
-		snprintf(out, n, "%s", base + 1);
-	} else {
-		snprintf(out, n, "%s", path);
+static unsigned viz_hash(const char *s) {
+	unsigned h = 2166136261u;
+	while(*s) {
+		h ^= (unsigned char)*s++;
+		h *= 16777619u;
 	}
+	return h;
 }
 
 const char *viz_cache_dir(void) {
@@ -43,20 +43,31 @@ const char *viz_cache_dir(void) {
 	if(env && env[0]) {
 		return env;
 	}
-	return "/home/krang/.cache/vizulobe";
+	static char dir[1024];
+	static int inited = 0;
+	if(!inited) {
+		const char *xdg = getenv("XDG_CACHE_HOME");
+		if(xdg && xdg[0]) {
+			snprintf(dir, sizeof(dir), "%s/vizulobe", xdg);
+		} else {
+			const char *home = getenv("HOME");
+			snprintf(dir, sizeof(dir), "%s/.cache/vizulobe", home ? home : ".");
+		}
+		inited = 1;
+	}
+	return dir;
 }
 
 static char *run_tcc(const char *src_path, char *out_so, size_t n_out, char *err_buf, size_t err_n) {
 	char cmd[2048];
 	snprintf(cmd, sizeof(cmd),
-		"%s -shared -fPIC -o %s -I%s \"%s\"",
+		"%s -shared -fPIC -o %s -I%s \"%s\" 2>&1",
 		tcc, out_so, VIZ_INCLUDE_DIR, src_path);
 	FILE *p = popen(cmd, "r");
 	if(!p) {
 		snprintf(err_buf, err_n, "popen failed for tcc");
 		return err_buf;
 	}
-	/* Read tcc's stderr-equivalent (it goes to stdout in popup shell) */
 	char buf[512];
 	size_t total = 0;
 	err_buf[0] = '\0';
@@ -106,10 +117,8 @@ Viz *viz_load(const char *path) {
 	if(ensure_dir(viz_cache_dir()) != 0) {
 		return make_err(path, "could not create cache dir");
 	}
-	char base[256];
-	path_basename(path, base, sizeof(base));
 	char so_path[VIZ_PATH_MAX];
-	snprintf(so_path, sizeof(so_path), "%s/%s.so", viz_cache_dir(), base);
+	snprintf(so_path, sizeof(so_path), "%s/viz_%08x.so", viz_cache_dir(), viz_hash(path));
 
 	char err_buf[VIZ_ERR_MAX];
 	char *err = run_tcc(path, so_path, sizeof(so_path), err_buf, sizeof(err_buf));
