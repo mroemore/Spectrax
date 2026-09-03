@@ -601,37 +601,32 @@ Random *createRandom(ParamList *paramList, ModList *modList, int index, float ra
 
 void cbLfoShapeOnChange(void *data) {
 	LFO *lfo = (LFO *)data;
-	int shape = getParameterValueAsInt(lfo->shape);
-	switch(shape) {
-		case LS_SQU:
-			lfo->shapeValue = LS_SQU;
-			lfo->base.generate = generateSquare;
-			break;
-		case LS_RMP:
-			lfo->shapeValue = LS_RMP;
-			lfo->base.generate = generateRamp;
-			break;
-		default:
-		case LS_SIN:
-			lfo->shapeValue = LS_SIN;
-			lfo->base.generate = generateSine;
-			break;
+	if(!lfo) {
+		return;
+	}
+	int sh = (lfo->shape) ? getParameterValueAsInt(lfo->shape) : lfo->shapeValue;
+	if(sh < 0) sh = 0;
+	if(sh >= LS_COUNT) sh = LS_COUNT - 1;
+	lfo->shapeValue = sh;
+	switch(sh) {
+		case LS_SQU: lfo->base.generate = generateSquare; break;
+		case LS_RMP: lfo->base.generate = generateRamp; break;
+		default:     lfo->base.generate = generateSine; break;
 	}
 }
 
 void cbRandShapeOnChange(void *data) {
 	Random *rnd = (Random *)data;
-	int shape = getParameterValueAsInt(rnd->shape);
-	switch(shape) {
-		case RT_DRK:
-			rnd->shapeValue = RT_DRK;
-			rnd->base.generate = generateDrunk;
-			break;
-		default:
-		case RT_SNH:
-			rnd->shapeValue = RT_SNH;
-			rnd->base.generate = generateRandom;
-			break;
+	if(!rnd) {
+		return;
+	}
+	int sh = (rnd->shape) ? getParameterValueAsInt(rnd->shape) : rnd->shapeValue;
+	if(sh < 0) sh = 0;
+	if(sh >= RT_COUNT) sh = RT_COUNT - 1;
+	rnd->shapeValue = sh;
+	switch(sh) {
+		case RT_DRK: rnd->base.generate = generateDrunk; break;
+		default:     rnd->base.generate = generateRandom; break;
 	}
 }
 
