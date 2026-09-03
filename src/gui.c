@@ -2786,11 +2786,23 @@ void addRuntimeSource(Instrument *inst) {
 	 * replace this builder with a modList-based one and the mirror goes away. */
 	if(env && inst->envelopeCount < MAX_ENVELOPES) {
 		inst->envelopes[inst->envelopeCount] = env;
+		/* Task 3 route-dial fix: wire runtimeRoutes[] for this slot so the
+		 * ROUTE dial's routeIndex parameter + routeOnChange callback exist.
+		 * addRuntimeSource previously dropped the old addRuntimeEnvelope's
+		 * runtimeRoutes setup, which left the dial bound to a dead parameter
+		 * and caused add_route_delete's ROUTE edit to add no modulation. */
+		int idx = inst->envelopeCount;
+		runtimeRoutes[idx].inst = inst;
+		runtimeRoutes[idx].env = env;
+		runtimeRoutes[idx].routeIndex = createParameter(inst->paramList, "route", 12.0f, 0.0f, 12.0f);
+		runtimeRoutes[idx].target = NULL;
+		if(runtimeRoutes[idx].routeIndex) {
+			runtimeRoutes[idx].routeIndex->onChange.cbData = &runtimeRoutes[idx];
+			runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
+		}
 	}
 	/* Task 3: envelopeCount now mirrors modList->count so the harness
-	 * ASSERT envcount reads the synced value. The runtime ROUTE-dial
-	 * machinery is owned by Task 6 — runtimeRoutes[] is kept populated
-	 * alongside the new mod slot via the modList index. */
+	 * ASSERT envcount reads the synced value. */
 	inst->envelopeCount = inst->modList->count;
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
