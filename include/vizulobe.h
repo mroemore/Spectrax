@@ -5,6 +5,8 @@
 
 #define VIZ_WAVEFORM_LEN 1024
 #define VIZ_SPECTRUM_MAX 1024
+#define VIZ_SCREEN_W 1280
+#define VIZ_SCREEN_H 800
 
 typedef struct viz_t {
 	float time;

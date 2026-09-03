@@ -11,7 +11,7 @@ vizulobe_core = static_library('vizulobe_core',
 )
 
 vizulobe = executable('vizulobe',
-  files('main.c', 'viz.c', 'audio.c'),
+  files('main.c', 'viz.c', 'audio.c', 'rect.c'),
   c_args: ['-DVIZ_INCLUDE_DIR="' + vizulobe_inc_dir + '"'],
   link_args: ['-rdynamic'],
   link_with: [vizulobe_core, core_lib],

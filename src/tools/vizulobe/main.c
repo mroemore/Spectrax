@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include "raylib.h"
-
-#define VIZ_SCREEN_W 1280
-#define VIZ_SCREEN_H 800
+#include "vizulobe.h"
 
 int main(void) {
 	SetTraceLogLevel(LOG_WARNING);
