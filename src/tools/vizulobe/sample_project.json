@@ -1,0 +1,7 @@
+{
+	"bg": "smoke_viz.frag",
+	"fg": [
+		{ "path": "smoke_viz.c", "x": 200, "y": 150, "w": 320, "h": 240 }
+	],
+	"fft_bins": 512
+}
