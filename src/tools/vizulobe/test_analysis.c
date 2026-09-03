@@ -20,14 +20,19 @@ int main(void) {
 	assert(a.waveform[1][0] == -1024.0f);
 	assert(a.waveform[0][VIZ_WAVEFORM_LEN - 1] == 1023.0f);
 
-	/* RMS: 256-sample block of a 440 Hz sine at amplitude 0.5 */
+	/* RMS + spectrum: push 9 blocks of 256 (2304 samples) so the Fft's
+	   staggered sub-buffers are fully populated with valid data (a single
+	   block leaves 75% of the window as uninitialized malloc garbage that
+	   MALLOC_PERTURB_ turns into inf, breaking the peak assert). */
 	Analysis b;
 	analysis_init(&b, 512);
-	for(int i = 0; i < 256; i++) {
-		float v = 0.5f * sinf(2.0f * 3.14159265f * 440.0f * i / SR);
-		analysis_push(&b, v, v);
+	for(int blk = 0; blk < 9; blk++) {
+		for(int i = 0; i < 256; i++) {
+			float v = 0.5f * sinf(2.0f * 3.14159265f * 440.0f * i / SR);
+			analysis_push(&b, v, v);
+		}
+		analysis_block_done(&b);
 	}
-	analysis_block_done(&b);
 	assert(fabsf(b.audio_l - 0.5f * 0.70710678f) < 0.02f);
 	assert(fabsf(b.audio_r - 0.5f * 0.70710678f) < 0.02f);
 
