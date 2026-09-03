@@ -1,57 +1,61 @@
 # add_route_delete.txt
-# Xvfb-driven end-to-end test for the dynamic mod-source add / route / delete
-# path. The script engine drives the same input handler the interactive loop
-# uses, but synthesises key events directly into the InputState (raylib does
-# not receive keyboard events under Xvfb/llvmpipe, so IsKeyPressed is useless
-# here).
-#
-# Initial state after initApplication + SCENE_INSTRUMENT: the FM instrument
-# has 4 envelopes (envelopeCount=4) and the graph selection sits on RATIO1.
-#
-# Layout of one runtime-envelope wrapper (envwrap, na_horizontal):
-#   ATTACK   CURVE   DECAY   CURVE   ROUTE   blank
-#
-# Layout of the FM instrument root (instwrap, na_vertical):
-#   presetWrap   btnwrap (RATIO1..FB2 LVL2 PAN)   pad2   modwrap (one ENVELOPE+ per envelope)
-#
-# Path from RATIO1 -> ATTACK of envelope[4] (the newly added one):
-#   DOWN (to btnrow2) -> DOWN (to modwrap, head=true -> ATTACK of env[0])
-#   then 4 more DOWNs to walk through env[0..3] to env[4].
-# After ADD, envelopeCount goes 4 -> 5 (runtime envelope appended at index 4).
+# Task 4: verify the unified mod-sources container + ADD/REMOVE flow.
+# The new layout is: header row (MODS label + ADD button) at item 0 of mod_wrap,
+# followed by one row per mod-source entry. Core entries are attack/curve/decay/curve
+# only; non-core entries also carry a type tag (ENV/LFO/RND), a stub ROUTE button,
+# and a DEL button. The ROUTE button has no wiring yet (Tasks 5-7 will add it).
+# This fixture exercises the full ADD -> walk-right -> REMOVE flow.
 
-# --- ADD a runtime envelope ---
-ADD
-# Let the rebuild settle.
-FRAMES 2
+FRAMES 1
+ASSERT selected==RATIO1
+ASSERT envcount==4
+
+# Move down to the mod-wrap header.
+DOWN
+DOWN
+ASSERT selected==MODS_ADD
+
+# EDIT fires cbAddModSource: appends a runtime env, rebuilds the graph,
+# cursor lands on RATIO1.
+EDIT
 ASSERT envcount==5
 
-# --- Navigate from RATIO1 down to the new envelope's ATTACK ---
+# Re-navigate to the new runtime entry's ENV type button. From RATIO1,
+# 7 DOWNs reach the new entry's ENV action button: RATIO3 -> MODS_ADD
+# -> ATTACK(env[0]) -> ATTACK(env[1]) -> ATTACK(env[2]) -> ATTACK(env[3])
+# -> ENV(env[4]).
 DOWN
 DOWN
 DOWN
 DOWN
 DOWN
 DOWN
-# 6 DOWNs: 2 to leave btnwrap, 4 to walk modwrap from env[0] to env[4].
-# Now selected should be ATTACK of envelope[4].
-ASSERT selected==ATTACK
+DOWN
+ASSERT selected==ENV
 
-# --- Walk to the ROUTE dial ---
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+# EDIT cycles ENV -> LFO.
+EDIT
+ASSERT envcount==5
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==LFO
 
-# --- EDIT RIGHT rewires: routeIndex wraps 12 -> 0 (op0 feedbackAmount). ---
-EDIT RIGHT
-ASSERT modulators==(0,0,1)
+# Walk RIGHT through the entry to the DEL button.
+# Layout: TYPE (3) | ATTACK CURVE DECAY CURVE (16) | ROUTE (3) | DEL (2)
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==DEL
 
-# --- Move to a sibling still inside the envelope wrapper, then REMOVE ---
-LEFT
-# Selected is now CURVE (the second one) inside ENVELOPE+.
+# REMOVE removes the runtime source. After REMOVE, envcount drops to 4.
 REMOVE
-FRAMES 1
 ASSERT envcount==4
 
 QUIT

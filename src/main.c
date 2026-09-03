@@ -509,11 +509,10 @@ int main(int argc, char **argv) {
 					}
 				}
 				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-					/* Until Task 4 adds the mod-wrap header row, the
-					 * container index == modList index, so use the
-					 * no-header walker. removeSelectedSource (with its
-					 * header offset) takes over in Task 4. */
-					removeSelectedEnvelope();
+					/* Task 4: the mod-wrap now has a header row at index 0,
+					 * so removeSelectedSource's `idx - 1` mapping is correct.
+					 * removeSelectedEnvelope (the no-header walker) is gone. */
+					removeSelectedSource();
 				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

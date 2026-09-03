@@ -381,7 +381,6 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected);
-void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env);
 void appendBlankNode(GuiNode *container, int weight);
 Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected);
 void addRuntimeSource(Instrument *inst);

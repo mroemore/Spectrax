@@ -1349,10 +1349,9 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		}
 	}
 	if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-		/* Pre-Task-4: no mod-wrap header yet, so the container index ==
-		 * modList index. removeSelectedSource (header offset) takes over
-		 * when Task 4 lands. */
-		removeSelectedEnvelope();
+		/* Task 4: the mod-wrap now has a header row at index 0, so
+		 * removeSelectedSource's `idx - 1` mapping is correct. */
+		removeSelectedSource();
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

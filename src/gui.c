@@ -1916,6 +1916,11 @@ static void cbFocusNameNode(void *ctx);
 static void cbOpenLoadList(void *ctx);
 static void cbPresetPrev(void *ctx);
 static void cbPresetNext(void *ctx);
+/* Task 4: forward decls for the unified mod-source container's
+ * action buttons (ADD button in the mod-wrap header + TYPE cycler on
+ * each runtime entry). */
+static void cbAddModSource(void *ctx);
+static void cbCycleSourceType(void *ctx);
 
 /* Task 7+: PREV/NEXT action buttons. Activate on KM_EDIT (same as
  * SAVE/LOAD). The Instrument is the ctx. setParameterBaseValue triggers
@@ -2187,20 +2192,17 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * the button mirrors the dial-edit gesture (KM_EDIT + arrow edits
 	 * the selected dial); here KM_EDIT alone activates the button. */
 	if(sel && isKeyJustPressed(is, KM_EDIT)) {
-		/* Action buttons (SAVE/LOAD/PREV/NEXT) store their handler in
-		 * `actionCb` (an ActionCallback, signature `void(void*)`), not
-		 * `callback` (which is reserved for OnPressCallback on dial
-		 * nodes). */
-		if(sel->actionCb == cbOpenLoadList || sel->actionCb == cbFocusNameNode
-		   || sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext
-		   || sel->actionCb == cbTypePrev || sel->actionCb == cbTypeNext) {
+		/* Generic actionCb dispatch (Task 4): any selected GuiNode whose
+		 * actionCb is non-NULL fires on KM_EDIT. PREV/NEXT get a follow-up
+		 * rebuild so the dials re-address the freshly-built paramList; the
+		 * new mod-source callbacks (cbAddModSource / cbCycleSourceType)
+		 * rebuild internally and need no extra rebuild here. */
+		if(sel->actionCb) {
 			sel->actionCb(sel->actionCtx);
 			/* PREV/NEXT apply a preset, which rebuilds the paramList;
 			 * the graph's dials still point at the freed params. Rebuild
-			 * the graph so the dials re-address the new params and the
-			 * UI reflects the applied preset. cbTypePrev/cbTypeNext
-			 * already rebuild internally (they swap the Instrument on
-			 * the VM), so they do not belong in this branch. */
+			 * so the dials re-address the new params. cbTypePrev/cbTypeNext
+			 * and the source callbacks rebuild internally. */
 			if(sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
 				rebuildInstrumentGraph();
 			}
@@ -2733,43 +2735,6 @@ static void routeOnChange(void *data) {
 	pthread_mutex_unlock(&g_audioLock);
 }
 
-static void incRouteIndex(Parameter *p, float step) {
-	wrapIncrementParameter(p, step > 0.0f ? 1.0f : -1.0f);
-}
-
-static void appendRuntimeEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, Instrument *inst, int envIndex) {
-	(void)g; /* g reserved for future focus / selection linkage */
-	(void)name; /* name reserved for debug label symmetry */
-	/* Task 3 fix: NULL-guard the mirror slot. Until Task 4 replaces this
-	 * builder with a modList-based one, the mirror can briefly be NULL or
-	 * stale (e.g. a runtime slot was just removed and the slot was cleared,
-	 * or envIndex is out of range for the current envelopeCount). Returning
-	 * early keeps the old builder from segfaulting while we ship Task 4. */
-	Envelope *env = (envIndex >= 0 && envIndex < inst->envelopeCount) ? inst->envelopes[envIndex] : NULL;
-	if(!env) {
-		return;
-	}
-	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE+", 0, 0);
-	envwrap->draw = drawWrapperNode;
-	envwrap->drawable = true;
-
-	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", 0, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
-	GuiNode *route = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, incRouteIndex, runtimeRoutes[envIndex].routeIndex);
-	route->draw = drawDiscreteDialGuiNode;
-	GuiNode *sp = createBlankGuiNode();
-
-	appendItem(envwrap, ar, 4);
-	appendItem(envwrap, ac, 4);
-	appendItem(envwrap, dr, 4);
-	appendItem(envwrap, dc, 4);
-	appendItem(envwrap, route, 4);
-	appendItem(envwrap, sp, 2);
-	appendItem(container, envwrap, weight);
-}
-
 void addRuntimeSource(Instrument *inst) {
 	if(!inst || !inst->modList || inst->modList->count >= MAX_ENVELOPES) {
 		return;
@@ -2919,30 +2884,6 @@ Instrument *getSelectedInstInstrument(void) {
 	return igui->vm->instruments[*igui->selectedInstrument];
 }
 
-void appendADEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env) {
-	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE", 0, 0);
-	envwrap->draw = drawWrapperNode;
-	envwrap->drawable = true;
-
-	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
-	if(selected) { g->selected = ar; }
-
-	GuiNode *sp1 = createBlankGuiNode();
-	GuiNode *sp2 = createBlankGuiNode();
-
-	appendItem(envwrap, ar, 4);
-	appendItem(envwrap, ac, 4);
-	appendItem(envwrap, sp1, 1);
-	appendItem(envwrap, dr, 4);
-	appendItem(envwrap, dc, 4);
-	appendItem(envwrap, sp2, 5);
-
-	appendItem(container, envwrap, weight);
-}
-
 void appendADSREnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env) {
 	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE", 0, 0);
 	envwrap->draw = drawWrapperNode;
@@ -3003,6 +2944,119 @@ static ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceM
 	return msgn;
 }
 
+/* Task 4: Unified mod-source container. Each entry row in the mod-wrap
+ * represents one Mod (core envelope or runtime envelope/LFO/RND). The
+ * wrap is rebuilt from inst->modList, so the type-changing cbCycleSourceType
+ * + addRuntimeSource + removeSource trio all funnel through the same
+ * modList->count sync path. The header row (MODS + ADD) at index 0
+ * makes removeSelectedSource's `idx - 1` mapping correct. */
+typedef struct {
+	Instrument *inst;
+	int idx;
+} SourceCtx;
+
+static SourceCtx g_sourceCtx[MAX_ENVELOPES];
+
+static void refreshSourceCtx(Instrument *inst) {
+	for(int i = 0; i < MAX_ENVELOPES; i++) {
+		g_sourceCtx[i].inst = inst;
+		g_sourceCtx[i].idx = i;
+	}
+}
+
+static void cbAddModSource(void *ctx) {
+	Instrument *inst = (Instrument *)ctx;
+	addRuntimeSource(inst);
+}
+
+static void cbCycleSourceType(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+		return;
+	}
+	Mod *mod = sc->inst->modList->mods[sc->idx];
+	ModType next = MT_ENV;
+	switch(mod->type) {
+		case MT_ENV: next = MT_LFO; break;
+		case MT_LFO: next = MT_RND; break;
+		default:     next = MT_ENV; break;
+	}
+	/* Task 8: hold the rebuilding flag while we mutate the lists the audio
+	 * thread iterates. The audio lock closes the flag's check-then-use
+	 * race. */
+	pthread_mutex_lock(&g_audioLock);
+	sc->inst->rebuilding = true;
+	if(changeModType(sc->inst->modList, mod, next, sc->inst->paramList)) {
+		sc->inst->envelopeCount = sc->inst->modList->count;
+		rebuildInstrumentGraph();
+	}
+	sc->inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+}
+
+static const char *modTypeTag(ModType t) {
+	switch(t) {
+		case MT_LFO: return "LFO";
+		case MT_RND: return "RND";
+		default:     return "ENV";
+	}
+}
+
+static void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected) {
+	Mod *mod = inst->modList->mods[idx];
+	bool core = idx < inst->coreEnvelopeCount;
+	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
+	wrap->drawable = true;
+	wrap->draw = drawWrapperNode;
+
+	if(!core) {
+		refreshSourceCtx(inst);
+		GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
+		                                         modTypeTag(mod->type), 0, cbCycleSourceType, &g_sourceCtx[idx]);
+		typeBtn->name = strdup(modTypeTag(mod->type));
+		appendItem(wrap, typeBtn, 3);
+	}
+
+	switch(mod->type) {
+		case MT_ENV: {
+			Envelope *e = (Envelope *)mod;
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, e->stages[0].duration), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, e->stages[0].curvature), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, e->stages[1].duration), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, e->stages[1].curvature), 4);
+			break;
+		}
+		case MT_LFO: {
+			LFO *l = (LFO *)mod;
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATE", selected, incParameterBaseValue, l->rate), 4);
+			if(l->shape) {
+				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, l->shape), 4);
+			}
+			break;
+		}
+		case MT_RND: {
+			Random *r = (Random *)mod;
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATE", selected, incParameterBaseValue, r->rate), 4);
+			if(r->shape) {
+				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, r->shape), 4);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+
+	if(!core) {
+		/* ROUTE + DELETE buttons (routed wiring arrives in Tasks 5-7;
+		 * stub callbacks keep the layout stable). */
+		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, NULL, NULL), 3);
+		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DEL", 0, NULL, NULL), 2);
+	}
+	appendItem(wrap, createBlankGuiNode(), 1);
+	appendItem(container, wrap, weight);
+	(void)g;
+}
+
 Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected) {
 	Graph *instGraph = createGraph(na_vertical);
 	GuiNode *mainRow = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "mainrow", 0, 0);
@@ -3038,20 +3092,20 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	appendItem(instwrap, pad2, 1);
 
 	GuiNode *modwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "mod_wrap", 0, 0);
-	// printf("\n\nenvelopeCount: %i\n\n", inst->envelopeCount);
-	for(int i = 0; i < MAX_ENVELOPES; i++) {
-		if(i < inst->envelopeCount) {
-			// printf("Env I: %i\n", i);
-			if(i < inst->coreEnvelopeCount) {
-				appendADEnvControlNode(instGraph, modwrap, "mod", 1, false, inst->envelopes[i]);
-			} else {
-				appendRuntimeEnvControlNode(instGraph, modwrap, "mod", 1, inst, i);
-			}
-		} else {
-			// printf("NOEnv I: %i\n", i);
-			appendBlankNode(modwrap, 1);
-		}
+	/* Header row: container label + ADD action button. */
+	GuiNode *modHdr = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "mods_hdr", 0, 0);
+	modHdr->drawable = true;
+	modHdr->draw = drawWrapperNode;
+	GuiNode *modLabel = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODS", 0, 0);
+	GuiNode *modAdd = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ADD", 0, cbAddModSource, inst);
+	modAdd->name = strdup("MODS_ADD");
+	appendItem(modHdr, modLabel, 4);
+	appendItem(modHdr, modAdd, 1);
+	appendItem(modwrap, modHdr, 1);
+	for(int i = 0; i < inst->modList->count; i++) {
+		appendModSourceEntry(instGraph, modwrap, inst, i, 1, false);
 	}
+	appendBlankNode(modwrap, 1);
 	appendItem(instwrap, modwrap, 22);
 
 	appendItem(mainRow, margin1, 1);
