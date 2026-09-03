@@ -408,6 +408,145 @@ bool rewireModulation(ParamList *list, Parameter *destination, Mod *oldSource, M
 	}
 	return false;
 }
+void rewireModulationsForSource(ParamList *list, Mod *oldSource, Mod *newSource) {
+	if(!list || !oldSource || !newSource) {
+		return;
+	}
+	for(int i = 0; i < list->count; i++) {
+		Parameter *p = list->params[i];
+		if(!p) {
+			continue;
+		}
+		ModConnection *c = p->modulators;
+		while(c) {
+			if(c->source == oldSource) {
+				c->source = newSource;
+			}
+			c = c->next;
+		}
+	}
+}
+
+/* Swap a mod's type in place: same modList slot, same output parameter,
+ * existing routes preserved. The old concrete struct is freed (its type
+ * params are removed from paramList first); a fresh struct of `newType`
+ * is registered in the same slot and all connections are rewired to it.
+ * Runtime sources only — the caller (UI) guards against core indices. */
+bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *paramList) {
+	if(!modList || !mod || !paramList) {
+		return false;
+	}
+	if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
+		return false;
+	}
+	if(mod->type == newType) {
+		return true;
+	}
+	int slot = -1;
+	for(int i = 0; i < modList->count; i++) {
+		if(modList->mods[i] == mod) {
+			slot = i;
+			break;
+		}
+	}
+	if(slot < 0) {
+		return false;
+	}
+	Parameter *output = mod->output;
+	char name[MAX_NAME_LEN];
+	strncpy(name, mod->name, MAX_NAME_LEN);
+
+	/* Remove the OLD type params from the list (they are freed with the
+	 * old struct below). */
+	switch(mod->type) {
+		case MT_LFO: {
+			LFO *l = (LFO *)mod;
+			if(l->rate) removeFromParamList(paramList, l->rate);
+			if(l->phase) removeFromParamList(paramList, l->phase);
+			break;
+		}
+		case MT_RND: {
+			Random *r = (Random *)mod;
+			if(r->rate) removeFromParamList(paramList, r->rate);
+			if(r->phase) removeFromParamList(paramList, r->phase);
+			break;
+		}
+		case MT_ENV: {
+			Envelope *e = (Envelope *)mod;
+			for(int i = 0; i < e->stageCount; i++) {
+				if(e->stages[i].duration) removeFromParamList(paramList, e->stages[i].duration);
+				if(e->stages[i].curvature) removeFromParamList(paramList, e->stages[i].curvature);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+
+	Mod *fresh = NULL;
+	switch(newType) {
+		case MT_LFO: {
+			LFO *l = (LFO *)calloc(1, sizeof(LFO));
+			memcpy(&l->base, mod, sizeof(Mod));
+			l->base.output = output;
+			l->base.type = MT_LFO;
+			initLfoDefaults(l, paramList, 1.0f, LS_SIN);
+			l->shape = LS_SIN;
+			l->base.generate = generateSine;
+			fresh = &l->base;
+			break;
+		}
+		case MT_RND: {
+			Random *r = (Random *)calloc(1, sizeof(Random));
+			memcpy(&r->base, mod, sizeof(Mod));
+			r->base.output = output;
+			r->base.type = MT_RND;
+			initRandDefaults(r, paramList, 1.0f, RT_SNH);
+			r->shape = RT_SNH;
+			r->base.generate = generateRandom;
+			fresh = &r->base;
+			break;
+		}
+		case MT_ENV: {
+			Envelope *e = (Envelope *)calloc(1, sizeof(Envelope));
+			memcpy(&e->base, mod, sizeof(Mod));
+			e->base.output = output;
+			e->base.type = MT_ENV;
+			initEnvelopeDefaults(e);
+			addEnvelopeStage(paramList, e, true, 0.25f, 1.0f, 0.95f, "A");
+			addEnvelopeStage(paramList, e, false, 4.25f, 0.0f, 0.1f, "D");
+			e->base.generate = generateEnvelope;
+			fresh = &e->base;
+			break;
+		}
+		default:
+			break;
+	}
+	if(!fresh) {
+		return false;
+	}
+
+	rewireModulationsForSource(paramList, mod, fresh);
+	modList->mods[slot] = fresh;
+
+	/* Free the old struct WITHOUT freeing the shared output param. */
+	mod->output = NULL;
+	switch(mod->type) {
+		case MT_LFO:
+			freeLFO((LFO *)mod);
+			break;
+		case MT_RND:
+			freeRandom((Random *)mod);
+			break;
+		case MT_ENV:
+			freeEnvelope((Envelope *)mod);
+			break;
+		default:
+			freeMod(mod);
+			break;
+	}
+	return true;
+}
 
 void wrapIncrementParameter(Parameter *p, float step) {
 	if(!p) {
@@ -968,8 +1107,14 @@ void freeModList(ModList *list) {
 		return;
 	}
 
+	/* Mod structs may be ENVs (heap-allocated as Envelope), generic Mods
+	 * (heap-allocated as Mod), or detached params promoted to mods.
+	 * mod->output / envelope stage duration+curvature Params are owned by
+	 * paramList (registered via initMod / addEnvelopeStage) and freed by
+	 * the caller's freeParamList — freeing them here would double-free.
+	 * Bare free matches clearModList's convention (see comment above). */
 	for(int i = 0; i < list->count; i++) {
-		freeMod(list->mods[i]);
+		free(list->mods[i]);
 	}
 	free(list);
 }

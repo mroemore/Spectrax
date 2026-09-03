@@ -187,6 +187,8 @@ bool removeModulation(ParamList *list, Parameter *destination, Mod *source);
 int removeModulationsForSource(ParamList *list, Mod *source);
 bool removeMod(ModList *modList, ParamList *paramList, Mod *mod);
 bool rewireModulation(ParamList *list, Parameter *destination, Mod *oldSource, Mod *newSource);
+bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *paramList);
+void rewireModulationsForSource(ParamList *list, Mod *oldSource, Mod *newSource);
 void wrapIncrementParameter(Parameter *p, float step);
 void updateMod(Mod *mod, float deltaTime);
 void processModulations(ParamList *paramList, ModList *modList, float deltaTime);
