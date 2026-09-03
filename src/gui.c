@@ -2740,7 +2740,15 @@ static void incRouteIndex(Parameter *p, float step) {
 static void appendRuntimeEnvControlNode(Graph *g, GuiNode *container, char *name, int weight, Instrument *inst, int envIndex) {
 	(void)g; /* g reserved for future focus / selection linkage */
 	(void)name; /* name reserved for debug label symmetry */
-	Envelope *env = inst->envelopes[envIndex];
+	/* Task 3 fix: NULL-guard the mirror slot. Until Task 4 replaces this
+	 * builder with a modList-based one, the mirror can briefly be NULL or
+	 * stale (e.g. a runtime slot was just removed and the slot was cleared,
+	 * or envIndex is out of range for the current envelopeCount). Returning
+	 * early keeps the old builder from segfaulting while we ship Task 4. */
+	Envelope *env = (envIndex >= 0 && envIndex < inst->envelopeCount) ? inst->envelopes[envIndex] : NULL;
+	if(!env) {
+		return;
+	}
 	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE+", 0, 0);
 	envwrap->draw = drawWrapperNode;
 	envwrap->drawable = true;
@@ -2771,7 +2779,14 @@ void addRuntimeSource(Instrument *inst) {
 	 * audio lock closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	inst->rebuilding = true;
-	createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
+	Envelope *env = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
+	/* Task 3 fix: mirror the freshly-created envelope into inst->envelopes[]
+	 * BEFORE syncing envelopeCount, so the old builder's rebuildInstrumentGraph
+	 * call below can dereference inst->envelopes[envIndex] safely. Task 4 will
+	 * replace this builder with a modList-based one and the mirror goes away. */
+	if(env && inst->envelopeCount < MAX_ENVELOPES) {
+		inst->envelopes[inst->envelopeCount] = env;
+	}
 	/* Task 3: envelopeCount now mirrors modList->count so the harness
 	 * ASSERT envcount reads the synced value. The runtime ROUTE-dial
 	 * machinery is owned by Task 6 — runtimeRoutes[] is kept populated
@@ -2792,6 +2807,12 @@ void removeSource(Instrument *inst, int srcIndex) {
 	pthread_mutex_lock(&g_audioLock);
 	inst->rebuilding = true;
 	removeMod(inst->modList, inst->paramList, inst->modList->mods[srcIndex]);
+	/* Task 3 fix: clear the mirror slot so the old builder's
+	 * rebuildInstrumentGraph does not deref a freed envelope. Task 4 will
+	 * remove the mirror entirely when it replaces the builder. */
+	if(srcIndex < MAX_ENVELOPES) {
+		inst->envelopes[srcIndex] = NULL;
+	}
 	/* Task 3: keep envelopeCount synced with modList->count. */
 	inst->envelopeCount = inst->modList->count;
 	rebuildInstrumentGraph();
