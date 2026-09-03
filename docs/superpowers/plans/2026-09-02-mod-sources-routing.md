@@ -619,6 +619,21 @@ Task 1's `changeModType` (MT_LFO/MT_RND branches) creates the fresh LFO/Random v
         }
 ```
 
+Also update Task 1's fresh-struct assignments in `changeModType` — the old `l->shape = LS_SIN;` / `r->shape = RT_SNH;` (int field) become `shapeValue` after this task's struct rename:
+
+```c
+            initLfoDefaults(l, paramList, 1.0f, LS_SIN);
+            l->shapeValue = LS_SIN;
+            /* generate is set by cbLfoShapeOnChange via the shape param;
+             * keep the explicit assignment below only if the shape param
+             * creation is ever conditional. */
+```
+
+```c
+            initRandDefaults(r, paramList, 1.0f, RT_SNH);
+            r->shapeValue = RT_SNH;
+```
+
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `ninja -C build && ./build/tests/test_modsystem 2>&1 | grep -E "FAIL|PASS"`
@@ -1087,8 +1102,10 @@ typedef struct {
 	Parameter *dest;
 } DestCtx;
 
-static DestCtx g_destCtx[MAX_ENVELOPES];
-static Parameter *g_destParams[MAX_ENVELOPES];
+#define MAX_ROUTABLE_DIALS 64
+
+static DestCtx g_destCtx[MAX_ROUTABLE_DIALS];
+static Parameter *g_destParams[MAX_ROUTABLE_DIALS];
 
 static int collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
 	if(!node || *n >= cap) {
@@ -1153,11 +1170,11 @@ static void cbOpenRouteLayer(void *ctx) {
 		return;
 	}
 	Graph *base = getSelectedInstGraph();
-	Parameter *params[MAX_ENVELOPES * 4];
-	GuiNode *nodes[MAX_ENVELOPES * 4];
+	Parameter *params[MAX_ROUTABLE_DIALS];
+	GuiNode *nodes[MAX_ROUTABLE_DIALS];
 	int n = 0;
 	if(base && base->root) {
-		collectRoutableDials(base->root, params, nodes, MAX_ENVELOPES * 4, &n);
+		collectRoutableDials(base->root, params, nodes, MAX_ROUTABLE_DIALS, &n);
 	}
 	if(n == 0) {
 		return;
@@ -1167,9 +1184,6 @@ static void cbOpenRouteLayer(void *ctx) {
 	Graph *g = createGraph(na_horizontal);
 	GuiNode *first = NULL;
 	for(int i = 0; i < n; i++) {
-		if(i >= MAX_ENVELOPES) {
-			break;
-		}
 		g_destCtx[i].inst = sc->inst;
 		g_destCtx[i].srcIdx = sc->idx;
 		g_destCtx[i].dest = params[i];
