@@ -348,12 +348,14 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 			LFO *lfo = (LFO *)mod;
 			if(lfo->rate) removeFromParamList(paramList, lfo->rate);
 			if(lfo->phase) removeFromParamList(paramList, lfo->phase);
+			if(lfo->shape) removeFromParamList(paramList, lfo->shape);
 			break;
 		}
 		case MT_RND: {
 			Random *rnd = (Random *)mod;
 			if(rnd->rate) removeFromParamList(paramList, rnd->rate);
 			if(rnd->phase) removeFromParamList(paramList, rnd->phase);
+			if(rnd->shape) removeFromParamList(paramList, rnd->shape);
 			break;
 		}
 		case MT_ENV: {
@@ -456,19 +458,21 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 	char name[MAX_NAME_LEN];
 	strncpy(name, mod->name, MAX_NAME_LEN);
 
-	/* Remove the OLD type params from the list (they are freed with the
+/* Remove the OLD type params from the list (they are freed with the
 	 * old struct below). */
 	switch(mod->type) {
 		case MT_LFO: {
 			LFO *l = (LFO *)mod;
 			if(l->rate) removeFromParamList(paramList, l->rate);
 			if(l->phase) removeFromParamList(paramList, l->phase);
+			if(l->shape) removeFromParamList(paramList, l->shape);
 			break;
 		}
 		case MT_RND: {
 			Random *r = (Random *)mod;
 			if(r->rate) removeFromParamList(paramList, r->rate);
 			if(r->phase) removeFromParamList(paramList, r->phase);
+			if(r->shape) removeFromParamList(paramList, r->shape);
 			break;
 		}
 		case MT_ENV: {
@@ -490,9 +494,9 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 			memcpy(&l->base, mod, sizeof(Mod));
 			l->base.output = output;
 			l->base.type = MT_LFO;
+			/* initLfoDefaults sets l->shapeValue, l->shape (Parameter), and
+			 * l->base.generate via cbLfoShapeOnChange. */
 			initLfoDefaults(l, paramList, 1.0f, LS_SIN);
-			l->shape = LS_SIN;
-			l->base.generate = generateSine;
 			fresh = &l->base;
 			break;
 		}
@@ -501,9 +505,9 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 			memcpy(&r->base, mod, sizeof(Mod));
 			r->base.output = output;
 			r->base.type = MT_RND;
+			/* initRandDefaults sets r->shapeValue, r->shape (Parameter), and
+			 * r->base.generate via cbRandShapeOnChange. */
 			initRandDefaults(r, paramList, 1.0f, RT_SNH);
-			r->shape = RT_SNH;
-			r->base.generate = generateRandom;
 			fresh = &r->base;
 			break;
 		}
@@ -571,7 +575,9 @@ void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType 
 	rnd->lastRandom = 0.0f;
 	rnd->rate = createParameter(paramList, "RNG rate", rate, 0.1f, 100.0f);
 	rnd->phase = createParameter(paramList, "RNG phase", 0.0f, 0.0f, 1.0f);
-	rnd->shape = type;
+	rnd->shape = createParameterPro(paramList, "RNG shape", (float)type, 0.0f, (float)(RT_COUNT - 1), 1.0f, 1.0f, rnd, cbRandShapeOnChange);
+	rnd->shapeValue = type;
+	cbRandShapeOnChange(rnd); /* sync base.generate + shapeValue from the param */
 }
 Random *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name) {
 	Random *rnd = (Random *)malloc(sizeof(Random));
@@ -593,10 +599,48 @@ Random *createRandom(ParamList *paramList, ModList *modList, int index, float ra
 	return rnd;
 }
 
+void cbLfoShapeOnChange(void *data) {
+	LFO *lfo = (LFO *)data;
+	int shape = getParameterValueAsInt(lfo->shape);
+	switch(shape) {
+		case LS_SQU:
+			lfo->shapeValue = LS_SQU;
+			lfo->base.generate = generateSquare;
+			break;
+		case LS_RMP:
+			lfo->shapeValue = LS_RMP;
+			lfo->base.generate = generateRamp;
+			break;
+		default:
+		case LS_SIN:
+			lfo->shapeValue = LS_SIN;
+			lfo->base.generate = generateSine;
+			break;
+	}
+}
+
+void cbRandShapeOnChange(void *data) {
+	Random *rnd = (Random *)data;
+	int shape = getParameterValueAsInt(rnd->shape);
+	switch(shape) {
+		case RT_DRK:
+			rnd->shapeValue = RT_DRK;
+			rnd->base.generate = generateDrunk;
+			break;
+		default:
+		case RT_SNH:
+			rnd->shapeValue = RT_SNH;
+			rnd->base.generate = generateRandom;
+			break;
+	}
+}
+
 void initLfoDefaults(LFO *lfo, ParamList *paramList, float rate, int shape) {
 	lfo->rate = createParameter(paramList, "LFO rate", rate, 0.1f, 100.0f);
 	lfo->phase = createParameter(paramList, "LFO phase", 0.0f, 0.0f, 1.0f);
-	lfo->shape = shape;
+	lfo->shape = createParameterPro(paramList, "LFO shape", (float)shape, 0.0f, (float)(LS_COUNT - 1), 1.0f, 1.0f, lfo, cbLfoShapeOnChange);
+	lfo->shapeValue = shape;
+	cbLfoShapeOnChange(lfo); /* sync base.generate + shapeValue from the param */
 }
 
 LFO *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name) {
@@ -992,20 +1036,11 @@ void saveEnvPreset(EnvPresetData *epd, Envelope *e) {
 	}
 }
 void initLfoFromPreset(LfoPresetData *lpd, LFO *lfo, ParamList *paramList, ModList *modlist) {
-	ModGenerate genFunc;
-	switch(lpd->shape) {
-		case LS_SQU:
-			genFunc = generateSquare;
-			break;
-		case LS_RMP:
-			genFunc = generateRamp;
-			break;
-		default:
-		case LS_SIN:
-			genFunc = generateSine;
-			break;
-	}
-	initMod((Mod *)lfo, paramList, "LFO", MT_LFO, genFunc);
+	initMod((Mod *)lfo, paramList, "LFO", MT_LFO, NULL);
+	/* initLfoDefaults creates the shape Parameter, sets shapeValue from
+	 * lpd->shape, and cbLfoShapeOnChange syncs lfo->base.generate. Any
+	 * subsequent route that changes lfo->shape will also re-sync via that
+	 * callback. */
 	initLfoDefaults(lfo, paramList, lpd->rate, lpd->shape);
 
 	if(modlist) {
@@ -1015,7 +1050,7 @@ void initLfoFromPreset(LfoPresetData *lpd, LFO *lfo, ParamList *paramList, ModLi
 void saveLfoPreset(LfoPresetData *lpd, LFO *lfo) {
 	lpd->phase = getParameterValue(lfo->phase);
 	lpd->rate = getParameterValue(lfo->rate);
-	lpd->shape = lfo->shape;
+	lpd->shape = lfo->shapeValue;
 }
 void initRandFromPreset(RandPresetData *rpd, Random *rnd, ParamList *paramList, ModList *modlist) {
 }
@@ -1141,6 +1176,10 @@ void freeLFO(LFO *lfo) {
 		freeParameter(lfo->rate);
 		lfo->rate = NULL;
 	}
+	if(lfo->shape) {
+		freeParameter(lfo->shape);
+		lfo->shape = NULL;
+	}
 	if(lfo->base.output) {
 		freeParameter(lfo->base.output);
 		lfo->base.output = NULL;
@@ -1155,6 +1194,8 @@ void freeRandom(Random *rnd) {
 	freeParameter(rnd->base.output);
 	freeParameter(rnd->rate);
 	freeParameter(rnd->phase);
+	freeParameter(rnd->shape);
+	rnd->shape = NULL;
 
 	free(rnd);
 }

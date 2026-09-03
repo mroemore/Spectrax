@@ -899,6 +899,58 @@ static int test_change_mod_type_null(void) {
     return 0;
 }
 
+/* Task 2: LFO/Random shape is a routable Parameter (not a bare int). The
+ * shape onChange callback syncs shapeValue (the int the generate fn is
+ * selected from) and picks the concrete generate fn. Out-of-range writes
+ * must clamp, and removeMod must free the shape param. */
+static int test_lfo_shape_param(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    LFO *lfo = createLFO(pl, ml, 0, 1.0f, LS_SIN, "lfo");
+    ASSERT_TRUE(lfo->shape != NULL, "LFO has a shape Parameter");
+    ASSERT_EQ(getParameterValueAsInt(lfo->shape), LS_SIN, "shape param defaults to the initial shape");
+    ASSERT_EQ(lfo->base.generate == generateSine ? 1 : 0, 1, "generate is generateSine for LS_SIN");
+
+    setParameterBaseValue(lfo->shape, (float)LS_SQU);
+    ASSERT_EQ(lfo->shapeValue, LS_SQU, "onChange synced lfo->shapeValue int");
+    ASSERT_EQ(lfo->base.generate == generateSquare ? 1 : 0, 1, "generate is generateSquare for LS_SQU");
+
+    setParameterBaseValue(lfo->shape, (float)LS_RMP);
+    ASSERT_EQ(lfo->base.generate == generateRamp ? 1 : 0, 1, "generate is generateRamp for LS_RMP");
+
+    /* clamp: out-of-range writes clamp to the range */
+    setParameterBaseValue(lfo->shape, 999.0f);
+    ASSERT_EQ(getParameterValueAsInt(lfo->shape), LS_RMP, "out-of-range clamps to LS_RMP");
+
+    /* removeMod removes the shape param */
+    ASSERT_TRUE(removeMod(ml, pl, &lfo->base), "removeMod removes the LFO");
+    ASSERT_TRUE(!paramRegistered(pl, lfo->shape), "shape param removed with the LFO");
+
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_lfo_shape_param\n");
+    return 0;
+}
+
+static int test_rand_shape_param(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Random *rnd = createRandom(pl, ml, 0, 1.0f, RT_SNH, "rnd");
+    ASSERT_TRUE(rnd->shape != NULL, "Random has a shape Parameter");
+    ASSERT_EQ(getParameterValueAsInt(rnd->shape), RT_SNH, "shape param defaults to RT_SNH");
+    ASSERT_EQ(rnd->base.generate == generateRandom ? 1 : 0, 1, "generate is generateRandom for RT_SNH");
+
+    setParameterBaseValue(rnd->shape, (float)RT_DRK);
+    ASSERT_EQ(rnd->shapeValue, RT_DRK, "onChange synced rnd->shapeValue int");
+    ASSERT_EQ(rnd->base.generate == generateDrunk ? 1 : 0, 1, "generate is generateDrunk for RT_DRK");
+
+    ASSERT_TRUE(removeMod(ml, pl, &rnd->base), "removeMod removes the Random");
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_rand_shape_param\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -929,6 +981,8 @@ fails += test_wrap_increment();
     fails += test_change_mod_type();
     fails += test_change_mod_type_same_type();
     fails += test_change_mod_type_null();
+    fails += test_lfo_shape_param();
+    fails += test_rand_shape_param();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

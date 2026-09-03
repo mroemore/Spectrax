@@ -108,7 +108,8 @@ typedef struct {
 	Mod base;
 	Parameter *rate;
 	Parameter *phase;
-	int shape;
+	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
+	int shapeValue;
 } LFO;
 
 typedef struct {
@@ -123,7 +124,8 @@ typedef struct {
 	Parameter *phase;
 	float lastPhase;
 	float lastRandom;
-	int shape;
+	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
+	int shapeValue;
 } Random;
 
 typedef struct {
@@ -194,6 +196,8 @@ void updateMod(Mod *mod, float deltaTime);
 void processModulations(ParamList *paramList, ModList *modList, float deltaTime);
 
 void initMod(Mod *mod, ParamList *paramList, const char *name, ModType type, ModGenerate generate);
+void cbLfoShapeOnChange(void *data);
+void cbRandShapeOnChange(void *data);
 void initLfoDefaults(LFO *lfo, ParamList *paramList, float rate, int shape);
 LFO *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name);
 void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type);
