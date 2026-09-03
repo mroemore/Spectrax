@@ -11,6 +11,7 @@ typedef struct {
 	RenderTexture2D rt;
 	int w, h;
 	bool rt_valid;
+	bool inited;
 } VizRect;
 
 typedef struct {

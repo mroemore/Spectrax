@@ -9,6 +9,7 @@ static void rect_ensure(RectManager *rm, VizRect *vr, const char *path, int w, i
 			viz_free(vr->viz);
 		}
 		vr->viz = viz_load(path);
+		vr->inited = false;
 	}
 	if(size_changed) {
 		if(vr->rt_valid) {
@@ -59,8 +60,9 @@ static void rect_ensure_textures(RectManager *rm, const Analysis *a) {
 	}
 }
 
-static void run_viz(Viz *v, Texture2D backbuffer, int w, int h,
+static void run_viz(VizRect *vr, Texture2D backbuffer, int w, int h,
 	const Analysis *a, float time, float dt, RectManager *rm) {
+	Viz *v = vr->viz;
 	if(!v || v->kind == VIZ_KIND_ERR) {
 		return;
 	}
@@ -93,6 +95,10 @@ static void run_viz(Viz *v, Texture2D backbuffer, int w, int h,
 		EndShaderMode();
 	} else if(v->kind == VIZ_KIND_C) {
 		viz_t *ctx = &v->u.c.ctx;
+		if(!vr->inited && v->u.c.init) {
+			v->u.c.init(ctx);
+			vr->inited = true;
+		}
 		ctx->time = time;
 		ctx->dt = dt;
 		memcpy(ctx->waveform, a->waveform, sizeof(ctx->waveform));
@@ -115,7 +121,7 @@ static void render_rect(RectManager *rm, VizRect *vr, const Analysis *a,
 	BeginTextureMode(vr->rt);
 	ClearBackground(BLACK);
 	DrawTexture(vr->rt.texture, 0, 0, WHITE);
-	run_viz(vr->viz, vr->rt.texture, vr->w, vr->h, a, time, dt, rm);
+	run_viz(vr, vr->rt.texture, vr->w, vr->h, a, time, dt, rm);
 	EndTextureMode();
 	DrawTextureRec(vr->rt.texture,
 		(Rectangle){ 0, 0, (float)vr->w, -(float)vr->h },
