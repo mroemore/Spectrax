@@ -1349,7 +1349,10 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		}
 	}
 	if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-		removeSelectedSource();
+		/* Pre-Task-4: no mod-wrap header yet, so the container index ==
+		 * modList index. removeSelectedSource (header offset) takes over
+		 * when Task 4 lands. */
+		removeSelectedEnvelope();
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {

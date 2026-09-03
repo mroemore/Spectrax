@@ -509,7 +509,11 @@ int main(int argc, char **argv) {
 					}
 				}
 				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-					removeSelectedSource();
+					/* Until Task 4 adds the mod-wrap header row, the
+					 * container index == modList index, so use the
+					 * no-header walker. removeSelectedSource (with its
+					 * header offset) takes over in Task 4. */
+					removeSelectedEnvelope();
 				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
