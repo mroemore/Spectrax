@@ -1,4 +1,5 @@
 #include "viz.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,15 +106,74 @@ static Viz *make_err(const char *path, const char *msg) {
 	return v;
 }
 
+static char *viz_read_file(const char *path, size_t *out_len) {
+	FILE *f = fopen(path, "rb");
+	if(!f) {
+		return NULL;
+	}
+	fseek(f, 0, SEEK_END);
+	long size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	if(size < 0) {
+		fclose(f);
+		return NULL;
+	}
+	char *buf = (char *)malloc((size_t)size + 1);
+	if(!buf) {
+		fclose(f);
+		return NULL;
+	}
+	size_t n = fread(buf, 1, (size_t)size, f);
+	buf[n] = '\0';
+	fclose(f);
+	if(out_len) {
+		*out_len = n;
+	}
+	return buf;
+}
+
+static Viz *viz_load_c(const char *path);
+static Viz *viz_load_glsl(const char *path);
+
+static Viz *viz_load_glsl(const char *path) {
+	char *src = viz_read_file(path, NULL);
+	if(!src) {
+		return make_err(path, "could not read file");
+	}
+	Shader shader = LoadShaderFromMemory(NULL, src);
+	free(src);
+	if(shader.id == 0) {
+		return make_err(path, "shader compile failed (see raylib log)");
+	}
+	Viz *v = calloc(1, sizeof(Viz));
+	v->kind = VIZ_KIND_GLSL;
+	snprintf(v->path, sizeof(v->path), "%s", path);
+	v->u.gl.shader = shader;
+	v->u.gl.loc_time = GetShaderLocation(shader, "uTime");
+	v->u.gl.loc_dt = GetShaderLocation(shader, "uDt");
+	v->u.gl.loc_resolution = GetShaderLocation(shader, "uResolution");
+	v->u.gl.loc_waveform = GetShaderLocation(shader, "uWaveform");
+	v->u.gl.loc_spectrum = GetShaderLocation(shader, "uSpectrum");
+	v->u.gl.loc_audio = GetShaderLocation(shader, "uAudio");
+	v->u.gl.loc_backbuffer = GetShaderLocation(shader, "uBackbuffer");
+	return v;
+}
+
 Viz *viz_load(const char *path) {
 	if(!path || !path[0]) {
 		return make_err(path ? path : "", "empty path");
 	}
 	const char *ext = ext_of(path);
-	if(strcmp(ext, "c") != 0) {
-		return make_err(path, "unsupported extension (expected .c)");
+	if(strcmp(ext, "c") == 0) {
+		return viz_load_c(path);
 	}
+	if(strcmp(ext, "frag") == 0) {
+		return viz_load_glsl(path);
+	}
+	return make_err(path, "unsupported extension (expected .c or .frag)");
+}
 
+static Viz *viz_load_c(const char *path) {
 	if(ensure_dir(viz_cache_dir()) != 0) {
 		return make_err(path, "could not create cache dir");
 	}
@@ -184,7 +244,8 @@ void viz_free(Viz *v) {
 	if(!v) return;
 	if(v->kind == VIZ_KIND_C && v->u.c.dl) {
 		dlclose(v->u.c.dl);
-		v->u.c.dl = NULL;
+	} else if(v->kind == VIZ_KIND_GLSL) {
+		UnloadShader(v->u.gl.shader);
 	}
 	free(v);
 }

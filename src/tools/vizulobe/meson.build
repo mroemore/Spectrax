@@ -38,3 +38,19 @@ tc = executable('test_viz_c',
   dependencies: system_deps,
 )
 test('vizulobe_test_viz_c', tc)
+
+xvfb = find_program('xvfb-run', required: false)
+if xvfb.found()
+  t = executable('test_viz_glsl',
+    files('test_viz_glsl.c', 'viz.c'),
+    c_args: ['-DVIZ_INCLUDE_DIR="' + vizulobe_inc_dir + '"'],
+    link_args: ['-rdynamic'],
+    link_with: [vizulobe_core, core_lib],
+    include_directories: inc,
+    dependencies: [system_deps, cjson, cc.find_library('dl', required: false)],
+  )
+  test('vizulobe_test_viz_glsl', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', t],
+    timeout: 60,
+  )
+endif
