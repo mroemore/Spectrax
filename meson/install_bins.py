@@ -25,6 +25,7 @@ TARGETS = [
     "src/tools/nav_harness/nav_harness",
     "src/tools/instrument_harness/instrument_harness",
     "src/tools/sample_analyser/inspectro_wavget",
+    "src/tools/vizulobe/vizulobe",
 ]
 
 for rel in TARGETS:
