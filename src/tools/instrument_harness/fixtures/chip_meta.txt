@@ -38,7 +38,8 @@ FRAMES 1
 
 # ---- From the arranger grid, UP selects chip 0 (via the chip-row wrapper) ----
 UP
-FRAMES 2
+# 4 frames: tolerate a cold-start frame where the first reflow hasn't run
+FRAMES 4
 ASSERT selected==chip
 
 # ---- Expand chip 0 with EDIT+UP ----

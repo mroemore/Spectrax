@@ -41,6 +41,21 @@ static GuiNode *g_chipNodes[MAX_SEQUENCER_CHANNELS];
  * NULL when no arranger graph has been built (unit-test path). */
 Arranger *g_arranger;
 
+
+/* Chip label colour swatches (shared with the inst chip editor). */
+const Color chipPalette[8] = {
+	{ 70, 130, 180, 255 }, /* steel-blue   */
+	{ 200, 120, 60, 255 }, /* amber        */
+	{ 90, 160, 90, 255 },  /* moss         */
+	{ 170, 80, 130, 255 }, /* mulberry     */
+	{ 210, 180, 70, 255 }, /* gold         */
+	{ 110, 90, 170, 255 }, /* violet       */
+	{ 80, 160, 160, 255 }, /* teal         */
+	{ 180, 90, 90, 255 },  /* brick        */
+};
+
+
+
 void createArrangerGraph(Arranger *a, PatternList *pl) {
 	agui = createGraph(na_vertical);
 	GuiNode *arrWrap = createGuiNode(0, 0, 100, 100, 5, na_horizontal, "awrap", 0, 0);

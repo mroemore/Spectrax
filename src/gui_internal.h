@@ -29,9 +29,9 @@ const char *voiceTypeTag(VoiceType t);
 /* shared screen state (owners noted) */
 extern Arranger *g_arranger;        /* gui_arranger.c */
 extern MixRing *arrangerMixRing;    /* gui_instrument.c */
-extern const Color chipPalette[8];  /* gui_instrument.c */
-void drawSampleWaveLinesNode(void *self);       /* gui_instrument.c */
-void drawSampleWavePolylineNode(void *self);    /* gui_instrument.c */
+extern const Color chipPalette[8];  /* gui_arranger.c */
+void drawSampleWaveLinesNode(void *self);       /* gui_inst_sample.c */
+void drawSampleWavePolylineNode(void *self);    /* gui_inst_sample.c */
 
 /* per-screen draw entry points (called from DrawGUI in gui_core.c) */
 void gui_arranger_draw(void);
