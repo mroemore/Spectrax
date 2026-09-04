@@ -25,6 +25,161 @@
 #include "vizfx.h"
 #include "main.h"
 
+/* Task 9: --probe-route flag. Off by default; when enabled, the frame
+ * loop walks the visible instrument graph, picks the first ROUTE action
+ * button (named "ROUTE", created by createActionBtnGuiNode in
+ * gui_inst_mod.c with actionCb=cbOpenRouteLayer), and selects it.
+ * Selection alone is enough to make syncRouteLinesOverlay push the
+ * ROUTELINES overlay for this frame, which is exactly the layer that
+ * the fix's gfx-texture-mode error was wiping out. After EndTextureMode
+ * we export the gfx texture to probe_route.png (cwd) and print
+ * PROBE: linepx=N where N is the count of pixels on a vertical scanline
+ * at x = gfx.texture.width/2 that are not background.
+ * Must be a no-op (zero effect, zero prints) when --probe-route is absent. */
+static bool g_probeRoute = false;
+static int g_probeFrame = 0;
+static bool g_probeSelected = false;
+static bool g_probeDone = false;
+static bool g_probeAddedMod = false;
+static bool g_probeRebuilt = false;
+
+static GuiNode *probeFindRouteBtn(GuiNode *node) {
+	if(!node) {
+		return NULL;
+	}
+	if(node->name && strcmp(node->name, "ROUTE") == 0) {
+		return node;
+	}
+	ListElement *e = node->items ? node->items->head : NULL;
+	for(; e; e = e->next) {
+		GuiNode *hit = probeFindRouteBtn(*(GuiNode **)e->data);
+		if(hit) {
+			return hit;
+		}
+	}
+	return NULL;
+}
+
+
+static void probeDumpNames(GuiNode *node, const char *prefix) {
+	if(!node) {
+		return;
+	}
+	printf("PROBE_DBG: %s%s\n", prefix, node->name ? node->name : "<null>");
+	fflush(stdout);
+	char new_prefix[256];
+	snprintf(new_prefix, sizeof(new_prefix), "%s  ", prefix);
+	ListElement *e = node->items ? node->items->head : NULL;
+	for(; e; e = e->next) {
+		probeDumpNames(*(GuiNode **)e->data, new_prefix);
+	}
+}
+
+static void probeExportImage(RenderTexture2D gfx, const char *path) {
+	Image img = LoadImageFromTexture(gfx.texture);
+	if(!img.data) {
+		return;
+	}
+	ExportImage(img, path);
+	UnloadImage(img);
+}
+
+static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
+	(void)cs;
+	Image img = LoadImageFromTexture(gfx.texture);
+	if(!img.data) {
+		return -1;
+	}
+	int count = 0;
+	int x = img.width / 2;
+	if(x < 0) {
+		x = 0;
+	}
+	if(x >= img.width) {
+		x = img.width - 1;
+	}
+	unsigned char *p_data = (unsigned char *)img.data;
+	int bg_r = cs->backgroundColor.r;
+	int bg_g = cs->backgroundColor.g;
+	int bg_b = cs->backgroundColor.b;
+	int bg_a = cs->backgroundColor.a;
+	for(int y = 0; y < img.height; y++) {
+		unsigned char *px = p_data + (size_t)(y * img.width + x) * 4;
+		int dr = (int)px[0] - bg_r;
+		int dg = (int)px[1] - bg_g;
+		int db = (int)px[2] - bg_b;
+		int da = (int)px[3] - bg_a;
+		int dist_sq = dr * dr + dg * dg + db * db + da * da;
+		if(dist_sq > 256) {
+			count++;
+		}
+	}
+	UnloadImage(img);
+	return count;
+}
+
+static void probeStepRoute(ApplicationState *appState) {
+	if(!g_probeRoute || g_probeDone) {
+		return;
+	}
+	g_probeFrame++;
+	if(g_probeFrame == 1) {
+		if(appState && appState->currentScene != SCENE_INSTRUMENT) {
+			appState->currentScene = SCENE_INSTRUMENT;
+		}
+		InstrumentGui *ig = getInstrumentGui();
+		if(ig && !g_probeAddedMod) {
+			if(*ig->selectedInstrument != 0) {
+				*ig->selectedInstrument = 0;
+			}
+			rebuildInstrumentGraph();
+			Instrument *inst = ig->vm->instruments[*ig->selectedInstrument];
+			if(inst && inst->modList && inst->modList->count < MAX_ENVELOPES) {
+				addRuntimeSource(inst);
+				g_probeAddedMod = true;
+				if(inst->modList->count > 0 && inst->modList->mods[inst->modList->count - 1]) {
+					Mod *newMod = inst->modList->mods[inst->modList->count - 1];
+					changeModType(inst->modList, newMod, MT_LFO, inst->paramList);
+				}
+				rebuildInstrumentGraph();
+				g_probeRebuilt = true;
+			}
+		}
+		return;
+	}
+	if((g_probeFrame == 3 || g_probeFrame == 8) && !g_probeSelected) {
+		InstrumentGui *ig = getInstrumentGui();
+		Graph *g = getSelectedInstGraph();
+		if(g && g->root) {
+			GuiNode *route = probeFindRouteBtn(g->root);
+			if(route) {
+				changeGraphSelection(g, route);
+				g_probeSelected = true;
+			}
+		}
+		(void)ig;
+	}
+}
+
+static void probeFinalizeRoute(RenderTexture2D gfx) {
+	if(!g_probeRoute || g_probeDone || !g_probeSelected) {
+		return;
+	}
+	if(g_probeFrame < 3) {
+		return;
+	}
+	ColourScheme *cs = getColourScheme();
+	int px = probeCountRouteLinePx(gfx, cs);
+	if(px < 0) {
+		return;
+	}
+	probeExportImage(gfx, "probe_route.png");
+	printf("PROBE: linepx=%d\n", px);
+	fflush(stdout);
+	g_probeDone = true;
+}
+
+
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
 ** that could mess up the system like calling malloc() or free().
@@ -190,6 +345,13 @@ int main(int argc, char **argv) {
 	 * the exit path can rebuild absolute cfg.json / clr.json paths. */
 	char cfgDir[1024];
 	char dataDir[1024];
+	/* Task 9: scan argv for the --probe-route diagnostic flag. Off by
+	 * default; the probe must have zero effect when this flag is absent. */
+	for(int i = 1; i < argc; i++) {
+		if(strcmp(argv[i], "--probe-route") == 0) {
+			g_probeRoute = true;
+		}
+	}
 	resolveConfigDir(argc, argv, cfgDir, sizeof(cfgDir));
 	resolveDataDir(argc, argv, dataDir, sizeof(dataDir));
 	snprintf(data.configDir, sizeof(data.configDir), "%s", cfgDir);
@@ -285,6 +447,7 @@ int main(int argc, char **argv) {
 				setWindowScale(scaleShift ? getWindowScale() - 0.25f : prevWholeScale(getWindowScale()));
 			}
 		}
+		probeStepRoute(appState);
 		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();
@@ -618,6 +781,7 @@ int main(int argc, char **argv) {
 		drawTimeGraph(&data.timeGraph);
 		DrawFPS(SCREEN_W - 80, 5);
 		EndTextureMode();
+		probeFinalizeRoute(gfx);
 		presentFrame(gfx);
 	}
 	/* GL resource cleanup must run BEFORE CloseWindow destroys the GL
