@@ -1921,6 +1921,10 @@ static void cbPresetNext(void *ctx);
  * each runtime entry). */
 static void cbAddModSource(void *ctx);
 static void cbCycleSourceType(void *ctx);
+/* Task 5: DEL button (per runtime entry) opens a YES/NO confirm layer
+ * that, on YES, calls removeSource(inst, idx) and pops the layer. The
+ * implementation lives further down, after SourceCtx is defined. */
+static void cbDeleteSource(void *ctx);
 
 /* Task 7+: PREV/NEXT action buttons. Activate on KM_EDIT (same as
  * SAVE/LOAD). The Instrument is the ctx. setParameterBaseValue triggers
@@ -2964,6 +2968,54 @@ static void refreshSourceCtx(Instrument *inst) {
 	}
 }
 
+/* Task 5: delete-confirm modal for runtime mod sources.
+ *
+ * The DEL button on each runtime mod-source entry pushes a YES/NO confirm
+ * layer. NO just pops; YES pops first (so the layer is gone before the
+ * graph rebuild from removeSource reshuffles everything) and then calls
+ * removeSource(inst, idx), which rebuilds the instrument graph. The
+ * SourceCtx for the entry was refreshed by refreshSourceCtx() above when
+ * the graph was last built, so inst+idx are still valid as long as no
+ * other mutation has happened in the interim. */
+static void cbDeleteCancel(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+}
+
+static void cbDeleteConfirmYes(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	if(sc) {
+		removeSource(sc->inst, sc->idx);
+	}
+}
+
+static void cbDeleteSource(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(!ig || !sc) {
+		return;
+	}
+	Graph *g = createGraph(na_horizontal);
+	const int py = (SCREEN_H - 80) / 2;
+	const int px = (SCREEN_W - 280) / 2;
+	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbDeleteCancel, NULL);
+	noBtn->name = strdup("DELETE_NO");
+	GuiNode *yesBtn = createActionBtnGuiNode(px + 150, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbDeleteConfirmYes, sc);
+	yesBtn->name = strdup("DELETE_YES");
+	appendItem(g->root, noBtn, 1);
+	appendItem(g->root, yesBtn, 1);
+	changeGraphSelection(g, noBtn);
+	Layer *layer = createLayer(g, px, py, 280, 80, "DELETE", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
+
 static void cbAddModSource(void *ctx) {
 	Instrument *inst = (Instrument *)ctx;
 	addRuntimeSource(inst);
@@ -3050,7 +3102,10 @@ static void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst,
 		/* ROUTE + DELETE buttons (routed wiring arrives in Tasks 5-7;
 		 * stub callbacks keep the layout stable). */
 		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, NULL, NULL), 3);
-		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DEL", 0, NULL, NULL), 2);
+		/* Task 5: DEL opens the YES/NO confirm layer; cbDeleteSource reads
+		 * inst+idx off the per-entry SourceCtx slot refreshed by
+		 * refreshSourceCtx() above. */
+		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DEL", 0, cbDeleteSource, &g_sourceCtx[idx]), 2);
 	}
 	appendItem(wrap, createBlankGuiNode(), 1);
 	appendItem(container, wrap, weight);

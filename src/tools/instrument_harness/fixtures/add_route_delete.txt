@@ -1,10 +1,12 @@
 # add_route_delete.txt
 # Task 4: verify the unified mod-sources container + ADD/REMOVE flow.
-# The new layout is: header row (MODS label + ADD button) at item 0 of mod_wrap,
-# followed by one row per mod-source entry. Core entries are attack/curve/decay/curve
-# only; non-core entries also carry a type tag (ENV/LFO/RND), a stub ROUTE button,
-# and a DEL button. The ROUTE button has no wiring yet (Tasks 5-7 will add it).
-# This fixture exercises the full ADD -> walk-right -> REMOVE flow.
+# Task 5 (extension): verify the DEL button's YES/NO confirm modal —
+#   EDIT on DEL pushes a layer with DELETE_NO pre-selected;
+#   EDIT on DELETE_NO pops the layer (no source removed);
+#   EDIT on DELETE_YES pops + calls removeSource.
+# The ROUTE button has no wiring yet (Tasks 6-7 will add it).
+# This fixture exercises the full ADD -> walk-right -> REMOVE flow,
+# plus the DELETE_NO cancel path and the DELETE_YES confirm path.
 
 FRAMES 1
 ASSERT selected==RATIO1
@@ -54,8 +56,28 @@ RIGHT
 RIGHT
 ASSERT selected==DEL
 
-# REMOVE removes the runtime source. After REMOVE, envcount drops to 4.
-REMOVE
+# Task 5: DELETE_NO cancel path. EDIT fires cbDeleteSource which pushes
+# a confirm layer with DELETE_NO pre-selected via changeGraphSelection.
+EDIT
+ASSERT topLayerSelected==DELETE_NO
+
+# EDIT on DELETE_NO fires cbDeleteCancel (pops layer, no source removed).
+# envcount stays at 5 — the runtime entry survives the cancelled delete.
+EDIT
+ASSERT envcount==5
+
+# The pop left the base graph's selection unchanged (still on DEL).
+# EDIT again opens the confirm layer for the same runtime entry.
+EDIT
+ASSERT topLayerSelected==DELETE_NO
+
+# RIGHT selects DELETE_YES.
+RIGHT
+ASSERT topLayerSelected==DELETE_YES
+
+# EDIT on DELETE_YES fires cbDeleteConfirmYes which pops the layer THEN
+# calls removeSource(inst, idx), dropping envcount back to 4.
+EDIT
 ASSERT envcount==4
 
 QUIT
