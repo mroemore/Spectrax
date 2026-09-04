@@ -115,7 +115,12 @@ static void run_viz(VizRect *vr, Texture2D backbuffer, int w, int h,
 
 static void render_rect(RectManager *rm, VizRect *vr, const Analysis *a,
 	float time, float dt, int x, int y) {
-	if(!vr->rt_valid || !vr->viz || vr->viz->kind == VIZ_KIND_ERR) {
+	if(!vr->rt_valid || !vr->viz) {
+		return;
+	}
+	if(vr->viz->kind == VIZ_KIND_ERR) {
+		DrawRectangle(x, y, vr->w, vr->h, (Color){ 40, 0, 0, 255 });
+		DrawText(vr->viz->error, x + 4, y + 4, 12, RED);
 		return;
 	}
 	BeginTextureMode(vr->rt);
