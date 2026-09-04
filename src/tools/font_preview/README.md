@@ -3,7 +3,7 @@
 Tooling for choosing replacement pixel fonts that render pixel-perfect in
 Spectrax (and sibling raylib apps). Two parts:
 
-- **`rank_fonts.py` + `fontprobe.c`** — measure every font in the tree with
+- **`rank_fonts.sh` + `fontprobe.c`** — measure every font in the tree with
   raylib's own rasterizer (stb_truetype ground truth; fontTools math diverges)
   and rank them against a profile: max glyph box `10 x 10` px at a comparable
   size of 10 px, derived from raylib's bundled default font
@@ -43,12 +43,16 @@ Controls: mouse wheel = vertical scroll, shift+wheel = horizontal, drag = pan.
 ## Ranking usage
 
 ```sh
-python3 src/tools/font_preview/rank_fonts.py --spectrax . --max-w 10 --max-h 10 --target 10
+sh src/tools/font_preview/rank_fonts.sh --spectrax . --max-w 10 --max-h 10 --target 10
 ```
 
 Writes `spectrax-font-profile-10x10.md`. Requires gcc + vendored raylib and an
 X display (pass `--display :99` with Xvfb, or run under your session).
-Tune `--max-w/--max-h/--target` to the target app's real pixel box.
+Tune `--max-w/--max-h/--target` to the target app's real pixel box. The probe
+binary is cached in `~/.cache/spectrax-font-profile/` and rebuilt when
+`fontprobe.c` changes. (Formerly `rank_fonts.py`; ported to POSIX sh — the
+`--no-raylib`/fontTools APPROXIMATE fallback is gone, the raylib probe is the
+only measurement engine.)
 
 ## Current ranking (profile 10x10, comparable size 10)
 

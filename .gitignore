@@ -29,3 +29,8 @@ src/tools/sample_analyser/*.o
 bin/instrument_harness
 bin/nav_harness
 bin/inspectro_wavget
+
+# install.sh copies of the vizulobe sample project (source of truth: src/tools/vizulobe/)
+bin/sample_project.json
+bin/smoke_viz.c
+bin/smoke_viz.frag
