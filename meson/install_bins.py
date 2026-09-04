@@ -35,3 +35,19 @@ for rel in TARGETS:
         print(f"installed {os.path.basename(rel)} -> bin/")
     else:
         print(f"skipped {rel} (not built)")
+
+# Sample vizulobe project + example vizzes, kept in sync with the source
+# copies so `cd bin && ./vizulobe -p sample_project.json` works out of the box.
+# Project paths resolve relative to the project file, so copying all three
+# together keeps the references valid.
+VIZ_SAMPLES = [
+    "sample_project.json",
+    "smoke_viz.c",
+    "smoke_viz.frag",
+]
+
+for name in VIZ_SAMPLES:
+    src = os.path.join(source_root, "src", "tools", "vizulobe", name)
+    if os.path.exists(src):
+        shutil.copy2(src, os.path.join(BIN, name))
+        print(f"installed {name} -> bin/")

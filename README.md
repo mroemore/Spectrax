@@ -34,7 +34,9 @@ Audio-reactive visualisation sandbox. Captures system audio (Point it at your
 'Monitor of ...' device) and runs a scene of GLSL `.frag` shaders and C snippets
 compiled at runtime with TCC.
 
-- `cd bin && ./vizulobe -p ../src/tools/vizulobe/sample_project.json`
+- `cd bin && ./vizulobe -p sample_project.json` (the sample project and its
+  example vizzes are copied into `bin/` by the install step; sources live in
+  `src/tools/vizulobe/`)
 - `./vizulobe --list-devices` then `./vizulobe -d <device-or-index>`
 - `L` load a fg viz, `B` load the bg viz, drag to move, ctrl+drag to resize,
   `S` save project, `R` load project, `Del` remove selected.
