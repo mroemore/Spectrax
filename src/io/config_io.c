@@ -112,7 +112,11 @@ void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font) {
 		cJSON_ArrayForEach(item, colors) {
 			Color *field = themeFieldByName(cs, item->string);
 			Color v;
-			if(field && cJSON_IsString(item) && parseHexColor(item->valuestring, &v)) {
+			/* alpha == 0 means "unset" -- a key written back by an older
+			 * build before the field existed (BSS-zero cs). Keep the
+			 * default rather than rendering fully transparent. No
+			 * legitimate theme value has zero alpha (layerDim is 0xAA). */
+			if(field && cJSON_IsString(item) && parseHexColor(item->valuestring, &v) && v.a != 0) {
 				*field = v;
 			}
 		}

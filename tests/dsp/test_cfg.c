@@ -409,8 +409,34 @@ static int test_theme_parse_partial(void) {
 	return 0;
 }
 
-static int test_theme_missing_file(void) {
+static int test_theme_transparent_falls_back(void) {
+	ensure_tmp_dirs();
+	/* A key saved as #00000000 (a BSS-zero cs persisted by an older build,
+	 * before the field existed) must NOT override the default: no
+	 * legitimate theme value has zero alpha (layerDim is 0xAA). This is
+	 * how late-added keys got poisoned on machines with an existing
+	 * clr.json -- e.g. routeAdd rendering the route-lines overlay
+	 * invisible. */
+	writeFixture(".tmp_files/theme_transparent.json",
+		"{ \"colors\": { \"routeAdd\": \"#00000000\", \"dial\": \"#00ff00\" } }\n");
 	ColourScheme cs = { 0 };
+	/* routeAdd default per initDefaultColourScheme: (255,120,80,255) --
+	 * inlined here so the test does not have to link gui_core. */
+	cs.routeAdd = (Color){ 255, 120, 80, 255 };
+	FontConfig font = { { 0 }, 9, 1 };
+	loadThemeJson(".tmp_files/theme_transparent.json", &cs, &font);
+	if(cs.routeAdd.r != 255 || cs.routeAdd.g != 120 || cs.routeAdd.b != 80 || cs.routeAdd.a != 255) {
+		printf("FAIL theme transparent key must fall back to default\n");
+		return 1;
+	}
+	if(cs.dial.r != 0 || cs.dial.g != 255) {
+		printf("FAIL theme transparent file still applies opaque keys\n");
+		return 1;
+	}
+	return 0;
+}
+
+static int test_theme_missing_file(void) {	ColourScheme cs = { 0 };
 	cs.label = (Color){ 1, 2, 3, 4 };
 	Color before = cs.label;
 	FontConfig font = { { 0 }, 9, 1 };
@@ -524,6 +550,7 @@ int main(void) {
 	failed |= test_resolve_data_dir_xdg();
 	failed |= test_theme_parse_full();
 	failed |= test_theme_parse_partial();
+	failed |= test_theme_transparent_falls_back();
 	failed |= test_theme_missing_file();
 	failed |= test_theme_roundtrip();
 	failed |= test_settings_parse_full();

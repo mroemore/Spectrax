@@ -221,6 +221,12 @@ int main(int argc, char **argv) {
 	FILE *th = fopen(clrPath, "rb");
 	if(th) {
 		fclose(th);
+		/* Always seed every key with its default BEFORE the theme load:
+		 * cs is a zero-initialised global, so any colour key the theme
+		 * file lacks (e.g. keys added after the file was first written)
+		 * would otherwise stay transparent black -- and the next save
+		 * would persist the zeros (#00000000) permanently. */
+		initDefaultColourScheme(getColourScheme());
 		loadThemeJson(clrPath, getColourScheme(), getFontConfig());
 		markThemeLoaded();
 	}
