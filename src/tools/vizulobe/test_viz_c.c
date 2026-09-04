@@ -26,6 +26,10 @@ int main(void) {
 		"#include \"vizulobe.h\"\n"
 		"void some_other_fn(viz_t *ctx) { (void)ctx; }\n");
 
+	write_file(".tmp_files/frame_only_viz.c",
+		"#include \"vizulobe.h\"\n"
+		"void viz_frame(viz_t *ctx) { (void)ctx; }\n");
+
 	/* valid snippet loads; entry points present */
 	Viz *good = viz_load(".tmp_files/good_viz.c");
 	assert(good);
@@ -33,6 +37,14 @@ int main(void) {
 	assert(good->kind == VIZ_KIND_C);
 	assert(good->u.c.frame != NULL);
 	assert(good->u.c.init != NULL);
+
+	/* viz_init is optional: a frame-only snippet must load */
+	Viz *frame_only = viz_load(".tmp_files/frame_only_viz.c");
+	assert(frame_only);
+	assert(viz_is_loaded(frame_only));
+	assert(frame_only->kind == VIZ_KIND_C);
+	assert(frame_only->u.c.frame != NULL);
+	assert(frame_only->u.c.init == NULL);
 
 	/* syntax error surfaces as error text */
 	Viz *bad = viz_load(".tmp_files/bad_viz.c");
@@ -54,6 +66,7 @@ int main(void) {
 	assert(viz_error(txt)[0] != '\0');
 
 	viz_free(good);
+	viz_free(frame_only);
 	viz_free(bad);
 	viz_free(noentry);
 	viz_free(txt);

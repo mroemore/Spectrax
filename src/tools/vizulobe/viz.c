@@ -223,16 +223,13 @@ static Viz *viz_load_c(const char *path) {
 		return make_err(path, m);
 	}
 
+	/* viz_init is optional — dlsym returns NULL for an absent symbol, and
+	   dlerror() then reports "undefined symbol". Clear the error and treat
+	   a NULL init as "no init hook". */
 	viz_init_fn init = (viz_init_fn)dlsym(dl, "viz_init");
-	const char *s_err = dlerror();
-	if(!init) {
-		char m[VIZ_ERR_MAX];
-		snprintf(m, sizeof(m), "dlsym(viz_init) failed: %s", s_err ? s_err : "?");
-		dlclose(dl);
-		return make_err(path, m);
-	}
+	dlerror();
 	viz_frame_fn frame = (viz_frame_fn)dlsym(dl, "viz_frame");
-	s_err = dlerror();
+	const char *s_err = dlerror();
 	if(!frame) {
 		char m[VIZ_ERR_MAX];
 		snprintf(m, sizeof(m), "dlsym(viz_frame) failed: %s", s_err ? s_err : "?");
@@ -261,7 +258,7 @@ const char *viz_error(const Viz *v) {
 bool viz_is_loaded(const Viz *v) {
 	if(!v) return false;
 	if(v->kind == VIZ_KIND_C) {
-		return v->u.c.dl && v->u.c.init && v->u.c.frame;
+		return v->u.c.dl && v->u.c.frame;
 	}
 	if(v->kind == VIZ_KIND_GLSL) {
 		return v->u.gl.shader.id != 0;
