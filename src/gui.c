@@ -41,13 +41,6 @@ static Arranger *g_arranger;
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
 
-typedef struct {
-	Instrument *inst;
-	Envelope *env;
-	Parameter *routeIndex;
-	Parameter *target; /* current modulation target; NULL = un-routed */
-} RouteState;
-static RouteState runtimeRoutes[MAX_ENVELOPES];
 /* Task 8: the current preset-name node. Set on every graph build
  * (createPresetNameGuiNode). The SAVE action button uses it to commit
  * the instrument under the name currently shown. */
@@ -787,6 +780,20 @@ GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAli
 void drawActionBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.125, 2.0, gn->selected);
+	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
+	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
+}
+
+/* Task 6: route-destination picker node. Same rect as a dial, but with
+ * a brighter outline and the dial's name (strdup'd by cbOpenRouteLayer).
+ * Selecting one and EDIT'ing fires cbRouteToDest which toggles the
+ * source's route into this destination. */
+static void drawRouteDestNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	if(!gn) {
+		return;
+	}
+	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.6, 3.5, gn->selected);
 	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
 	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
 }
@@ -2200,14 +2207,21 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		 * actionCb is non-NULL fires on KM_EDIT. PREV/NEXT get a follow-up
 		 * rebuild so the dials re-address the freshly-built paramList; the
 		 * new mod-source callbacks (cbAddModSource / cbCycleSourceType)
-		 * rebuild internally and need no extra rebuild here. */
-		if(sel->actionCb) {
-			sel->actionCb(sel->actionCtx);
+		 * rebuild internally and need no extra rebuild here.
+		 *
+		 * IMPORTANT: the callback may rebuild the graph and FREE `sel`
+		 * (cbAddModSource, cbCycleSourceType, cbDeleteSource all do). So
+		 * snapshot the callback pointer BEFORE firing; reading `sel` after
+		 * the call is a use-after-free. */
+		ActionCallback cb = sel->actionCb;
+		if(cb) {
+			bool needsRebuild = (cb == cbPresetPrev || cb == cbPresetNext);
+			cb(sel->actionCtx);
 			/* PREV/NEXT apply a preset, which rebuilds the paramList;
 			 * the graph's dials still point at the freed params. Rebuild
 			 * so the dials re-address the new params. cbTypePrev/cbTypeNext
 			 * and the source callbacks rebuild internally. */
-			if(sel->actionCb == cbPresetPrev || sel->actionCb == cbPresetNext) {
+			if(needsRebuild) {
 				rebuildInstrumentGraph();
 			}
 			return true;
@@ -2699,45 +2713,7 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 	appendItem(container, btnwrap, weight);
 }
 
-static Parameter *routeTargetParam(Instrument *inst, int idx) {
-	if(idx < 0 || idx >= 12) {
-		return NULL;
-	}
-	int op = idx / 3;
-	int kind = idx % 3;
-	switch(kind) {
-		case 0: return inst->id.fm.ops[op]->feedbackAmount;
-		case 1: return inst->id.fm.ops[op]->ratio;
-		default: return inst->id.fm.ops[op]->level;
-	}
-}
 
-static void routeOnChange(void *data) {
-	RouteState *rs = (RouteState *)data;
-	Instrument *inst = rs->inst;
-	if(!inst) {
-		return;
-	}
-	/* Task 8: rewireModulation mutates the modList the audio thread
-	 * iterates; hold the rebuilding flag across the swap. The audio
-	 * lock closes the flag's check-then-use race. */
-	pthread_mutex_lock(&g_audioLock);
-	if(inst) {
-		inst->rebuilding = true;
-	}
-	Parameter *dest = routeTargetParam(inst, getParameterValueAsInt(rs->routeIndex));
-	if(rs->target) {
-		removeModulation(inst->paramList, rs->target, &rs->env->base);
-	}
-	if(dest) {
-		addModulation(inst->paramList, &rs->env->base, dest, 1.0f, MO_ADD);
-	}
-	rs->target = dest;
-	if(inst) {
-		inst->rebuilding = false;
-	}
-	pthread_mutex_unlock(&g_audioLock);
-}
 
 void addRuntimeSource(Instrument *inst) {
 	if(!inst || !inst->modList || inst->modList->count >= MAX_ENVELOPES) {
@@ -2755,20 +2731,6 @@ void addRuntimeSource(Instrument *inst) {
 	 * replace this builder with a modList-based one and the mirror goes away. */
 	if(env && inst->envelopeCount < MAX_ENVELOPES) {
 		inst->envelopes[inst->envelopeCount] = env;
-		/* Task 3 route-dial fix: wire runtimeRoutes[] for this slot so the
-		 * ROUTE dial's routeIndex parameter + routeOnChange callback exist.
-		 * addRuntimeSource previously dropped the old addRuntimeEnvelope's
-		 * runtimeRoutes setup, which left the dial bound to a dead parameter
-		 * and caused add_route_delete's ROUTE edit to add no modulation. */
-		int idx = inst->envelopeCount;
-		runtimeRoutes[idx].inst = inst;
-		runtimeRoutes[idx].env = env;
-		runtimeRoutes[idx].routeIndex = createParameter(inst->paramList, "route", 12.0f, 0.0f, 12.0f);
-		runtimeRoutes[idx].target = NULL;
-		if(runtimeRoutes[idx].routeIndex) {
-			runtimeRoutes[idx].routeIndex->onChange.cbData = &runtimeRoutes[idx];
-			runtimeRoutes[idx].routeIndex->onChange.cbFunc = routeOnChange;
-		}
 	}
 	/* Task 3: envelopeCount now mirrors modList->count so the harness
 	 * ASSERT envcount reads the synced value. */
@@ -3016,6 +2978,173 @@ static void cbDeleteSource(void *ctx) {
 	pushLayer(&ig->overlayLayers, layer);
 }
 
+/* Task 6: route-destination picker.
+ *
+ * cbOpenRouteLayer (actionCb on the ROUTE button) walks the instrument
+ * graph, gathers every routable dial (a dial node = a GuiNode whose draw
+ * is drawDialGuiNode or drawDiscreteDialGuiNode and whose Parameter
+ * pointer is non-NULL), then pushes a dim, full-screen overlay. The
+ * overlay's graph holds one selectable action-button node per routable
+ * dial, named after the dial. The first dial is auto-selected so the
+ * harness + a fresh player can press EDIT to route into the first dial
+ * without navigating. Selecting any dest node and EDIT'ing fires
+ * cbRouteToDest which toggles the source's route (add 1.0/MO_ADD or
+ * remove) and pops the layer.
+ *
+ * Why file-static g_destCtx[]: each dest node carries a DestCtx* so the
+ * actionCb can find inst + srcIdx + the dest Parameter without having
+ * to walk the graph again at EDIT time. Mirrors g_sourceCtx from Task 4.
+ *
+ * IMPORTANT: appendItem runs reflowCoordinates, which OVERWRITES child
+ * rects. We must set each dest node's x/y/w/h to the dial's rect AFTER
+ * appendItem, otherwise the picking buttons overlap the dial at the dial's
+ * position. set x/y/w/h here explicitly; reflow would otherwise reset
+ * them to the container's last-children default. */
+typedef struct {
+	Instrument *inst;
+	int srcIdx;
+	Parameter *dest;
+} DestCtx;
+static DestCtx g_destCtx[MAX_PARAMS];
+
+static void collectRoutableDialsRecurse(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
+	if(!node || *n >= cap) {
+		return;
+	}
+	/* A routable dial = draw == drawDialGuiNode || draw == drawDiscreteDialGuiNode
+	 * and p != NULL (dials created with a non-NULL Parameter). */
+	if(node->draw && node->p && (node->draw == drawDialGuiNode || node->draw == drawDiscreteDialGuiNode)) {
+		if(*n < cap) {
+			outParams[*n] = node->p;
+			outNodes[*n] = node;
+			(*n)++;
+		}
+	}
+	if(node->items) {
+		ListElement *le = node->items->head;
+		while(le) {
+			/* Items store the child pointer BY VALUE in an 8-byte block
+			 * (appendItem -> appendToList copies sizeof(GuiNode*)). Read
+			 * the pointer with *(GuiNode **)le->data, matching every other
+			 * graph walk (freeGuiNode, collectSelectables, navigateGraph).
+			 * Casting le->data directly treats the block address as the
+			 * node and reads past the allocation. */
+			GuiNode *cn = *(GuiNode **)le->data;
+			if(cn && cn != node) {
+				collectRoutableDialsRecurse(cn, outParams, outNodes, cap, n);
+			}
+			le = le->next;
+		}
+	}
+}
+
+static void collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
+	*n = 0;
+	collectRoutableDialsRecurse(node, outParams, outNodes, cap, n);
+}
+
+static void cbRouteToDest(void *ctx) {
+	DestCtx *dc = (DestCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(!ig) {
+		return;
+	}
+	/* Pop the layer first (so any listener-driven graph work doesn't
+	 * run against a stale g->selected). The mutation below rebuilds
+	 * the instrument graph via rebuildInstrumentGraph() so popping
+	 * first keeps the same ordering pattern as cbDeleteConfirmYes. */
+	popLayer(&ig->overlayLayers);
+	if(!dc || !dc->inst || !dc->dest) {
+		return;
+	}
+	/* Walk the destination's modulator chain to decide whether to add
+	 * or remove. There is no public hasModulation() — the connection
+	 * list is the source of truth. */
+	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	if(!src) {
+		return;
+	}
+	bool already = false;
+	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+		if(c->source == src) {
+			already = true;
+			break;
+		}
+	}
+	/* Task 8: route mutation touches the modList the audio thread
+	 * iterates; hold the rebuilding flag across the swap. The audio
+	 * lock closes the flag's check-then-use race. */
+	pthread_mutex_lock(&g_audioLock);
+	dc->inst->rebuilding = true;
+	if(already) {
+		removeModulation(dc->inst->paramList, dc->dest, src);
+	} else {
+		addModulation(dc->inst->paramList, src, dc->dest, 1.0f, MO_ADD);
+	}
+	rebuildInstrumentGraph();
+	dc->inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+}
+
+/* cbOpenRouteLayer builds the picking layer. Each routable dial becomes
+ * a selectable button drawn at the dial's own x/y/w/h so the visual
+ * position matches the underlying dial exactly. */
+static void cbOpenRouteLayer(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(!ig || !sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+		return;
+	}
+	/* Build the destination list by walking the CURRENT instrument graph
+	 * (we want the dials as they appear RIGHT NOW — before our own
+	 * rebuild — so the user can see what they will route into). */
+	Graph *instGraph = getSelectedInstGraph();
+	if(!instGraph || !instGraph->root) {
+		return;
+	}
+	Parameter *params[MAX_PARAMS];
+	GuiNode *nodes[MAX_PARAMS];
+	int n = 0;
+	collectRoutableDials(instGraph->root, params, nodes, MAX_PARAMS, &n);
+	if(n <= 0) {
+		return;
+	}
+	/* One Graph holds all dest nodes. The Layer dims the rest of the
+	 * screen. The first dial is selected so EDIT routes into it
+	 * immediately. */
+	Graph *g = createGraph(na_vertical);
+	GuiNode *firstDest = NULL;
+	for(int i = 0; i < n; i++) {
+		g_destCtx[i].inst = sc->inst;
+		g_destCtx[i].srcIdx = sc->idx;
+		g_destCtx[i].dest = params[i];
+		GuiNode *destBtn = createActionBtnGuiNode(0, 0, 100, 100, 0, na_horizontal, params[i]->name, 0, cbRouteToDest, &g_destCtx[i]);
+		/* strdup the dial name into a fresh allocation so the node's
+		 * name string outlives the paramList / graph teardown. The
+		 * raw pointer would dangle once rebuildInstrumentGraph()
+		 * frees the previous graph's nodes. */
+		free(destBtn->name);
+		destBtn->name = strdup(params[i]->name);
+		destBtn->draw = drawRouteDestNode;
+		appendItem(g->root, destBtn, 1);
+		/* appendItem runs reflowCoordinates which overwrites child
+		 * rects — pin the dest button's x/y/w/h to the underlying
+		 * dial's rect so the picker visually lines up with the dial. */
+		destBtn->x = nodes[i]->x;
+		destBtn->y = nodes[i]->y;
+		destBtn->w = nodes[i]->w;
+		destBtn->h = nodes[i]->h;
+		if(i == 0) {
+			firstDest = destBtn;
+		}
+	}
+	if(firstDest) {
+		changeGraphSelection(g, firstDest);
+	}
+	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTE", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
+
 static void cbAddModSource(void *ctx) {
 	Instrument *inst = (Instrument *)ctx;
 	addRuntimeSource(inst);
@@ -3099,9 +3228,10 @@ static void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst,
 	}
 
 	if(!core) {
-		/* ROUTE + DELETE buttons (routed wiring arrives in Tasks 5-7;
-		 * stub callbacks keep the layout stable). */
-		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, NULL, NULL), 3);
+		/* Task 6: ROUTE opens the destination-picker layer. cbOpenRouteLayer
+		 * reads inst+idx from this entry's SourceCtx (refreshed above by
+		 * refreshSourceCtx) so the picker always sees the right Mod. */
+		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, cbOpenRouteLayer, &g_sourceCtx[idx]), 3);
 		/* Task 5: DEL opens the YES/NO confirm layer; cbDeleteSource reads
 		 * inst+idx off the per-entry SourceCtx slot refreshed by
 		 * refreshSourceCtx() above. */

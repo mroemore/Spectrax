@@ -499,7 +499,15 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 		 * (no onChange firing); necessary when a load preset
 		 * resizes the pool out from under us. */
 		if(inst->voiceCountParam) {
+			/* Write the param WITHOUT firing cb_setVoiceCount: the callback
+			 * re-enters setChannelVoiceCount and re-locks g_audioLock
+			 * (non-recursive) — a deadlock whenever the count actually
+			 * changes (the resize path below is the canonical caller).
+			 * The dial reads the value directly, so it stays truthful. */
+			CallbackFunction savedCb = inst->voiceCountParam->onChange.cbFunc;
+			inst->voiceCountParam->onChange.cbFunc = NULL;
 			setParameterBaseValue(inst->voiceCountParam, (float)count);
+			inst->voiceCountParam->onChange.cbFunc = savedCb;
 		}
 		inst->rebuilding = false;
 	}
@@ -608,6 +616,10 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * (cb_setInstrumentPreset) writes the applied index into it afterwards. */
 	instrument->selectedPresetIndex = createParameterPro(instrument->paramList, "preset", 0.0f, 0.0f,
 		(float)(PRESET_BANK_SLOTS - 1), 1.0, 1.0, instrument, cb_setInstrumentPreset);
+	/* Re-create the voice-count param. clearParamList freed it; without
+	 * this the meta-row VOICES dial reads a dangling Parameter (garbage
+	 * name/range). Same class as the selectedPresetIndex fix above. */
+	instrument->voiceCountParam = createParameterPro(instrument->paramList, "voiceCount", 1.0f, 1.0f, 8.0f, 1.0f, 1.0f, instrument, cb_setVoiceCount);
 	/* Task 6: stamp the snapshot with the loaded preset's identity so
 	 * the dirty bit flips to clean. Search the bank by name (rather
 	 * than passing the index around) because some call sites — notably
