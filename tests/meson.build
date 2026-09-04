@@ -14,14 +14,14 @@ test_names = [
 # Task 3: gui.c hosts the instrument chip node + creator + recogniser.
 # test_graph_nav exercises the chip row layout, so it must link gui.o
 # + gui_layer.o (which gui.c references). Other tests don't need this.
-test_graph_nav_extra = files('../src/gui.c', '../src/gui_layer.c')
+test_graph_nav_extra = files('../src/gui_core.c', '../src/gui_arranger.c', '../src/gui_pattern.c', '../src/gui_instrument.c', '../src/gui_layer.c')
 
 # Task 5: test_mod_voice covers the chip label-edit char-cycle + cursor
 # pure helpers in gui.c (chipLabelCycleCharAt / chipLabelCursorMove /
 # chipLabelCharIndex). It needs gui.o + system_deps (raylib, etc.) for
 # the helpers to link — gui.h pulls in raylib transitively, so any
 # test that includes gui.h has to link the same surface as test_graph_nav.
-test_mod_voice_extra = files('../src/gui.c', '../src/gui_layer.c')
+test_mod_voice_extra = files('../src/gui_core.c', '../src/gui_arranger.c', '../src/gui_pattern.c', '../src/gui_instrument.c', '../src/gui_layer.c')
 
 foreach name : test_names
   extra_srcs = []

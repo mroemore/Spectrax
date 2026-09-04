@@ -38,7 +38,10 @@ seq_sources = files(
 # App-only sources (main carries the audio/init glue; gui owns the graph UI).
 app_only_sources = files(
   'main.c',
-  'gui.c',
+  'gui_core.c',
+  'gui_arranger.c',
+  'gui_pattern.c',
+  'gui_instrument.c',
   'gui_layer.c',
   'distortion.c',
   'dataviz.c',
