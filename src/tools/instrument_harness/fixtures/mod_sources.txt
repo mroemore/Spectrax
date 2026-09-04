@@ -1,0 +1,123 @@
+# mod_sources.txt - unified mod-sources container end-to-end
+# FM instrument: core 4 envelopes, then runtime sources (env[4]...).
+# Boot selection = RATIO1; bank = fm1..fm5.
+
+# --- ADD a runtime source -------------------------------------------------
+# DOWN DOWN lands on MODS_ADD (mod-wrap header); EDIT fires cbAddModSource.
+DOWN
+DOWN
+ASSERT selected==MODS_ADD
+EDIT
+ASSERT envcount==5
+
+# --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
+# From RATIO1: 7 DOWNs reach env[4]'s TYPE button (RATIO3 -> MODS_ADD ->
+# ATTACK(env0) -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4)).
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+EDIT
+ASSERT envcount==5
+# Rebuild reset selection to RATIO1; re-navigate to the type button (now LFO).
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==LFO
+EDIT
+# Now RND.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==RND
+EDIT
+# Back to ENV.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+
+# --- Route the source to op1 feedback via the picking layer ---------------
+# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; the first
+# collected dial is the meta VOICES param; DOWN lands on op1 feedback
+# (geometric bestInDirection from VOICES at x=359..435 -> feedback at x=369).
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+ASSERT topLayerSelected==voiceCount
+DOWN
+ASSERT topLayerSelected==feedback
+EDIT
+ASSERT modulators==(1,0,1)
+# cbRouteToDest pops + rebuilds, resetting selection to RATIO1. Re-navigate.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+ASSERT topLayerSelected==voiceCount
+DOWN
+ASSERT topLayerSelected==feedback
+EDIT
+ASSERT modulators==(1,0,0)
+
+# --- Delete via the confirm modal -----------------------------------------
+# Re-navigate to env[4]'s DEL (ENV type button then RIGHT x6).
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==DEL
+EDIT
+ASSERT topLayerSelected==DELETE_NO
+# EDIT on NO cancels: envcount stays 5.
+EDIT
+ASSERT envcount==5
+# Re-open + confirm YES: envcount drops to 4 (core only).
+EDIT
+ASSERT topLayerSelected==DELETE_NO
+RIGHT
+ASSERT topLayerSelected==DELETE_YES
+EDIT
+ASSERT envcount==4
+
+QUIT
