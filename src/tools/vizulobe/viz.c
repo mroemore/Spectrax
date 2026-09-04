@@ -5,15 +5,15 @@
 #include <string.h>
 #include <dlfcn.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #ifndef VIZ_INCLUDE_DIR
 #define VIZ_INCLUDE_DIR "include"
 #endif
-
-static const char *tcc = "tcc";
 
 #define VIZ_ERR_MAX 1024
 
@@ -59,26 +59,57 @@ const char *viz_cache_dir(void) {
 	return dir;
 }
 
-static char *run_tcc(const char *src_path, char *out_so, size_t n_out, char *err_buf, size_t err_n) {
-	char cmd[2048];
-	snprintf(cmd, sizeof(cmd),
-		"%s -shared -fPIC -o %s -I%s \"%s\" 2>&1",
-		tcc, out_so, VIZ_INCLUDE_DIR, src_path);
-	FILE *p = popen(cmd, "r");
-	if(!p) {
-		snprintf(err_buf, err_n, "popen failed for tcc");
-		return err_buf;
+static int run_cmd_argv(char *const argv[], char *err_buf, size_t err_n) {
+	int fds[2];
+	if(pipe(fds) != 0) {
+		snprintf(err_buf, err_n, "pipe failed");
+		return -1;
 	}
-	char buf[512];
+	pid_t pid = fork();
+	if(pid < 0) {
+		snprintf(err_buf, err_n, "fork failed");
+		close(fds[0]);
+		close(fds[1]);
+		return -1;
+	}
+	if(pid == 0) {
+		close(fds[0]);
+		dup2(fds[1], 1);
+		dup2(fds[1], 2);
+		close(fds[1]);
+		execvp(argv[0], argv);
+		_exit(127);
+	}
+	close(fds[1]);
 	size_t total = 0;
-	err_buf[0] = '\0';
-	while(fgets(buf, sizeof(buf), p)) {
-		if(total + strlen(buf) < err_n) {
-			strcat(err_buf, buf);
-			total += strlen(buf);
+	ssize_t n;
+	char buf[256];
+	while((n = read(fds[0], buf, sizeof(buf))) > 0) {
+		if(total + (size_t)n < err_n) {
+			memcpy(err_buf + total, buf, (size_t)n);
+			total += (size_t)n;
 		}
 	}
-	int rc = pclose(p);
+	close(fds[0]);
+	err_buf[total] = '\0';
+	int status = 0;
+	waitpid(pid, &status, 0);
+	if(WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	}
+	return -1;
+}
+
+static char *run_tcc(const char *src_path, char *out_so, size_t n_out, char *err_buf, size_t err_n) {
+	(void)n_out;
+	char *const tcc_argv[] = {
+		"tcc", "-shared", "-fPIC", "-o", out_so,
+		"-I", VIZ_INCLUDE_DIR,
+		(char *)src_path,
+		NULL
+	};
+	err_buf[0] = '\0';
+	int rc = run_cmd_argv(tcc_argv, err_buf, err_n);
 	if(rc != 0) {
 		if(err_buf[0] == '\0') {
 			snprintf(err_buf, err_n, "tcc exited with code %d", rc);
@@ -89,11 +120,9 @@ static char *run_tcc(const char *src_path, char *out_so, size_t n_out, char *err
 	   kernel then assumes to require an executable stack and refuses to
 	   dlopen on modern systems. patchelf clears that flag (no-op if the
 	   .so already has a non-exec GNU_STACK). */
-	{
-		char cmd2[2048];
-		snprintf(cmd2, sizeof(cmd2), "patchelf --clear-execstack \"%s\" 2>/dev/null", out_so);
-		int _ = system(cmd2); (void)_;
-	}
+	char *const patch_argv[] = { "patchelf", "--clear-execstack", out_so, NULL };
+	char dummy[64];
+	run_cmd_argv(patch_argv, dummy, sizeof(dummy));
 	return NULL;
 }
 
