@@ -22,7 +22,8 @@ for rel in \
     "src/spectrax" \
     "src/tools/nav_harness/nav_harness" \
     "src/tools/instrument_harness/instrument_harness" \
-    "src/tools/sample_analyser/inspectro_wavget"; do
+    "src/tools/sample_analyser/inspectro_wavget" \
+    "src/tools/vizulobe/vizulobe"; do
     src="$BUILD_ROOT/$rel"
     if [ -f "$src" ]; then
         # cp + mv (not a direct cp): a running copy of the binary keeps the
@@ -35,6 +36,18 @@ for rel in \
         echo "installed $name -> bin/"
     else
         echo "skipped $rel (not built)"
+    fi
+done
+
+# Sample vizulobe project + example vizzes, kept in sync with the source
+# copies so `cd bin && ./vizulobe -p sample_project.json` works out of the
+# box. Project paths resolve relative to the project file, so copying all
+# three together keeps the references valid.
+for name in sample_project.json smoke_viz.c smoke_viz.frag; do
+    src="$SOURCE_ROOT/src/tools/vizulobe/$name"
+    if [ -f "$src" ]; then
+        cp "$src" "$BIN/$name"
+        echo "installed $name -> bin/"
     fi
 done
 
