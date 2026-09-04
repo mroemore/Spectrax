@@ -3256,7 +3256,8 @@ static void syncRouteLinesOverlay(InstrumentGui *ig) {
 	if(!ig) {
 		return;
 	}
-	GuiNode *sel = getSelectedInstGraph()->selected;
+	Graph *base = getSelectedInstGraph();
+	GuiNode *sel = base ? base->selected : NULL;
 	bool onRouteBtn = sel && sel->actionCb == cbOpenRouteLayer;
 	Layer *top = topLayer(&ig->overlayLayers);
 	bool hasOverlay = top && top->name && strcmp(top->name, "ROUTELINES") == 0;
