@@ -295,6 +295,13 @@ void vizfxRegisterModStrip(int channel, ModStrip *ms) {
 }
 
 
+void vizfxUnregisterModStrip(int channel) {
+	if(channel < 0 || channel >= MAX_SEQUENCER_CHANNELS) {
+		return;
+	}
+	g_modStrips[channel] = NULL;
+}
+
 void updateModStripTextures(void) {
 	for(int i = 0; i < g_modStripCount; i++) {
 		if(g_modStrips[i]) {

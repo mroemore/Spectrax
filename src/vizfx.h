@@ -67,6 +67,7 @@ void drawModStrip(ModStrip *ms, Rectangle dest);
 void updateModStripTexture(ModStrip *ms);
 void updateModStripTextures(void);
 void vizfxRegisterModStrip(int channel, ModStrip *ms);
+void vizfxUnregisterModStrip(int channel);
 void freeModStrip(ModStrip *ms);
 
 void initMixRing(MixRing *r);

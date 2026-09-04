@@ -245,6 +245,7 @@ typedef struct {
 typedef struct {
 	GuiNode base;
 	ModStrip strip;
+	int channel;
 } ModStripGuiNode;
 
 typedef struct {

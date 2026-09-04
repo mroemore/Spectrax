@@ -34,6 +34,10 @@ struct GuiNode {
 	List *items;
 	OnPressCallback callback;
 	DrawCallback draw;
+	/* Called by freeGuiNode before free() so typed wrappers can release
+	 * their own resources (render textures, registry slots). NULL for
+	 * plain nodes. */
+	void (*destructor)(void *self);
 	Parameter *p;
 	ActionCallback actionCb;
 	void *actionCtx;

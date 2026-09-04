@@ -140,6 +140,12 @@ void removeSelectedEnvelope(void) {
 }
 
 
+static void freeModStripGuiNode(void *self) {
+	ModStripGuiNode *msgn = (ModStripGuiNode *)self;
+	freeModStrip(&msgn->strip);
+	vizfxUnregisterModStrip(msgn->channel);
+}
+
 static void drawModStripGuiNode(void *self) {
 	ModStripGuiNode *msgn = (ModStripGuiNode *)self;
 	GuiNode *gn = (GuiNode *)msgn;
@@ -156,8 +162,10 @@ ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager 
 		return NULL;
 	}
 	initModStrip(&msgn->strip, vm->voicePools[channel], vm->voiceCount[channel], w, h);
+	msgn->channel = channel;
 	gn->drawable = true;
 	gn->draw = drawModStripGuiNode;
+	gn->destructor = freeModStripGuiNode;
 	vizfxRegisterModStrip(channel, &msgn->strip);
 	return msgn;
 }

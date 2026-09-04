@@ -40,6 +40,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	gn->actionCb = NULL;
 	gn->actionCtx = NULL;
 	gn->draw = NULL;
+	gn->destructor = NULL;
 	gn->p = NULL;
 	if(na >= nodeAlignmentCount) {
 		printf("error: invalid alignment %i", na);
@@ -87,6 +88,9 @@ void freeGuiNode(GuiNode *gn) {
 			freeGuiNode(cn);
 			current = current->next;
 		}
+	}
+	if(gn->destructor) {
+		gn->destructor(gn);
 	}
 	freeList(gn->items);
 	freeList(gn->itemWeights);
