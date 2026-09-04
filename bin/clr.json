@@ -40,6 +40,8 @@
 		"modStripOfs": "#BEBEBEFF",
 		"modStripDefault": "#D2D2D2FF",
 		"layerDim": "#000000AA",
-		"spectrogramPlayhead": "#FF0000FF"
+		"spectrogramPlayhead": "#FF0000FF",
+		"routeAdd": "#FF7850FF",
+		"routeMul": "#78C8FFFF"
 	}
 }

@@ -40,6 +40,8 @@ typedef struct {
 	Color modStripDefault;
 	Color layerDim;
 	Color spectrogramPlayhead;
+	Color routeAdd;
+	Color routeMul;
 } ColourScheme;
 
 typedef struct {

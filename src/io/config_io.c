@@ -78,6 +78,8 @@ static Color *themeFieldByName(ColourScheme *cs, const char *name) {
 	if(!strcmp(name, "modStripDefault")) return &cs->modStripDefault;
 	if(!strcmp(name, "layerDim")) return &cs->layerDim;
 	if(!strcmp(name, "spectrogramPlayhead")) return &cs->spectrogramPlayhead;
+	if(!strcmp(name, "routeAdd")) return &cs->routeAdd;
+	if(!strcmp(name, "routeMul")) return &cs->routeMul;
 	return NULL;
 }
 
@@ -146,7 +148,8 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 		"sampleBg", "sampleAltBg", "sampleBorder", "stepBorder", "stepClosed",
 		"arrangerPlayhead", "arrangerCellText", "wrapperBorder",
 		"modStripLfo", "modStripEnv", "modStripRnd", "modStripOfs",
-		"modStripDefault", "layerDim", "spectrogramPlayhead" };
+		"modStripDefault", "layerDim", "spectrogramPlayhead",
+		"routeAdd", "routeMul" };
 	size_t n = sizeof(names) / sizeof(names[0]);
 	for(size_t i = 0; i < n; i++) {
 		/* Cast away const for the lookup helper (it only dereferences for read,

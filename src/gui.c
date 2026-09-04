@@ -130,6 +130,8 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->modStripDefault = (Color){ 210, 210, 210, 255 };
 	colourScheme->layerDim = (Color){ 0, 0, 0, 170 };
 	colourScheme->spectrogramPlayhead = (Color){ 255, 0, 0, 255 };
+	colourScheme->routeAdd = (Color){ 255, 120, 80, 255 };
+	colourScheme->routeMul = (Color){ 120, 200, 255, 255 };
 }
 
 void setColourScheme(ColourScheme *colourScheme) {
@@ -2087,8 +2089,14 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * instrument parameter values. */
 	InstrumentGui *ig = getInstrumentGui();
 	if(ig && !layerStackIsEmpty(&ig->overlayLayers)) {
-		layerStackInput(&ig->overlayLayers, is);
-		return true;
+		Layer *top = topLayer(&ig->overlayLayers);
+		/* The ROUTELINES overlay is draw-only (Task 7): it must NOT
+		 * capture the input stream — only the real modal layers do. */
+		bool isPassiveOverlay = top && top->name && strcmp(top->name, "ROUTELINES") == 0;
+		if(!isPassiveOverlay) {
+			layerStackInput(&ig->overlayLayers, is);
+			return true;
+		}
 	}
 
 	/* Task 8: while the overwrite modal is up we consume ALL input and
@@ -3155,6 +3163,129 @@ static void cbOpenRouteLayer(void *ctx) {
 	pushLayer(&ig->overlayLayers, layer);
 }
 
+/* Task 7: route-lines overlay. When a ROUTE button is FOCUSED (selected),
+ * draw colour-coded lines from the source's route button to every
+ * destination dial it currently modulates. Draw-only, non-interactive. */
+typedef struct {
+	Instrument *inst;
+	int srcIdx;
+} RouteLinesCtx;
+
+static RouteLinesCtx g_routeLinesCtx;
+
+static int findDialRectForParam(GuiNode *node, Parameter *p, Rectangle *out) {
+	if(!node || !p) {
+		return 0;
+	}
+	if((node->draw == drawDialGuiNode || node->draw == drawDiscreteDialGuiNode) && node->p == p) {
+		*out = (Rectangle){ node->x, node->y, node->w, node->h };
+		return 1;
+	}
+	if(node->items) {
+		ListElement *e = node->items->head;
+		for(int i = 0; i < node->itemCount && e; i++) {
+			if(findDialRectForParam(*(GuiNode **)e->data, p, out)) {
+				return 1;
+			}
+			e = e->next;
+		}
+	}
+	return 0;
+}
+
+/* Find the ROUTE button (actionCb == cbOpenRouteLayer) in the base graph. */
+static int findRouteButtonRect(GuiNode *node, Rectangle *out) {
+	if(!node) {
+		return 0;
+	}
+	if(node->actionCb == cbOpenRouteLayer) {
+		*out = (Rectangle){ node->x, node->y, node->w, node->h };
+		return 1;
+	}
+	if(node->items) {
+		ListElement *e = node->items->head;
+		for(int i = 0; i < node->itemCount && e; i++) {
+			if(findRouteButtonRect(*(GuiNode **)e->data, out)) {
+				return 1;
+			}
+			e = e->next;
+		}
+	}
+	return 0;
+}
+
+static void drawRouteLinesNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	RouteLinesCtx *rc = &g_routeLinesCtx;
+	(void)gn;
+	if(!rc->inst || rc->srcIdx < 0 || rc->srcIdx >= rc->inst->modList->count) {
+		return;
+	}
+	Mod *src = rc->inst->modList->mods[rc->srcIdx];
+	Graph *base = getSelectedInstGraph();
+	if(!base || !base->root) {
+		return;
+	}
+	Rectangle anchor = { 0, 0, 0, 0 };
+	findRouteButtonRect(base->root, &anchor);
+	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
+		return;
+	}
+	Vector2 from = { anchor.x + anchor.width / 2, anchor.y + anchor.height / 2 };
+	for(int i = 0; i < rc->inst->paramList->count; i++) {
+		Parameter *p = rc->inst->paramList->params[i];
+		if(!p) {
+			continue;
+		}
+		ModConnection *c = p->modulators;
+		while(c) {
+			if(c->source == src) {
+				Rectangle r;
+				if(findDialRectForParam(base->root, p, &r)) {
+					Vector2 to = { r.x + r.width / 2, r.y + r.height / 2 };
+					Color col = (c->type && getParameterValueAsInt(c->type) == MO_MUL) ? cs.routeMul : cs.routeAdd;
+					DrawLineEx(from, to, 2.0f, col);
+				}
+			}
+			c = c->next;
+		}
+	}
+}
+
+static void syncRouteLinesOverlay(InstrumentGui *ig) {
+	if(!ig) {
+		return;
+	}
+	GuiNode *sel = getSelectedInstGraph()->selected;
+	bool onRouteBtn = sel && sel->actionCb == cbOpenRouteLayer;
+	Layer *top = topLayer(&ig->overlayLayers);
+	bool hasOverlay = top && top->name && strcmp(top->name, "ROUTELINES") == 0;
+	/* Only show ROUTELINES when the stack is otherwise empty — pushing on
+	 * top of the ROUTE picking layer (EDIT on the button) would make the
+	 * passive overlay the top layer and break modal input/selection. */
+	if(onRouteBtn && layerStackIsEmpty(&ig->overlayLayers)) {
+		/* Route the source through the overlay ctx: the ROUTE button's
+		 * actionCtx is &g_sourceCtx[idx] (SourceCtx { inst, idx }). */
+		SourceCtx *sc = (SourceCtx *)sel->actionCtx;
+		if(sc && sc->inst) {
+			g_routeLinesCtx.inst = sc->inst;
+			g_routeLinesCtx.srcIdx = sc->idx;
+		}
+		Graph *g = createGraph(na_horizontal);
+		GuiNode *lines = createGuiNode(0, 0, SCREEN_W, SCREEN_H, 0, na_horizontal, "routelines", 0, 0);
+		lines->drawable = true;
+		lines->draw = drawRouteLinesNode;
+		appendItem(g->root, lines, 1);
+		Layer *l = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTELINES", false, true);
+		pushLayer(&ig->overlayLayers, l);
+	} else if(!onRouteBtn && hasOverlay) {
+		Layer *l = popLayer(&ig->overlayLayers);
+		if(l) {
+			destroyLayer(l);
+		}
+	}
+}
+
 static void cbAddModSource(void *ctx) {
 	Instrument *inst = (Instrument *)ctx;
 	addRuntimeSource(inst);
@@ -3369,6 +3500,10 @@ void DrawGUI(int currentScene) {
 			 * overlay layers now. The layer system itself handles per-layer
 			 * "dim" tinting for depth. */
 			if(igui) {
+				/* Task 7: route-lines overlay is driven by the focused
+				 * selection each frame (push when a ROUTE button is
+				 * selected, pop otherwise). */
+				syncRouteLinesOverlay(igui);
 				layerStackDraw(&igui->overlayLayers);
 			}
 			break;
