@@ -14,6 +14,34 @@
 #include "voice.h"
 #include "io/preset_io.h"
 #include "io.h"
+/* ---- static forward declarations (lawn pass: internal-only helpers demoted) ---- */
+static void appendBlankNode(GuiNode *container, int weight);
+static void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+static void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected);
+static void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
+static void cbOpenLoadList(void *ctx);
+static void commitPresetName(PresetNameGuiNode *pn);
+static GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);
+static GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p);
+static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected);
+static GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected);
+static SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd);
+static void drawActionBtnGuiNode(void *self);
+static void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
+static void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
+static void drawSampleWaveformGuiNode(void *self);
+static void drawSongMinimapGui(void *self);
+static void drawValueDisplay(int x, int y, int w, int h, char *text);
+static void drawWrapperNode(void *self);
+static void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst);
+static void guiBuildLoadListLayer(InstrumentGui *ig);
+static void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName);
+static void guiOpenLoadList(void);
+static void guiSetOverwritePending(const char *name);
+static void guiShowDirtyConfirmModal(Instrument *inst);
+static bool isPresetNameNode(GuiNode *n);
+
 
 InstrumentGui *igui;
 Graph *agui;
@@ -65,33 +93,6 @@ void initCustomFont(Font *f, char *path, int charCount, int width, int height) {
 	}
 }
 
-SpriteSheet *createSpriteSheet(char *imagePath, int sprite_w, int sprite_h) {
-	SpriteSheet *sh = (SpriteSheet *)malloc(sizeof(SpriteSheet));
-	sh->sheet = LoadTexture(imagePath);
-	sh->spriteCount = (sh->sheet.width / sprite_w) * (sh->sheet.height / sprite_h);
-	sh->scale = 1.0;
-	printf("spriteCount %i\n", sh->spriteCount);
-	sh->spriteW = sprite_w;
-	printf("sW %i\n", sh->spriteW);
-	sh->spriteH = sprite_h;
-	printf("sH %i\n", sh->spriteH);
-	sh->origin = (Vector2){ sh->spriteW / 2.0, sh->spriteH / 2.0 };
-	sh->spriteSize = (Rectangle){ 0, 0, sprite_w, sprite_h };
-}
-
-void drawSprite(SpriteSheet *spriteSheet, int index, int x, int y, int w, int h) {
-	if(!spriteSheet || spriteSheet->spriteCount <= 0) {
-		/* Asset failed to load or has zero sprites -- avoid the SIGFPE
-		 * from `index % 0` and silently skip the draw. The arranger
-		 * scene's instrument icons are decorative; the rest of the UI
-		 * (cells, cursor, pattern grid) still renders. */
-		return;
-	}
-	index = index >= spriteSheet->spriteCount ? index % spriteSheet->spriteCount : index;
-	spriteSheet->spriteSize.x = index * spriteSheet->spriteW;
-	DrawTexturePro(spriteSheet->sheet, spriteSheet->spriteSize, (Rectangle){ x + spriteSheet->spriteW / 2.0, y + spriteSheet->spriteW / 2.0, w, h }, spriteSheet->origin, 0.0, WHITE);
-	spriteSheet->spriteSize.x = 0;
-}
 
 void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->backgroundColor = (Color){ 207, 110, 58, 255 };
@@ -134,9 +135,6 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->routeMul = (Color){ 120, 200, 255, 255 };
 }
 
-void setColourScheme(ColourScheme *colourScheme) {
-	cs = *colourScheme;
-}
 
 ColourScheme *getColourScheme() {
 	return &cs;
@@ -157,9 +155,6 @@ void markThemeLoaded(void) {
 	gThemeLoaded = true;
 }
 
-bool isThemeLoaded(void) {
-	return gThemeLoaded;
-}
 
 void clearBg() {
 	ClearBackground(cs.backgroundColor);
@@ -287,9 +282,6 @@ Graph *getSelectedInstGraph() {
 	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
 }
 
-LayerStack *getInstrumentOverlayLayers(void) {
-	return igui ? &igui->overlayLayers : NULL;
-}
 
 InstrumentGui *getInstrumentGui(void) {
 	return igui;
@@ -585,7 +577,7 @@ void printArrGraph() {
 	printGraph(agui->root, 0);
 }
 
-SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd) {
+static SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, Instrument *inst, Parameter *loopStart, Parameter *loopEnd) {
 	SampleWaveformGuiNode *swgn = malloc(sizeof(SampleWaveformGuiNode));
 	GuiNode *gn = (GuiNode *)swgn;
 	if(!initGuiNode(gn, x, y, w, h, padding, na, name, 1, selected)) {
@@ -605,7 +597,7 @@ SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, int h, i
 	return swgn;
 }
 
-void drawSampleWaveformGuiNode(void *self) {
+static void drawSampleWaveformGuiNode(void *self) {
 	SampleWaveformGuiNode *swgn = (SampleWaveformGuiNode *)self;
 	GuiNode *gn = (GuiNode *)swgn;
 	int yOffset = gn->h / 2;
@@ -695,17 +687,17 @@ void navigateArrangerGraph(int keymapping) {
 	navigateArrangerGraphTo(agui, g_arranger, keymapping);
 }
 
-void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
+static void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle) {
 	DrawCircleSector((Vector2){ x + radius, y + radius }, radius + 2, startAngle, startAngle + offsetAngle, 32, cs.dial);
 	DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 }, (Rectangle){ x + radius, y + radius, w, h }, (Vector2){ radius, radius }, startAngle + offsetAngle, WHITE);
 }
 
-void drawValueDisplay(int x, int y, int w, int h, char *text) {
+static void drawValueDisplay(int x, int y, int w, int h, char *text) {
 	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
 	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, cs.valueText);
 }
 
-void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
+static void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
 	/* Square panel with a drop shadow (offset by the border width)
 	 * instead of the old rounded-rectangle border. The shadow is drawn
 	 * first so it reads as an edge behind the panel. */
@@ -753,7 +745,7 @@ void drawDialGuiNode(void *self) {
 	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
 }
 
-GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
+static GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p) {
 	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
 	if(gn == NULL) {
 		printf("createDialGuiNode error, could not create.");
@@ -766,7 +758,7 @@ GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignmen
 	return gn;
 }
 
-GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx) {
+static GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx) {
 	GuiNode *gn = createGuiNode(x, y, w, h, padding, na, name, 1, selected);
 	if(gn == NULL) {
 		printf("createActionBtnGuiNode error, could not create.");
@@ -779,7 +771,7 @@ GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAli
 	return gn;
 }
 
-void drawActionBtnGuiNode(void *self) {
+static void drawActionBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.125, 2.0, gn->selected);
 	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
@@ -800,25 +792,6 @@ static void drawRouteDestNode(void *self) {
 	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
 }
 
-void drawBipolarDialGuiNode(void *self) {
-	GuiNode *gn = (GuiNode *)self;
-	if(!gn->p) {
-		return;
-	}
-	char paramValue[50];
-	snprintf(paramValue, 50, "%i", (int)gn->p->currentValue);
-	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = 0.0f;
-	if(range > 0.0f) {
-		angle = (gn->p->currentValue - gn->p->minValue) / (range / 100) * 2.7;
-	}
-	int tmpx = gn->x;
-	int tmpy = gn->y;
-	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
-	tmpx += gn->padding;
-	tmpy += gn->padding;
-	drawRotatedDial(tmpx, tmpy, 24, 24, 12, -90, angle);
-}
 
 void drawDiscreteDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
@@ -848,7 +821,7 @@ void drawDiscreteDialGuiNode(void *self) {
 	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
 }
 
-void drawWrapperNode(void *self) {
+static void drawWrapperNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	DrawRectangleRec((Rectangle){ gn->x, gn->y, gn->w, gn->h }, cs.panel);
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.wrapperBorder);
@@ -1438,7 +1411,7 @@ static void stripIpbExtension(char *s) {
 	}
 }
 
-void guiOpenLoadList(void);
+static void guiOpenLoadList(void);
 
 void guiOpenLoadList(void) {
 	g_loadList.count = 0;
@@ -1484,7 +1457,7 @@ static ModalState g_modalState = MODAL_NONE;
 static char g_pendingName[33];
 static bool g_overwriteChoice; /* false = NO, true = YES */
 
-void guiSetOverwritePending(const char *name) {
+static void guiSetOverwritePending(const char *name) {
 	if(!name) {
 		return;
 	}
@@ -1499,7 +1472,6 @@ void guiSetOverwritePending(const char *name) {
 	}
 }
 
-bool guiIsModalOpen(void) { return g_modalState != MODAL_NONE; }
 
 /* Task 6: forward decl — defined further down. Used by both
  * guiSavePreset() and the overwrite-confirmation path. */
@@ -1545,7 +1517,7 @@ PresetFileResult guiSavePreset(Instrument *inst, const char *name) {
  * to guiOpenLoadList() on discard. */
 // (removed in Task 7: real implementation is below)
 
-void guiShowDirtyConfirmModal(Instrument *inst) {
+static void guiShowDirtyConfirmModal(Instrument *inst) {
 	if(!inst) {
 		return;
 	}
@@ -1730,7 +1702,7 @@ static void cbLoadListCancel(void *ctx) {
 /* Build the overwrite-confirm layer. The graph has two action
  * buttons: YES (confirms overwrite) and NO (cancels). Both pop
  * the layer; YES additionally commits the overwrite. */
-void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName) {
+static void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName) {
 	if(!ig) {
 		return;
 	}
@@ -1765,7 +1737,7 @@ void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName) {
 
 /* Build the dirty-confirm layer. Three-way: DISCARD, CANCEL, SAVE.
  * The graph is a single row of three action buttons. */
-void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst) {
+static void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst) {
 	if(!ig) {
 		return;
 	}
@@ -1796,7 +1768,7 @@ void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst) {
  * action buttons, one per preset in the bank. Up/Down moves
  * through the list; START triggers cbLoadListPick with the
  * preset index. */
-void guiBuildLoadListLayer(InstrumentGui *ig) {
+static void guiBuildLoadListLayer(InstrumentGui *ig) {
 	if(!ig) {
 		return;
 	}
@@ -1841,29 +1813,12 @@ void guiBuildLoadListLayer(InstrumentGui *ig) {
 	pushLayer(&ig->overlayLayers, layer);
 }
 
-bool guiPopOverlay(InstrumentGui *ig) {
-	if(!ig || ig->overlayLayers.count == 0) {
-		return false;
-	}
-	popLayer(&ig->overlayLayers);
-	if(ig->overlayLayers.count == 0) {
-		g_modalState = MODAL_NONE;
-		g_loadListActive = false;
-	}
-	return true;
-}
 
 /* Task 7: stub fill. Pushed here as a layer so the LOAD button
  * gates the load list on the dirty bit (Task 6). */
 // (the real guiShowDirtyConfirmModal definition is later in this file
 // once getSelectedInstInstrument / guiBuildDirtyConfirmLayer are visible)
 
-/* Task 7: legacy drawPresetModal is now a no-op; the layer system
- * owns modal drawing via layerStackDraw. Kept as a stub so any
- * existing call site compiles. */
-void drawPresetModal(void) {
-	/* no-op: see layerStackDraw in DrawGUI */
-}
 
 #define NAME_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-. "
 static int charIndex(char c) {
@@ -2341,7 +2296,7 @@ static void drawPresetNameGuiNode(void *self) {
 	}
 }
 
-bool isPresetNameNode(GuiNode *n) {
+static bool isPresetNameNode(GuiNode *n) {
 	return n && n->draw == drawPresetNameGuiNode;
 }
 
@@ -2355,13 +2310,6 @@ bool presetNameGuiNodeSavedFlashActive(GuiNode *n) {
 	return currentFrameIndex() < pn->savedFlashUntil;
 }
 
-bool presetNameGuiNodeErrorFlashActive(GuiNode *n) {
-	if(!isPresetNameNode(n)) {
-		return false;
-	}
-	PresetNameGuiNode *pn = (PresetNameGuiNode *)n;
-	return currentFrameIndex() < pn->errorFlashUntil;
-}
 
 /* Task 3: KM_EDIT + arrow dispatch guard. The action button and preset
  * name / load-list nodes also live in the instrument graph; calling
@@ -2381,7 +2329,7 @@ bool isSelectedDialNode(const Graph *g) {
 		&& n->callback != NULL;
 }
 
-GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected) {
+static GuiNode *createPresetNameGuiNode(int x, int y, int w, int h, Instrument *inst, bool selected) {
 	PresetNameGuiNode *pn = malloc(sizeof(PresetNameGuiNode));
 	if(!pn) {
 		return NULL;
@@ -2472,23 +2420,6 @@ static void drawPresetLoadListNode(void *self) {
 	}
 }
 
-bool isPresetLoadListNode(GuiNode *n) {
-	return n && n->draw == drawPresetLoadListNode;
-}
-
-GuiNode *createPresetLoadListNode(int x, int y, int w, int h) {
-	GuiNode *gn = (GuiNode *)malloc(sizeof(GuiNode));
-	if(!gn) {
-		return NULL;
-	}
-	if(!initGuiNode(gn, x, y, w, h, 0, na_horizontal, "PRESET_LOADLIST", 0, 0)) {
-		free(gn);
-		return NULL;
-	}
-	gn->drawable = true;
-	gn->draw = drawPresetLoadListNode;
-	return gn;
-}
 
 
 
@@ -2560,7 +2491,7 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
  * (preset_save_load.txt, add_route_delete.txt) navigate from. Stealing
  * selection here would re-route the cursor on every rebuild and break
  * those fixtures. */
-void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected) {
+static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected) {
 	(void)g;
 	(void)channel;
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "META", 0, 0);
@@ -2590,7 +2521,7 @@ void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, Voice
 	appendItem(container, btnwrap, weight);
 }
 
-void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
+static void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "FM_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
@@ -2620,7 +2551,6 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 
 	GuiNode *sp1 = createBlankGuiNode();
 	GuiNode *sp2 = createBlankGuiNode();
-	GuiNode *sp3 = createBlankGuiNode();
 	GuiNode *sp4 = createBlankGuiNode();
 	GuiNode *sp5 = createBlankGuiNode();
 
@@ -2650,7 +2580,7 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	appendItem(container, btnwrap, weight);
 }
 
-void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
+static void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "SAMPLE_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
@@ -2690,7 +2620,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	appendItem(container, btnwrap, weight);
 }
 
-void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
+static void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
 	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "SAMPLE_CONTROLS", 0, 0);
 	btnwrap->draw = drawWrapperNode;
 	btnwrap->drawable = true;
@@ -2858,42 +2788,7 @@ Instrument *getSelectedInstInstrument(void) {
 	return igui->vm->instruments[*igui->selectedInstrument];
 }
 
-void appendADSREnvControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Envelope *env) {
-	GuiNode *envwrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "ENVELOPE", 0, 0);
-	envwrap->draw = drawWrapperNode;
-	envwrap->drawable = true;
-
-	GuiNode *ar = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, env->stages[0].duration);
-	GuiNode *ac = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[0].curvature);
-	GuiNode *dr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, env->stages[1].duration);
-	GuiNode *dc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[1].curvature);
-	GuiNode *sr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SUSTAIN", 0, incParameterBaseValue, env->stages[2].duration);
-	GuiNode *sc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[2].curvature);
-	GuiNode *rr = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RELEASE", 0, incParameterBaseValue, env->stages[3].duration);
-	GuiNode *rc = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, env->stages[3].curvature);
-	if(selected) { g->selected = ar; }
-
-	GuiNode *sp1 = createBlankGuiNode();
-	GuiNode *sp2 = createBlankGuiNode();
-	GuiNode *sp3 = createBlankGuiNode();
-	GuiNode *sp4 = createBlankGuiNode();
-
-	appendItem(envwrap, ar, 4);
-	appendItem(envwrap, ac, 4);
-	appendItem(envwrap, sp1, 1);
-	appendItem(envwrap, dr, 4);
-	appendItem(envwrap, dc, 4);
-	appendItem(envwrap, sp2, 1);
-	appendItem(envwrap, sr, 4);
-	appendItem(envwrap, sc, 4);
-	appendItem(envwrap, sp3, 1);
-	appendItem(envwrap, rr, 4);
-	appendItem(envwrap, rc, 4);
-
-	appendItem(container, envwrap, weight);
-}
-
-void appendBlankNode(GuiNode *container, int weight) {
+static void appendBlankNode(GuiNode *container, int weight) {
 	GuiNode *bgn = createBlankGuiNode();
 	appendItem(container, bgn, weight);
 }
@@ -3384,7 +3279,7 @@ static void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst,
 	(void)g;
 }
 
-Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected) {
+static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool selected) {
 	Graph *instGraph = createGraph(na_vertical);
 	GuiNode *mainRow = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "mainrow", 0, 0);
 	GuiNode *margin1 = createBlankGuiNode();
@@ -3449,7 +3344,7 @@ Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, bool sel
 	return instGraph;
 }
 
-void drawSongMinimapGui(void *self) {
+static void drawSongMinimapGui(void *self) {
 	SongMinimapGui *smGui = (SongMinimapGui *)self;
 	Arranger *arranger = (Arranger *)smGui->arranger;
 	int startIndex = 0;
