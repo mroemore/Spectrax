@@ -37,6 +37,9 @@ ASSERT selected==ENV
 
 # Task 6: ROUTE opens the destination-picking layer. The first collected
 # dial is the meta-row VOICES dial (walk order: META precedes FM section).
+# The picking layer's arrows use geometric nav (navigateGraphRefined), so
+# DOWN from VOICES (x=359..435) lands on the dial directly below at that
+# x-range: op1's feedback (x=369), not op0's ratio (x=39).
 RIGHT
 RIGHT
 RIGHT
@@ -45,12 +48,11 @@ RIGHT
 ASSERT selected==ROUTE
 EDIT
 ASSERT topLayerSelected==voiceCount
-# DOWN -> the first FM dial (op0 ratio).
 DOWN
-ASSERT topLayerSelected==ratio
-# EDIT routes the runtime source to op0 ratio.
+ASSERT topLayerSelected==feedback
+# EDIT routes the runtime source to op1 feedback.
 EDIT
-ASSERT modulators==(0,1,0)
+ASSERT modulators==(1,0,1)
 # cbRouteToDest pops + rebuilds, resetting selection to RATIO1.
 # Re-navigate to ROUTE.
 DOWN
@@ -69,10 +71,10 @@ ASSERT selected==ROUTE
 EDIT
 ASSERT topLayerSelected==voiceCount
 DOWN
-ASSERT topLayerSelected==ratio
+ASSERT topLayerSelected==feedback
 # EDIT un-routes.
 EDIT
-ASSERT modulators==(0,0,0)
+ASSERT modulators==(1,0,0)
 # Re-navigate back to the runtime entry's ENV type button for the
 # type-cycle + delete sections below.
 DOWN

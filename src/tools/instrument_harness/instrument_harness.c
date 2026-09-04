@@ -120,14 +120,14 @@ typedef struct {
 	ScriptOpKind op;
 	int lineno;          /* source line for error reporting */
 	int frames;          /* for SOP_FRAMES, and per-step subframe counter */
+	int opIdx;           /* for SOP_ASSERT_MODULATORS: operator index 0..3 */
+	int kind;            /* for SOP_ASSERT_MODULATORS: 0=fb 1=rat 2=lvl */
 	union {
 		KeyMapping key; /* for SOP_KEY */
 		KeyMapping arrow; /* for SOP_EDIT_ARROW */
 		int n;          /* for SOP_FRAMES, SOP_ASSERT_ENVCOUNT, SOP_ASSERT_PRESETCOUNT,
 		                 * SOP_ASSERT_ALGO, chipChannel, labelColourIdx, voiceType;
 		                 * and N for modulators */
-		int op;         /* for SOP_ASSERT_MODULATORS: operator index 0..3 */
-		int kind;       /* for SOP_ASSERT_MODULATORS: 0=fb 1=rat 2=lvl */
 	} a;
 	union {
 		int n;          /* secondary int (modulator_count), voiceCount, expanded-flag 0|1, scene index */
@@ -457,8 +457,8 @@ static void parseScript(const char *path) {
 					return;
 				}
 				s->op = SOP_ASSERT_MODULATORS;
-				s->a.op = opIdx;
-				s->a.kind = kind;
+				s->opIdx = opIdx;
+				s->kind = kind;
 				s->b.n = count;
 			} else if(strcmp(tokens[1], "selected") == 0) {
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
@@ -1074,7 +1074,7 @@ static void processScriptAssert(const ScriptStep *s) {
 			runAssertEnvcount(s->lineno, s->a.n);
 			break;
 		case SOP_ASSERT_MODULATORS:
-			runAssertModulators(s->lineno, s->a.op, s->a.kind, s->b.n);
+			runAssertModulators(s->lineno, s->opIdx, s->kind, s->b.n);
 			break;
 		case SOP_ASSERT_SELECTED:
 			runAssertSelected(s->lineno, s->name);
