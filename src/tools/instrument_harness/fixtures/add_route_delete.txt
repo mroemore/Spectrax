@@ -35,6 +35,55 @@ DOWN
 DOWN
 ASSERT selected==ENV
 
+# Task 6: ROUTE opens the destination-picking layer. The first collected
+# dial is the meta-row VOICES dial (walk order: META precedes FM section).
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+ASSERT topLayerSelected==voiceCount
+# DOWN -> the first FM dial (op0 ratio).
+DOWN
+ASSERT topLayerSelected==ratio
+# EDIT routes the runtime source to op0 ratio.
+EDIT
+ASSERT modulators==(0,1,0)
+# cbRouteToDest pops + rebuilds, resetting selection to RATIO1.
+# Re-navigate to ROUTE.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+ASSERT topLayerSelected==voiceCount
+DOWN
+ASSERT topLayerSelected==ratio
+# EDIT un-routes.
+EDIT
+ASSERT modulators==(0,0,0)
+# Re-navigate back to the runtime entry's ENV type button for the
+# type-cycle + delete sections below.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+
 # EDIT cycles ENV -> LFO.
 EDIT
 ASSERT envcount==5
