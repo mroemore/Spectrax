@@ -64,6 +64,9 @@ void freeBufferScroller(BufferScroller *bs);
 
 void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height);
 void drawModStrip(ModStrip *ms, Rectangle dest);
+void updateModStripTexture(ModStrip *ms);
+void updateModStripTextures(void);
+void vizfxRegisterModStrip(int channel, ModStrip *ms);
 void freeModStrip(ModStrip *ms);
 
 void initMixRing(MixRing *r);

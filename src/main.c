@@ -285,6 +285,7 @@ int main(int argc, char **argv) {
 				setWindowScale(scaleShift ? getWindowScale() - 0.25f : prevWholeScale(getWindowScale()));
 			}
 		}
+		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();
 		updateSpectrogramData(&data.spectrogram);

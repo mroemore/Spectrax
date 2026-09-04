@@ -158,6 +158,7 @@ ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager 
 	initModStrip(&msgn->strip, vm->voicePools[channel], vm->voiceCount[channel], w, h);
 	gn->drawable = true;
 	gn->draw = drawModStripGuiNode;
+	vizfxRegisterModStrip(channel, &msgn->strip);
 	return msgn;
 }
 

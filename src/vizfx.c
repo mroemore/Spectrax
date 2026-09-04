@@ -213,6 +213,19 @@ static ModList *selectVoiceModList(ModStrip *ms) {
 }
 
 void drawModStrip(ModStrip *ms, Rectangle dest) {
+	if(!ms) {
+		return;
+	}
+	RenderTexture2D present = ms->pingActive ? ms->ping : ms->pong;
+	DrawTexturePro(present.texture, (Rectangle){ 0, 0, ms->width, ms->height },
+	               dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
+}
+
+
+void updateModStripTexture(ModStrip *ms) {
+	if(!ms) {
+		return;
+	}
 	float t = GetTime();
 	float tht_x = 1.8f * sinf(0.6f * t) + 1.2f * sinf(1.5f * t) + 0.8f * sinf(3.1f * t);
 	float tht_y = 1.1f * sinf(17.5f * t) + 1.1f * sinf(1.8f * t) + 0.6f * sinf(3.3f * t);
@@ -264,8 +277,30 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 	EndTextureMode();
 
 	ms->pingActive = !ms->pingActive;
-	DrawTexturePro(tgt.texture, (Rectangle){ 0, 0, ms->width, ms->height },
-	               dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
+}
+
+
+static ModStrip *g_modStrips[MAX_SEQUENCER_CHANNELS];
+static int g_modStripCount = 0;
+
+
+void vizfxRegisterModStrip(int channel, ModStrip *ms) {
+	if(channel < 0 || channel >= MAX_SEQUENCER_CHANNELS) {
+		return;
+	}
+	g_modStrips[channel] = ms;
+	if(channel + 1 > g_modStripCount) {
+		g_modStripCount = channel + 1;
+	}
+}
+
+
+void updateModStripTextures(void) {
+	for(int i = 0; i < g_modStripCount; i++) {
+		if(g_modStrips[i]) {
+			updateModStripTexture(g_modStrips[i]);
+		}
+	}
 }
 
 void freeModStrip(ModStrip *ms) {

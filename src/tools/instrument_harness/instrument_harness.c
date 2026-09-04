@@ -1430,6 +1430,7 @@ static void runInteractive(paTestData *data, ApplicationState *appState) {
 	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
+		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();
 		handleInstrumentInput(data, appState);
@@ -1459,6 +1460,7 @@ static void runScripted(paTestData *data, ApplicationState *appState) {
 		clearInjectedKeys(appState->inputState);
 		applyScriptEventInjection(appState->inputState, s, g_scriptSubframe);
 
+		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();
 		handleInstrumentInput(data, appState);
