@@ -3,6 +3,7 @@ uniform float uTime;
 uniform vec2 uResolution;
 uniform vec2 uAudio;
 uniform sampler2D uWaveform;
+uniform sampler2D uBackbuffer;
 out vec4 FragColor;
 void main() {
 	vec2 uv = gl_FragCoord.xy / uResolution;
@@ -11,5 +12,7 @@ void main() {
 	col.r = 0.5 + 0.5 * sin(uv.x * 10.0 + uTime * 3.0);
 	col.g = w * 2.0;
 	col.b = uAudio.x * 2.0;
+	vec3 ghost = texture(uBackbuffer, uv).rgb * 0.3;
+	col = max(col, ghost);
 	FragColor = vec4(col, 1.0);
 }
