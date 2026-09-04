@@ -477,9 +477,12 @@ static void cb_setVoiceCount(void *ctx) {
  *
  * Task 6: also writes `inst->voiceCountParam` so any future dial read
  * (after a programmatic resize, e.g. presets / load) reflects the
- * real voice pool size. Writes the same value back → onChange
- * callback fires only on real change (setParameterBaseValue
- * thresholds at 0.001f), so no feedback loop.
+ * real voice pool size. The write UNCONDITIONALLY suppresses
+ * onChange (savedCb / NULL / restore) rather than relying on
+ * setParameterBaseValue's 0.001f no-op threshold: the callback
+ * re-locks g_audioLock (non-recursive), so any re-entrancy —
+ * regardless of whether the value actually changed — would deadlock
+ * the call below.
  *
  * NOTE: the existing initVoicePool only re-allocates the first
  * `count` slots; any voices beyond the new count in voicePools[ch][]

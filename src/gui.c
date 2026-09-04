@@ -3112,31 +3112,41 @@ static void cbOpenRouteLayer(void *ctx) {
 	/* One Graph holds all dest nodes. The Layer dims the rest of the
 	 * screen. The first dial is selected so EDIT routes into it
 	 * immediately. */
+	/* The dest button's name must outlive the paramList / instrument
+	 * graph — when rebuildInstrumentGraph() later frees the previous
+	 * graph's nodes, params[i]->name's storage goes with it. The
+	 * initial heap-copy done by createActionBtnGuiNode (via
+	 * initGuiNode) already achieves that, so no further strdup is
+	 * needed. */
 	Graph *g = createGraph(na_vertical);
 	GuiNode *firstDest = NULL;
+	GuiNode *destBtns[MAX_PARAMS];
+	/* Loop 1: create + append each button. Do NOT pin rects here —
+	 * appendItem runs reflowCoordinates, which re-stamps x/y/w/h of
+	 * EVERY child already in the container. Pinning after a single
+	 * appendItem only to be over-written by the next iteration's
+	 * reflow (and by every subsequent iter) leaves only the LAST
+	 * button correctly aligned with its dial. */
 	for(int i = 0; i < n; i++) {
 		g_destCtx[i].inst = sc->inst;
 		g_destCtx[i].srcIdx = sc->idx;
 		g_destCtx[i].dest = params[i];
 		GuiNode *destBtn = createActionBtnGuiNode(0, 0, 100, 100, 0, na_horizontal, params[i]->name, 0, cbRouteToDest, &g_destCtx[i]);
-		/* strdup the dial name into a fresh allocation so the node's
-		 * name string outlives the paramList / graph teardown. The
-		 * raw pointer would dangle once rebuildInstrumentGraph()
-		 * frees the previous graph's nodes. */
-		free(destBtn->name);
-		destBtn->name = strdup(params[i]->name);
 		destBtn->draw = drawRouteDestNode;
+		destBtns[i] = destBtn;
 		appendItem(g->root, destBtn, 1);
-		/* appendItem runs reflowCoordinates which overwrites child
-		 * rects — pin the dest button's x/y/w/h to the underlying
-		 * dial's rect so the picker visually lines up with the dial. */
-		destBtn->x = nodes[i]->x;
-		destBtn->y = nodes[i]->y;
-		destBtn->w = nodes[i]->w;
-		destBtn->h = nodes[i]->h;
 		if(i == 0) {
 			firstDest = destBtn;
 		}
+	}
+	/* Loop 2: now that every append has run, no further reflow will
+	 * happen — pin each button's rect to its dial's rect so the
+	 * picker visually lines up with the underlying dials. */
+	for(int i = 0; i < n; i++) {
+		destBtns[i]->x = nodes[i]->x;
+		destBtns[i]->y = nodes[i]->y;
+		destBtns[i]->w = nodes[i]->w;
+		destBtns[i]->h = nodes[i]->h;
 	}
 	if(firstDest) {
 		changeGraphSelection(g, firstDest);
