@@ -37,6 +37,8 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	gn->drawable = 0;
 	gn->hasSelectableItems = false;
 	gn->callback = NULL;
+	gn->actionCb = NULL;
+	gn->actionCtx = NULL;
 	if(na >= nodeAlignmentCount) {
 		printf("error: invalid alignment %i", na);
 		success = false;
