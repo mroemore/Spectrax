@@ -16,15 +16,31 @@
 #include "io.h"
 #include "gui_internal.h"
 #include "gui_inst_internal.h"
+#include "gui_layer.h"
 
+/* Spec #1+2: dest cells in the route picker are now outline-only — no
+ * label, no fill, just an osc orange/gold rectangle. The label of the
+ * dial this cell maps to is drawn by the ROUTELINES overlay (see
+ * drawRouteLinesNode) on top of the selected cell so the user can still
+ * read what they're about to route into. Erase mode tints the outline
+ * routeMul-blue to make the destructive intent obvious. */
 static void drawRouteDestNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	if(!gn) {
 		return;
 	}
-	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.6, 3.5, gn->selected);
-	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
-	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
+	(void)drawColourRectangle; /* intentionally unused now */
+	Color outline = g_routeErase ? cs.routeMul : cs.routeAdd;
+	if(gn->selected) {
+		/* Selected gets the focused gold border. Erase-mode selected
+		 * picks the destructive red so the user can't miss the intent. */
+		outline = g_routeErase ? cs.reddish : cs.labelSelected;
+	}
+	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
+	DrawRectangleLinesEx(r, 3.0f, outline);
+	if(gn->selected) {
+		DrawRectangleLinesEx(r, 5.0f, outline);
+	}
 }
 
 
@@ -183,12 +199,132 @@ typedef struct {
 
 static SourceCtx g_sourceCtx[MAX_ENVELOPES];
 
+/* DestCtx and g_destCtx are referenced by the probe helper
+ * probePickFirstRoute (declared below) and must therefore be visible
+ * before it. The picker layer also writes to g_destCtx[i] when it
+ * builds its dest buttons; cbRouteToDest reads from it on EDIT. */
+typedef struct {
+	Instrument *inst;
+	int srcIdx;
+	Parameter *dest;
+} DestCtx;
+
+static DestCtx g_destCtx[MAX_PARAMS];
+
+
+/* Spec #4+#5: gradient + label overlay. The gradient renderer needs the
+ * runtime source so it can map MO_ADD vs MO_MUL onto the warm/cool
+ * endpoints of each line. drawRouteLinesNode is the only consumer. */
+typedef struct {
+	Instrument *inst;
+	int srcIdx;
+	Mod *srcMod;
+} RouteLinesCtx;
+
+static RouteLinesCtx g_routeLinesCtx;
+
+
+static void cbRouteToDest(void *ctx);
+void cbOpenRouteLayer(void *ctx);
+
+/* Probe helper: returns true when running under the --probe-route
+ * diagnostic. Tests that link gui_inst_mod.c without main.c get a
+ * weak fallback that always returns false. */
+#include "main.h"
+__attribute__((weak)) bool isProbeRouteActive(void);
 
 static void refreshSourceCtx(Instrument *inst) {
 	for(int i = 0; i < MAX_ENVELOPES; i++) {
 		g_sourceCtx[i].inst = inst;
 		g_sourceCtx[i].idx = i;
 	}
+}
+
+/* Probe-only helper: wire the most recently added runtime source into
+ * the first few routable parameters of the selected instrument. Wires
+ * up to PROBE_ROUTE_COUNT destinations (skipping the ALGO parameter
+ * which is a discrete selector). Returns the number of modulations
+ * added. Gated behind g_probeRoute from main.c (zero effect when
+ * --probe-route is absent). */
+#define PROBE_ROUTE_COUNT 4
+int probePickFirstRoute(void) {
+	InstrumentGui *ig = igui;
+	if(!ig || !ig->vm) {
+		return 0;
+	}
+	Instrument *inst = ig->vm->instruments[*ig->selectedInstrument];
+	if(!inst || !inst->modList || !inst->paramList) {
+		return 0;
+	}
+	int srcIdx = inst->modList->count - 1;
+	if(srcIdx < 0) {
+		return 0;
+	}
+	Mod *m = inst->modList->mods[srcIdx];
+	if(!m) {
+		return 0;
+	}
+	int added = 0;
+	for(int i = 0; i < inst->paramList->count && added < PROBE_ROUTE_COUNT; i++) {
+		Parameter *dest = inst->paramList->params[i];
+		if(!dest) {
+			continue;
+		}
+		if(dest->modulator_count > 0) {
+			continue;
+		}
+		if(!addModulation(inst->paramList, m, dest, 1.0f, MO_ADD)) {
+			continue;
+		}
+		added++;
+	}
+	if(added == 0) {
+		return 0;
+	}
+	/* Point the gradient overlay at this source so the line + end-
+	 * circles actually render. */
+	g_routeLinesCtx.inst = inst;
+	g_routeLinesCtx.srcIdx = srcIdx;
+	g_routeLinesCtx.srcMod = m;
+	return added;
+}
+
+/* Spec #3 (picker bookkeeping): how many ROUTE picker layers are
+ * currently open. Bumped in cbOpenRouteLayer, decremented in any path
+ * that closes one. Used by cbRouteToDest's rebuild path so a single
+ * EDIT can rebuild the ROUTE graph in place without re-pushing the
+ * picker. Also used by syncRouteLinesOverlay to decide whether the
+ * gradient overlay should be visible (it tracks the picker state, not
+ * the ROUTE button hover). */
+int g_routePickerCount = 0;
+
+/* Spec #6 (erase mode): the second EDIT on a dest that already has a
+ * route, or any dest EDIT while this flag is true, calls
+ * removeModulation instead of addModulation. Toggled by guiSetRouteEraseMode
+ * from the topmost ROUTE layer's input handler when the user holds the
+ * erase modifier; reset to false on every ROUTE pop. */
+bool g_routeErase = false;
+
+void guiSetRouteEraseMode(bool on) {
+	g_routeErase = on;
+}
+
+/* Spec #3 helper: true when any non-passive layer on the stack is
+ * named "ROUTE". Drives the "overlay visible" decision from the picker
+ * state alone (no hover coupling) so the picker and overlay stay
+ * coupled across edit/rebuild. */
+static bool routePickerIsOpen(const InstrumentGui *ig) {
+	if(!ig || !ig->overlayLayers.count <= 0) {
+		return false;
+	}
+	const LayerStack *stack = &ig->overlayLayers;
+	for(int i = stack->count - 1; i >= 0; i--) {
+		const Layer *l = &stack->layers[i];
+		if(l->name && strcmp(l->name, "ROUTE") == 0 && !l->passive) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /* Task 5: delete-confirm modal for runtime mod sources.
@@ -264,13 +400,6 @@ static void cbDeleteSource(void *ctx) {
  * appendItem, otherwise the picking buttons overlap the dial at the dial's
  * position. set x/y/w/h here explicitly; reflow would otherwise reset
  * them to the container's last-children default. */
-typedef struct {
-	Instrument *inst;
-	int srcIdx;
-	Parameter *dest;
-} DestCtx;
-
-static DestCtx g_destCtx[MAX_PARAMS];
 
 
 static void collectRoutableDialsRecurse(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
@@ -311,17 +440,27 @@ static void collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode *
 }
 
 
+/* Spec #6: route erase mode is a temporary destructive toggle that
+ * lives for the duration of one ROUTE picker open. The picker bookkeeping
+ * (g_routePickerCount) is the authority on whether the overlay should be
+ * pushed; cbRouteToDest is the single point where picker count, erase
+ * flag, and the picked modList mutation come together. */
+
 static void cbRouteToDest(void *ctx) {
 	DestCtx *dc = (DestCtx *)ctx;
 	InstrumentGui *ig = igui;
 	if(!ig) {
 		return;
 	}
-	/* Pop the layer first (so any listener-driven graph work doesn't
+	/* Pop the picker first (so any listener-driven graph work doesn't
 	 * run against a stale g->selected). The mutation below rebuilds
 	 * the instrument graph via rebuildInstrumentGraph() so popping
 	 * first keeps the same ordering pattern as cbDeleteConfirmYes. */
 	popLayer(&ig->overlayLayers);
+	if(g_routePickerCount > 0) {
+		g_routePickerCount--;
+	}
+	g_routeErase = false;
 	if(!dc || !dc->inst || !dc->dest) {
 		return;
 	}
@@ -339,12 +478,18 @@ static void cbRouteToDest(void *ctx) {
 			break;
 		}
 	}
+	/* Spec #6: erase mode skips the "already exists?" check and always
+	 * removes. If the source isn't actually wired in, the call is a
+	 * no-op (removeModulation is a no-op when the chain doesn't
+	 * contain source). */
+	bool erase = g_routeErase || already;
+	(void)erase;
 	/* Task 8: route mutation touches the modList the audio thread
 	 * iterates; hold the rebuilding flag across the swap. The audio
 	 * lock closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	dc->inst->rebuilding = true;
-	if(already) {
+	if(g_routeErase || already) {
 		removeModulation(dc->inst->paramList, dc->dest, src);
 	} else {
 		addModulation(dc->inst->paramList, src, dc->dest, 1.0f, MO_ADD);
@@ -352,13 +497,16 @@ static void cbRouteToDest(void *ctx) {
 	rebuildInstrumentGraph();
 	dc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
+	/* Spec #3: the source graph just rebuilt — re-sync the gradient
+	 * overlay so the new line topology shows up before the next frame. */
+	syncRouteLinesOverlay(ig);
 }
 
 /* cbOpenRouteLayer builds the picking layer. Each routable dial becomes
  * a selectable button drawn at the dial's own x/y/w/h so the visual
  * position matches the underlying dial exactly. */
 
-static void cbOpenRouteLayer(void *ctx) {
+void cbOpenRouteLayer(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
 	if(!ig || !sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
@@ -422,18 +570,18 @@ static void cbOpenRouteLayer(void *ctx) {
 	}
 	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTE", true, true);
 	pushLayer(&ig->overlayLayers, layer);
+	g_routePickerCount++;
+	g_routeErase = false;
+	/* Spec #3: the gradient overlay rides on top of the picker so the
+	 * user can see existing routes while picking. Reuse the existing
+	 * sync path so this stays in lock-step with the standalone
+	 * hover-driven case. */
+	syncRouteLinesOverlay(ig);
 }
 
 /* Task 7: route-lines overlay. When a ROUTE button is FOCUSED (selected),
- * draw colour-coded lines from the source's route button to every
+* draw colour-coded lines from the source's route button to every
  * destination dial it currently modulates. Draw-only, non-interactive. */
-typedef struct {
-	Instrument *inst;
-	int srcIdx;
-} RouteLinesCtx;
-
-
-static RouteLinesCtx g_routeLinesCtx;
 
 
 static int findDialRectForParam(GuiNode *node, Parameter *p, Rectangle *out) {
@@ -479,6 +627,58 @@ static int findRouteButtonRect(GuiNode *node, Rectangle *out) {
 }
 
 
+/* Spec #2 helper: find the GuiNode that hosts a given Parameter. We
+ * need this so we can call dialLabelPos on it (Spec #2). */
+static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p) {
+	if(!node || !p) {
+		return NULL;
+	}
+	if((node->draw == drawDialGuiNode || node->draw == drawDiscreteDialGuiNode) && node->p == p) {
+		return node;
+	}
+	if(node->items) {
+		ListElement *e = node->items->head;
+		for(int i = 0; i < node->itemCount && e; i++) {
+			GuiNode *r = findDialNodeForParam(*(GuiNode **)e->data, p);
+			if(r) {
+				return r;
+			}
+			e = e->next;
+		}
+	}
+	return NULL;
+}
+
+
+/* Spec #4: pre-baked gradient palette. The picker draws many line
+ * segments per frame from a single source to N destinations; computing
+ * a fresh Color each segment was the per-frame hot spot. A 64-step LUT
+ * interpolating between the routeAdd (orange) and routeMul (blue)
+ * accent colours is built once on the first call and reused. The same
+ * palette is used for the per-line end-circle fill. */
+#define ROUTE_LINE_LUT_STEPS 64
+static Color g_routeLineLut[ROUTE_LINE_LUT_STEPS];
+static bool g_routeLineLutInit = false;
+
+static void buildRouteLineLut(void) {
+	if(g_routeLineLutInit) {
+		return;
+	}
+	Color a = cs.routeAdd;
+	Color b = cs.routeMul;
+	for(int i = 0; i < ROUTE_LINE_LUT_STEPS; i++) {
+		float t = (float)i / (float)(ROUTE_LINE_LUT_STEPS - 1);
+		g_routeLineLut[i] = (Color){
+			(unsigned char)((float)a.r + ((float)b.r - (float)a.r) * t),
+			(unsigned char)((float)a.g + ((float)b.g - (float)a.g) * t),
+			(unsigned char)((float)a.b + ((float)b.b - (float)a.b) * t),
+			255
+		};
+	}
+	g_routeLineLutInit = true;
+}
+
+
 static void drawRouteLinesNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	RouteLinesCtx *rc = &g_routeLinesCtx;
@@ -496,6 +696,7 @@ static void drawRouteLinesNode(void *self) {
 	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
 		return;
 	}
+	buildRouteLineLut();
 	Vector2 from = { anchor.x + anchor.width / 2, anchor.y + anchor.height / 2 };
 	for(int i = 0; i < rc->inst->paramList->count; i++) {
 		Parameter *p = rc->inst->paramList->params[i];
@@ -505,12 +706,46 @@ static void drawRouteLinesNode(void *self) {
 		ModConnection *c = p->modulators;
 		while(c) {
 			if(c->source == src) {
-				Rectangle r;
-				if(findDialRectForParam(base->root, p, &r)) {
-					Vector2 to = { r.x + r.width / 2, r.y + r.height / 2 };
-					Color col = (c->type && getParameterValueAsInt(c->type) == MO_MUL) ? cs.routeMul : cs.routeAdd;
-					DrawLineEx(from, to, 2.0f, col);
+				GuiNode *dialNode = findDialNodeForParam(base->root, p);
+				if(!dialNode) {
+					c = c->next;
+					continue;
 				}
+				Rectangle r = { dialNode->x, dialNode->y, dialNode->w, dialNode->h };
+				Vector2 to = { r.x + r.width / 2, r.y + r.height / 2 };
+				/* Spec #4: gradient along the line, not a single
+				 * colour. Break it into 12 segments, each coloured
+				 * by t along the source->dest vector. */
+				const int SEGMENTS = 12;
+				const float lineThickness = 2.5f;
+				for(int s = 0; s < SEGMENTS; s++) {
+					float t0 = (float)s / (float)SEGMENTS;
+					float t1 = (float)(s + 1) / (float)SEGMENTS;
+					Vector2 p0 = { from.x + (to.x - from.x) * t0, from.y + (to.y - from.y) * t0 };
+					Vector2 p1 = { from.x + (to.x - from.x) * t1, from.y + (to.y - from.y) * t1 };
+					int lutIdx = (int)(t0 * (float)(ROUTE_LINE_LUT_STEPS - 1));
+					if(lutIdx < 0) {
+						lutIdx = 0;
+					}
+					if(lutIdx >= ROUTE_LINE_LUT_STEPS) {
+						lutIdx = ROUTE_LINE_LUT_STEPS - 1;
+					}
+					DrawLineEx(p0, p1, lineThickness, g_routeLineLut[lutIdx]);
+				}
+				/* Spec #4: small filled circle at each end of the
+				 * line so the gradient has a visible anchor. */
+				DrawCircleV(from, 4.0f, cs.routeAdd);
+				DrawCircleV(to, 4.0f, cs.routeMul);
+				/* Spec #2: echo the destination dial's label on top
+				 * of the dest cell using dialLabelPos, so the user
+				 * can read what they're about to wire into. */
+				if(p->name) {
+					Vector2 labelPos = dialLabelPos(dialNode, 0, 0);
+					DrawTextEx(pixelFont, p->name, labelPos, 9, 1, cs.labelSelected);
+				}
+				/* Skip the remaining chained connections from the
+				 * same source so we don't draw the same line twice. */
+				break;
 			}
 			c = c->next;
 		}
@@ -518,6 +753,13 @@ static void drawRouteLinesNode(void *self) {
 }
 
 
+/* Spec #3: ROUTELINES is pushed when EITHER the ROUTE button is the
+ * selected action (legacy hover) OR a ROUTE picker is currently open.
+ * The picker count is the authority on the latter case — we don't
+ * try to re-derive it from the layer stack to keep this loop free of
+ * graph-walk logic. When the picker is open the overlay rides on top
+ * of the picker so the user can see existing routes while picking.
+ * The overlay is passive (transparent to input) so ROUTE stays modal. */
 void syncRouteLinesOverlay(InstrumentGui *ig) {
 	if(!ig) {
 		return;
@@ -525,19 +767,23 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 	Graph *base = getSelectedInstGraph();
 	GuiNode *sel = base ? base->selected : NULL;
 	bool onRouteBtn = sel && sel->actionCb == cbOpenRouteLayer;
-	Layer *top = topLayer(&ig->overlayLayers);
-	bool hasOverlay = top && top->name && strcmp(top->name, "ROUTELINES") == 0;
-	/* Only show ROUTELINES when the stack is otherwise empty — pushing on
-	 * top of the ROUTE picking layer (EDIT on the button) would make the
-	 * passive overlay the top layer and break modal input/selection. */
-	if(onRouteBtn && layerStackIsEmpty(&ig->overlayLayers)) {
-		/* Route the source through the overlay ctx: the ROUTE button's
-		 * actionCtx is &g_sourceCtx[idx] (SourceCtx { inst, idx }). */
-		SourceCtx *sc = (SourceCtx *)sel->actionCtx;
-		if(sc && sc->inst) {
-			g_routeLinesCtx.inst = sc->inst;
-			g_routeLinesCtx.srcIdx = sc->idx;
+	bool pickerOpen = g_routePickerCount > 0;
+	bool shouldShow = onRouteBtn || pickerOpen;
+	Layer *existing = findLayerByName(&ig->overlayLayers, "ROUTELINES");
+	if(shouldShow) {
+		if(existing) {
+			return; /* already up — no-op so we don't churn layers */
 		}
+		if(onRouteBtn) {
+			SourceCtx *sc = (SourceCtx *)sel->actionCtx;
+			if(sc && sc->inst) {
+				g_routeLinesCtx.inst = sc->inst;
+				g_routeLinesCtx.srcIdx = sc->idx;
+			}
+		}
+		/* When only the picker is open (no source button is currently
+		 * hovered), the picker already bumped g_routeLinesCtx before
+		 * it pushed the picker — nothing to copy here. */
 		Graph *g = createGraph(na_horizontal);
 		GuiNode *lines = createGuiNode(0, 0, SCREEN_W, SCREEN_H, 0, na_horizontal, "routelines", 0, 0);
 		lines->drawable = true;
@@ -545,10 +791,28 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 		appendItem(g->root, lines, 1);
 		Layer *l = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTELINES", false, true);
 		pushLayer(&ig->overlayLayers, l);
-	} else if(!onRouteBtn && hasOverlay) {
-		Layer *l = popLayer(&ig->overlayLayers);
-		if(l) {
-			destroyLayer(l);
+		/* Spec #3: passive overlay. ROUTE stays modal — arrow keys
+		 * and EDIT go to the picker, not the overlay. */
+		setLayerPassive(l, true);
+	} else if(existing) {
+		/* Walk down from the top and remove the overlay; we don't
+		 * assume it's at the very top because a confirmation modal
+		 * could have pushed on top of it. */
+		for(int i = ig->overlayLayers.count - 1; i >= 0; i--) {
+			if(strcmp(ig->overlayLayers.layers[i].name, "ROUTELINES") == 0) {
+				Layer *popped = (Layer *)malloc(sizeof(Layer));
+				if(!popped) {
+					break;
+				}
+				*popped = ig->overlayLayers.layers[i];
+				/* Shift the rest down to keep the array contiguous. */
+				for(int j = i; j < ig->overlayLayers.count - 1; j++) {
+					ig->overlayLayers.layers[j] = ig->overlayLayers.layers[j + 1];
+				}
+				ig->overlayLayers.count--;
+				destroyLayer(popped);
+				break;
+			}
 		}
 	}
 }

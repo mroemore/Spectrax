@@ -22,4 +22,26 @@ ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager 
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);
 
+/* Spec #3: picker bookkeeping. syncRouteLinesOverlay decides whether
+ * to push the gradient overlay based on g_routePickerCount, not on a
+ * hover, so the picker and overlay stay in sync across edits. */
+extern int g_routePickerCount;
+
+/* Spec #6: erase-mode flag. Toggled by the ROUTE input handler when
+ * the user requests destructive routing; cbRouteToDest reads it to
+ * pick addModulation vs removeModulationForSource. */
+extern bool g_routeErase;
+
+/* Spec #6 (public toggle). Called from the topmost ROUTE layer's input
+ * handler. Also exposed so scripted tests can drive erase without
+ * touching internals. */
+void guiSetRouteEraseMode(bool on);
+
+/* Probe-only: drive the picker exactly once against the first
+ * routable dial of the selected instrument. Returns true if the route
+ * was applied. Gated behind g_probeRoute from main.c (zero effect
+ * when --probe-route is absent; the picker state machine itself is
+ * unchanged). */
+int probePickFirstRoute(void);
+
 #endif

@@ -309,6 +309,14 @@ typedef enum {
 bool guiIsLoadListActive(void);
 
 void drawDialGuiNode(void *self);
+/* Spec #2: centre of every dial's label draw call, exposed so the route
+ * picker can echo the selected dial's label on top of its destination
+ * cell without each call site re-deriving the padding math. */
+Vector2 dialLabelPos(const GuiNode *gn, int offX, int offY);
+/* Spec #1: outline-only draw for a route-picker destination cell. No fill,
+ * no label — the picking grid reads as uniform empty slots while the
+ * highlighted-label overlay paints the focused cell's name on top. */
+void drawRouteDestGuiNode(void *self);
 void addRuntimeSource(Instrument *inst);
 void removeSource(Instrument *inst, int srcIndex);
 void rebuildInstrumentGraph(void);

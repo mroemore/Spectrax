@@ -41,4 +41,10 @@ typedef struct {
  * to suppress its own main() and just borrow initApplication(). */
 void initApplication(paTestData *data, ApplicationState **appState, InstrumentGui **instrumentGui);
 
+/* Project rule #1136: the --probe-route diagnostic lives behind this
+ * gate. Exposed here so non-main translation units can keep their
+ * probe-debug prints zero-cost when the flag is off (tests link the
+ * same .c files but never set g_probeRoute true). */
+bool isProbeRouteActive(void);
+
 #endif /* SPECTRAX_MAIN_H */

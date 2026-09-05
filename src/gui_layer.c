@@ -58,6 +58,7 @@ Layer *createLayer(Graph *graph, int x, int y, int w, int h, const char *name, b
 	l->name = name ? strdup(name) : NULL;
 	l->dim = dim;
 	l->ownsGraph = ownsGraph;
+	l->passive = false;
 	return l;
 }
 
@@ -117,6 +118,61 @@ bool layerStackIsEmpty(const LayerStack *stack) {
 	return !stack || stack->count == 0;
 }
 
+void setLayerPassive(Layer *layer, bool passive) {
+	if(!layer) {
+		return;
+	}
+	layer->passive = passive;
+}
+
+Layer *findLayerByName(const LayerStack *stack, const char *name) {
+	if(!stack || !name) {
+		return NULL;
+	}
+	for(int i = stack->count - 1; i >= 0; i--) {
+		Layer *l = &stack->layers[i];
+		if(l->name && strcmp(l->name, name) == 0) {
+			return l;
+		}
+	}
+	return NULL;
+}
+
+Layer *topNonPassiveLayer(const LayerStack *stack) {
+	if(!stack || stack->count == 0) {
+		return NULL;
+	}
+	for(int i = stack->count - 1; i >= 0; i--) {
+		if(!stack->layers[i].passive) {
+			return &stack->layers[i];
+		}
+	}
+	return NULL;
+}
+
+Layer *popTopNonPassiveLayer(LayerStack *stack) {
+	if(!stack || stack->count == 0) {
+		return NULL;
+	}
+	for(int i = stack->count - 1; i >= 0; i--) {
+		Layer *l = &stack->layers[i];
+		if(l->passive) {
+			continue;
+		}
+		/* Found the top non-passive entry. Move everything above it
+		 * down by one slot (these are always passive by construction:
+		 * ROUTELINES), then shrink the count. */
+		Layer *out = (Layer *)malloc(sizeof(Layer));
+		*out = *l;
+		for(int j = i; j < stack->count - 1; j++) {
+			stack->layers[j] = stack->layers[j + 1];
+		}
+		stack->count--;
+		return out;
+	}
+	return NULL;
+}
+
 void layerStackDraw(const LayerStack *stack) {
 	if(!stack) {
 		return;
@@ -140,7 +196,10 @@ void layerStackInput(LayerStack *stack, InputState *is) {
 	if(!stack || stack->count == 0) {
 		return;
 	}
-	Layer *l = topLayer(stack);
+	/* Spec #3: passive layers (ROUTELINES) are visually present but must
+	 * NOT capture the input pipeline. Walk past them to the first
+	 * non-passive layer and feed input there instead. */
+	Layer *l = topNonPassiveLayer(stack);
 	if(!l || !l->graph) {
 		return;
 	}
@@ -157,14 +216,30 @@ void layerStackInput(LayerStack *stack, InputState *is) {
 	if(isKeyJustPressed(is, KM_RIGHT)) {
 		navigateGraphRefined(g, KM_RIGHT);
 	}
-	/* KM_SELECT pops the top layer — the universal "back / cancel" gesture
-	 * for modal overlays (overwrite confirm, dirty discard, load list).
-	 * Individual layer action callbacks handle their own positive paths
-	 * via KM_START. If a layer needs to override SELECT, it should set its
-	 * own actionCb on the selected node and the caller's input handler
-	 * will run before this generic pop. */
+	/* KM_SELECT pops the top non-passive layer — the universal "back /
+	 * cancel" gesture for modal overlays (overwrite confirm, dirty
+	 * discard, load list). Passive layers are immune to the pop so a
+	 * stray SELECT during the picker doesn't yank ROUTELINES off the
+	 * stack and re-enable the underlying instrument graph. */
 	if(isKeyJustPressed(is, KM_SELECT) && stack->count > 0) {
-		popLayer(stack);
+		Layer *popped = popTopNonPassiveLayer(stack);
+		/* Picker bookkeeping: the ROUTE picker is the only modal
+		 * layer that keeps a counter (g_routePickerCount) for the
+		 * gradient overlay's "should I show" check. When SELECT
+		 * cancels the picker, popTopNonPassiveLayer clears the layer
+		 * but leaves the counter stale, which makes
+		 * syncRouteLinesOverlay resurrect the overlay on the next
+		 * tick. Clear the counter here so cancel and confirm-on-dest
+		 * both end up with a clean state. */
+		if(popped && popped->name && strcmp(popped->name, "ROUTE") == 0) {
+			extern int g_routePickerCount;
+			if(g_routePickerCount > 0) {
+				g_routePickerCount--;
+			}
+			extern bool g_routeErase;
+			g_routeErase = false;
+		}
+		free(popped);
 		return;
 	}
 	/* KM_EDIT (z) activates the selected node's action callback. Action

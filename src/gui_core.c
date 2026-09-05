@@ -269,7 +269,20 @@ void drawDialGuiNode(void *self) {
 	tmpx += 28;
 	tmpy += 2;
 	drawValueDisplay(tmpx, tmpy, 38, 14, paramValue);
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx - 28, tmpy + 18 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
+	DrawTextEx(pixelFont, gn->name, dialLabelPos(gn, -28, 18), 9, 1, gn->selected ? cs.labelSelected : cs.label);
+}
+
+
+/* Spec #2: return the Vector2 where a dial's name label should be drawn,
+ * offset from the node's padded origin. drawDialGuiNode uses (offX=-28,
+ * offY=+18); drawDiscreteDialGuiNode uses (offX=+6, offY=+21). Centralised
+ * so the picker overlay (which draws the selected dial's label twice, once
+ * at the source row and once at the destination cell) can position its
+ * duplicate label exactly where the dial drew it. */
+Vector2 dialLabelPos(const GuiNode *gn, int offX, int offY) {
+	int tmpx = gn->x + gn->padding + 2;
+	int tmpy = gn->y + gn->padding;
+	return (Vector2){ (float)(tmpx + offX), (float)(tmpy + offY) };
 }
 
 
@@ -308,6 +321,24 @@ void drawActionBtnGuiNode(void *self) {
 	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
 }
 
+/* Spec #1: route-picker destination cell. Replaces the standard action
+ * button draw: no fill, no label, just an osc-orange/gold outline so the
+ * picking grid reads as a uniform array of empty slots while the
+ * highlighted-label overlay draws the focused cell's name on top. The
+ * selected slot uses the same colour scheme as the highlighted label so
+ * the two read as a single visual unit; outline thickness scales with
+ * the cell so 31px and 35px dial cells both get a chunky 2px ring. */
+void drawRouteDestGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	Color outline = cs.routeAdd;
+	if(gn->selected) {
+		/* Push the selected outline toward the labelSelected tint so it
+		 * matches the overlay label drawn on top (cs.labelSelected). */
+		outline = cs.labelSelected;
+	}
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, outline);
+}
+
 /* Task 6: route-destination picker node. Same rect as a dial, but with
  * a brighter outline and the dial's name (strdup'd by cbOpenRouteLayer).
  * Selecting one and EDIT'ing fires cbRouteToDest which toggles the
@@ -338,7 +369,7 @@ void drawDiscreteDialGuiNode(void *self) {
 	tmpy += 5;
 	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
 
-	DrawTextEx(pixelFont, gn->name, (Vector2){ tmpx, tmpy + 16 }, 9, 1, gn->selected ? cs.labelSelected : cs.label);
+	DrawTextEx(pixelFont, gn->name, dialLabelPos(gn, 6, 21), 9, 1, gn->selected ? cs.labelSelected : cs.label);
 }
 
 

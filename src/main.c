@@ -37,11 +37,24 @@
  * at x = gfx.texture.width/2 that are not background.
  * Must be a no-op (zero effect, zero prints) when --probe-route is absent. */
 static bool g_probeRoute = false;
+
+bool isProbeRouteActive(void) {
+	return g_probeRoute;
+}
 static int g_probeFrame = 0;
 static bool g_probeSelected = false;
 static bool g_probeDone = false;
 static bool g_probeAddedMod = false;
 static bool g_probeRebuilt = false;
+/* Spec #4+#5 probe: did we already drive the picker through to a
+ * routed destination? Used to gate a one-shot call to
+ * probePickFirstRoute so the gradient overlay is rendered before the
+ * warm-pixel counter fires. */
+static bool g_probeWired = false;
+static bool g_probePickerOpened = false;
+extern void cbOpenRouteLayer(void *ctx);
+/* Probe-only hook to wire the picker to its first routable dial. */
+extern int probePickFirstRoute(void);
 
 static GuiNode *probeFindRouteBtn(GuiNode *node) {
 	if(!node) {
@@ -78,14 +91,63 @@ static void probeDumpNames(GuiNode *node, const char *prefix) {
 static void probeExportImage(RenderTexture2D gfx, const char *path) {
 	Image img = LoadImageFromTexture(gfx.texture);
 	if(!img.data) {
+		fprintf(stderr, "PROBE: LoadImageFromTexture returned NULL (no image data)\n");
 		return;
 	}
 	ExportImage(img, path);
 	UnloadImage(img);
 }
 
-static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
+/* Count warm (orange/gold) pixels in a centred scan box wide enough
+ * to capture the gradient line and the dest-button grid that the
+ * picker UX rework lays down. The picker UX brief calls for warmpx
+ * >= 100 to verify the gradient + end-circles + source highlight are
+ * all rendered. We sweep a 320-wide column centred on the middle of
+ * the frame, which comfortably contains a diagonal gradient line,
+ * the dest button outlines, and the selected source/dial outline. */
+static int probeCountRouteWarmPx(RenderTexture2D gfx, ColourScheme *cs) {
 	(void)cs;
+	Image img = LoadImageFromTexture(gfx.texture);
+	if(!img.data) {
+		return -1;
+	}
+	int warm = 0;
+	int x_start = img.width / 2 - 160;
+	int x_end = img.width / 2 + 160;
+	if(x_start < 0) {
+		x_start = 0;
+	}
+	if(x_end >= img.width) {
+		x_end = img.width - 1;
+	}
+	unsigned char *p_data = (unsigned char *)img.data;
+	int bg_r = cs->backgroundColor.r;
+	int bg_g = cs->backgroundColor.g;
+	int bg_b = cs->backgroundColor.b;
+	int bg_a = cs->backgroundColor.a;
+	for(int y = 0; y < img.height; y++) {
+		for(int x = x_start; x < x_end; x++) {
+			unsigned char *px = p_data + (size_t)(y * img.width + x) * 4;
+			int dr = (int)px[0] - bg_r;
+			int dg = (int)px[1] - bg_g;
+			int db = (int)px[2] - bg_b;
+			int da = (int)px[3] - bg_a;
+			int dist_sq = dr * dr + dg * dg + db * db + da * da;
+			if(dist_sq <= 256) {
+				continue;
+			}
+			/* Warm = red > green > blue, red >= 64. Background is not
+			 * warm-tinted so we skip the cheap distance check too. */
+			if(px[0] > px[1] && px[1] > px[2] && px[0] >= 64) {
+				warm++;
+			}
+		}
+	}
+	UnloadImage(img);
+	return warm;
+}
+
+static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
 	Image img = LoadImageFromTexture(gfx.texture);
 	if(!img.data) {
 		return -1;
@@ -159,22 +221,47 @@ static void probeStepRoute(ApplicationState *appState) {
 		}
 		(void)ig;
 	}
+	/* Spec #4+#5 verification: open the route picker via the ROUTE
+	 * button's action callback so the gradient overlay and label
+	 * overlay are exercised end-to-end. The probe doesn't drive keys,
+	 * so we fire the actionCb directly with the SourceCtx that the
+	 * route button carries. */
+	if(g_probeSelected && !g_probePickerOpened && g_probeFrame == 6) {
+		InstrumentGui *ig = getInstrumentGui();
+		Graph *g = getSelectedInstGraph();
+		if(ig && g && g->root) {
+			GuiNode *route = probeFindRouteBtn(g->root);
+			if(route && route->actionCb == cbOpenRouteLayer && route->actionCtx) {
+				route->actionCb(route->actionCtx);
+				g_probePickerOpened = true;
+			}
+		}
+	}
+	/* Spec #4+#5 verification: after the picker is open, wire the
+	 * source into the first routable dial so the gradient line and
+	 * end-circles are visible to the warm-pixel probe. */
+	if(g_probeSelected && !g_probeWired && g_probeFrame == 11) {
+		if(probePickFirstRoute()) {
+			g_probeWired = true;
+		}
+	}
 }
 
 static void probeFinalizeRoute(RenderTexture2D gfx) {
 	if(!g_probeRoute || g_probeDone || !g_probeSelected) {
 		return;
 	}
-	if(g_probeFrame < 3) {
+	if(g_probeFrame < 13) {
 		return;
 	}
 	ColourScheme *cs = getColourScheme();
 	int px = probeCountRouteLinePx(gfx, cs);
-	if(px < 0) {
+	int warm = probeCountRouteWarmPx(gfx, cs);
+	if(px < 0 || warm < 0) {
 		return;
 	}
 	probeExportImage(gfx, "probe_route.png");
-	printf("PROBE: linepx=%d\n", px);
+	printf("PROBE: linepx=%d warmpx=%d\n", px, warm);
 	fflush(stdout);
 	g_probeDone = true;
 }
