@@ -1349,8 +1349,11 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	}
 	appendItem(instwrap, pad2, 1);
 
-	GuiNode *modwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "mod_wrap", 0, 0);
-	/* Header row: container label + ADD action button. */
+	/* task scroll: header is appended to instwrap (weight 2) so it
+	 * never scrolls. The ScrollContainer is the mod_wrap viewport —
+	 * it receives only the source rows and the trailing blank. Its
+	 * height is fixed at rowH * n_rows so children get a fixed row
+	 * height and the scissor clips off-screen ones. */
 	GuiNode *modHdr = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "mods_hdr", 0, 0);
 	modHdr->drawable = true;
 	modHdr->draw = drawWrapperNode;
@@ -1359,12 +1362,16 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	modAdd->name = strdup("MODS_ADD");
 	appendItem(modHdr, modLabel, 4);
 	appendItem(modHdr, modAdd, 1);
-	appendItem(modwrap, modHdr, 1);
+	appendItem(instwrap, modHdr, 2);
+	int nRows = inst->modList->count + 1; /* rows + 1 trailing blank */
+	int modRowH = 40;
+	int modH = modRowH * nRows;
+	GuiNode *modwrap = createScrollContainer(0, 0, 100, modH, modRowH, "mod_wrap");
 	for(int i = 0; i < inst->modList->count; i++) {
 		appendModSourceEntry(instGraph, modwrap, inst, i, 1, false);
 	}
 	appendBlankNode(modwrap, 1);
-	appendItem(instwrap, modwrap, 22);
+	appendItem(instwrap, modwrap, 24);
 
 	appendItem(mainRow, margin1, 1);
 	appendItem(mainRow, instwrap, 18);
@@ -1383,6 +1390,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 
 
 void gui_instrument_draw(void) {
+	syncModWrapScroll();
 	drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 	if (igui) {
 		/* route-lines overlay is driven by the focused selection each frame */

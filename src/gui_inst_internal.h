@@ -18,6 +18,7 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 /* mod-source container + strip (gui_inst_mod) */
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected);
+void syncModWrapScroll(void);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);

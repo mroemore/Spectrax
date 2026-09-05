@@ -63,6 +63,8 @@
 #include "gui_layer.h"
 #include "graph_gui.h"
 #include "input.h"
+
+extern InstrumentGui *igui;
 #include "appstate.h"
 #include "sequencer.h"
 #include "voice.h"
@@ -1504,12 +1506,16 @@ static void runScripted(paTestData *data, ApplicationState *appState) {
 }
 
 /* Light arg parsing: --script <path>. Anything else is interactive. */
-static int parseArgs(int argc, char **argv, const char **scriptPath) {
+static int parseArgs(int argc, char **argv, const char **scriptPath, int *probeNSources) {
 	*scriptPath = NULL;
+	*probeNSources = -1;
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "--script") == 0 && i + 1 < argc) {
 			*scriptPath = argv[i + 1];
 			return 1;
+		}
+		if(strncmp(argv[i], "--probe-row-geom=", 17) == 0) {
+			*probeNSources = atoi(argv[i] + 17);
 		}
 	}
 	return 0;
@@ -1517,7 +1523,8 @@ static int parseArgs(int argc, char **argv, const char **scriptPath) {
 
 int main(int argc, char **argv) {
 	const char *scriptPath = NULL;
-	int scripted = parseArgs(argc, argv, &scriptPath);
+	int probeNSources = -1;
+	int scripted = parseArgs(argc, argv, &scriptPath, &probeNSources);
 
 	InitGUI();
 
@@ -1530,6 +1537,98 @@ int main(int argc, char **argv) {
 		appState->selectedPattern = data.arranger->song[0][0];
 	}
 	appState->currentScene = SCENE_INSTRUMENT;
+
+	if(probeNSources >= 0) {
+		/* Task: dump mod-row geometry after adding N runtime sources. The
+		 * row height must stay constant; the container's viewport height
+		 * must stay constant; only the content height grows. */
+		if(!igui || igui->instrumentCount == 0) {
+			createInstrumentGui(data.voiceManager, &appState->selectedArrangerCell[0], 0);
+			fprintf(stderr, "PROBE-DBG ig=%p ig_ic=%d sel=%d\n",
+			        (void*)igui, igui ? igui->instrumentCount : -1,
+			        igui && igui->selectedInstrument ? *igui->selectedInstrument : -1);
+		}
+		Instrument *inst = data.voiceManager->instruments[appState->selectedArrangerCell[0]];
+		for(int n = 0; n < probeNSources; n++) {
+			addRuntimeSource(inst);
+		}
+		rebuildInstrumentGraph();
+		/* Reflow + measure. */
+		Graph *g = igui->instrumentScreenGraphs[*igui->selectedInstrument];
+		if(g && g->root) {
+			fprintf(stderr, "PROBE-DBG root=%p root.items=%p itemCount=%d ic=%d sel_si=%d\n",
+			        (void*)g->root, (void*)g->root->items, g->root->itemCount, igui->instrumentCount, *igui->selectedInstrument);
+			reflowCoordinates(g->root);
+			/* Walk root → mainRow → inst_wrap → mod_wrap. The mod_wrap
+			 * ScrollContainer holds the source rows directly. */
+			typedef struct RowDump { const char *name; int x, y, w, h; } RowDump;
+			RowDump rows[64];
+			int nRows = 0;
+			int scX=0, scY=0, scW=0, scH=0, scOff=0;
+			GuiNode *root = g->root;
+			GuiNode *modsWrap = NULL;
+			GuiNode *mainRow = NULL;
+			GuiNode *instWrap = NULL;
+			ListElement *e = root->items->head;
+			for(int i = 0; e && i < root->itemCount; i++, e = e->next) {
+				GuiNode *child = *(GuiNode **)e->data;
+				if(!child) continue;
+				if(child->name && strcmp(child->name, "mainrow") == 0) {
+					mainRow = child;
+					break;
+				}
+			}
+			if(mainRow) {
+				ListElement *e2 = mainRow->items->head;
+				for(int j = 0; e2 && j < mainRow->itemCount; j++, e2 = e2->next) {
+					GuiNode *c2 = *(GuiNode **)e2->data;
+					if(!c2) continue;
+					if(c2->name && strcmp(c2->name, "inst_wrap") == 0) {
+						instWrap = c2;
+						break;
+					}
+				}
+			}
+			if(instWrap) {
+				ListElement *e3 = instWrap->items->head;
+				for(int k = 0; e3 && k < instWrap->itemCount; k++, e3 = e3->next) {
+					GuiNode *c3 = *(GuiNode **)e3->data;
+					if(!c3) continue;
+					if(c3->name && strcmp(c3->name, "mod_wrap") == 0 && c3->scrollable) {
+						modsWrap = c3;
+						break;
+					}
+				}
+			}
+			if(modsWrap) {
+				ScrollContainer *sc = (ScrollContainer *)modsWrap;
+				scX = sc->base.x; scY = sc->base.y;
+				scW = sc->base.w; scH = sc->base.h;
+				scOff = sc->scrollOffset;
+				ListElement *e3 = modsWrap->items->head;
+				for(int k = 0; e3 && k < modsWrap->itemCount && nRows < 64; k++, e3 = e3->next) {
+					GuiNode *row = *(GuiNode **)e3->data;
+					if(!row) continue;
+					rows[nRows].name = row->name;
+					rows[nRows].x = row->x;
+					rows[nRows].y = row->y;
+					rows[nRows].w = row->w;
+					rows[nRows].h = row->h;
+					nRows++;
+				}
+			}
+			fprintf(stdout, "PROBE n_sources=%d envcount=%d sc=(%d,%d,%d,%d) off=%d\n",
+			        probeNSources, inst->envelopeCount, scX, scY, scW, scH, scOff);
+			fprintf(stdout, "PROBE rows=%d\n", nRows);
+			for(int r = 0; r < nRows; r++) {
+				fprintf(stdout, "PROBE row[%d] name=%-12s x=%d y=%d w=%d h=%d\n",
+				        r, rows[r].name, rows[r].x, rows[r].y, rows[r].w, rows[r].h);
+			}
+			return 0;
+		}
+		fprintf(stderr, "PROBE no instrument graph\n");
+		return 1;
+	}
 
 	if(scripted) {
 		parseScript(scriptPath);

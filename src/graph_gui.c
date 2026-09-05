@@ -48,6 +48,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	}
 	gn->nodeAlignment = na;
 	gn->customNav = NULL;
+	gn->scrollable = false;
 	return success;
 }
 
@@ -78,6 +79,69 @@ GuiNode *createNamedBlankGuiNode(char *name) {
 		printf("BlankGuiNode error, could not create.");
 	}
 	return gn;
+}
+
+/* task scroll: ScrollContainer constructor. The viewport rectangle
+ * is x,y,w,h (the base's fields). Children appended to it are laid
+ * out by reflowCoordinates in fixed rowH-height bands instead of
+ * weight-based bands. */
+GuiNode *createScrollContainer(int x, int y, int w, int h, int rowH, const char *name) {
+	ScrollContainer *sc = (ScrollContainer *)malloc(sizeof(ScrollContainer));
+	if(!sc) {
+		printf("error: ScrollContainer malloc failed.\n");
+		return NULL;
+	}
+	GuiNode *gn = (GuiNode *)sc;
+	if(!initGuiNode(gn, x, y, w, h, 0, na_vertical, name, false, false)) {
+		printf("\n\n\nerror: ScrollContainer init failed.\n\n\n");
+		free(sc);
+		return NULL;
+	}
+	sc->rowH = rowH;
+	sc->scrollOffset = 0;
+	sc->contentH = 0;
+	gn->scrollable = true;
+	return gn;
+}
+
+/* task scroll: bring a selected descendant into view inside the
+ * scroll container. No-op if sel is not under sc (the base
+ * rectangle is the viewport). */
+void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
+	if(!sc || !sel || !sc->base.container) {
+		return;
+	}
+	/* Only act when sel lives inside sc. Walk up: if we hit sc->base
+	 * before hitting NULL, sel is a descendant. */
+	const GuiNode *p = sel;
+	while(p && p != (const GuiNode *)&sc->base) {
+		p = p->container;
+	}
+	if(!p) {
+		return;
+	}
+	int viewH = (int)sc->base.h;
+	int maxOff = sc->contentH - viewH;
+	if(maxOff < 0) {
+		maxOff = 0;
+	}
+	int target = sc->scrollOffset;
+	int rowTop = (int)sel->y;
+	int rowBot = rowTop + (int)sel->h;
+	int viewTop = (int)sc->base.y;
+	int viewBot = viewTop + viewH;
+	if(rowTop < viewTop) {
+		target = sc->scrollOffset + (rowTop - viewTop);
+	} else if(rowBot > viewBot) {
+		target = sc->scrollOffset + (rowBot - viewBot);
+	}
+	if(target < 0) {
+		target = 0;
+	}
+	if(target > maxOff) {
+		target = maxOff;
+	}
+	sc->scrollOffset = target;
 }
 
 void freeGuiNode(GuiNode *gn) {
@@ -134,6 +198,37 @@ void reflowCoordinates(GuiNode *n) {
 		return;
 	}
 	if(n->itemCount <= 0) {
+		return;
+	}
+
+	/* task scroll: scroll containers lay children out as fixed-height
+	 * rows instead of weight-based bands. The viewport height is n->h;
+	 * the content height is itemCount*rowH + 2*padding, kept on the
+	 * ScrollContainer struct so drawNode / scrollToVisible can clamp
+	 * the scroll offset. Children use absolute y-coordinates inside
+	 * the viewport; the scissor in drawNode clips them. Weights are
+	 * ignored (callers pass 1). */
+	if(n->scrollable) {
+		ScrollContainer *sc = (ScrollContainer *)n;
+		int rowH = sc->rowH > 0 ? sc->rowH : 1;
+		ListElement *row = n->items->head;
+		for(int i = 0; i < n->itemCount; i++) {
+			GuiNode *cn = *(GuiNode **)row->data;
+			cn->x = n->x + n->padding;
+			cn->y = (uint16_t)((int)n->y + n->padding + i * rowH - sc->scrollOffset);
+			cn->w = (uint16_t)((int)n->w - 2 * n->padding);
+			cn->h = (uint16_t)rowH;
+			reflowCoordinates(cn);
+			row = row->next;
+		}
+		sc->contentH = n->itemCount * rowH + 2 * n->padding;
+		int viewH = (int)n->h;
+		if(sc->scrollOffset > sc->contentH - viewH) {
+			sc->scrollOffset = sc->contentH - viewH;
+		}
+		if(sc->scrollOffset < 0) {
+			sc->scrollOffset = 0;
+		}
 		return;
 	}
 
@@ -224,11 +319,29 @@ void drawNode(GuiNode *cont) {
 		cont->draw(cont);
 	}
 	if(cont->itemCount > 0) {
+		/* task scroll: clip children of a scroll container to its
+		 * viewport rectangle. BeginScissorMode/EndScissorMode pair
+		 * is balanced per-frame regardless of the early-return path
+		 * because we only enter the scissor when itemCount > 0 and
+		 * exit it before the closing brace. */
+		bool scissoring = false;
+		int scX = 0, scY = 0, scW = 0, scH = 0;
+		if(cont->scrollable) {
+			scX = (int)cont->x;
+			scY = (int)cont->y;
+			scW = (int)cont->w;
+			scH = (int)cont->h;
+			BeginScissorMode(scX, scY, scW, scH);
+			scissoring = true;
+		}
 		ListElement *current = cont->items->head;
 		for(int i = 0; i < cont->itemCount; i++) {
 			GuiNode *gn = *(GuiNode **)current->data;
 			drawNode(gn);
 			current = current->next;
+		}
+		if(scissoring) {
+			EndScissorMode();
 		}
 	}
 }

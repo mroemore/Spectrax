@@ -53,6 +53,12 @@ struct GuiNode {
 	bool resizeable;
 	bool drawable;
 	bool navOverride;
+	/* task scroll: when true, this GuiNode is a scroll container —
+	 * reflowCoordinates lays children out in fixed-height rows instead
+	 * of weight-based bands, and drawNode wraps the children recursion
+	 * in BeginScissorMode/EndScissorMode so off-viewport rows are
+	 * clipped. Zero-initialised by initGuiNode. */
+	bool scrollable;
 	uint8_t nodeAlignment;
 	uint16_t x;
 	uint16_t y;
@@ -66,6 +72,23 @@ typedef struct {
 	GuiNode *root;
 	GuiNode *selected;
 } Graph;
+
+/* task scroll: scrollable viewport container. Children are laid out
+ * in fixed-height rows of rowH pixels, starting at sc->base.y +
+ * sc->base.padding and stepping by rowH. The base->h is the visible
+ * viewport height; the content height = sc->contentH. drawNode wraps
+ * the children recursion in a scissor so off-viewport rows are
+ * clipped. scrollOffset is shifted by scrollToVisible so a selected
+ * descendant stays inside [sc->base.y, sc->base.y + sc->base.h]. */
+typedef struct {
+	GuiNode base;
+	int rowH;
+	int scrollOffset;
+	int contentH;
+} ScrollContainer;
+
+GuiNode *createScrollContainer(int x, int y, int w, int h, int rowH, const char *name);
+void scrollToVisible(ScrollContainer *sc, const GuiNode *sel);
 
 bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);
 GuiNode *createGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selectable, bool selected);

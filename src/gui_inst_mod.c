@@ -972,3 +972,48 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 }
 
 
+/* task scroll: walk a graph for the named scroll container and bring
+ * the current selection into view. Called once per frame from
+ * gui_instrument_draw before drawNode runs, so the scissor in the
+ * scrollable branch of drawNode clips against the correct offset on
+ * the same frame selection changes. */
+static GuiNode *findScrollContainerByName(GuiNode *n, const char *name) {
+	if(!n) {
+		return NULL;
+	}
+	if(n->scrollable && n->name && strcmp(n->name, name) == 0) {
+		return n;
+	}
+	if(n->itemCount > 0 && n->items) {
+		ListElement *cur = n->items->head;
+		for(int i = 0; i < n->itemCount; i++) {
+			GuiNode *hit = findScrollContainerByName(*(GuiNode **)cur->data, name);
+			if(hit) {
+				return hit;
+			}
+			cur = cur->next;
+		}
+	}
+	return NULL;
+}
+
+void syncModWrapScroll(void) {
+	if(!igui || !igui->vm || !igui->selectedInstrument) {
+		return;
+	}
+	Graph *g = igui->instrumentScreenGraphs[*igui->selectedInstrument];
+	if(!g || !g->root) {
+		return;
+	}
+	GuiNode *sel = g->selected;
+	if(!sel) {
+		return;
+	}
+	GuiNode *sc = findScrollContainerByName(g->root, "mod_wrap");
+	if(!sc) {
+		return;
+	}
+	scrollToVisible((ScrollContainer *)sc, sel);
+}
+
+
