@@ -24,13 +24,23 @@ InputState *createInputState(InputDeviceType type) {
 }
 
 void updateInputState(InputState *state) {
-	// printf("updating inputs...\n");
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
-		// printf("%i, ", i);
 		state->keys[i].wasPressed = state->keys[i].isPressed;
-		state->keys[i].isPressed = IsKeyDown(state->currentMap[i]);
+		/* A mapping may be backed by several physical keys (arrows + vim
+		 * hjkl, etc.). Any one of them held produces the command. */
+		bool down = false;
+		for(int k = 0; k < MAX_KEYS_PER_MAPPING; k++) {
+			int key = state->currentMap[i][k];
+			if(key == 0) {
+				break;
+			}
+			if(IsKeyDown(key)) {
+				down = true;
+				break;
+			}
+		}
+		state->keys[i].isPressed = down;
 	}
-	// printf("\n");
 }
 
 void addToHistory(InputState *state, KeyMapping keyCode) {
@@ -51,5 +61,5 @@ bool isKeyJustPressed(InputState *state, KeyMapping keyCode) {
 }
 
 int getMappedKeyCode(InputState *state, KeyMapping key) {
-	return state->currentMap[key];
+	return state->currentMap[key][0];
 }
