@@ -38,6 +38,12 @@
  * Must be a no-op (zero effect, zero prints) when --probe-route is absent. */
 static bool g_probeRoute = false;
 
+/* --volume / -V output attenuation (0..100, default 100 = unchanged).
+ * Applied ONLY to the final samples written to the audio device; the
+ * internal render, FFT feed, buffer scroller and mix ring all see the
+ * unattenuated signal. */
+static float g_volume = 1.0f;
+
 bool isProbeRouteActive(void) {
 	return g_probeRoute;
 }
@@ -391,8 +397,8 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		if(fabsf(right_output) > max_output)
 			max_output = fabsf(right_output);
 
-		*out++ = left_output;
-		*out++ = right_output;
+		*out++ = left_output * g_volume;
+		*out++ = right_output * g_volume;
 
 		pushFrameToFFT(&data->spectrogram.fft, left_output);
 
@@ -438,6 +444,16 @@ int main(int argc, char **argv) {
 	for(int i = 1; i < argc; i++) {
 		if(strcmp(argv[i], "--probe-route") == 0) {
 			g_probeRoute = true;
+		}
+		if((strcmp(argv[i], "--volume") == 0 || strcmp(argv[i], "-V") == 0) && i + 1 < argc) {
+			char *end = NULL;
+			unsigned long v = strtoul(argv[i + 1], &end, 10);
+			if(end && *end == '\0') {
+				if(v > 100) {
+					v = 100;
+				}
+				g_volume = v / 100.0f;
+			}
 		}
 	}
 	resolveConfigDir(argc, argv, cfgDir, sizeof(cfgDir));
