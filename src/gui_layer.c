@@ -192,14 +192,11 @@ void layerStackDraw(const LayerStack *stack) {
 	}
 }
 
-void layerStackInput(LayerStack *stack, InputState *is) {
-	if(!stack || stack->count == 0) {
+void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
+	if(!stack || index < 0 || index >= stack->count) {
 		return;
 	}
-	/* Spec #3: passive layers (ROUTELINES) are visually present but must
-	 * NOT capture the input pipeline. Walk past them to the first
-	 * non-passive layer and feed input there instead. */
-	Layer *l = topNonPassiveLayer(stack);
+	Layer *l = &stack->layers[index];
 	if(!l || !l->graph) {
 		return;
 	}
@@ -216,21 +213,12 @@ void layerStackInput(LayerStack *stack, InputState *is) {
 	if(isKeyJustPressed(is, KM_RIGHT)) {
 		navigateGraphRefined(g, KM_RIGHT);
 	}
-	/* KM_SELECT pops the top non-passive layer — the universal "back /
-	 * cancel" gesture for modal overlays (overwrite confirm, dirty
-	 * discard, load list). Passive layers are immune to the pop so a
-	 * stray SELECT during the picker doesn't yank ROUTELINES off the
-	 * stack and re-enable the underlying instrument graph. */
+	/* KM_SELECT pops the topmost non-passive layer — universal "back /
+	 * cancel" for modal overlays. The picker bookkeeping reset runs
+	 * here so cancel and confirm-on-dest both end up with a clean
+	 * state (the gradient overlay re-syncs next frame). */
 	if(isKeyJustPressed(is, KM_SELECT) && stack->count > 0) {
 		Layer *popped = popTopNonPassiveLayer(stack);
-		/* Picker bookkeeping: the ROUTE picker is the only modal
-		 * layer that keeps a counter (g_routePickerCount) for the
-		 * gradient overlay's "should I show" check. When SELECT
-		 * cancels the picker, popTopNonPassiveLayer clears the layer
-		 * but leaves the counter stale, which makes
-		 * syncRouteLinesOverlay resurrect the overlay on the next
-		 * tick. Clear the counter here so cancel and confirm-on-dest
-		 * both end up with a clean state. */
 		if(popped && popped->name && strcmp(popped->name, "ROUTE") == 0) {
 			extern int g_routePickerCount;
 			if(g_routePickerCount > 0) {
@@ -242,13 +230,23 @@ void layerStackInput(LayerStack *stack, InputState *is) {
 		free(popped);
 		return;
 	}
-	/* KM_EDIT (z) activates the selected node's action callback. Action
-	 * buttons inside overlay layers (load-list entries, overwrite YES/NO,
-	 * dirty-confirm DISCARD/SAVE/CANCEL) all live as `actionCb` on their
-	 * GuiNode; KM_EDIT fires them, matching the base graph's button
-	 * activation model. If the selected node has no actionCb, this is
-	 * a no-op (e.g. when the layer's selection lands on a header). */
+	/* KM_EDIT (z) activates the selected node's action callback. */
 	if(isKeyJustPressed(is, KM_EDIT) && g->selected && g->selected->actionCb) {
 		g->selected->actionCb(g->selected->actionCtx);
 	}
+}
+
+void layerStackInput(LayerStack *stack, InputState *is) {
+	if(!stack || stack->count == 0) {
+		return;
+	}
+	/* Spec #3 + Spec #6: passive layers (ROUTELINES) are visually
+	 * present but must NOT capture the input pipeline. Walk past them
+	 * to the first non-passive layer and feed input there instead. */
+	Layer *l = topNonPassiveLayer(stack);
+	if(!l) {
+		return;
+	}
+	int idx = (int)(l - stack->layers);
+	layerStackInputLayer(stack, idx, is);
 }

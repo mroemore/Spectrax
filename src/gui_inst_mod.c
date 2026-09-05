@@ -30,17 +30,38 @@ static void drawRouteDestNode(void *self) {
 		return;
 	}
 	(void)drawColourRectangle; /* intentionally unused now */
-	Color outline = g_routeErase ? cs.routeMul : cs.routeAdd;
+	/* Spec #2: animate the green channel of cs.routeAdd between
+	 * ~120 and ~210 using a slow sine so the outline pulses
+	 * orange↔gold. Erase-mode swaps to routeMul (blue) so the
+	 * destructive intent is obvious. */
+	Color outline = cs.routeAdd;
+	if(g_routeErase) {
+		outline = cs.routeMul;
+	} else {
+		float pulse = 120.0f + 90.0f * (0.5f + 0.5f * sinf(GetTime() * 4.0f));
+		outline.g = (unsigned char)pulse;
+	}
 	if(gn->selected) {
 		/* Selected gets the focused gold border. Erase-mode selected
-		 * picks the destructive red so the user can't miss the intent. */
+		 * picks the destructive red so the user can't miss the intent.
+		 * Spec #2 also says selected brightens by ~40 on r and g. */
 		outline = g_routeErase ? cs.reddish : cs.labelSelected;
+		if(!g_routeErase) {
+			int r2 = (int)outline.r + 40;
+			int g2 = (int)outline.g + 40;
+			if(r2 > 255) {
+				r2 = 255;
+			}
+			if(g2 > 255) {
+				g2 = 255;
+			}
+			outline.r = (unsigned char)r2;
+			outline.g = (unsigned char)g2;
+		}
 	}
 	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
-	DrawRectangleLinesEx(r, 3.0f, outline);
-	if(gn->selected) {
-		DrawRectangleLinesEx(r, 5.0f, outline);
-	}
+	float thickness = gn->selected ? 3.0f : 2.0f;
+	DrawRectangleLinesEx(r, thickness, outline);
 }
 
 
@@ -309,6 +330,10 @@ void guiSetRouteEraseMode(bool on) {
 	g_routeErase = on;
 }
 
+bool guiRouteEraseMode(void) {
+	return g_routeErase;
+}
+
 /* Spec #3 helper: true when any non-passive layer on the stack is
  * named "ROUTE". Drives the "overlay visible" decision from the picker
  * state alone (no hover coupling) so the picker and overlay stay
@@ -452,15 +477,6 @@ static void cbRouteToDest(void *ctx) {
 	if(!ig) {
 		return;
 	}
-	/* Pop the picker first (so any listener-driven graph work doesn't
-	 * run against a stale g->selected). The mutation below rebuilds
-	 * the instrument graph via rebuildInstrumentGraph() so popping
-	 * first keeps the same ordering pattern as cbDeleteConfirmYes. */
-	popLayer(&ig->overlayLayers);
-	if(g_routePickerCount > 0) {
-		g_routePickerCount--;
-	}
-	g_routeErase = false;
 	if(!dc || !dc->inst || !dc->dest) {
 		return;
 	}
@@ -471,6 +487,35 @@ static void cbRouteToDest(void *ctx) {
 	if(!src) {
 		return;
 	}
+	/* Spec #6: KM_FUNCTION+KM_EDIT erases mode. Hold the rebuilding
+	 * flag + audio lock, walk dc->dest->modulators removing EVERY
+	 * connection whose source == src, leave the picker layer open
+	 * so the user can clear several destinations in a row, and
+	 * skip the post-edit pop+rebuild. */
+	if(g_routeErase) {
+		pthread_mutex_lock(&g_audioLock);
+		dc->inst->rebuilding = true;
+		for(;;) {
+			ModConnection *match = NULL;
+			for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+				if(c->source == src) {
+					match = c;
+					break;
+				}
+			}
+			if(!match) {
+				break;
+			}
+			removeModulation(dc->inst->paramList, dc->dest, src);
+		}
+		dc->inst->rebuilding = false;
+		pthread_mutex_unlock(&g_audioLock);
+		/* No pop, no rebuild — the picker stays open and the
+		 * gradient overlay reflects the new topology next frame. */
+		g_routeErase = false;
+		(void)ig;
+		return;
+	}
 	bool already = false;
 	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
 		if(c->source == src) {
@@ -478,18 +523,21 @@ static void cbRouteToDest(void *ctx) {
 			break;
 		}
 	}
-	/* Spec #6: erase mode skips the "already exists?" check and always
-	 * removes. If the source isn't actually wired in, the call is a
-	 * no-op (removeModulation is a no-op when the chain doesn't
-	 * contain source). */
-	bool erase = g_routeErase || already;
-	(void)erase;
+	/* Pop the picker (so any listener-driven graph work doesn't run
+	 * against a stale g->selected). The mutation below rebuilds the
+	 * instrument graph via rebuildInstrumentGraph() so popping first
+	 * keeps the same ordering pattern as cbDeleteConfirmYes. */
+	popLayer(&ig->overlayLayers);
+	if(g_routePickerCount > 0) {
+		g_routePickerCount--;
+	}
+	g_routeErase = false;
 	/* Task 8: route mutation touches the modList the audio thread
 	 * iterates; hold the rebuilding flag across the swap. The audio
 	 * lock closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	dc->inst->rebuilding = true;
-	if(g_routeErase || already) {
+	if(already) {
 		removeModulation(dc->inst->paramList, dc->dest, src);
 	} else {
 		addModulation(dc->inst->paramList, src, dc->dest, 1.0f, MO_ADD);
@@ -664,8 +712,10 @@ static void buildRouteLineLut(void) {
 	if(g_routeLineLutInit) {
 		return;
 	}
+	/* Spec #4: lerp from cs.routeAdd (warm orange) to (255,220,60)
+	 * (warm yellow). Static LUT — computed once on first use. */
 	Color a = cs.routeAdd;
-	Color b = cs.routeMul;
+	Color b = (Color){ 255, 220, 60, 255 };
 	for(int i = 0; i < ROUTE_LINE_LUT_STEPS; i++) {
 		float t = (float)i / (float)(ROUTE_LINE_LUT_STEPS - 1);
 		g_routeLineLut[i] = (Color){
@@ -713,10 +763,10 @@ static void drawRouteLinesNode(void *self) {
 				}
 				Rectangle r = { dialNode->x, dialNode->y, dialNode->w, dialNode->h };
 				Vector2 to = { r.x + r.width / 2, r.y + r.height / 2 };
-				/* Spec #4: gradient along the line, not a single
-				 * colour. Break it into 12 segments, each coloured
-				 * by t along the source->dest vector. */
-				const int SEGMENTS = 12;
+				/* Spec #4: gradient along the line via 16 DrawLineEx
+				 * segments, each coloured by t along the
+				 * source->dest vector. */
+				const int SEGMENTS = 16;
 				const float lineThickness = 2.5f;
 				for(int s = 0; s < SEGMENTS; s++) {
 					float t0 = (float)s / (float)SEGMENTS;
@@ -732,10 +782,11 @@ static void drawRouteLinesNode(void *self) {
 					}
 					DrawLineEx(p0, p1, lineThickness, g_routeLineLut[lutIdx]);
 				}
-				/* Spec #4: small filled circle at each end of the
-				 * line so the gradient has a visible anchor. */
-				DrawCircleV(from, 4.0f, cs.routeAdd);
-				DrawCircleV(to, 4.0f, cs.routeMul);
+				/* Spec #4: end-cap circles tinted by the LUT
+				 * extremes — warm orange at the source, warm yellow
+				 * at the destination. */
+				DrawCircleV(from, 3.5f, g_routeLineLut[0]);
+				DrawCircleV(to, 3.5f, g_routeLineLut[ROUTE_LINE_LUT_STEPS - 1]);
 				/* Spec #2: echo the destination dial's label on top
 				 * of the dest cell using dialLabelPos, so the user
 				 * can read what they're about to wire into. */
@@ -790,10 +841,12 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 		lines->draw = drawRouteLinesNode;
 		appendItem(g->root, lines, 1);
 		Layer *l = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTELINES", false, true);
-		pushLayer(&ig->overlayLayers, l);
 		/* Spec #3: passive overlay. ROUTE stays modal — arrow keys
-		 * and EDIT go to the picker, not the overlay. */
+		 * and EDIT go to the picker, not the overlay. Set this BEFORE
+		 * pushLayer: pushLayer takes ownership of `l` and frees the
+		 * malloc'd struct, so post-push edits go to freed memory. */
 		setLayerPassive(l, true);
+		pushLayer(&ig->overlayLayers, l);
 	} else if(existing) {
 		/* Walk down from the top and remove the overlay; we don't
 		 * assume it's at the very top because a confirmation modal

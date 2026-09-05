@@ -63,6 +63,11 @@ bool layerStackIsEmpty(const LayerStack *stack);
 /* I/O */
 void layerStackDraw(const LayerStack *stack);
 void layerStackInput(LayerStack *stack, InputState *is);
+/* Drive input into a specific layer by index. Used by handlePresetUiInput
+ * when it has already located the topmost non-passive layer and wants to
+ * pipe input there directly. KM_SELECT inside this function pops the
+ * topmost non-passive layer (skipping any passive layers above it). */
+void layerStackInputLayer(LayerStack *stack, int index, InputState *is);
 /* Mark an already-pushed layer as passive. The layerStackInput path treats
  * passive layers as transparent: it skips KM_EDIT / KM_SELECT pop logic
  * for them and lets input flow through to the next non-passive layer. The

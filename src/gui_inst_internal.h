@@ -36,6 +36,7 @@ extern bool g_routeErase;
  * handler. Also exposed so scripted tests can drive erase without
  * touching internals. */
 void guiSetRouteEraseMode(bool on);
+bool guiRouteEraseMode(void);
 
 /* Probe-only: drive the picker exactly once against the first
  * routable dial of the selected instrument. Returns true if the route

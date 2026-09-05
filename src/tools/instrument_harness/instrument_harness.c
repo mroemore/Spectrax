@@ -750,8 +750,13 @@ static void runAssertTopLayerSelected(int lineno, const char *expected) {
 	InstrumentGui *ig = getInstrumentGui();
 	Graph *g = NULL;
 	if(ig && ig->overlayLayers.count > 0) {
-		Layer *top = &ig->overlayLayers.layers[ig->overlayLayers.count - 1];
-		g = top->graph;
+		for(int i = ig->overlayLayers.count - 1; i >= 0; i--) {
+			Layer *top = &ig->overlayLayers.layers[i];
+			if(!top->passive) {
+				g = top->graph;
+				break;
+			}
+		}
 	}
 	if(!g) {
 		g = getSelectedInstGraph();

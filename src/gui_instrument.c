@@ -16,6 +16,7 @@
 #include "io.h"
 #include "gui_internal.h"
 #include "gui_inst_internal.h"
+#include "gui_layer.h"
 
 static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected);
 static void cbOpenLoadList(void *ctx);
@@ -792,12 +793,23 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * instrument parameter values. */
 	InstrumentGui *ig = getInstrumentGui();
 	if(ig && !layerStackIsEmpty(&ig->overlayLayers)) {
-		Layer *top = topLayer(&ig->overlayLayers);
-		/* The ROUTELINES overlay is draw-only (Task 7): it must NOT
-		 * capture the input stream — only the real modal layers do. */
-		bool isPassiveOverlay = top && top->name && strcmp(top->name, "ROUTELINES") == 0;
-		if(!isPassiveOverlay) {
-			layerStackInput(&ig->overlayLayers, is);
+		/* Spec #6 + layering rework: find the topmost NON-passive
+		 * layer. If one exists it is the real modal target; if all
+		 * layers on the stack are passive (e.g. ROUTELINES alone over
+		 * the base) we fall through to the base input exactly as
+		 * today so standalone overlays don't capture the input stream.
+		 * Also surface the erase modifier (KM_FUNCTION) to the picker
+		 * so cbRouteToDest can take the destructive path. */
+		int topIdx = -1;
+		for(int i = ig->overlayLayers.count - 1; i >= 0; i--) {
+			if(!ig->overlayLayers.layers[i].passive) {
+				topIdx = i;
+				break;
+			}
+		}
+		if(topIdx >= 0) {
+			guiSetRouteEraseMode(isKeyHeld(is, KM_FUNCTION));
+			layerStackInputLayer(&ig->overlayLayers, topIdx, is);
 			return true;
 		}
 	}

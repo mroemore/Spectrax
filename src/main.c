@@ -136,9 +136,10 @@ static int probeCountRouteWarmPx(RenderTexture2D gfx, ColourScheme *cs) {
 			if(dist_sq <= 256) {
 				continue;
 			}
-			/* Warm = red > green > blue, red >= 64. Background is not
-			 * warm-tinted so we skip the cheap distance check too. */
-			if(px[0] > px[1] && px[1] > px[2] && px[0] >= 64) {
+			/* Brief predicate: warm pixel = r > 200 && 60 < g < 230
+			 * && b < 140. Matches the orange→yellow gradient the
+			 * picker UX rework draws. */
+			if((int)px[0] > 200 && (int)px[1] > 60 && (int)px[1] < 230 && (int)px[2] < 140) {
 				warm++;
 			}
 		}
