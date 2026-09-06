@@ -111,24 +111,25 @@ void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
 	if(!sc || !sel) {
 		return;
 	}
-	/* Only act when sel lives inside sc. Walk up: if we hit sc->base
-	 * before hitting NULL, sel is a descendant. */
+	/* Only act when sel lives inside sc. Walk up to sel's ROW: the
+	 * ancestor that is a direct child of sc (production selections are
+	 * grandchildren — the dials/buttons inside a wrap row). */
 	const GuiNode *p = sel;
-	while(p && p != (const GuiNode *)&sc->base) {
+	while(p && p->container && p->container != (const GuiNode *)&sc->base) {
 		p = p->container;
 	}
-	if(!p) {
+	if(!p || p->container != (const GuiNode *)&sc->base) {
 		return;
 	}
 	/* Children above the viewport have negative reflowed y that wraps
-	 * in the uint16 field, so sel->y is unreliable for off-viewport
-	 * rows. Reconstruct the row's UNSCROLLED rect from its index in
-	 * the container's item list. */
+	 * in the uint16 field, so the row's y is unreliable for
+	 * off-viewport rows. Reconstruct the row's UNSCROLLED rect from
+	 * its index in the container's item list. */
 	int rowIndex = -1;
 	if(sc->base.items) {
 		ListElement *e = sc->base.items->head;
 		for(int i = 0; i < sc->base.itemCount && e; i++) {
-			if(*(GuiNode **)e->data == sel) {
+			if(*(GuiNode **)e->data == p) {
 				rowIndex = i;
 				break;
 			}
@@ -140,7 +141,6 @@ void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
 	}
 	int rowH = sc->rowH > 0 ? sc->rowH : 1;
 	int rowTop = (int)sc->base.y + sc->base.padding + rowIndex * rowH;
-	int rowBot = rowTop + rowH;
 	int viewH = (int)sc->base.h;
 	int maxOff = sc->contentH - viewH;
 	if(maxOff < 0) {

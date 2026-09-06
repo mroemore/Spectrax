@@ -599,6 +599,33 @@ static int test_scroll_container_to_visible(void) {
     return 0;
 }
 
+static int test_scroll_container_grandchild(void) {
+    /* Production topology: the container's direct children are
+     * non-selectable wrap rows; the SELECTED node is a grandchild (the
+     * dial/button inside a row). scrollToVisible must resolve the row
+     * from the grandchild and scroll it into view. */
+    ScrollContainer *sc = (ScrollContainer *)createScrollContainer(0, 0, 100, 120, 40, "sc");
+    ASSERT_TRUE(sc != NULL, "container created");
+    GuiNode *wraps[8];
+    GuiNode *dials[8];
+    for(int i = 0; i < 8; i++) {
+        wraps[i] = createGuiNode(0, 0, 0, 0, 0, na_horizontal, "wrap", 0, 0);
+        dials[i] = createGuiNode(0, 0, 0, 0, 0, na_vertical, "dial", 1, 0);
+        appendItem(wraps[i], dials[i], 1);
+        appendItem(&sc->base, wraps[i], 1);
+    }
+    scrollToVisible(sc, dials[7]);
+    int yWrap7 = (int)wraps[7]->y;
+    ASSERT_TRUE(yWrap7 >= 0 && yWrap7 + 40 <= 120,
+                "grandchild's row visible after scroll");
+    ASSERT_EQ(sc->scrollOffset, 200, "offset pinned to the bottom");
+    scrollToVisible(sc, dials[0]);
+    ASSERT_EQ(sc->scrollOffset, 0, "back to the top");
+    freeGuiNode(&sc->base);
+    printf("PASS test_scroll_container_grandchild\n");
+    return 0;
+}
+
 static int test_scroll_arranger_window_to(void) {
     Arranger a; memset(&a, 0, sizeof(a));
     a.enabledChannels = 2;
@@ -991,6 +1018,7 @@ int main(void) {
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
     fails += test_scroll_container_to_visible();
+    fails += test_scroll_container_grandchild();
     fails += test_scroll_arranger_window_to();
     fails += test_sync_arranger_selection();
     fails += test_navigate_arranger_graph_to();
