@@ -87,12 +87,21 @@ static void teardown(ParamList *pl, ModList *ml) {
 }
 
 /* Task 1 helpers: used by changeModType tests to verify a route still
- * survives the swap and a param is still registered. */
+ * survives the swap and a param is still registered.
+ *
+ * Since the per-connection attenuators, a connection's source is the
+ * MT_ATTEN node, not the real mod — changeModType survives a swap by
+ * re-pointing the atten's input at the fresh mod. So "a route from src"
+ * means: the connection's source IS src, or it is an atten whose
+ * input is src. */
 static int hasRouteFrom(ParamList *pl, Parameter *dest, Mod *src) {
     if(!pl || !dest || !src) return 0;
     ModConnection *c = dest->modulators;
     while(c) {
         if(c->source == src) return 1;
+        if(c->source && c->source->type == MT_ATTEN && c->source->input == src) {
+            return 1;
+        }
         c = c->next;
     }
     return 0;
@@ -120,15 +129,23 @@ static int test_create_lists(void) {
 
 /* Pins the wiring contract of addModulation:
  *   - modulator_count increments to 1
- *   - dest->modulators is non-NULL, points at a connection with the
- *     envelope's base as its source
- *   - the connection carries its own amount and type Parameter objects
+ *   - dest->modulators is non-NULL, points at a connection whose
+ *     source is the MT_ATTEN attenuator addModulation inserted, with
+ *     the attenuator's input pointing at the envelope's base
+ *   - the connection's amount Parameter IS the atten's attenAmount
+ *     (shared object — the throwaway amount createConnection made is
+ *     dropped from the list and freed)
+ *   - the connection carries its own type Parameter
  *   - those, plus the envelope's 5 params and dest itself, are all
- *     registered in the paramList (count == 8)
+ *     registered in the paramList (count == 11)
  *
- * Param count breakdown for createAD: 1 (env output via initMod) + 2 stages
- * * 2 params (duration + curvature per stage, via addEnvelopeStage) = 5.
- * Then + 1 dest + 1 amount + 1 type = 8. */
+ * Param count breakdown for createAD: 1 (env output via initMod) + 2
+ * stages * 2 params (duration + curvature per stage, via
+ * addEnvelopeStage) = 5. Then + 1 dest + 1 type + 4 atten params
+ * (output, attenAmount, attenPolarity, attenCurve, via
+ * createAttenuatorMod) = 11. The temporary conn amount that
+ * createConnection registers is removed from the list as soon as the
+ * atten takes over, so it nets to zero. */
 static int test_add_modulation_wiring(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
@@ -138,10 +155,14 @@ static int test_add_modulation_wiring(void) {
                 "addModulation returns true");
     ASSERT_EQ(dest->modulator_count, 1);
     ASSERT_TRUE(dest->modulators != NULL, "dest->modulators set");
-    ASSERT_TRUE(dest->modulators->source == &env->base, "source is env output");
-    ASSERT_TRUE(dest->modulators->amount != NULL, "amount param created");
+    Mod *src = dest->modulators->source;
+    ASSERT_EQ(src->type, MT_ATTEN, "source is the inserted attenuator");
+    ASSERT_TRUE(src->input == &env->base, "attenuator input is the env");
+    ASSERT_TRUE(dest->modulators->amount != NULL, "amount param present");
+    ASSERT_TRUE(dest->modulators->amount == src->attenAmount,
+                "conn amount IS the atten's attenAmount");
     ASSERT_TRUE(dest->modulators->type != NULL, "type param created");
-    ASSERT_EQ(pl->count, 8, "5 env params + dest + amount + type");
+    ASSERT_EQ(pl->count, 11, "5 env params + dest + type + 4 atten params");
     teardown(pl, ml);
     printf("PASS test_add_modulation_wiring\n");
     return 0;
@@ -150,74 +171,75 @@ static int test_add_modulation_wiring(void) {
 /* Pins processModulations's MO_ADD / MO_MUL / MO_SUB / MO_DIV behavior,
  * and the quirk that MO_DIV is skipped when the divisor is zero.
  *
- * Quirks pinned here (current modsystem.c behavior, NOT what the
- * spec/brief expected — the brief assumed you could prime the source
- * output and have processModulations honor it; current code doesn't):
+ * Behavior pinned here (current modsystem.c behavior with the
+ * per-connection attenuators):
  *
- *   1. processModulations IGNORES the connection's `amount` param
- *      when applying the operation — it uses conn->source->output's
- *      CURRENT value (not conn->amount).
+ *   1. The apply pass uses conn->source->output's CURRENT value, and
+ *      conn->source is now the ATTENUATOR — i.e. the value its
+ *      generate just wrote (source output * attenAmount). The
+ *      `amount` argument to addModulation is not used (createConnection
+ *      always registers a 1.0 that addModulation then discards in
+ *      favor of the atten's attenAmount, also 1.0 here), so the
+ *      attenuation is 1.0 throughout this test.
  *
- *   2. The first pass of processModulations walks the modList and
- *      calls each mod's generate() callback. For envelopes,
- *      generateEnvelope only writes env->base.output when the
- *      envelope is isTriggered AND not past stageCount. In our
- *      short-lived test setups the envelope is NOT triggered, so
- *      generateEnvelope returns immediately without writing output.
- *      Then the second pass walks the paramList and for every
- *      param (including mod outputs) computes
- *      finalValue = baseValue + sum(modulator contributions).
- *      Since the envelope output's baseValue is 0 (set by initMod
- *      via createParameter("output", 0.0f, 0.0f, 1.0f)), the env
- *      output ends up at 0 after processModulations even when
- *      setParameterValue(env->base.output, 0.5f) was called
- *      beforehand. That means dest->currentValue == dest->baseValue
- *      (1.0) regardless of MO_ADD/MUL/SUB/DIV — the source
- *      contribution is always zero in this setup.
+ *   2. The atten decouples the "primed source" leak. An env output
+ *      primed by setParameterValue BEFORE the route exists is visible
+ *      to the atten during the first pass's generate (the atten reads
+ *      the source's PRE-APPLY value), so the first pass gives
+ *      dest = 1.0 + 0.5 = 1.5. Then the apply pass resets the
+ *      un-triggered env output to its baseValue 0 (generateEnvelope
+ *      only writes when isTriggered; the apply pass recomputes every
+ *      param from baseValue + modulator contributions), so from the
+ *      SECOND pass on the atten passes 0 and every operation sees
+ *      modValue = 0:
  *
- *      This test therefore pin's the "mod output resets to 0 on
- *      processModulations when the envelope is not triggered" quirk
- *      and confirms that the four MO_* operations all see modValue
- *      = 0 here. A separate run with triggerEnvelope() would change
- *      the picture (see the comment in test_multiple_modulators for
- *      the math).
+ *        MO_ADD: 1.0 + 0 = 1.0
+ *        MO_MUL: 1.0 * 0 = 0.0
+ *        MO_SUB: 1.0 - 0 = 1.0
+ *        MO_DIV: modValue == 0 -> skipped, dest stays at baseValue
  *
- *   3. To exercise MO_DIV's "skip on zero" branch specifically,
- *      test below uses a second envelope whose output IS primed to
- *      0 by setParameterValue (and which also stays at 0 across
+ *   3. To exercise MO_DIV's "skip on zero" branch specifically, the
+ *      test below uses a second envelope whose output IS primed to 0
+ *      by setParameterValue (and which also stays at 0 across
  *      processModulations for the same reason). The DIV is
- *      skipped, so dest stays at its baseValue of 1.0.
+ *      skipped, so dest stays at its baseValue of 1.0 (rather than
+ *      1.0/0.0 = +Inf clamped to the param max).
  */
 static int test_process_modulation_arithmetic(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 100.0f);
-    setParameterValue(env->base.output, 0.5f); /* has no effect on
-        processModulations in the un-triggered case */
+    /* Pre-apply prime: the atten sees this 0.5 on the first pass
+     * (its generate runs before the apply pass resets the env
+     * output), then it is gone. */
+    setParameterValue(env->base.output, 0.5f);
 
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
     processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 1.5f, 0.0001f,
+                "ADD first pass: atten passes the pre-apply prime 0.5");
+    processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
-                "ADD: env output resets to 0, dest=baseValue");
+                "ADD: env output reset to 0, dest = baseValue");
 
-    removeModulation(pl, ml, dest, &env->base);
+    removeModulation(pl, ml, dest, dest->modulators->source);
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_MUL);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 0.0f, 0.0001f,
                 "MUL: baseValue*0 = 0 when env output resets to 0");
 
-    removeModulation(pl, ml, dest, &env->base);
+    removeModulation(pl, ml, dest, dest->modulators->source);
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_SUB);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
-                "SUB: env output resets to 0, dest=baseValue");
+                "SUB: env output resets to 0, dest = baseValue");
 
-    removeModulation(pl, ml, dest, &env->base);
+    removeModulation(pl, ml, dest, dest->modulators->source);
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
-                "DIV: env output resets to 0, dest=baseValue");
+                "DIV: env output resets to 0, dest = baseValue");
 
     /* DIV by zero is skipped: processModulations resets finalValue =
      * baseValue (1.0) at the top of the pass, then walks modulators;
@@ -227,7 +249,7 @@ static int test_process_modulation_arithmetic(void) {
      * than dividing by zero and producing NaN/Inf). */
     Envelope *env2 = createAD(pl, ml, 0.1f, 0.2f, "AD2");
     setParameterValue(env2->base.output, 0.0f);
-    removeModulation(pl, ml, dest, &env->base);
+    removeModulation(pl, ml, dest, dest->modulators->source);
     addModulation(pl, ml, &env2->base, dest, 1.0f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
@@ -268,10 +290,14 @@ static int test_multiple_modulators_apply_in_order(void) {
     addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
     addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
-    ASSERT_TRUE(dest->modulators->source == &e2->base,
-                "prepended: e2 (added last) is at the head of the list");
-    ASSERT_TRUE(dest->modulators->next->source == &e1->base,
-                "e1 (added first) is the tail");
+    /* Connection sources are the per-connection attenuators; the real
+     * envelope is reached through the atten's input. */
+    ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN &&
+                dest->modulators->source->input == &e2->base,
+                "prepended: e2's atten (added last) is at the head of the list");
+    ASSERT_TRUE(dest->modulators->next->source->type == MT_ATTEN &&
+                dest->modulators->next->source->input == &e1->base,
+                "e1's atten (added first) is the tail");
     processModulations(pl, ml, 0.0f);
     /* With a 1.0s attack and one PA_SR step, env output is ~2e-8 and
      * the two contributions round into dest->baseValue at float
@@ -371,10 +397,14 @@ static int test_lfo_phase_wrap(void) {
 }
 
 /* Pins the wiring contract of removeModulation:
+ *   - the `source` argument must match conn->source, which is now the
+ *     connection's MT_ATTEN attenuator (NOT the real mod) — removing
+ *     by the real source no longer matches
  *   - it returns true and clears destination's modulator list when the
  *     matching (dest, source) connection is found, leaving count=0
- *   - it removes BOTH the amount and type params from the paramList
- *     (count drops by exactly 2) and frees them
+ *   - it removes the type param from the paramList and, when the
+ *     atten loses its last connection, GCs the atten (its 4 params)
+ *     — pl->count drops by exactly 5
  *   - returning false when the connection is absent
  *   - in a two-modulator list, removing the head leaves the tail
  *     intact (linked-list unlink, not just a count decrement)
@@ -385,11 +415,18 @@ static int test_remove_modulation(void) {
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
+    /* New wiring: the real source is one hop behind the connection
+     * (conn->source is the atten), so this no longer matches. */
+    ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base),
+                "real source no longer matches (conn->source is the atten)");
     int before = pl->count;
-    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base), "removed");
+    int modBefore = ml->count;
+    Mod *a1 = dest->modulators->source;
+    ASSERT_TRUE(removeModulation(pl, ml, dest, a1), "removed via the atten");
     ASSERT_EQ(dest->modulator_count, 0, "no modulators left");
     ASSERT_TRUE(dest->modulators == NULL, "list empty");
-    ASSERT_EQ(pl->count, before - 2, "amount+type params removed from list");
+    ASSERT_EQ(pl->count, before - 5, "type param + 4 atten params removed");
+    ASSERT_EQ(ml->count, modBefore - 1, "atten GC'd — env alone in modList");
     ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base), "absent returns false");
 
     /* mid-list: two modulators, remove the head */
@@ -397,9 +434,12 @@ static int test_remove_modulation(void) {
     addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
     addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
-    ASSERT_TRUE(removeModulation(pl, ml, dest, &e2->base), "remove head");
+    Mod *head = dest->modulators->source;
+    ASSERT_TRUE(head->input == &e2->base, "head is e2's atten");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, head), "remove head");
     ASSERT_EQ(dest->modulator_count, 1, "one left");
-    ASSERT_EQ(dest->modulators->source, &env->base, "tail survives");
+    ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN &&
+                dest->modulators->source->input == &env->base, "tail survives");
     teardown(pl, ml);
     printf("PASS test_remove_modulation\n");
     return 0;
@@ -408,15 +448,21 @@ static int test_remove_modulation(void) {
 /* Pins the wiring contract of removeModulationsForSource: walks every
  * param in the list, removes ALL connections whose source is the
  * given mod, returns the count of connections removed. The two-pass
- * design unlinks+orphans amount/type params in pass 1, then drops
- * them from the paramList in pass 2 so that removing-from-list
- * doesn't disturb the in-progress iteration.
+ * design unlinks+orphans type params in pass 1 (amounts owned by an
+ * atten are left alone), drops them from the paramList in pass 2,
+ * then GCs the given mod when it is an atten with no connections left.
+ *
+ * Since the per-connection attenuators, each route from a real source
+ * has its OWN atten — so "all routes from env" is now "all connections
+ * from each atten fed by env". The real source itself has no direct
+ * connections anymore.
  *
  * Verifies:
- *   - returns 2 when one env is connected to two destinations
- *   - each destination is left with modulator_count == 0
- *   - pl->count drops by 4 (2 connections x (amount+type))
- *   - a second call returns 0 (idempotent / no-op when nothing matches)
+ *   - removeModulationsForSource(env) removes 0 (env no longer a conn source)
+ *   - returns 1 per atten, leaving each destination with count 0
+ *   - pl->count drops by 10 (2 x (type + 4 atten params)); the
+ *     attenuators are GC'd as they lose their last connection
+ *   - a call with an unregistered mod returns 0 (no-op)
  */
 static int test_remove_modulations_for_source(void) {
     ParamList *pl = createParamList();
@@ -426,12 +472,24 @@ static int test_remove_modulations_for_source(void) {
     Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
     addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD);
     addModulation(pl, ml, &env->base, d2, 1.0f, MO_MUL);
+    /* One atten per route, both fed by env. */
+    Mod *a1 = d1->modulators->source;
+    Mod *a2 = d2->modulators->source;
+    ASSERT_TRUE(a1->type == MT_ATTEN && a1->input == &env->base, "a1 is env's atten");
+    ASSERT_TRUE(a2->type == MT_ATTEN && a2->input == &env->base, "a2 is env's atten");
     int before = pl->count;
-    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 2, "two connections removed");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0,
+              "real source no longer carries direct connections");
+    ASSERT_EQ(d1->modulator_count, 1, "d1 still routed");
+    ASSERT_EQ(d2->modulator_count, 1, "d2 still routed");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, a1), 1, "d1's connection removed");
     ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, a2), 1, "d2's connection removed");
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
-    ASSERT_EQ(pl->count, before - 4, "four amount/type params removed");
-    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0, "none left");
+    ASSERT_EQ(pl->count, before - 10, "two (type + 4 atten params) removed");
+    ASSERT_EQ(ml->count, 1, "both attens GC'd — env alone in modList");
+    Mod ghost = {0};
+    ASSERT_EQ(removeModulationsForSource(pl, ml, &ghost), 0, "none left");
     teardown(pl, ml);
     printf("PASS test_remove_modulations_for_source\n");
     return 0;
@@ -477,17 +535,33 @@ static int test_remove_from_paramlist(void) {
  * connection whose source matches oldSource. Returns false if no match
  * is found. The `list` parameter is part of the signature for symmetry
  * with addModulation/removeModulation but is intentionally unused —
- * rewiring is purely a destination->modulators operation. */
+ * rewiring is purely a destination->modulators operation.
+ *
+ * Since the per-connection attenuators, oldSource/newSource are the
+ * ATTENUATORS (the connection's actual sources). Rewiring to e2's
+ * atten first requires giving e2 a route of its own (the target must
+ * be an existing mod); that route lives on a scratch param. Note:
+ * rewireModulation does NOT GC the old atten — a1 is left orphaned in
+ * the modList (still generated each pass, harmless) and freed by the
+ * teardown. */
 static int test_rewire_modulation(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
     Envelope *e1 = createAD(pl, ml, 0.1f, 0.2f, "E1");
     Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    Parameter *scratch = createParameter(pl, "scratch", 1.0f, 0.0f, 10.0f);
     addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
-    ASSERT_TRUE(rewireModulation(pl, dest, &e1->base, &e2->base), "rewired");
-    ASSERT_TRUE(dest->modulators->source == &e2->base, "source now e2");
-    ASSERT_TRUE(!rewireModulation(pl, dest, &e1->base, &e2->base),
+    Mod *a1 = dest->modulators->source;
+    /* Give e2 its own atten so we have a rewire target. */
+    addModulation(pl, ml, &e2->base, scratch, 1.0f, MO_ADD);
+    Mod *a2 = scratch->modulators->source;
+    ASSERT_TRUE(a1->type == MT_ATTEN && a1->input == &e1->base, "a1 is e1's atten");
+    ASSERT_TRUE(a2->type == MT_ATTEN && a2->input == &e2->base, "a2 is e2's atten");
+    ASSERT_TRUE(rewireModulation(pl, dest, a1, a2), "rewired");
+    ASSERT_TRUE(dest->modulators->source == a2, "source now e2's atten");
+    ASSERT_TRUE(dest->modulators->source->input == &e2->base, "that atten reads e2");
+    ASSERT_TRUE(!rewireModulation(pl, dest, a1, a2),
                 "old source absent -> false");
     teardown(pl, ml);
     printf("PASS test_rewire_modulation\n");
@@ -521,16 +595,15 @@ static int test_remove_mod(void) {
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
     addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
-    int before = pl->count;   /* 5 env params + dest + amount + type = 8 */
-    int modBefore = ml->count; /* 1 */
+    int before = pl->count;   /* 5 env + dest + type + 4 atten params = 11 */
+    int modBefore = ml->count; /* env + atten = 2 */
     ASSERT_TRUE(removeMod(ml, pl, &env->base), "removeMod succeeds");
-    ASSERT_EQ(ml->count, modBefore - 1, "mod gone from modList");
-    /* Brief originally wrote before-2 here; that's only the connection's
-     * amount+type. Full teardown also drops 4 env-stage params
-     * (2 stages * (duration + curvature)) + 1 output = 7 params removed
-     * total, leaving only dest. Aligned with the spec's documented
-     * "remove the mod's own params" + freeEnvelope flow. */
-    ASSERT_EQ(pl->count, before - 7, "amount+type+env params gone from paramList");
+    /* removeMod drops the env (5 params), and its final GC pass frees
+     * every atten whose input was the env — here the route's atten,
+     * which takes its connection's type param (1) + its own 4 params
+     * with it. 10 params removed, leaving only dest. */
+    ASSERT_EQ(ml->count, modBefore - 2, "mod + its atten gone from modList");
+    ASSERT_EQ(pl->count, before - 10, "env + atten + type params gone from paramList");
     ASSERT_EQ(pl->count, 1, "only dest remains");
     ASSERT_EQ(pl->params[0], dest, "dest survives at index 0");
     ASSERT_EQ(dest->modulator_count, 0, "dest unmodulated");
@@ -582,17 +655,29 @@ static void constGenThreeTenths(void *self) {
 }
 
 /* Two-element feedback cycle: B modulates A's output, A modulates B's
- * output. The apply pass cascades in paramList order — A's output is
- * created before B's (createLFO A then B), so:
+ * output. Since the per-connection attenuators, each connection's
+ * source is its own MT_ATTEN node and the apply pass reads the
+ * attenuator's output — which the generate pass just wrote from the
+ * SOURCE'S PRE-APPLY value. The within-apply cascade is decoupled
+ * (B no longer reads A's post-apply value, it reads A's gen value):
  *
  *   generate:  A.output = 0.25,  B.output = 0.50
- *   apply:     A.output = 0 + 1.0 * B.output = 0.50   (reads B's fresh gen)
- *              B.output = 0 + 1.0 * A.output = 0.50   (reads A's post-apply)
+ *              A's atten = B.output * 1.0 = 0.50   (B's pre-apply value)
+ *              B's atten = A.output * 1.0 = 0.25   (A's pre-apply value)
+ *   apply:     A.output = 0 + A's atten = 0.50
+ *              B.output = 0 + B's atten = 0.25
+ *              (atten outputs then reset to baseValue 0 — plain params
+ *               with no modulators of their own; observed, they read 0
+ *               after every pass)
  *
- * Stable fixed point: both 0.5. Without the feedback, A would stay at
- * its const-gen value (0.25) — so the assertion proves the loop is
- * live, not a tautology. Pins: no crash, no hang, outputs stay finite
- * and clamped to [0,1] across 200 frames (no divergence). */
+ * The const-gens overwrite the source outputs every pass, so the
+ * values are stable from iteration 0 (observed, not a convergence).
+ * Fixed point: (A, B) = (0.5, 0.25). A keeps the pre-attenuator
+ * value; B drops from the old cascade's 0.5 to A's const-gen value.
+ * Without the feedback, A would sit at 0.25 and B at 0.5 — so the
+ * pins prove the loop is live, not a tautology. Pins: no crash, no
+ * hang, outputs stay finite and clamped to [0,1] across 200 frames
+ * (no divergence). */
 static int test_two_cycle_feedback(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
@@ -605,32 +690,38 @@ static int test_two_cycle_feedback(void) {
 	for(int i = 0; i < 200; i++) {
 		processModulations(pl, ml, 0.016f);
 		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
-		                isfinite(b->base.output->currentValue),
+	                isfinite(b->base.output->currentValue),
 		            "both outputs stay finite");
 		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
-		                a->base.output->currentValue <= 1.0f,
+	                a->base.output->currentValue <= 1.0f,
 		            "A output clamped to [0,1]");
 		ASSERT_TRUE(b->base.output->currentValue >= 0.0f &&
-		                b->base.output->currentValue <= 1.0f,
+	                b->base.output->currentValue <= 1.0f,
 		            "B output clamped to [0,1]");
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.5f, 0.0001f, "A converges to 0.5");
-	ASSERT_NEAR(b->base.output->currentValue, 0.5f, 0.0001f, "B converges to 0.5");
+	ASSERT_NEAR(a->base.output->currentValue, 0.5f, 0.0001f,
+	            "A fixed at 0.5 (its atten reads B's pre-apply gen 0.5)");
+	ASSERT_NEAR(b->base.output->currentValue, 0.25f, 0.0001f,
+	            "B fixed at 0.25 (its atten reads A's pre-apply gen 0.25)");
 	teardown(pl, ml);
 	printf("PASS test_two_cycle_feedback\n");
 	return 0;
 }
 
-/* Three-element cycle A->B->C->A. Fixed point (list order A,B,C):
+/* Three-element cycle A->B->C->A. With per-connection attenuators,
+ * each dest reads its atten's output — the source's PRE-APPLY value —
+ * so the apply pass no longer cascades around the loop (see the
+ * two-cycle test for the decoupling mechanism):
  *
  *   generate:  A=0.1, B=0.2, C=0.3
  *   apply:     A = 0 + 1.0 * B.gen  = 0.2
  *              B = 0 + 1.0 * C.gen  = 0.3
- *              C = 0 + 1.0 * A.post = 0.2
+ *              C = 0 + 1.0 * A.gen  = 0.1   (was A.post = 0.2)
  *
- * Stable at (0.2, 0.3, 0.2). A and C sit ABOVE their const-gen values,
- * proving the loop is live; all stay clamped/finite across 500 frames
- * (longer than the 2-cycle to stress no gradual divergence). */
+ * Stable from iteration 0 (observed). A sits above its const-gen
+ * value, proving the loop is live; all stay clamped/finite across
+ * 500 frames (longer than the 2-cycle to stress no gradual
+ * divergence). */
 static int test_three_cycle_feedback(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
@@ -646,8 +737,8 @@ static int test_three_cycle_feedback(void) {
 	for(int i = 0; i < 500; i++) {
 		processModulations(pl, ml, 0.016f);
 		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
-		                isfinite(b->base.output->currentValue) &&
-		                isfinite(c->base.output->currentValue),
+	                isfinite(b->base.output->currentValue) &&
+	                isfinite(c->base.output->currentValue),
 		            "all three outputs stay finite");
 		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
 		                a->base.output->currentValue <= 1.0f &&
@@ -657,9 +748,9 @@ static int test_three_cycle_feedback(void) {
 		                c->base.output->currentValue <= 1.0f,
 		            "all three outputs clamped to [0,1]");
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.2f, 0.0001f, "A converges to 0.2");
-	ASSERT_NEAR(b->base.output->currentValue, 0.3f, 0.0001f, "B converges to 0.3");
-	ASSERT_NEAR(c->base.output->currentValue, 0.2f, 0.0001f, "C converges to 0.2");
+	ASSERT_NEAR(a->base.output->currentValue, 0.2f, 0.0001f, "A fixed at 0.2 (reads B's pre-apply gen)");
+	ASSERT_NEAR(b->base.output->currentValue, 0.3f, 0.0001f, "B fixed at 0.3 (reads C's pre-apply gen)");
+	ASSERT_NEAR(c->base.output->currentValue, 0.1f, 0.0001f, "C fixed at 0.1 (reads A's pre-apply gen)");
 	teardown(pl, ml);
 	printf("PASS test_three_cycle_feedback\n");
 	return 0;
@@ -668,28 +759,216 @@ static int test_three_cycle_feedback(void) {
 /* Self-modulation: a mod's own output modulates itself. Pins that this
  * is a legal, stable graph (no recursion, no crash, no hang).
  *
- *   MO_ADD:  A.output = 0 + 1.0 * A.gen(0.25) = 0.25   (stable)
- *   MO_MUL:  A.output = base(0) * A.gen(0.25) = 0.0    (baseValue is 0,
- *            so MUL forces the output to 0 — the pinned quirk)
+ * The self-atten reads A's output during the generate pass (A's
+ * pre-apply value, since A's gen runs before the atten in modList
+ * order) and the apply pass resets the atten's output afterwards, so
+ * the value is stable from iteration 0:
  *
- * Note processModulations ignores the connection's `amount` param (it
- * applies conn->source->output directly, modsystem.c:903), so the 1.0
- * is cosmetic here. */
+ *   MO_ADD:  A.output = 0 + 1.0 * atten(A.gen = 0.25) = 0.25
+ *   MO_MUL:  A.output = base(0) * atten(A.gen = 0.25) = 0.0
+ *            (baseValue is 0, so MUL forces the output to 0 — the
+ *            pinned quirk)
+ *
+ * The apply pass reads the connection's source (the atten) output
+ * directly; the 1.0 amount rides inside the atten's generate. */
 static int test_self_modulation(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
 	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
 	a->base.generate = constGenQuarter;
 	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_ADD);
-	processModulations(pl, ml, 0.016f);
+	for(int i = 0; i < 8; i++) {
+		processModulations(pl, ml, 0.016f);
+	}
 	ASSERT_NEAR(a->base.output->currentValue, 0.25f, 0.0001f, "self-ADD stable at 0.25");
-	removeModulation(pl, ml, a->base.output, &a->base);
+	/* The connection's source is the self-atten — remove by it, not
+	 * by the LFO. */
+	removeModulation(pl, ml, a->base.output, a->base.output->modulators->source);
 	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_MUL);
-	processModulations(pl, ml, 0.016f);
+	for(int i = 0; i < 8; i++) {
+		processModulations(pl, ml, 0.016f);
+	}
 	ASSERT_NEAR(a->base.output->currentValue, 0.0f, 0.0001f, "self-MUL: 0 base * 0.25 = 0");
 	teardown(pl, ml);
 	printf("PASS test_self_modulation\n");
 	return 0;
+}
+
+/* --- attenuator behavior (Task 3) ------------------------------------------ */
+
+/* The connection's source IS the MT_ATTEN attenuator addModulation
+ * inserted (see addModulation in modsystem.c). Returns it, or NULL if
+ * the connection is plain (the modList was full when the route was
+ * created, so no atten could be inserted). */
+static Mod *connAtten(ModConnection *c) {
+    if(!c || !c->source || c->source->type != MT_ATTEN) {
+        return NULL;
+    }
+    return c->source;
+}
+
+/* Identity: the default atten (amount 1.0, bi-polar, linear) passes
+ * the source's output through unchanged. */
+static int test_atten_identity(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->base.generate = constGenQuarter; /* 0.25 every pass */
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ModConnection *c = dest->modulators;
+    Mod *atten = connAtten(c);
+    ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
+    processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 1.25f, 0.0001f, "identity: 1.0 + 0.25*1.0");
+    teardown(pl, ml);
+    printf("PASS test_atten_identity\n");
+    return 0;
+}
+
+/* Amount: the atten scales the source's output by its attenAmount.
+ * The connection's `amount` field IS the atten's attenAmount param
+ * (shared object), so the route's amount is set through the
+ * connection. 0.25 * 0.5 = 0.125. */
+static int test_atten_amount(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->base.generate = constGenQuarter;
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ModConnection *c = dest->modulators;
+    Mod *atten = connAtten(c);
+    ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
+    ASSERT_TRUE(c->amount == atten->attenAmount,
+                "conn->amount is the atten's attenAmount");
+    setParameterBaseValue(c->amount, 0.5f);
+    processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 1.125f, 0.0001f,
+                "amount 0.5: 1.0 + 0.25*0.5");
+    teardown(pl, ml);
+    printf("PASS test_atten_amount\n");
+    return 0;
+}
+
+/* A negative source. setParameterValue clamps to the param's
+ * [minValue, maxValue] and mod outputs are created [0,1], so a
+ * negative can't survive a setParameterValue write — the generator
+ * writes the field directly. The atten's generate reads the source's
+ * output during the generate pass, before the apply pass resets it.
+ *
+ * The atten's own output param is also [0,1] by default, which would
+ * clamp a bi-polar negative before the destination ever sees it; to
+ * observe the atten's own polarity logic (the fmaxf clamp for uni),
+ * the test widens the output's minValue to -1. */
+static void negHalfGen(void *self) {
+    Mod *m = (Mod *)self;
+    m->output->currentValue = -0.5f;
+}
+
+/* Polarity: bi-polar (default) passes a negative source through
+ * unchanged; uni-polar clamps the negative to 0. */
+static int test_atten_polarity_uni(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->base.generate = negHalfGen; /* -0.5 every pass */
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ModConnection *c = dest->modulators;
+    Mod *atten = connAtten(c);
+    ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
+    atten->output->minValue = -1.0f; /* let negatives reach the dest */
+
+    /* bi-polar (default, pol=0): the negative passes through. */
+    processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 0.5f, 0.0001f, "bi: 1.0 + (-0.5*1.0)");
+
+    /* uni-polar (pol=1): the atten clamps the negative to 0. */
+    setParameterBaseValue(atten->attenPolarity, 1.0f);
+    processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f, "uni: 1.0 + max(-0.5, 0)");
+    teardown(pl, ml);
+    printf("PASS test_atten_polarity_uni\n");
+    return 0;
+}
+
+/* Curve: with attenCurve=1 the atten applies v = sign(v) * sqrt(|v|)
+ * to the scaled output. 0.25 -> 0.5. */
+static int test_atten_curve(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->base.generate = constGenQuarter;
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ModConnection *c = dest->modulators;
+    Mod *atten = connAtten(c);
+    ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
+    setParameterBaseValue(atten->attenCurve, 1.0f);
+    processModulations(pl, ml, 0.016f);
+    ASSERT_NEAR(dest->currentValue, 1.5f, 0.0001f,
+                "curve: 1.0 + sqrt(0.25) = 1.0 + 0.5");
+    teardown(pl, ml);
+    printf("PASS test_atten_curve\n");
+    return 0;
+}
+
+/* Lazy insertion: the attenuator is not part of the source —
+ * addModulation inserts it on demand when the route is created, and
+ * the connection's source becomes the atten (input pointing at the
+ * real source). */
+static int test_atten_lazy_insertion(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_EQ(ml->count, 1, "source alone in modList before the route");
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_EQ(ml->count, 2, "addModulation lazily inserted the attenuator");
+    ModConnection *c = dest->modulators;
+    ASSERT_TRUE(c->source->type == MT_ATTEN, "conn->source is the attenuator");
+    ASSERT_TRUE(c->source->input == &env->base, "conn->source->input is the real source");
+    teardown(pl, ml);
+    printf("PASS test_atten_lazy_insertion\n");
+    return 0;
+}
+
+/* Cleanup: an atten shared by multiple routes survives until its last
+ * route is removed. The second route must be created by passing the
+ * ATTEN itself as the source — addModulation reuses an MT_ATTEN source
+ * as-is, so both routes share one node (passing the env again would
+ * create a second atten).
+ *
+ * Note: the atten-sourced route keeps its OWN conn->amount param
+ * (createConnection's 0..1 param, not the shared attenAmount), and
+ * removeModulation leaves it in the paramList (it only frees amounts
+ * when the source is not an atten). The teardown's freeParamList
+ * reclaims it; the test deliberately does not pin that count. */
+static int test_atten_cleanup(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
+    Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD), "route d1");
+    Mod *a = d1->modulators->source;
+    ASSERT_TRUE(connAtten(d1->modulators) == a, "d1's source is the atten");
+    ASSERT_TRUE(addModulation(pl, ml, a, d2, 1.0f, MO_ADD),
+                "route d2 through the same atten");
+    ASSERT_EQ(ml->count, 2, "env + one shared atten");
+    ASSERT_TRUE(d1->modulators->source == a && d2->modulators->source == a,
+                "both dests share the atten");
+    ASSERT_TRUE(removeModulation(pl, ml, d1, a), "remove d1's route");
+    ASSERT_EQ(ml->count, 2, "atten survives while d2's route is live");
+    ASSERT_TRUE(d2->modulators->source == a, "d2's route untouched");
+    ASSERT_TRUE(removeModulation(pl, ml, d2, a), "remove d2's route");
+    ASSERT_EQ(ml->count, 1, "last route gone — atten GC'd, env alone");
+    ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
+    ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
+    teardown(pl, ml);
+    printf("PASS test_atten_cleanup\n");
+    return 0;
 }
 
 /* --- list failure modes ----------------------------------------------------- */
@@ -969,7 +1248,13 @@ int main(void) {
     fails += test_remove_modulation();
     fails += test_remove_modulations_for_source();
     fails += test_rewire_modulation();
-fails += test_wrap_increment();
+    fails += test_atten_identity();
+    fails += test_atten_amount();
+    fails += test_atten_polarity_uni();
+    fails += test_atten_curve();
+    fails += test_atten_lazy_insertion();
+    fails += test_atten_cleanup();
+    fails += test_wrap_increment();
 	fails += test_remove_mod();
 	fails += test_two_cycle_feedback();
 	fails += test_three_cycle_feedback();

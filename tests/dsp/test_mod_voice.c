@@ -312,6 +312,9 @@ static int test_route_to_fm_param_affects_value(void) {
                               &inst->envelopes[idx]->base,
                               level, 1.0f, MO_ADD),
                 "route env→op0.level");
+    /* Per-connection attenuator (Task 2): the connection's source is
+     * the atten addModulation inserted, not the envelope. */
+    Mod *a1 = level->modulators->source;
 
     /*
      * Note (Task 2 finding): processModulations recomputes every
@@ -319,8 +322,8 @@ static int test_route_to_fm_param_affects_value(void) {
      * `currentValue` is reset every pass. setParameterBaseValue (not
      * setParameterValue) writes baseValue AND currentValue; since the
      * source's output param has no modulators, its post-pass value
-     * stays at baseValue. The MO_ADD modulator then applies 0.25 onto
-     * the destination's base (0.1) → 0.35.
+     * stays at baseValue. The atten (amount 1.0) then passes 0.25
+     * onto the destination's base (0.1) → 0.35.
      */
     setParameterBaseValue(inst->envelopes[idx]->base.output, 0.25f);
     processModulations(inst->paramList, inst->modList, 0.016f);
@@ -328,9 +331,9 @@ static int test_route_to_fm_param_affects_value(void) {
 
     /* removeModulation unwires the connection but leaves the source
      * alive. With no modulators on `level`, post-pass currentValue ==
-     * baseValue. */
-    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level,
-                                 &inst->envelopes[idx]->base),
+     * baseValue. (Since Task 2 the `source` argument is the
+     * connection's source — the atten — not the envelope.) */
+    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level, a1),
                 "unwrap env→op0.level");
     processModulations(inst->paramList, inst->modList, 0.016f);
     ASSERT_NEAR(level->currentValue, base, 0.0001f);
@@ -345,12 +348,9 @@ static int test_route_to_fm_param_affects_value(void) {
                   level, 1.0f, MO_ADD);
     Parameter *level1 = inst->id.fm.ops[1]->level;
     float base1 = level1->baseValue;
-    ASSERT_TRUE(rewireModulation(inst->paramList, level,
-                                 &inst->envelopes[idx]->base,
-                                 &inst->envelopes[idx]->base),
+    Mod *a2 = level->modulators->source;
+    ASSERT_TRUE(rewireModulation(inst->paramList, level, a2, a2),
                 "rewire no-op (same source)");
-    (void)level1;
-    (void)base1;
     /*
      * The rewire test asserts the swap path; here we use the simplest
      * valid rewire: detach the existing connection from op0.level and
@@ -359,7 +359,7 @@ static int test_route_to_fm_param_affects_value(void) {
      * separately below in the dedicated test). Verify op0 back to base
      * and op1 modulated after the swap.
      */
-    removeModulation(inst->paramList, inst->modList, level, &inst->envelopes[idx]->base);
+    removeModulation(inst->paramList, inst->modList, level, a2);
     addModulation(inst->paramList, inst->modList, &inst->envelopes[idx]->base,
                   level1, 1.0f, MO_ADD);
     setParameterBaseValue(inst->envelopes[idx]->base.output, 0.5f);
@@ -397,6 +397,8 @@ static int test_remove_modulation_is_surgical(void) {
                               &inst->envelopes[idxA]->base,
                               level, 1.0f, MO_ADD),
                 "route A");
+    /* Per-connection attenuator (Task 2): conn->source is A's atten. */
+    Mod *aA = level->modulators->source;
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idxB]->base,
                               level, 1.0f, MO_ADD),
@@ -408,20 +410,21 @@ static int test_remove_modulation_is_surgical(void) {
     /* both wired: base + 0.10 + 0.40 = base + 0.50 */
     ASSERT_NEAR(level->currentValue, base + 0.50f, 0.0001f);
 
-    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level,
-                                 &inst->envelopes[idxA]->base),
+    /* A's connection source is its atten, not the envelope */
+    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level, aA),
                 "unwrap A only");
     processModulations(inst->paramList, inst->modList, 0.016f);
     /* only B survives: base + 0.40 */
     ASSERT_NEAR(level->currentValue, base + 0.40f, 0.0001f);
     /* B's modulator entry still present */
     ASSERT_TRUE(level->modulators != NULL, "B modulator still wired");
-    /* A's modulator entry removed */
+    /* A's modulator entry removed. Connection sources are attens now;
+     * identify the real source via input. */
     ModConnection *conn = level->modulators;
     int sawA = 0, sawB = 0;
     while (conn) {
-        if (conn->source == &inst->envelopes[idxA]->base) sawA = 1;
-        if (conn->source == &inst->envelopes[idxB]->base) sawB = 1;
+        if (conn->source->input == &inst->envelopes[idxA]->base) sawA = 1;
+        if (conn->source->input == &inst->envelopes[idxB]->base) sawB = 1;
         conn = conn->next;
     }
     ASSERT_TRUE(!sawA, "A modulator unwired");
@@ -435,8 +438,14 @@ static int test_remove_modulation_is_surgical(void) {
 /*
  * rewireModulation atomically swaps the source on a single
  * destination connection. Route envA→op0.level, then rewire to envB.
- * After a process pass with op1's baseValue=0.7 and A's baseValue=0.0
- * (default), op0.level must reflect B's contribution only.
+ * After a process pass with B's baseValue=0.7 and A's baseValue=0.1,
+ * op0.level must reflect B's contribution only.
+ *
+ * Since Task 2, connections point at attenuators, so the rewire
+ * target must be B's atten — which only exists once B has a route of
+ * its own (here, onto op1.level). rewireModulation does not GC the
+ * old atten: aA stays in the modList, orphaned, and is freed by the
+ * teardown.
  */
 static int test_rewire_modulation_swaps_source(void) {
     TestEnv e;
@@ -458,9 +467,18 @@ static int test_rewire_modulation_swaps_source(void) {
                               &inst->envelopes[idxA]->base,
                               level, 1.0f, MO_ADD),
                 "route A");
-    ASSERT_TRUE(rewireModulation(inst->paramList, level,
-                                 &inst->envelopes[idxA]->base,
-                                 &inst->envelopes[idxB]->base),
+    /* Per-connection attenuator (Task 2): conn->source is A's atten. */
+    Mod *aA = level->modulators->source;
+    /* Give B its own atten (the rewire target) via op1.level. */
+    Parameter *level1 = inst->id.fm.ops[1]->level;
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
+                              &inst->envelopes[idxB]->base,
+                              level1, 1.0f, MO_ADD),
+                "route B");
+    Mod *aB = level1->modulators->source;
+
+    /* Rewire op0.level's connection from A's atten to B's atten */
+    ASSERT_TRUE(rewireModulation(inst->paramList, level, aA, aB),
                 "rewire A→B");
     setParameterBaseValue(inst->envelopes[idxA]->base.output, 0.10f);
     setParameterBaseValue(inst->envelopes[idxB]->base.output, 0.70f);
@@ -468,11 +486,12 @@ static int test_rewire_modulation_swaps_source(void) {
     /* only B contributes now: base + 0.70 */
     ASSERT_NEAR(level->currentValue, base + 0.70f, 0.0001f);
 
-    /* source pointer on the connection is B's, not A's */
+    /* source pointer on the connection is B's atten, not A's */
     ModConnection *conn = level->modulators;
     ASSERT_TRUE(conn != NULL, "one connection survives rewire");
-    ASSERT_TRUE(conn->source == &inst->envelopes[idxB]->base,
-                "rewired connection source is B");
+    ASSERT_TRUE(conn->source == aB, "rewired connection source is B's atten");
+    ASSERT_TRUE(conn->source->input == &inst->envelopes[idxB]->base,
+                "that atten reads envB");
 
     free_env(&e);
     printf("PASS test_rewire_modulation_swaps_source\n");
