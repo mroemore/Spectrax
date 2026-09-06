@@ -24,43 +24,130 @@
  * drawRouteLinesNode) on top of the selected cell so the user can still
  * read what they're about to route into. Erase mode tints the outline
  * routeMul-blue to make the destructive intent obvious. */
+typedef struct DestCtx {
+	Instrument *inst;
+	int srcIdx;
+	Parameter *dest;
+} DestCtx;
+static bool connFromSource(ModConnection *c, Mod *src);
+
+/* T9: word-wrap a message to fit `r`, centred vertically. Used for the
+ * function-held "tap EDIT to clear modulations for …" / "no active
+ * modulations." states on the selected dest cell. */
+static void drawWrappedCellText(const char *text, Rectangle r) {
+	if(!text || r.width <= 4.0f || r.height <= 4.0f) {
+		return;
+	}
+	const int fontSize = 7;
+	float spacing = 0.5f;
+	char buf[192];
+	strncpy(buf, text, sizeof(buf) - 1);
+	buf[sizeof(buf) - 1] = '\0';
+	/* Split into lines that fit the rect width. */
+	const int maxLines = 3;
+	char *lines[maxLines];
+	float widths[maxLines];
+	int lineCount = 0;
+	char *tok = strtok(buf, " ");
+	while(tok && lineCount < maxLines) {
+		char candidate[192];
+		if(lineCount > 0) {
+			snprintf(candidate, sizeof(candidate), "%s %s", lines[lineCount - 1], tok);
+			/* re-measure the combined line */
+			Vector2 m = MeasureTextEx(pixelFont, candidate, fontSize, spacing);
+			if(m.x <= r.width - 4.0f) {
+				/* merge into the current line */
+				size_t used = strlen(lines[lineCount - 1]);
+				snprintf(lines[lineCount - 1] + used, sizeof(buf) - used, " %s", tok);
+				widths[lineCount - 1] = m.x;
+				tok = strtok(NULL, " ");
+				continue;
+			}
+		}
+		if(lineCount >= maxLines) {
+			break;
+		}
+		lines[lineCount] = buf; /* placeholder; replaced below */
+		/* Write the token into a dedicated slot. strtok modifies buf, so
+		 * copy the token into a fresh buffer owned by lines[]. */
+		char *slot = strdup(tok);
+		if(!slot) {
+			break;
+		}
+		lines[lineCount] = slot;
+		Vector2 m = MeasureTextEx(pixelFont, slot, fontSize, spacing);
+		widths[lineCount] = m.x;
+		lineCount++;
+		tok = strtok(NULL, " ");
+	}
+	if(lineCount == 0) {
+		return;
+	}
+	float totalH = lineCount * (fontSize + 2.0f);
+	float y = r.y + (r.height - totalH) / 2.0f;
+	for(int i = 0; i < lineCount; i++) {
+		float x = r.x + (r.width - widths[i]) / 2.0f;
+		DrawTextEx(pixelFont, lines[i], (Vector2){ x, y }, fontSize, spacing, cs.labelSelected);
+		y += fontSize + 2.0f;
+	}
+	for(int i = 0; i < lineCount; i++) {
+		free(lines[i]);
+	}
+}
+
 static void drawRouteDestNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	if(!gn) {
 		return;
 	}
 	(void)drawColourRectangle; /* intentionally unused now */
-	/* Spec #2: animate the green channel of cs.routeAdd between
-	 * ~120 and ~210 using a slow sine so the outline pulses
-	 * orange↔gold. Erase-mode swaps to routeMul (blue) so the
-	 * destructive intent is obvious. */
-	Color outline = cs.routeAdd;
-	if(g_routeErase) {
-		outline = cs.routeMul;
-	} else {
-		float pulse = 120.0f + 90.0f * (0.5f + 0.5f * sinf(GetTime() * 4.0f));
-		outline.g = (unsigned char)pulse;
-	}
-	if(gn->selected) {
-		/* Selected gets the focused gold border. Erase-mode selected
-		 * picks the destructive red so the user can't miss the intent.
-		 * Spec #2 also says selected brightens by ~40 on r and g. */
-		outline = g_routeErase ? cs.reddish : cs.labelSelected;
-		if(!g_routeErase) {
-			int r2 = (int)outline.r + 40;
-			int g2 = (int)outline.g + 40;
-			if(r2 > 255) {
-				r2 = 255;
-			}
-			if(g2 > 255) {
-				g2 = 255;
-			}
-			outline.r = (unsigned char)r2;
-			outline.g = (unsigned char)g2;
-		}
-	}
+	DestCtx *dc = (DestCtx *)gn->actionCtx;
 	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
 	float thickness = gn->selected ? 3.0f : 2.0f;
+
+	/* T9: KM_FUNCTION held (g_routeErase is set each frame from the
+	 * held state) overrides the visuals — every dest shows whether it is
+	 * routed or not; the selected one gets the instruction text. */
+	if(g_routeErase && dc && dc->inst && dc->dest && dc->srcIdx >= 0 && dc->srcIdx < dc->inst->modList->count) {
+		Mod *src = dc->inst->modList->mods[dc->srcIdx];
+		bool routed = src && connFromSource(dc->dest->modulators, src);
+		if(routed) {
+			/* routed: oscillate bright↔dark red */
+			float k = 0.5f + 0.5f * sinf(GetTime() * 6.0f);
+			Color red = { 200, 30, 30, 255 };
+			red.r = (unsigned char)(120 + 135 * k);
+			DrawRectangleLinesEx(r, thickness, red);
+			if(gn->selected && src && src->name && dc->dest->name) {
+				char msg[160];
+				snprintf(msg, sizeof(msg), "tap EDIT to clear modulations for %s_%s", src->name, dc->dest->name);
+				drawWrappedCellText(msg, r);
+			}
+			return;
+		}
+		/* unrouted: static dim green + text */
+		DrawRectangleLinesEx(r, thickness, (Color){ 60, 110, 60, 255 });
+		if(gn->selected) {
+			drawWrappedCellText("no active modulations.", r);
+		}
+		return;
+	}
+
+	/* Default selected visual: green oscillation between labelSelected
+	 * and a brighter mix (unless the function-held states above apply). */
+	Color outline;
+	if(gn->selected) {
+		float k = 0.5f + 0.5f * sinf(GetTime() * 4.0f);
+		Color base = cs.labelSelected;
+		int br = (int)base.r + 40;
+		int bg = (int)base.g + 40;
+		int bb = (int)base.b + 40;
+		outline.r = (unsigned char)(base.r + ((br > 255 ? 255 : br) - base.r) * k);
+		outline.g = (unsigned char)(base.g + ((bg > 255 ? 255 : bg) - base.g) * k);
+		outline.b = (unsigned char)(base.b + ((bb > 255 ? 255 : bb) - base.b) * k);
+		outline.a = 255;
+	} else {
+		outline = cs.routeAdd;
+	}
 	DrawRectangleLinesEx(r, thickness, outline);
 }
 
@@ -220,16 +307,8 @@ typedef struct {
 
 static SourceCtx g_sourceCtx[MAX_ENVELOPES];
 
-/* DestCtx and g_destCtx are referenced by the probe helper
- * probePickFirstRoute (declared below) and must therefore be visible
- * before it. The picker layer also writes to g_destCtx[i] when it
- * builds its dest buttons; cbRouteToDest reads from it on EDIT. */
-typedef struct {
-	Instrument *inst;
-	int srcIdx;
-	Parameter *dest;
-} DestCtx;
-
+/* g_destCtx and the picker's dest buttons are built in cbOpenRouteLayer
+ * and read by cbRouteToDest + the probe helper. */
 static DestCtx g_destCtx[MAX_PARAMS];
 
 
@@ -247,6 +326,7 @@ static RouteLinesCtx g_routeLinesCtx;
 
 static void cbRouteToDest(void *ctx);
 static bool connFromSource(ModConnection *c, Mod *src);
+typedef struct DestCtx DestCtx;
 static int findRouteButtonRect(GuiNode *root, Rectangle *out);
 static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p);
 void cbOpenRouteLayer(void *ctx);
