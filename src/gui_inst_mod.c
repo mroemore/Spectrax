@@ -247,6 +247,8 @@ static RouteLinesCtx g_routeLinesCtx;
 
 static void cbRouteToDest(void *ctx);
 static bool connFromSource(ModConnection *c, Mod *src);
+static int findRouteButtonRect(GuiNode *root, Rectangle *out);
+static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p);
 void cbOpenRouteLayer(void *ctx);
 
 /* Probe helper: returns true when running under the --probe-route
@@ -561,6 +563,44 @@ static void cbRouteToDest(void *ctx) {
  * a selectable button drawn at the dial's own x/y/w/h so the visual
  * position matches the underlying dial exactly. */
 
+/* T8: ghost (preview) lines — a faint, desaturated line from the source's
+ * ROUTE button to EVERY potential destination, so the user sees where a
+ * line would land before routing. Drawn beneath the dest buttons (first
+ * child of the picker graph) and beneath the real gradient route lines
+ * (the ROUTELINES layer above). */
+static void drawPickerGhostLines(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	(void)gn;
+	Graph *base = getSelectedInstGraph();
+	if(!base || !base->root) {
+		return;
+	}
+	Rectangle anchor = { 0, 0, 0, 0 };
+	findRouteButtonRect(base->root, &anchor);
+	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
+		return;
+	}
+	Color ghost = getColourScheme()->routeAdd;
+	ghost.r = (unsigned char)((ghost.r + 128) / 2);
+	ghost.g = (unsigned char)((ghost.g + 128) / 2);
+	ghost.b = (unsigned char)((ghost.b + 128) / 2);
+	ghost.a = 60;
+	Vector2 from = { anchor.x + anchor.width / 2, anchor.y + anchor.height / 2 };
+	for(int i = 0; i < g_routePickerCount && i < MAX_PARAMS; i++) {
+		Parameter *dest = g_destCtx[i].dest;
+		if(!dest) {
+			continue;
+		}
+		GuiNode *dialNode = findDialNodeForParam(base->root, dest);
+		if(!dialNode) {
+			continue;
+		}
+		Vector2 to = { dialNode->x + dialNode->w / 2.0f, dialNode->y + dialNode->h / 2.0f };
+		DrawLineEx(from, to, 2.0f, ghost);
+	}
+}
+
+
 void cbOpenRouteLayer(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
@@ -593,6 +633,13 @@ void cbOpenRouteLayer(void *ctx) {
 	Graph *g = createGraph(na_vertical);
 	GuiNode *firstDest = NULL;
 	GuiNode *destBtns[MAX_PARAMS];
+	/* T8: ghost-lines overlay node — first child so it draws beneath the
+	 * dest buttons. Pinned to the full screen in Loop 2 (reflow stamps
+	 * it as a band otherwise). */
+	GuiNode *ghost = createGuiNode(0, 0, 100, 100, 0, na_vertical, "GHOST", 0, 0);
+	ghost->drawable = true;
+	ghost->draw = drawPickerGhostLines;
+	appendItem(g->root, ghost, 1);
 	/* Loop 1: create + append each button. Do NOT pin rects here —
 	 * appendItem runs reflowCoordinates, which re-stamps x/y/w/h of
 	 * EVERY child already in the container. Pinning after a single
@@ -612,8 +659,13 @@ void cbOpenRouteLayer(void *ctx) {
 		}
 	}
 	/* Loop 2: now that every append has run, no further reflow will
-	 * happen — pin each button's rect to its dial's rect so the
-	 * picker visually lines up with the underlying dials. */
+	 * happen — pin the ghost overlay to the full screen and each
+	 * button's rect to its dial's rect so the picker visually lines
+	 * up with the underlying dials. */
+	ghost->x = 0;
+	ghost->y = 0;
+	ghost->w = SCREEN_W;
+	ghost->h = SCREEN_H;
 	for(int i = 0; i < n; i++) {
 		destBtns[i]->x = nodes[i]->x;
 		destBtns[i]->y = nodes[i]->y;
