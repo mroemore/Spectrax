@@ -169,6 +169,8 @@ static Color modStripColor(ModType type) {
 			return getColourScheme()->modStripRnd;
 		case MT_OFS:
 			return getColourScheme()->modStripOfs;
+		case MT_ATTEN:
+			return getColourScheme()->modStripDefault;
 		default:
 			return getColourScheme()->modStripDefault;
 	}

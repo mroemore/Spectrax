@@ -246,6 +246,7 @@ static RouteLinesCtx g_routeLinesCtx;
 
 
 static void cbRouteToDest(void *ctx);
+static bool connFromSource(ModConnection *c, Mod *src);
 void cbOpenRouteLayer(void *ctx);
 
 /* Probe helper: returns true when running under the --probe-route
@@ -282,7 +283,13 @@ int probePickFirstRoute(void) {
 		return 0;
 	}
 	Mod *m = inst->modList->mods[srcIdx];
-	if(!m) {
+	/* Skip attenuators (connection-internal nodes) — pick the last
+	 * real source so the probe's routes draw via a visible row. */
+	while(m && m->type == MT_ATTEN && srcIdx > 0) {
+		srcIdx--;
+		m = inst->modList->mods[srcIdx];
+	}
+	if(!m || m->type == MT_ATTEN) {
 		return 0;
 	}
 	int added = 0;
@@ -498,7 +505,7 @@ static void cbRouteToDest(void *ctx) {
 		for(;;) {
 			ModConnection *match = NULL;
 			for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
-				if(c->source == src) {
+				if(connFromSource(c, src)) {
 					match = c;
 					break;
 				}
@@ -518,7 +525,7 @@ static void cbRouteToDest(void *ctx) {
 	}
 	bool already = false;
 	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
-		if(c->source == src) {
+		if(connFromSource(c, src)) {
 			already = true;
 			break;
 		}
@@ -729,6 +736,20 @@ static void buildRouteLineLut(void) {
 }
 
 
+/* A connection is "from src" when its source IS src, or when it routes
+ * through src's attenuator (MT_ATTEN with input == src). Line drawing,
+ * route matching and erase/toggle detection must follow the attenuator. */
+static bool connFromSource(ModConnection *c, Mod *src) {
+	if(!c || !src) {
+		return false;
+	}
+	if(c->source == src) {
+		return true;
+	}
+	return c->source && c->source->type == MT_ATTEN && c->source->input == src;
+}
+
+
 static void drawRouteLinesNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	RouteLinesCtx *rc = &g_routeLinesCtx;
@@ -755,7 +776,7 @@ static void drawRouteLinesNode(void *self) {
 		}
 		ModConnection *c = p->modulators;
 		while(c) {
-			if(c->source == src) {
+			if(connFromSource(c, src)) {
 				GuiNode *dialNode = findDialNodeForParam(base->root, p);
 				if(!dialNode) {
 					c = c->next;
@@ -883,6 +904,9 @@ static void cbCycleSourceType(void *ctx) {
 		return;
 	}
 	Mod *mod = sc->inst->modList->mods[sc->idx];
+	if(mod && mod->type == MT_ATTEN) {
+		return;
+	}
 	ModType next = MT_ENV;
 	switch(mod->type) {
 		case MT_ENV: next = MT_LFO; break;
@@ -915,6 +939,12 @@ static const char *modTypeTag(ModType t) {
 
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected) {
 	Mod *mod = inst->modList->mods[idx];
+	/* Attenuators are connection-internal: they never appear as source
+	 * rows (no row, no type-cycling, no ROUTE button). Their routes are
+	 * managed through the real source they shape. */
+	if(!mod || mod->type == MT_ATTEN) {
+		return;
+	}
 	bool core = idx < inst->coreEnvelopeCount;
 	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
 	wrap->drawable = true;

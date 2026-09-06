@@ -415,14 +415,12 @@ static int test_remove_modulation(void) {
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
     addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
-    /* New wiring: the real source is one hop behind the connection
-     * (conn->source is the atten), so this no longer matches. */
-    ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base),
-                "real source no longer matches (conn->source is the atten)");
+    /* Atten-aware removal: passing the REAL source now matches the
+     * atten-routed connection and GCs the attenuator. */
     int before = pl->count;
     int modBefore = ml->count;
-    Mod *a1 = dest->modulators->source;
-    ASSERT_TRUE(removeModulation(pl, ml, dest, a1), "removed via the atten");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base),
+                "removed via the real source (atten-aware)");
     ASSERT_EQ(dest->modulator_count, 0, "no modulators left");
     ASSERT_TRUE(dest->modulators == NULL, "list empty");
     ASSERT_EQ(pl->count, before - 5, "type param + 4 atten params removed");
@@ -453,13 +451,12 @@ static int test_remove_modulation(void) {
  * then GCs the given mod when it is an atten with no connections left.
  *
  * Since the per-connection attenuators, each route from a real source
- * has its OWN atten — so "all routes from env" is now "all connections
- * from each atten fed by env". The real source itself has no direct
- * connections anymore.
+ * has its OWN atten — removeModulationsForSource(env) now follows the
+ * attenuators (input == env), removes both routes and GCs the attens.
  *
  * Verifies:
- *   - removeModulationsForSource(env) removes 0 (env no longer a conn source)
- *   - returns 1 per atten, leaving each destination with count 0
+ *   - removeModulationsForSource(env) removes 2 (one per route, atten-aware)
+ *   - leaving each destination with count 0
  *   - pl->count drops by 10 (2 x (type + 4 atten params)); the
  *     attenuators are GC'd as they lose their last connection
  *   - a call with an unregistered mod returns 0 (no-op)
@@ -473,18 +470,10 @@ static int test_remove_modulations_for_source(void) {
     addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD);
     addModulation(pl, ml, &env->base, d2, 1.0f, MO_MUL);
     /* One atten per route, both fed by env. */
-    Mod *a1 = d1->modulators->source;
-    Mod *a2 = d2->modulators->source;
-    ASSERT_TRUE(a1->type == MT_ATTEN && a1->input == &env->base, "a1 is env's atten");
-    ASSERT_TRUE(a2->type == MT_ATTEN && a2->input == &env->base, "a2 is env's atten");
     int before = pl->count;
-    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0,
-              "real source no longer carries direct connections");
-    ASSERT_EQ(d1->modulator_count, 1, "d1 still routed");
-    ASSERT_EQ(d2->modulator_count, 1, "d2 still routed");
-    ASSERT_EQ(removeModulationsForSource(pl, ml, a1), 1, "d1's connection removed");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 2,
+              "real source removes both routes (atten-aware)");
     ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
-    ASSERT_EQ(removeModulationsForSource(pl, ml, a2), 1, "d2's connection removed");
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
     ASSERT_EQ(pl->count, before - 10, "two (type + 4 atten params) removed");
     ASSERT_EQ(ml->count, 1, "both attens GC'd — env alone in modList");
@@ -878,7 +867,8 @@ static int test_atten_polarity_uni(void) {
     ModConnection *c = dest->modulators;
     Mod *atten = connAtten(c);
     ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
-    atten->output->minValue = -1.0f; /* let negatives reach the dest */
+    /* createAttenuatorMod widens the atten output to [-2,2] so the
+     * negative reaches the dest; no in-test widening needed. */
 
     /* bi-polar (default, pol=0): the negative passes through. */
     processModulations(pl, ml, 0.016f);
@@ -968,6 +958,48 @@ static int test_atten_cleanup(void) {
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
     teardown(pl, ml);
     printf("PASS test_atten_cleanup\n");
+    return 0;
+}
+
+static int test_remove_by_real_source(void) {
+    /* The GUI's toggle-off and erase paths pass the REAL source (the UI
+     * never sees attenuators). removeModulation must follow the atten:
+     * routing through the real source removes the atten-routed connection,
+     * and the atten is GC'd when the last connection goes. */
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD), "route");
+    ASSERT_EQ(dest->modulator_count, 1, "one connection");
+    ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN, "via attenuator");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base), "remove via real source");
+    ASSERT_EQ(dest->modulator_count, 0, "connection gone");
+    ASSERT_EQ(ml->count, 1, "atten GC'd — only the env remains");
+    teardown(pl, ml);
+    printf("PASS test_remove_by_real_source\n");
+    return 0;
+}
+
+static int test_remove_modulations_for_source_atten(void) {
+    /* Clear-all (the UI's KM_FUNCTION+EDIT confirm) calls
+     * removeModulationsForSource with the REAL source. It must follow the
+     * attenuators and GC them. */
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
+    Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD), "route d1");
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, d2, 1.0f, MO_ADD), "route d2");
+    ASSERT_EQ(ml->count, 3, "env + one atten per route");
+    int removed = removeModulationsForSource(pl, ml, &env->base);
+    ASSERT_EQ(removed, 2, "both routes removed via the real source");
+    ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
+    ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
+    ASSERT_EQ(ml->count, 1, "atten GC'd — only the env remains");
+    teardown(pl, ml);
+    printf("PASS test_remove_modulations_for_source_atten\n");
     return 0;
 }
 
@@ -1254,6 +1286,8 @@ int main(void) {
     fails += test_atten_curve();
     fails += test_atten_lazy_insertion();
     fails += test_atten_cleanup();
+    fails += test_remove_by_real_source();
+    fails += test_remove_modulations_for_source_atten();
     fails += test_wrap_increment();
 	fails += test_remove_mod();
 	fails += test_two_cycle_feedback();
