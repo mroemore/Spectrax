@@ -828,6 +828,11 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 			if(guiPickerEditorInput(is)) {
 				return true;
 			}
+			/* EDIT-held amount dial: LEFT/RIGHT adjust the routed
+			 * dest's connection amount instead of navigating. */
+			if(guiPickerHeldAmountAdjust(is)) {
+				return true;
+			}
 			layerStackInputLayer(&ig->overlayLayers, topIdx, is);
 			return true;
 		}

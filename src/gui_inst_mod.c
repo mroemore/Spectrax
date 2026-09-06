@@ -138,16 +138,27 @@ static void drawRouteDestNode(void *self) {
 	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
 	float thickness = gn->selected ? 3.0f : 2.0f;
 
-	/* S2: clip to the mod-wrap viewport when this dest sits inside the
-	 * scroll container. */
-	bool clipped = false;
-	Rectangle vp = { 0, 0, 0, 0 };
+	/* S2: destination buttons inside the scrollable mod container must
+	 * not paint over unrelated UI when their dial has scrolled out of
+	 * view. Per-dest BeginScissorMode() here is NOT an option: raylib's
+	 * batch flushes on every scissor switch mid-layer-draw, which
+	 * corrupts the translucent layer dim + every other queued draw in
+	 * the same frame (the dim stopped covering the screen above the
+	 * wrap, and FM-area dest buttons vanished). Instead skip the draw
+	 * outright when the dest's dial sits fully outside the wrap
+	 * viewport. */
+	bool occluded = false;
 	{
+		Rectangle vp = { 0, 0, 0, 0 };
 		Graph *bg = getSelectedInstGraph();
 		if(bg && bg->root && dc && dc->dest && destModWrapViewport(bg->root, dc->dest, &vp)) {
-			BeginScissorMode((int)vp.x, (int)vp.y, (int)vp.width, (int)vp.height);
-			clipped = true;
+			if(r.y + r.height <= vp.y || r.y >= vp.y + vp.height) {
+				occluded = true;
+			}
 		}
+	}
+	if(occluded) {
+		return;
 	}
 
 	/* T9: KM_FUNCTION held (g_routeErase is set each frame from the
@@ -167,18 +178,12 @@ static void drawRouteDestNode(void *self) {
 				snprintf(msg, sizeof(msg), "tap EDIT to clear modulations for %s_%s", src->name, dc->dest->name);
 				drawWrappedCellText(msg, r);
 			}
-			if(clipped) {
-				EndScissorMode();
-			}
 			return;
 		}
 		/* unrouted: static dim green + text */
 		DrawRectangleLinesEx(r, thickness, (Color){ 60, 110, 60, 255 });
 		if(gn->selected) {
 			drawWrappedCellText("no active modulations.", r);
-		}
-		if(clipped) {
-			EndScissorMode();
 		}
 		return;
 	}
@@ -211,9 +216,6 @@ static void drawRouteDestNode(void *self) {
 			snprintf(buf, sizeof(buf), "%.2f", amt);
 			Vector2 m = MeasureTextEx(pixelFont, buf, 7, 1);
 			DrawTextEx(pixelFont, buf, (Vector2){ ctr.x - m.x / 2.0f, ctr.y - m.y / 2.0f }, 7, 1, (Color){ 255, 255, 255, 220 });
-			if(clipped) {
-				EndScissorMode();
-			}
 			return;
 		}
 	}
@@ -428,6 +430,31 @@ static void refreshSourceCtx(Instrument *inst) {
 		g_sourceCtx[i].inst = inst;
 		g_sourceCtx[i].idx = i;
 	}
+}
+
+/* Re-point a captured SourceCtx (ROUTE / DEL / clear-all entry) at the
+ * CURRENTLY DISPLAYED instrument and validate its idx against that
+ * instrument's modList. The captured ctx can be NULL or stale: boot
+ * graphs are built by createInstrumentGui BEFORE igui is assigned (so
+ * the selected-channel refresh inside appendModSourceEntry never runs),
+ * and switching channels does not rebuild the graphs. The pressed button
+ * always lives in the displayed graph, so the route target is the
+ * displayed instrument — sc->idx indexes its modList because the graph's
+ * rows are rebuilt on every modList mutation. */
+static Instrument *resolveSourceCtx(SourceCtx *sc) {
+	InstrumentGui *ig = igui;
+	if(!ig || !sc) {
+		return NULL;
+	}
+	Instrument *inst = ig->vm->instruments[*ig->selectedInstrument];
+	if(!inst || !inst->modList) {
+		return NULL;
+	}
+	sc->inst = inst;
+	if(sc->idx < 0 || sc->idx >= inst->modList->count) {
+		return NULL;
+	}
+	return inst;
 }
 
 /* N1 (user report): when a ROUTE picker closes via a mutation that
@@ -695,6 +722,73 @@ bool guiPickerEditorInput(InputState *is) {
 	return true;
 }
 
+/* Held-adjust (user report): the T10 amount dial is not just a readout —
+ * while KM_EDIT is HELD on a routed dest, LEFT/RIGHT change the
+ * connection's amount instead of navigating the picker (the dial is a
+ * control surface). The double-tap editor (guiPickerEditorInput, above)
+ * owns the full curve/polarity/reset panel and takes precedence when
+ * open. Returns true when it consumed the frame's input. */
+bool guiPickerHeldAmountAdjust(InputState *is) {
+	if(g_attenEditorOpen || !g_pickerEditHeld) {
+		return false;
+	}
+	InstrumentGui *ig = igui;
+	if(!ig) {
+		return false;
+	}
+	Layer *route = findLayerByName(&ig->overlayLayers, "ROUTE");
+	if(!route || !route->graph || !route->graph->selected) {
+		return false;
+	}
+	GuiNode *sel = route->graph->selected;
+	DestCtx *dc = (sel && sel->actionCb == cbRouteToDest) ? (DestCtx *)sel->actionCtx : NULL;
+	if(!dc || !dc->inst || !dc->dest || dc->srcIdx < 0 || dc->srcIdx >= dc->inst->modList->count) {
+		return false;
+	}
+	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	if(!src) {
+		return false;
+	}
+	ModConnection *conn = NULL;
+	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+		if(connFromSource(c, src)) {
+			conn = c;
+			break;
+		}
+	}
+	if(!conn || !conn->amount) {
+		return false;
+	}
+	int dir = 0;
+	float step = ATTEN_AMT_STEP;
+	if(isKeyJustPressed(is, KM_LEFT)) {
+		dir = -1;
+	}
+	if(isKeyJustPressed(is, KM_RIGHT)) {
+		dir = 1;
+	}
+	if(isKeyJustPressed(is, KM_UP)) {
+		dir = 1;
+		step = 0.5f;
+	}
+	if(isKeyJustPressed(is, KM_DOWN)) {
+		dir = -1;
+		step = 0.5f;
+	}
+	if(dir == 0) {
+		return false;
+	}
+	float amt = getParameterValue(conn->amount) + (float)dir * step;
+	if(amt < ATTEN_AMT_MIN) {
+		amt = ATTEN_AMT_MIN;
+	}
+	if(amt > ATTEN_AMT_MAX) {
+		amt = ATTEN_AMT_MAX;
+	}
+	setParameterBaseValue(conn->amount, amt);
+	return true;
+}
+
 /* Deferred toggle: fires the routed dest's remove ~0.3s after a single
  * EDIT tap that was NOT followed by a double-tap. */
 void guiPickerUpdateDeferred(void) {
@@ -843,10 +937,14 @@ static void cbClearAllConfirmYes(void *ctx) {
 void cbOpenClearAllLayer(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
-	if(!ig || !sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+	if(!ig || !sc) {
 		return;
 	}
-	Mod *src = sc->inst->modList->mods[sc->idx];
+	Instrument *inst = resolveSourceCtx(sc);
+	if(!inst) {
+		return;
+	}
+	Mod *src = inst->modList->mods[sc->idx];
 	if(!src || !src->name) {
 		return;
 	}
@@ -874,6 +972,9 @@ static void cbDeleteSource(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
 	if(!ig || !sc) {
+		return;
+	}
+	if(!resolveSourceCtx(sc)) {
 		return;
 	}
 	Graph *g = createGraph(na_horizontal);
@@ -1094,7 +1195,11 @@ static void drawPickerGhostLines(void *self) {
 void cbOpenRouteLayer(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
-	if(!ig || !sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+	if(!ig || !sc) {
+		return;
+	}
+	Instrument *inst = resolveSourceCtx(sc);
+	if(!inst) {
 		return;
 	}
 	/* Build the destination list by walking the CURRENT instrument graph
