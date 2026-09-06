@@ -54,9 +54,9 @@ DOWN
 ASSERT selected==ENV
 
 # --- Route the source to op1 feedback via the picking layer ---------------
-# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; the first
-# collected dial is the meta VOICES param; DOWN lands on op1 feedback
-# (geometric bestInDirection from VOICES at x=359..435 -> feedback at x=369).
+# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; N2 lands the
+# cursor on the CLOSEST dest (env[4]'s own decay-curve dial, es_Curve).
+# JUMPTL reaches op1 feedback directly.
 RIGHT
 RIGHT
 RIGHT
@@ -64,50 +64,30 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==voiceCount
-DOWN
+ASSERT topLayerSelected==es_Curve
+UP
+UP
+UP
+UP
 ASSERT topLayerSelected==feedback
 EDIT
-ASSERT modulators==(1,0,1)
-# cbRouteToDest pops + rebuilds, resetting selection to RATIO1. Re-navigate.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+ASSERT modulators==(3,0,1)
+# N1: cbRouteToDest pops + rebuilds and reselects env[4]'s ROUTE button —
+# the cursor is already on ROUTE for the unroute.
 EDIT
-ASSERT topLayerSelected==voiceCount
-DOWN
+UP
+UP
+UP
+UP
 ASSERT topLayerSelected==feedback
 # EDIT on a routed dest defers its toggle (T11 double-tap window) —
 # wait for the deferred remove to fire.
 EDIT
 FRAMES 30
-ASSERT modulators==(1,0,0)
+ASSERT modulators==(3,0,0)
 
 # --- Delete via the confirm modal -----------------------------------------
-# Re-navigate to env[4]'s DEL (ENV type button then RIGHT x6).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
+# After the unroute N1 reselects env[4]'s ROUTE; RIGHT lands on DEL.
 RIGHT
 ASSERT selected==DEL
 EDIT

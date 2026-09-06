@@ -336,4 +336,10 @@ void DrawGUI(int currentScene);
 RenderTexture2D createPresentTarget(void);
 void presentFrame(RenderTexture2D gfx);
 InstrumentGui *getInstrumentGui(void);
+
+/* True when a non-passive overlay layer (picker / confirm / editor) is up
+ * over the instrument base graph. While one is up, arrows belong to the
+ * layer — global instrument gestures that consume arrows (e.g. the
+ * FUNCTION+arrow channel switch) must be gated on this being false. */
+bool instrumentLayerModalActive(void);
 #endif // GUI_H

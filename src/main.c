@@ -788,7 +788,13 @@ int main(int argc, char **argv) {
 					 * removeSelectedEnvelope (the no-header walker) is gone. */
 					removeSelectedSource();
 				}
-				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
+				if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
+					/* FUNCTION+arrows on the instrument screen switch the
+					 * channel via the arranger cell. While an overlay
+					 * layer (route picker / clear-all confirm / editor)
+					 * is up the arrows navigate THAT layer instead — the
+					 * channel switch must not fire, or moving the cursor
+					 * through the confirm swaps the instrument mid-flow. */
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 0, -1, 0);
 						// updateInstrumentGui(instrumentGui);

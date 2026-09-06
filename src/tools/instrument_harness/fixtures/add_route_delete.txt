@@ -7,6 +7,9 @@
 # The ROUTE button has no wiring yet (Tasks 6-7 will add it).
 # This fixture exercises the full ADD -> walk-right -> REMOVE flow,
 # plus the DELETE_NO cancel path and the DELETE_YES confirm path.
+# N1/N2 (user reports): after a route the rebuild reselects the source's
+# ROUTE button; opening the picker lands on the CLOSEST dest (env[4]'s
+# own es_Curve dial); JUMPTL jumps within the picker layer.
 
 FRAMES 1
 ASSERT selected==RATIO1
@@ -35,11 +38,9 @@ DOWN
 DOWN
 ASSERT selected==ENV
 
-# Task 6: ROUTE opens the destination-picking layer. The first collected
-# dial is the meta-row VOICES dial (walk order: META precedes FM section).
-# The picking layer's arrows use geometric nav (navigateGraphRefined), so
-# DOWN from VOICES (x=359..435) lands on the dial directly below at that
-# x-range: op1's feedback (x=369), not op0's ratio (x=39).
+# ROUTE opens the destination-picking layer. N2 lands the cursor on the
+# CLOSEST dest to the source's ROUTE button (env[4]'s es_Curve), not the
+# top of the screen.
 RIGHT
 RIGHT
 RIGHT
@@ -47,45 +48,36 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==voiceCount
-DOWN
+ASSERT topLayerSelected==es_Curve
+UP
+UP
+UP
+UP
 ASSERT topLayerSelected==feedback
 # EDIT routes the runtime source to op1 feedback.
 EDIT
-ASSERT modulators==(1,0,1)
-# cbRouteToDest pops + rebuilds, resetting selection to RATIO1.
-# Re-navigate to ROUTE.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+ASSERT modulators==(3,0,1)
+# N1: cbRouteToDest pops + rebuilds and reselects the source's ROUTE
+# button — the cursor is already on ROUTE for the unroute.
 EDIT
-ASSERT topLayerSelected==voiceCount
-DOWN
+UP
+UP
+UP
+UP
 ASSERT topLayerSelected==feedback
 # EDIT on a routed dest defers its toggle (T11 double-tap window) —
 # wait for the deferred remove to fire.
 EDIT
 FRAMES 30
-ASSERT modulators==(1,0,0)
-# Re-navigate back to the runtime entry's ENV type button for the
-# type-cycle + delete sections below.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
+ASSERT modulators==(3,0,0)
+# After the unroute N1 reselects the source's ROUTE. Walk LEFT through
+# the entry back to its ENV type button for the type-cycle section:
+# ROUTE <- CURVE <- DECAY <- CURVE <- ATTACK <- TYPE.
+LEFT
+LEFT
+LEFT
+LEFT
+LEFT
 ASSERT selected==ENV
 
 # EDIT cycles ENV -> LFO.
@@ -101,7 +93,8 @@ DOWN
 ASSERT selected==LFO
 
 # Walk RIGHT through the entry to the DEL button.
-# Layout: TYPE (3) | ATTACK CURVE DECAY CURVE (16) | ROUTE (3) | DEL (2)
+# Layout: TYPE (3) | RATE (4) | ROUTE (3) | DEL (2) — RIGHT x5 from TYPE
+# lands on DEL via geometric nav.
 RIGHT
 RIGHT
 RIGHT

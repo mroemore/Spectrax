@@ -83,6 +83,18 @@ InstrumentGui *getInstrumentGui(void) {
 	return igui;
 }
 
+bool instrumentLayerModalActive(void) {
+	if(!igui) {
+		return false;
+	}
+	for(int i = igui->overlayLayers.count - 1; i >= 0; i--) {
+		if(!igui->overlayLayers.layers[i].passive) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 
 

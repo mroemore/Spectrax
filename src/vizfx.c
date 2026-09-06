@@ -245,35 +245,50 @@ void updateModStripTexture(ModStrip *ms) {
 
 	ModList *modList = selectVoiceModList(ms);
 	if(modList && modList->count > 0) {
-		int n = modList->count;
-		float barW = ms->width / (float)n;
-		for(int i = 0; i < n; i++) {
+		/* M3 (user report): attenuators are connection-internal (they sit
+		 * in the modList next to the real sources) and must not show as
+		 * their own strip bars. Lay the bars out over the non-atten
+		 * sources only so the strip keeps showing one column per source. */
+		int srcCount = 0;
+		for(int i = 0; i < modList->count; i++) {
 			Mod *m = modList->mods[i];
-			if(!m || !m->output) {
-				continue;
+			if(m && m->type != MT_ATTEN) {
+				srcCount++;
 			}
-			float val = getParameterValue(m->output);
-			if(val < 0.0f) {
-				val = 0.0f;
+		}
+		if(srcCount > 0) {
+			int n = srcCount;
+			float barW = ms->width / (float)n;
+			int slot = 0;
+			for(int i = 0; i < modList->count; i++) {
+				Mod *m = modList->mods[i];
+				if(!m || !m->output || m->type == MT_ATTEN) {
+					continue;
+				}
+				float val = getParameterValue(m->output);
+				if(val < 0.0f) {
+					val = 0.0f;
+				}
+				if(val > 1.0f) {
+					val = 1.0f;
+				}
+				val = powf(val, MOD_STRIP_RESPONSE_CURVE);
+				int x = (int)(slot * barW) + 2;
+				int bw = (int)barW - 4;
+				if(bw < 1) {
+					bw = 1;
+				}
+				int halfH = (int)(val * ((ms->height - 6) / 2.0f));
+				int centerY = ms->height / 2;
+				Color base_colour = modStripColor(m->type);
+				base_colour.g = (int)(((float)base_colour.g/255.0f)*val*255.0f);
+				base_colour.b *= 0.5f;
+				base_colour.b += (int)((float)base_colour.b*val);
+				base_colour.a = 250;
+				DrawRectangle(x, centerY - halfH, bw, halfH, base_colour);
+				DrawRectangle(x, centerY, bw, halfH, base_colour);
+				slot++;
 			}
-			if(val > 1.0f) {
-				val = 1.0f;
-			}
-			val = powf(val, MOD_STRIP_RESPONSE_CURVE);
-			int x = (int)(i * barW) + 2;
-			int bw = (int)barW - 4;
-			if(bw < 1) {
-				bw = 1;
-			}
-			int halfH = (int)(val * ((ms->height - 6) / 2.0f));
-			int centerY = ms->height / 2;
-			Color base_colour = modStripColor(m->type);
-			base_colour.g = (int)(((float)base_colour.g/255.0f)*val*255.0f);
-			base_colour.b *= 0.5f;
-			base_colour.b += (int)((float)base_colour.b*val);
-			base_colour.a = 250;
-			DrawRectangle(x, centerY - halfH, bw, halfH, base_colour);
-			DrawRectangle(x, centerY, bw, halfH, base_colour);
 		}
 	}
 	EndTextureMode();

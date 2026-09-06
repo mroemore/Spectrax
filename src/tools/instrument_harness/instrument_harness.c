@@ -117,6 +117,8 @@ typedef enum {
 	SOP_ASSERT_VOICE_COUNT,   /* Task 7: roundf(inst->voiceCountParam->baseValue) == N */
 	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
 	SOP_REPORT,        /* Task 4: print a GuiNode's rect (x y w h) to stdout */
+	SOP_SHOWTL,        /* print the top non-passive layer's selected node name */
+	SOP_JUMP_TL,       /* changeGraphSelection on the top non-passive layer's graph */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -417,6 +419,17 @@ static void parseScript(const char *path) {
 				return;
 			}
 			s->op = SOP_SHOT; s->frames = 1;
+			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
+			s->name[sizeof(s->name) - 1] = '\0';
+		} else if(strcmp(op, "SHOWTL") == 0) {
+			s->op = SOP_SHOWTL; s->frames = 1;
+		} else if(strcmp(op, "JUMPTL") == 0) {
+			if(nt < 2) {
+				fclose(fp);
+				failScript(lineno, "JUMPTL requires a node name");
+				return;
+			}
+			s->op = SOP_JUMP_TL; s->frames = 1;
 			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
 			s->name[sizeof(s->name) - 1] = '\0';
 		} else if(strcmp(op, "REPORT") == 0) {
@@ -1138,6 +1151,29 @@ static void processScriptAssert(const ScriptStep *s) {
 		case SOP_ASSERT_SCENE:
 			runAssertScene(s->lineno, s->a.n);
 			break;
+		case SOP_SHOWTL: {
+			extern InstrumentGui *igui;
+			Layer *top = igui ? topNonPassiveLayer(&igui->overlayLayers) : NULL;
+			GuiNode *sel = (top && top->graph) ? top->graph->selected : NULL;
+			fprintf(stdout, "SHOWTL: %s\n", (sel && sel->name) ? sel->name : "(null)");
+			break;
+		}
+		case SOP_JUMP_TL: {
+			extern InstrumentGui *igui;
+			Layer *top = igui ? topNonPassiveLayer(&igui->overlayLayers) : NULL;
+			Graph *tg = (top && top->graph) ? top->graph : NULL;
+			if(!tg) {
+				failScript(s->lineno, "JUMPTL %s: no top layer graph", s->name);
+			} else {
+				GuiNode *match = findSelectableByName(tg->root, s->name);
+				if(!match) {
+					failScript(s->lineno, "JUMPTL %s: no selectable with that name", s->name);
+				} else {
+					changeGraphSelection(tg, match);
+				}
+			}
+			break;
+		}
 		case SOP_ASSERT_CHIP_EXPANDED:
 			runAssertChipExpanded(s->lineno, s->a.n, s->b.n);
 			break;
@@ -1385,7 +1421,10 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		 * removeSelectedSource's `idx - 1` mapping is correct. */
 		removeSelectedSource();
 	}
-	if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
+	if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
+		/* Mirror main.c: FUNCTION+arrows switch the channel while the
+		 * base graph is focused. While an overlay layer is up the arrows
+		 * belong to the layer. */
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 			selectArrangerCell(data->arranger, 0, -1, 0);
 		}

@@ -95,6 +95,39 @@ static void drawWrappedCellText(const char *text, Rectangle r) {
 	}
 }
 
+/* S2 (user report): dest buttons that sit over the scrollable mod-wrap
+ * are drawn by the picker layer, which has no scissor of its own — so a
+ * row scrolled under the wrap's top edge still paints its outline over
+ * the FM/preset controls above. When the dest dial lives under the
+ * mod_wrap scroll container, return the wrap viewport so the caller can
+ * clip the picker drawing to it. */
+static GuiNode *findScrollContainerByName(GuiNode *n, const char *name);
+static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p);
+
+static bool destModWrapViewport(GuiNode *root, Parameter *dest, Rectangle *vp) {
+	if(!root || !dest || !vp) {
+		return false;
+	}
+	GuiNode *wrap = findScrollContainerByName(root, "mod_wrap");
+	if(!wrap) {
+		return false;
+	}
+	GuiNode *dial = findDialNodeForParam(root, dest);
+	GuiNode *p = dial;
+	while(p && p != wrap) {
+		p = p->container;
+	}
+	if(!p) {
+		return false;
+	}
+	ScrollContainer *sc = (ScrollContainer *)wrap;
+	vp->x = (float)sc->base.x;
+	vp->y = (float)sc->base.y;
+	vp->width = (float)sc->base.w;
+	vp->height = (float)sc->base.h;
+	return true;
+}
+
 static void drawRouteDestNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	if(!gn) {
@@ -104,6 +137,18 @@ static void drawRouteDestNode(void *self) {
 	DestCtx *dc = (DestCtx *)gn->actionCtx;
 	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
 	float thickness = gn->selected ? 3.0f : 2.0f;
+
+	/* S2: clip to the mod-wrap viewport when this dest sits inside the
+	 * scroll container. */
+	bool clipped = false;
+	Rectangle vp = { 0, 0, 0, 0 };
+	{
+		Graph *bg = getSelectedInstGraph();
+		if(bg && bg->root && dc && dc->dest && destModWrapViewport(bg->root, dc->dest, &vp)) {
+			BeginScissorMode((int)vp.x, (int)vp.y, (int)vp.width, (int)vp.height);
+			clipped = true;
+		}
+	}
 
 	/* T9: KM_FUNCTION held (g_routeErase is set each frame from the
 	 * held state) overrides the visuals — every dest shows whether it is
@@ -122,12 +167,18 @@ static void drawRouteDestNode(void *self) {
 				snprintf(msg, sizeof(msg), "tap EDIT to clear modulations for %s_%s", src->name, dc->dest->name);
 				drawWrappedCellText(msg, r);
 			}
+			if(clipped) {
+				EndScissorMode();
+			}
 			return;
 		}
 		/* unrouted: static dim green + text */
 		DrawRectangleLinesEx(r, thickness, (Color){ 60, 110, 60, 255 });
 		if(gn->selected) {
 			drawWrappedCellText("no active modulations.", r);
+		}
+		if(clipped) {
+			EndScissorMode();
 		}
 		return;
 	}
@@ -160,6 +211,9 @@ static void drawRouteDestNode(void *self) {
 			snprintf(buf, sizeof(buf), "%.2f", amt);
 			Vector2 m = MeasureTextEx(pixelFont, buf, 7, 1);
 			DrawTextEx(pixelFont, buf, (Vector2){ ctr.x - m.x / 2.0f, ctr.y - m.y / 2.0f }, 7, 1, (Color){ 255, 255, 255, 220 });
+			if(clipped) {
+				EndScissorMode();
+			}
 			return;
 		}
 	}
@@ -375,6 +429,55 @@ static void refreshSourceCtx(Instrument *inst) {
 		g_sourceCtx[i].idx = i;
 	}
 }
+
+/* N1 (user report): when a ROUTE picker closes via a mutation that
+ * rebuilds the base graph, the rebuild resets the base selection to the
+ * boot node (RATIO1). Find the source's ROUTE button in the freshly
+ * built graph (its actionCtx is the &g_sourceCtx[idx] slot the builder
+ * just refreshed) and put the cursor back on it. */
+static GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx) {
+	if(!n) {
+		return NULL;
+	}
+	if(n->actionCb == cbOpenRouteLayer && n->actionCtx) {
+		SourceCtx *sc = (SourceCtx *)n->actionCtx;
+		if(sc->idx == srcIdx) {
+			return n;
+		}
+	}
+	if(n->itemCount > 0 && n->items) {
+		ListElement *e = n->items->head;
+		for(int i = 0; i < n->itemCount; i++) {
+			GuiNode *hit = findSourceRouteNode(*(GuiNode **)e->data, srcIdx);
+			if(hit) {
+				return hit;
+			}
+			e = e->next;
+		}
+	}
+	return NULL;
+}
+
+static int findSourceRouteRect(GuiNode *root, int srcIdx, Rectangle *out) {
+	GuiNode *n = findSourceRouteNode(root, srcIdx);
+	if(!n || !out) {
+		return 0;
+	}
+	*out = (Rectangle){ n->x, n->y, n->w, n->h };
+	return 1;
+}
+
+static void reselectSourceRoute(int srcIdx) {
+	Graph *base = getSelectedInstGraph();
+	if(!base || !base->root) {
+		return;
+	}
+	GuiNode *btn = findSourceRouteNode(base->root, srcIdx);
+	if(btn) {
+		changeGraphSelection(base, btn);
+	}
+}
+
 
 /* Probe-only helper: wire the most recently added runtime source into
  * the first few routable parameters of the selected instrument. Wires
@@ -601,6 +704,16 @@ void guiPickerUpdateDeferred(void) {
 	if(GetTime() - g_pickerLastEditPress < ATTEN_EDIT_WINDOW) {
 		return;
 	}
+	/* R4 (user report): if EDIT is STILL held when the double-tap window
+	 * expires, this is the T10 readout hold (KM_EDIT-held amount dial),
+	 * NOT a tap — cancel the deferred toggle so the picker doesn't pop
+	 * out from under the user mid-hold. Only a completed tap (key
+	 * released before expiry) fires the remove. */
+	if(g_pickerEditHeld) {
+		g_pickerPendingToggle = false;
+		g_pickerPendingCtx = NULL;
+		return;
+	}
 	DestCtx *dc = g_pickerPendingCtx;
 	g_pickerPendingToggle = false;
 	g_pickerPendingCtx = NULL;
@@ -624,6 +737,7 @@ void guiPickerUpdateDeferred(void) {
 	dc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
 	syncRouteLinesOverlay(ig);
+	reselectSourceRoute(dc->srcIdx);
 }
 
 bool guiRouteEraseMode(void) {
@@ -723,6 +837,7 @@ static void cbClearAllConfirmYes(void *ctx) {
 	sc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
 	syncRouteLinesOverlay(ig);
+	reselectSourceRoute(sc->idx);
 }
 
 void cbOpenClearAllLayer(void *ctx) {
@@ -914,6 +1029,7 @@ static void cbRouteToDest(void *ctx) {
 		dc->inst->rebuilding = false;
 		pthread_mutex_unlock(&g_audioLock);
 		syncRouteLinesOverlay(ig);
+		reselectSourceRoute(dc->srcIdx);
 		return;
 	}
 	{
@@ -944,12 +1060,13 @@ static void cbRouteToDest(void *ctx) {
 static void drawPickerGhostLines(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	(void)gn;
+	RouteLinesCtx *rc = &g_routeLinesCtx;
 	Graph *base = getSelectedInstGraph();
 	if(!base || !base->root) {
 		return;
 	}
 	Rectangle anchor = { 0, 0, 0, 0 };
-	findRouteButtonRect(base->root, &anchor);
+	findSourceRouteRect(base->root, rc->srcIdx, &anchor);
 	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
 		return;
 	}
@@ -1045,8 +1162,35 @@ void cbOpenRouteLayer(void *ctx) {
 		destBtns[i]->w = nodes[i]->w;
 		destBtns[i]->h = nodes[i]->h;
 	}
-	if(firstDest) {
-		changeGraphSelection(g, firstDest);
+	/* N2 (user report): pick the destination CLOSEST to the source's
+	 * ROUTE button rather than the first dial collected — entering the
+	 * routing layer should land the cursor near where the user just
+	 * was, not jump to the top of the screen. Compare centre-to-centre
+	 * using the pinned dest rects. */
+	{
+		Rectangle anchor = { 0, 0, 0, 0 };
+		findSourceRouteRect(instGraph->root, sc->idx, &anchor);
+		GuiNode *closest = NULL;
+		float bestD = -1.0f;
+		if(anchor.width > 0.0f && anchor.height > 0.0f) {
+			float ax = anchor.x + anchor.width / 2.0f;
+			float ay = anchor.y + anchor.height / 2.0f;
+			for(int i = 0; i < n; i++) {
+				float cx = destBtns[i]->x + destBtns[i]->w / 2.0f;
+				float cy = destBtns[i]->y + destBtns[i]->h / 2.0f;
+				float d = (cx - ax) * (cx - ax) + (cy - ay) * (cy - ay);
+				if(bestD < 0.0f || d < bestD) {
+					bestD = d;
+					closest = destBtns[i];
+				}
+			}
+		}
+		if(!closest) {
+			closest = firstDest;
+		}
+		if(closest) {
+			changeGraphSelection(g, closest);
+		}
 	}
 	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "ROUTE", true, true);
 	pushLayer(&ig->overlayLayers, layer);
@@ -1188,7 +1332,7 @@ static void drawRouteLinesNode(void *self) {
 		return;
 	}
 	Rectangle anchor = { 0, 0, 0, 0 };
-	findRouteButtonRect(base->root, &anchor);
+	findSourceRouteRect(base->root, rc->srcIdx, &anchor);
 	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
 		return;
 	}
@@ -1423,11 +1567,12 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			break;
 	}
 
+	/* M2 (user report): every source row gets a ROUTE button — the four
+	 * core envelopes are first-class modulation SOURCES too (their params
+	 * are voice-aliased only as destinations of the delete path, which
+	 * stays runtime-only). The TYPE selector + DEL stay runtime-only. */
+	appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, cbOpenRouteLayer, &g_sourceCtx[idx]), 3);
 	if(!core) {
-		/* Task 6: ROUTE opens the destination-picker layer. cbOpenRouteLayer
-		 * reads inst+idx from this entry's SourceCtx (refreshed above by
-		 * refreshSourceCtx) so the picker always sees the right Mod. */
-		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ROUTE", 0, cbOpenRouteLayer, &g_sourceCtx[idx]), 3);
 		/* Task 5: DEL opens the YES/NO confirm layer; cbDeleteSource reads
 		 * inst+idx off the per-entry SourceCtx slot refreshed by
 		 * refreshSourceCtx() above. */
@@ -1466,6 +1611,14 @@ static GuiNode *findScrollContainerByName(GuiNode *n, const char *name) {
 
 void syncModWrapScroll(void) {
 	if(!igui || !igui->vm || !igui->selectedInstrument) {
+		return;
+	}
+	/* S1 (user report): while the ROUTE picker is open the wrap is owned
+	 * by syncPickerBaseScroll (which scrolls to the picker's selected
+	 * dest). syncing to the base selection too makes the two fight every
+	 * frame and the wrap settles somewhere mid-scroll — the source of the
+	 * "returns scrolled down slightly" state after the picker closes. */
+	if(g_routePickerCount > 0) {
 		return;
 	}
 	Graph *g = igui->instrumentScreenGraphs[*igui->selectedInstrument];

@@ -1,9 +1,11 @@
 # clear_routes.txt - T12: KM_FUNCTION + KM_EDIT on a source's ROUTE button
 # pushes the clear-all confirm (NO default). EDIT on NO cancels and leaves
 # the base graph on the ROUTE button; RIGHT to YES + EDIT clears all of the
-# source's routes and returns the base graph to RATIO1. The route-removal
-# semantics themselves are asserted at the unit level (test_modsystem's
-# removeModulationsForSource tests); this fixture covers the UI flow.
+# source's routes. N1 (user report): the confirm's YES reselects the
+# source's ROUTE button after its rebuild (so the cursor does not jump to
+# the top of the screen). The route-removal semantics are asserted at the
+# unit level (test_modsystem's removeModulationsForSource tests); this
+# fixture covers the UI flow.
 # FM instrument: boot selection = RATIO1; bank = fm1..fm5.
 
 # --- ADD a runtime source so it has a ROUTE button ------------------------
@@ -29,28 +31,16 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 
-# --- Route op1 feedback (the picker's first dial is voiceCount; DOWN -> fb)
+# --- Route op1 feedback (N2 lands the picker on es_Curve; JUMPTL to fb) --
 EDIT
-ASSERT topLayerSelected==voiceCount
-DOWN
+ASSERT topLayerSelected==es_Curve
+UP
+UP
+UP
+UP
 ASSERT topLayerSelected==feedback
 EDIT
-# (rebuild resets the base selection to RATIO1)
-
-# --- Re-navigate to ROUTE after the route's rebuild -----------------------
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+# N1: the route's rebuild reselects the source's ROUTE button.
 
 # --- KM_FUNCTION + KM_EDIT opens the clear-all confirm (NO default) -------
 HOLD FUNCTION
@@ -62,7 +52,7 @@ EDIT
 RELEASE
 ASSERT selected==ROUTE
 
-# --- Re-open and confirm YES clears (base returns to RATIO1) --------------
+# --- Re-open and confirm YES clears; N1 reselects the source's ROUTE ------
 HOLD FUNCTION
 EDIT
 ASSERT topLayerSelected==CLEARALL_NO
@@ -70,4 +60,4 @@ RIGHT
 ASSERT topLayerSelected==CLEARALL_YES
 EDIT
 RELEASE
-ASSERT selected==RATIO1
+ASSERT selected==ROUTE
