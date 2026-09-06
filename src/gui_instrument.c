@@ -1374,8 +1374,8 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	GuiNode *modLabel = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODS", 0, 0);
 	GuiNode *modAdd = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ADD", 0, cbAddModSource, inst);
 	modAdd->name = strdup("MODS_ADD");
-	appendItem(modHdr, modLabel, 4);
 	appendItem(modHdr, modAdd, 1);
+	appendItem(modHdr, modLabel, 4);
 	appendItem(instwrap, modHdr, 2);
 	int nRows = inst->modList->count + 1; /* rows + 1 trailing blank */
 	int modRowH = 40;
