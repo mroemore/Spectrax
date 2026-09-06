@@ -87,7 +87,10 @@ EDIT
 ASSERT topLayerSelected==voiceCount
 DOWN
 ASSERT topLayerSelected==feedback
+# EDIT on a routed dest defers its toggle (T11 double-tap window) —
+# wait for the deferred remove to fire.
 EDIT
+FRAMES 30
 ASSERT modulators==(1,0,0)
 
 # --- Delete via the confirm modal -----------------------------------------

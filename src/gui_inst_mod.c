@@ -458,6 +458,174 @@ void guiSetPickerEditHeld(bool on) {
 	g_pickerEditHeld = on;
 }
 
+/* T11: per-connection attenuation editor, opened by a double-tap of EDIT
+ * on a ROUTED destination. A mini state machine inside the picker:
+ *   - arrows move focus across [amount, curve, polarity, reset];
+ *   - LEFT/RIGHT adjust the amount when it is focused;
+ *   - KM_EDIT fires the focused control (curve/polarity toggle, reset);
+ *   - KM_FUNCTION held (or KM_SELECT) exits back to the routing layer.
+ * The editor does not pop the picker — it overlays the selection. */
+static bool g_attenEditorOpen = false;
+static int g_attenEditorFocus = 0;
+static DestCtx *g_attenEditorCtx = NULL;
+static ModConnection *g_attenEditorConn = NULL;
+static Mod *g_attenEditorAtten = NULL;
+
+/* Double-tap detection: a routed dest's first EDIT press defers its
+ * toggle; a second press within the window opens the editor instead. */
+static double g_pickerLastEditPress = -10.0;
+static bool g_pickerPendingToggle = false;
+static DestCtx *g_pickerPendingCtx = NULL;
+
+#define ATTEN_EDIT_WINDOW 0.3
+#define ATTEN_AMT_MIN 0.0f
+#define ATTEN_AMT_MAX 2.0f
+#define ATTEN_AMT_STEP 0.1f
+
+void guiPickerClosed(void) {
+	g_attenEditorOpen = false;
+	g_pickerPendingToggle = false;
+	g_pickerPendingCtx = NULL;
+}
+
+static void attenEditorOpen(DestCtx *dc, Mod *src) {
+	ModConnection *conn = NULL;
+	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+		if(connFromSource(c, src)) {
+			conn = c;
+			break;
+		}
+	}
+	g_attenEditorCtx = dc;
+	g_attenEditorConn = conn;
+	g_attenEditorAtten = conn ? conn->source : NULL;
+	g_attenEditorFocus = 0;
+	g_attenEditorOpen = true;
+}
+
+static void attenEditorAdjust(int dir) {
+	if(!g_attenEditorCtx || !g_attenEditorConn) {
+		return;
+	}
+	if(g_attenEditorFocus != 0) {
+		return;
+	}
+	float amt = g_attenEditorConn->amount ? getParameterValue(g_attenEditorConn->amount) : 1.0f;
+	amt += (float)dir * ATTEN_AMT_STEP;
+	if(amt < ATTEN_AMT_MIN) {
+		amt = ATTEN_AMT_MIN;
+	}
+	if(amt > ATTEN_AMT_MAX) {
+		amt = ATTEN_AMT_MAX;
+	}
+	if(g_attenEditorConn->amount) {
+		setParameterBaseValue(g_attenEditorConn->amount, amt);
+	}
+}
+
+static void attenEditorFire(void) {
+	if(!g_attenEditorAtten) {
+		return;
+	}
+	switch(g_attenEditorFocus) {
+		case 1: /* curve */
+			if(g_attenEditorAtten->attenCurve) {
+				setParameterBaseValue(g_attenEditorAtten->attenCurve,
+				                     getParameterValueAsInt(g_attenEditorAtten->attenCurve) ? 0 : 1);
+			}
+			break;
+		case 2: /* polarity */
+			if(g_attenEditorAtten->attenPolarity) {
+				setParameterBaseValue(g_attenEditorAtten->attenPolarity,
+				                     getParameterValueAsInt(g_attenEditorAtten->attenPolarity) ? 0 : 1);
+			}
+			break;
+		case 3: /* reset */
+			if(g_attenEditorConn && g_attenEditorConn->amount) {
+				setParameterBaseValue(g_attenEditorConn->amount, 1.0f);
+			}
+			if(g_attenEditorAtten->attenCurve) {
+				setParameterBaseValue(g_attenEditorAtten->attenCurve, 0.0f);
+			}
+			if(g_attenEditorAtten->attenPolarity) {
+				setParameterBaseValue(g_attenEditorAtten->attenPolarity, 0.0f);
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+/* Editor input — returns true when it consumed the frame's input. */
+bool guiPickerEditorInput(InputState *is) {
+	if(!g_attenEditorOpen) {
+		return false;
+	}
+	if(isKeyHeld(is, KM_FUNCTION)) {
+		g_attenEditorOpen = false;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_SELECT)) {
+		g_attenEditorOpen = false;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_UP)) {
+		g_attenEditorFocus = (g_attenEditorFocus + 3) % 4;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_DOWN)) {
+		g_attenEditorFocus = (g_attenEditorFocus + 1) % 4;
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_LEFT)) {
+		attenEditorAdjust(-1);
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_RIGHT)) {
+		attenEditorAdjust(1);
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_EDIT)) {
+		attenEditorFire();
+		return true;
+	}
+	return true;
+}
+
+/* Deferred toggle: fires the routed dest's remove ~0.3s after a single
+ * EDIT tap that was NOT followed by a double-tap. */
+void guiPickerUpdateDeferred(void) {
+	if(!g_pickerPendingToggle || !g_pickerPendingCtx) {
+		return;
+	}
+	if(GetTime() - g_pickerLastEditPress < ATTEN_EDIT_WINDOW) {
+		return;
+	}
+	DestCtx *dc = g_pickerPendingCtx;
+	g_pickerPendingToggle = false;
+	g_pickerPendingCtx = NULL;
+	InstrumentGui *ig = igui;
+	if(!ig || !dc->inst || dc->srcIdx < 0 || dc->srcIdx >= dc->inst->modList->count || !dc->dest) {
+		return;
+	}
+	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	if(!src) {
+		return;
+	}
+	popLayer(&ig->overlayLayers);
+	if(g_routePickerCount > 0) {
+		g_routePickerCount--;
+	}
+	g_routeErase = false;
+	pthread_mutex_lock(&g_audioLock);
+	dc->inst->rebuilding = true;
+	removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
+	rebuildInstrumentGraph();
+	dc->inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+	syncRouteLinesOverlay(ig);
+}
+
 bool guiRouteEraseMode(void) {
 	return g_routeErase;
 }
@@ -651,31 +819,41 @@ static void cbRouteToDest(void *ctx) {
 			break;
 		}
 	}
-	/* Pop the picker (so any listener-driven graph work doesn't run
-	 * against a stale g->selected). The mutation below rebuilds the
-	 * instrument graph via rebuildInstrumentGraph() so popping first
-	 * keeps the same ordering pattern as cbDeleteConfirmYes. */
-	popLayer(&ig->overlayLayers);
-	if(g_routePickerCount > 0) {
-		g_routePickerCount--;
-	}
-	g_routeErase = false;
-	/* Task 8: route mutation touches the modList the audio thread
-	 * iterates; hold the rebuilding flag across the swap. The audio
-	 * lock closes the flag's check-then-use race. */
-	pthread_mutex_lock(&g_audioLock);
-	dc->inst->rebuilding = true;
-	if(already) {
-		removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
-	} else {
+	/* T11: an UNROUTED dest adds immediately (single-EDIT). A ROUTED
+	 * dest defers its toggle: a second EDIT within the window is a
+	 * double-tap → open the attenuation editor (no route mutation); a
+	 * single tap without the repeat fires the remove ~0.3s later via
+	 * guiPickerUpdateDeferred. This keeps the double-tap from
+	 * destroying the route on its first press. */
+	if(!already) {
+		popLayer(&ig->overlayLayers);
+		if(g_routePickerCount > 0) {
+			g_routePickerCount--;
+		}
+		g_routeErase = false;
+		pthread_mutex_lock(&g_audioLock);
+		dc->inst->rebuilding = true;
 		addModulation(dc->inst->paramList, dc->inst->modList, src, dc->dest, 1.0f, MO_ADD);
+		rebuildInstrumentGraph();
+		dc->inst->rebuilding = false;
+		pthread_mutex_unlock(&g_audioLock);
+		syncRouteLinesOverlay(ig);
+		return;
 	}
-	rebuildInstrumentGraph();
-	dc->inst->rebuilding = false;
-	pthread_mutex_unlock(&g_audioLock);
-	/* Spec #3: the source graph just rebuilt — re-sync the gradient
-	 * overlay so the new line topology shows up before the next frame. */
-	syncRouteLinesOverlay(ig);
+	{
+		double now = GetTime();
+		if(now - g_pickerLastEditPress < ATTEN_EDIT_WINDOW) {
+			/* Double-tap on a routed dest — open the editor. */
+			g_pickerPendingToggle = false;
+			g_pickerPendingCtx = NULL;
+			g_pickerLastEditPress = now;
+			attenEditorOpen(dc, src);
+			return;
+		}
+		g_pickerLastEditPress = now;
+		g_pickerPendingToggle = true;
+		g_pickerPendingCtx = dc;
+	}
 }
 
 /* cbOpenRouteLayer builds the picking layer. Each routable dial becomes
@@ -1259,12 +1437,65 @@ void syncPickerDestRects(void) {
 	}
 }
 
+/* T11: draw the attenuation editor panel (4 rows: amount / curve /
+ * polarity / reset) centred on screen, focused row highlighted. Runs
+ * after layerStackDraw so it overlays the picker. */
+void guiPickerEditorDraw(void) {
+	if(!g_attenEditorOpen || !g_attenEditorCtx || !g_attenEditorConn) {
+		return;
+	}
+	const int rows = 4;
+	const int rowH = 18;
+	const int pw = 220;
+	const int ph = rows * rowH + 10;
+	int px = (SCREEN_W - pw) / 2;
+	int py = (SCREEN_H - ph) / 2;
+	DrawRectangle(px, py, pw, ph, (Color){ 20, 20, 25, 210 });
+	DrawRectangleLinesEx((Rectangle){ px, py, pw, ph }, 1, cs.labelSelected);
+
+	float amt = g_attenEditorConn->amount ? getParameterValue(g_attenEditorConn->amount) : 1.0f;
+	int curve = g_attenEditorAtten && g_attenEditorAtten->attenCurve ? getParameterValueAsInt(g_attenEditorAtten->attenCurve) : 0;
+	int pol = g_attenEditorAtten && g_attenEditorAtten->attenPolarity ? getParameterValueAsInt(g_attenEditorAtten->attenPolarity) : 0;
+
+	const char *labels[4];
+	char amtBuf[24];
+	char curveBuf[24];
+	char polBuf[24];
+	snprintf(amtBuf, sizeof(amtBuf), "AMOUNT  %.2f", amt);
+	snprintf(curveBuf, sizeof(curveBuf), "CURVE  %s", curve ? "CURVED" : "LINEAR");
+	snprintf(polBuf, sizeof(polBuf), "POLARITY  %s", pol ? "UNI" : "BI");
+	labels[0] = amtBuf;
+	labels[1] = curveBuf;
+	labels[2] = polBuf;
+	labels[3] = "RESET";
+
+	for(int i = 0; i < rows; i++) {
+		int ry = py + 5 + i * rowH;
+		if(i == g_attenEditorFocus) {
+			DrawRectangle(px + 3, ry, pw - 6, rowH - 2, (Color){ 60, 90, 60, 160 });
+		}
+		DrawTextEx(pixelFont, labels[i], (Vector2){ px + 8, ry + 3 }, 9, 1,
+		           i == g_attenEditorFocus ? cs.labelSelected : cs.label);
+	}
+}
+
 /* T7: picker-driven base scroll. When the picker's selected dest lives
  * inside the scrollable mod container but is scrolled out of view, scroll
  * the base container so the dest's row is revealed (the picker buttons
  * then follow via syncPickerDestRects, and the route lines via their
  * live-rect reads). Dests in the FM/preset sections don't scroll — the
  * mod container only contains the modulator source rows. */
+/* T11: per-frame reset — when the ROUTE picker is gone, the editor and
+ * any deferred toggle are stale and must clear (covers every pop path
+ * uniformly: KM_SELECT, the add path, the deferred toggle itself). */
+void guiPickerFrameSync(void) {
+	if(!igui || !findLayerByName(&igui->overlayLayers, "ROUTE")) {
+		g_attenEditorOpen = false;
+		g_pickerPendingToggle = false;
+		g_pickerPendingCtx = NULL;
+	}
+}
+
 void syncPickerBaseScroll(void) {
 	InstrumentGui *ig = igui;
 	if(!ig) {

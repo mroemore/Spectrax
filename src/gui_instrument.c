@@ -810,6 +810,12 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		if(topIdx >= 0) {
 			guiSetRouteEraseMode(isKeyHeld(is, KM_FUNCTION));
 			guiSetPickerEditHeld(isKeyHeld(is, KM_EDIT));
+			/* T11: the attenuation editor consumes all picker input
+			 * while it is open (arrows move focus, EDIT fires the
+			 * focused control, FUNCTION/SELECT exit). */
+			if(guiPickerEditorInput(is)) {
+				return true;
+			}
 			layerStackInputLayer(&ig->overlayLayers, topIdx, is);
 			return true;
 		}
@@ -1392,6 +1398,8 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 
 void gui_instrument_draw(void) {
 	syncModWrapScroll();
+	guiPickerFrameSync();
+	guiPickerUpdateDeferred();
 	syncPickerBaseScroll();
 	syncPickerDestRects();
 	drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
@@ -1399,5 +1407,6 @@ void gui_instrument_draw(void) {
 		/* route-lines overlay is driven by the focused selection each frame */
 		syncRouteLinesOverlay(igui);
 		layerStackDraw(&igui->overlayLayers);
+		guiPickerEditorDraw();
 	}
 }

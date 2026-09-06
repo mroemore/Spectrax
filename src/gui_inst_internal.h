@@ -21,6 +21,10 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 void syncModWrapScroll(void);
 void syncPickerDestRects(void);
 void syncPickerBaseScroll(void);
+void guiPickerFrameSync(void);
+void guiPickerUpdateDeferred(void);
+void guiPickerEditorDraw(void);
+bool guiPickerEditorInput(InputState *is);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);

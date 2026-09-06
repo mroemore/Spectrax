@@ -72,8 +72,10 @@ EDIT
 ASSERT topLayerSelected==voiceCount
 DOWN
 ASSERT topLayerSelected==feedback
-# EDIT un-routes.
+# EDIT on a routed dest defers its toggle (T11 double-tap window) —
+# wait for the deferred remove to fire.
 EDIT
+FRAMES 30
 ASSERT modulators==(1,0,0)
 # Re-navigate back to the runtime entry's ENV type button for the
 # type-cycle + delete sections below.
