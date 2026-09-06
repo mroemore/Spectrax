@@ -368,6 +368,26 @@ void drawNode(GuiNode *cont) {
 			current = current->next;
 		}
 		if(scissoring) {
+			/* task scrollbar: a right-edge track + thumb, drawn inside
+			 * the scissor so it clips to the viewport. Only when the
+			 * content overflows the viewport. */
+			ScrollContainer *sc = (ScrollContainer *)cont;
+			if(sc->contentH > (int)cont->h) {
+				int trackX = (int)cont->x + (int)cont->w - 6;
+				int trackY = (int)cont->y;
+				int trackH = (int)cont->h;
+				int thumbH = (int)((long long)trackH * trackH / sc->contentH);
+				if(thumbH < 8) {
+					thumbH = 8;
+				}
+				int maxOff = sc->contentH - (int)cont->h;
+				int thumbY = trackY;
+				if(maxOff > 0) {
+					thumbY += (int)((long long)(trackH - thumbH) * sc->scrollOffset / maxOff);
+				}
+				DrawRectangle(trackX, trackY, 4, trackH, (Color){ 60, 60, 60, 120 });
+				DrawRectangle(trackX, thumbY, 4, thumbH, (Color){ 190, 190, 190, 255 });
+			}
 			EndScissorMode();
 		}
 	}
