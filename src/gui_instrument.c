@@ -809,6 +809,7 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		}
 		if(topIdx >= 0) {
 			guiSetRouteEraseMode(isKeyHeld(is, KM_FUNCTION));
+			guiSetPickerEditHeld(isKeyHeld(is, KM_EDIT));
 			layerStackInputLayer(&ig->overlayLayers, topIdx, is);
 			return true;
 		}

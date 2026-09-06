@@ -132,6 +132,38 @@ static void drawRouteDestNode(void *self) {
 		return;
 	}
 
+	/* T10: KM_EDIT held on a ROUTED dest — draw a semi-transparent amount
+	 * dial at the cell (the function-held states above take precedence;
+	 * when both are held the erase visuals win). */
+	if(g_pickerEditHeld && gn->selected && dc && dc->inst && dc->dest &&
+	   dc->srcIdx >= 0 && dc->srcIdx < dc->inst->modList->count) {
+		Mod *src = dc->inst->modList->mods[dc->srcIdx];
+		ModConnection *conn = NULL;
+		if(src) {
+			for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+				if(connFromSource(c, src)) {
+					conn = c;
+					break;
+				}
+			}
+		}
+		if(conn) {
+			float amt = conn->amount ? getParameterValue(conn->amount) : 1.0f;
+			Vector2 ctr = { r.x + r.width / 2.0f, r.y + r.height / 2.0f };
+			float radius = (r.width < r.height ? r.width : r.height) * 0.5f;
+			Color dialCol = getColourScheme()->routeAdd;
+			dialCol.a = 150;
+			float sweep = (amt / 2.0f) * 360.0f; /* amount 0..2 -> 0..360 */
+			DrawRing(ctr, radius * 0.55f, radius, 90.0f, 90.0f + sweep, 32, dialCol);
+			DrawRing(ctr, radius * 0.55f, radius, 0.0f, 360.0f, 32, (Color){ 255, 255, 255, 40 });
+			char buf[16];
+			snprintf(buf, sizeof(buf), "%.2f", amt);
+			Vector2 m = MeasureTextEx(pixelFont, buf, 7, 1);
+			DrawTextEx(pixelFont, buf, (Vector2){ ctr.x - m.x / 2.0f, ctr.y - m.y / 2.0f }, 7, 1, (Color){ 255, 255, 255, 220 });
+			return;
+		}
+	}
+
 	/* Default selected visual: green oscillation between labelSelected
 	 * and a brighter mix (unless the function-held states above apply). */
 	Color outline;
@@ -414,9 +446,16 @@ int g_routePickerCount = 0;
  * from the topmost ROUTE layer's input handler when the user holds the
  * erase modifier; reset to false on every ROUTE pop. */
 bool g_routeErase = false;
+bool g_pickerEditHeld = false;
 
 void guiSetRouteEraseMode(bool on) {
 	g_routeErase = on;
+}
+
+/* T10: per-frame KM_EDIT held state, surfaced to the picker draw so a
+ * routed dest shows its amount dial while the user holds EDIT. */
+void guiSetPickerEditHeld(bool on) {
+	g_pickerEditHeld = on;
 }
 
 bool guiRouteEraseMode(void) {

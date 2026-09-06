@@ -34,11 +34,13 @@ extern int g_routePickerCount;
  * the user requests destructive routing; cbRouteToDest reads it to
  * pick addModulation vs removeModulationForSource. */
 extern bool g_routeErase;
+extern bool g_pickerEditHeld;
 
 /* Spec #6 (public toggle). Called from the topmost ROUTE layer's input
  * handler. Also exposed so scripted tests can drive erase without
  * touching internals. */
 void guiSetRouteEraseMode(bool on);
+void guiSetPickerEditHeld(bool on);
 bool guiRouteEraseMode(void);
 
 /* Probe-only: drive the picker exactly once against the first
