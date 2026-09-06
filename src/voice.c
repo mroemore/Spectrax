@@ -276,8 +276,8 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 
 	switch(voice->type) {
 		case VOICE_TYPE_BLEP:
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
-			addModulation(voice->paramList, &voice->envelope[1]->base, voice->frequency, 400.5f, MO_ADD);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[1]->base, voice->frequency, 400.5f, MO_ADD);
 			voice->generate = generateBlep;
 			break;
 
@@ -285,7 +285,7 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			voice->vd.sampler.sample = inst->id.sampler.sample;
 			voice->vd.sampler.samplePosition = 0.0f; // Initialize sample position
 			voice->vd.sampler.samplePool = inst->id.sampler.sp;
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 			voice->generate = generateSample;
 			break;
 
@@ -295,11 +295,11 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			voice->vd.fm.operators[2] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[2]->feedbackAmount, inst->id.fm.ops[2]->ratio, inst->id.fm.ops[2]->level);
 			voice->vd.fm.operators[3] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[3]->feedbackAmount, inst->id.fm.ops[3]->ratio, inst->id.fm.ops[3]->level);
 
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->vd.fm.operators[0]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->vd.fm.operators[1]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->vd.fm.operators[2]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->vd.fm.operators[3]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->vd.fm.operators[0]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->vd.fm.operators[1]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->vd.fm.operators[2]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->vd.fm.operators[3]->outLevel, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 			voice->generate = generateFM;
 			break;
 		case VOICE_TYPE_GRAIN:
@@ -309,7 +309,7 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 		case VOICE_TYPE_SPECTRAL:
 			voice->vd.spectral.sample = inst->id.sampler.sample;
 			voice->vd.spectral.samplePosition = 0.0f; // Initialize sample position
-			addModulation(voice->paramList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
+			addModulation(voice->paramList, voice->modList, &voice->envelope[0]->base, voice->volume, 1.0f, MO_MUL);
 			voice->generate = generateSpectral;
 		default:
 			break;

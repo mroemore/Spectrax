@@ -294,7 +294,7 @@ int probePickFirstRoute(void) {
 		if(dest->modulator_count > 0) {
 			continue;
 		}
-		if(!addModulation(inst->paramList, m, dest, 1.0f, MO_ADD)) {
+		if(!addModulation(inst->paramList, inst->modList, m, dest, 1.0f, MO_ADD)) {
 			continue;
 		}
 		added++;
@@ -506,7 +506,7 @@ static void cbRouteToDest(void *ctx) {
 			if(!match) {
 				break;
 			}
-			removeModulation(dc->inst->paramList, dc->dest, src);
+			removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
 		}
 		dc->inst->rebuilding = false;
 		pthread_mutex_unlock(&g_audioLock);
@@ -538,9 +538,9 @@ static void cbRouteToDest(void *ctx) {
 	pthread_mutex_lock(&g_audioLock);
 	dc->inst->rebuilding = true;
 	if(already) {
-		removeModulation(dc->inst->paramList, dc->dest, src);
+		removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
 	} else {
-		addModulation(dc->inst->paramList, src, dc->dest, 1.0f, MO_ADD);
+		addModulation(dc->inst->paramList, dc->inst->modList, src, dc->dest, 1.0f, MO_ADD);
 	}
 	rebuildInstrumentGraph();
 	dc->inst->rebuilding = false;

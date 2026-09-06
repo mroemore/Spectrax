@@ -225,6 +225,72 @@ int getParameterValueAsInt(Parameter *param) {
 	return (int)round(param->currentValue);
 }
 
+/* MT_ATTEN attenuator node: passes the upstream mod's output through an
+ * amount scale (0..2), an optional unipolar clamp, and an optional
+ * sign-preserving sqrt curve. Stateless across calls - updateMod has
+ * nothing to advance for this type. */
+static void modGenerateAtten(void *self) {
+	Mod *m = (Mod *)self;
+	if(!m->input || !m->input->output) {
+		setParameterValue(m->output, 0.0f);
+		return;
+	}
+	float v = getParameterValue(m->input->output);
+	float amt = m->attenAmount ? getParameterValue(m->attenAmount) : 1.0f;
+	v *= amt;
+	if(m->attenPolarity && getParameterValueAsInt(m->attenPolarity) == 1) {
+		v = fmaxf(v, 0.0f);
+	}
+	if(m->attenCurve && getParameterValueAsInt(m->attenCurve) == 1) {
+		v = copysignf(powf(fabsf(v), 0.5f), v);
+	}
+	setParameterValue(m->output, v);
+}
+
+/* MT_ATTEN attenuator factory: creates the connection-internal node that
+ * addModulation inserts between a real source (ENV/LFO/RND) and its
+ * destinations. input points at the upstream mod; the three params are
+ * list-owned (named `<source>_amt/_pol/_crv`) and torn down by removeMod's
+ * MT_ATTEN case. The amount range is 0..2 (boost allowed) - it REPLACES
+ * the connection's original 0..1 amount param, so a route has exactly one
+ * amount. The mod name is cosmetic (attenuators are hidden from the UI);
+ * the params carry the source's name so they are identifiable in the
+ * paramList. */
+Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, const char *name) {
+	if(!paramList || !modList || !source) {
+		return NULL;
+	}
+	if(modList->count >= MAX_MODS) {
+		return NULL;
+	}
+	Mod *m = (Mod *)malloc(sizeof(Mod));
+	if(!m) {
+		printf("could not allocate memory for attenuator mod.\n");
+		return NULL;
+	}
+	/* Truncate to a guaranteed-NUL-terminated MAX_NAME_LEN name -
+	 * initMod's strncpy does not force a terminator on long input. */
+	char modName[MAX_NAME_LEN];
+	strncpy(modName, name, MAX_NAME_LEN - 1);
+	modName[MAX_NAME_LEN - 1] = '\0';
+	initMod(m, paramList, modName, MT_ATTEN, modGenerateAtten);
+	/* initMod ignores its generate argument (it hardcodes
+	 * generateEnvelope) - set the real generate fn explicitly. */
+	m->generate = modGenerateAtten;
+	m->input = source;
+	/* Buffers are MAX_NAME_LEN + 8 so snprintf can never truncate;
+	 * createParameter's strndup does the final safe truncate. */
+	char pName[MAX_NAME_LEN + 8];
+	snprintf(pName, sizeof(pName), "%s_amt", source->name);
+	m->attenAmount = createParameter(paramList, pName, 1.0f, 0.0f, 2.0f);
+	snprintf(pName, sizeof(pName), "%s_pol", source->name);
+	m->attenPolarity = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+	snprintf(pName, sizeof(pName), "%s_crv", source->name);
+	m->attenCurve = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+	addToModList(modList, m);
+	return m;
+}
+
 ModConnection *createConnection(ParamList *paramList, Mod *source, float amount, ModulationOperation type) {
 	// DEBUG_LOG("create con");
 
@@ -239,9 +305,30 @@ ModConnection *createConnection(ParamList *paramList, Mod *source, float amount,
 	return conn;
 }
 
-bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, float amount, ModulationOperation type) {
+bool addModulation(ParamList *paramList, ModList *modList, Mod *source, Parameter *destination, float amount, ModulationOperation type) {
 	ModConnection *conn = createConnection(paramList, source, amount, type);
 	if(!conn) return false;
+	/* Every route from a real source (ENV/LFO/RND) runs through its own
+	 * attenuator node: addModulation inserts one between the source and
+	 * this destination, and the connection's amount param is swapped for
+	 * the attenuator's 0..2 amount (a single param, not two - the
+	 * connection's original 0..1 amount is dropped). Sources that are
+	 * already attenuators are reused as-is (no nested attenuators). If
+	 * the attenuator cannot be created (modList full / malloc failure)
+	 * the connection simply stays plain. */
+	if(modList && source && source->type != MT_ATTEN) {
+		char attenName[MAX_NAME_LEN + 8];
+		snprintf(attenName, sizeof(attenName), "%s_atten", source->name);
+		Mod *atten = createAttenuatorMod(paramList, modList, source, attenName);
+		if(atten) {
+			if(conn->amount) {
+				removeFromParamList(paramList, conn->amount);
+				freeParameter(conn->amount);
+			}
+			conn->amount = atten->attenAmount;
+			conn->source = atten;
+		}
+	}
 	if(destination->modulators == NULL) {
 		destination->modulators = conn;
 	} else {
@@ -254,7 +341,28 @@ bool addModulation(ParamList *paramList, Mod *source, Parameter *destination, fl
 
 	return true;
 }
-bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
+/* True if any parameter in the list carries a live connection whose
+ * source is `atten`. Attenuators are connection-internal nodes: when
+ * their last connection goes away they have no remaining purpose and
+ * are garbage-collected by the remove* functions. */
+static bool attenStillInUse(ParamList *list, Mod *atten) {
+	if(!list || !atten) {
+		return false;
+	}
+	for(int i = 0; i < list->count; i++) {
+		Parameter *p = list->params[i];
+		if(!p) {
+			continue;
+		}
+		for(ModConnection *conn = p->modulators; conn != NULL; conn = conn->next) {
+			if(conn->source == atten) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+bool removeModulation(ParamList *list, ModList *modList, Parameter *destination, Mod *source) {
 	if(!list || !destination || !source) {
 		return false;
 	}
@@ -271,7 +379,11 @@ bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
 				conn->next->previous = conn->previous;
 			}
 			destination->modulator_count--;
-			if(conn->amount) {
+			/* An MT_ATTEN source OWNS conn->amount (it is the
+			 * attenuator's amount param, list-owned by the attenuator
+			 * and freed with it) - do NOT free it here. The
+			 * per-connection type param is always freed here. */
+			if(conn->amount && source->type != MT_ATTEN) {
 				removeFromParamList(list, conn->amount);
 				freeParameter(conn->amount);
 			}
@@ -280,13 +392,19 @@ bool removeModulation(ParamList *list, Parameter *destination, Mod *source) {
 				freeParameter(conn->type);
 			}
 			free(conn);
+			/* Connection-internal node GC: an attenuator whose last
+			 * connection just went away is removed (which frees its
+			 * amount/polarity/curve/output params). */
+			if(source->type == MT_ATTEN && !attenStillInUse(list, source)) {
+				removeMod(modList, list, source);
+			}
 			return true;
 		}
 		conn = next;
 	}
 	return false;
 }
-int removeModulationsForSource(ParamList *list, Mod *source) {
+int removeModulationsForSource(ParamList *list, ModList *modList, Mod *source) {
 	if(!list || !source) {
 		return 0;
 	}
@@ -314,8 +432,12 @@ int removeModulationsForSource(ParamList *list, Mod *source) {
 					conn->next->previous = conn->previous;
 				}
 				p->modulator_count--;
-				if(orphanCount < MAX_PARAMS && conn->amount) {
-					orphans[orphanCount++] = conn->amount;
+				/* MT_ATTEN sources own conn->amount (freed with the
+				 * attenuator) - only the type param is orphaned. */
+				if(conn->amount && source->type != MT_ATTEN) {
+					if(orphanCount < MAX_PARAMS) {
+						orphans[orphanCount++] = conn->amount;
+					}
 				}
 				if(orphanCount < MAX_PARAMS && conn->type) {
 					orphans[orphanCount++] = conn->type;
@@ -332,6 +454,13 @@ int removeModulationsForSource(ParamList *list, Mod *source) {
 			freeParameter(orphans[k]);
 		}
 	}
+	/* Connection-internal node GC: an attenuator source whose last
+	 * connection just went away is removed. (When called from removeMod
+	 * on an already-unlinked mod this is a no-op - the recursive
+	 * removeMod bails at removeFromModList.) */
+	if(source->type == MT_ATTEN && !attenStillInUse(list, source)) {
+		removeMod(modList, list, source);
+	}
 	return removed;
 }
 bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
@@ -341,7 +470,7 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 	if(!removeFromModList(modList, mod)) {
 		return false;
 	}
-	removeModulationsForSource(paramList, mod);
+	removeModulationsForSource(paramList, modList, mod);
 	/* Remove the mod's own params from the list (owned by paramList). */
 	switch(mod->type) {
 		case MT_LFO: {
@@ -382,6 +511,29 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 	}
 	if(mod->output) {
 		removeFromParamList(paramList, mod->output);
+	}
+	/* The source is about to be freed: attenuators that passed through
+	 * it (input == mod) would dangle. Remove them - each removal also
+	 * drops the attenuator's connection to its destination. Runs before
+	 * the free-by-type switch so `mod` is still valid for the compare.
+	 * An attenuator's input is always a real source (addModulation never
+	 * nests attenuators), so one pass finds them all; rescan because
+	 * removeMod mutates the list. */
+	if(mod->type != MT_ATTEN) {
+		for(;;) {
+			Mod *orphan = NULL;
+			for(int i = 0; i < modList->count; i++) {
+				Mod *m = modList->mods[i];
+				if(m && m->type == MT_ATTEN && m->input == mod) {
+					orphan = m;
+					break;
+				}
+			}
+			if(!orphan) {
+				break;
+			}
+			removeMod(modList, paramList, orphan);
+		}
 	}
 	/* Params are no longer referenced by the list; free struct by type.
 	 * (freeEnvelope/freeLFO/freeRandom free their params again — safe now
@@ -556,6 +708,16 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 	rewireModulationsForSource(paramList, mod, fresh);
 	modList->mods[slot] = fresh;
 
+	/* Connection-internal attenuators that passed through the old
+	 * struct must follow it: their input pointer would dangle once
+	 * the old struct is freed below. */
+	for(int i = 0; i < modList->count; i++) {
+		Mod *m = modList->mods[i];
+		if(m && m->type == MT_ATTEN && m->input == mod) {
+			m->input = fresh;
+		}
+	}
+
 	/* Free the old struct WITHOUT freeing the shared output param. */
 	mod->output = NULL;
 	switch(mod->type) {
@@ -726,28 +888,6 @@ void generateDrunk(void *self) {
 	rnd->lastPhase = phase;
 	setParameterBaseValue(rnd->base.output, rnd->base.output->currentValue + rnd->lastRandom);
 	setParameterValue(rnd->base.output, rnd->base.output->currentValue + rnd->lastRandom);
-}
-
-/* MT_ATTEN attenuator node: passes the upstream mod's output through an
- * amount scale (0..2), an optional unipolar clamp, and an optional
- * sign-preserving sqrt curve. Stateless across calls - updateMod has
- * nothing to advance for this type. */
-static void modGenerateAtten(void *self) {
-	Mod *m = (Mod *)self;
-	if(!m->input || !m->input->output) {
-		setParameterValue(m->output, 0.0f);
-		return;
-	}
-	float v = getParameterValue(m->input->output);
-	float amt = m->attenAmount ? getParameterValue(m->attenAmount) : 1.0f;
-	v *= amt;
-	if(m->attenPolarity && getParameterValueAsInt(m->attenPolarity) == 1) {
-		v = fmaxf(v, 0.0f);
-	}
-	if(m->attenCurve && getParameterValueAsInt(m->attenCurve) == 1) {
-		v = copysignf(powf(fabsf(v), 0.5f), v);
-	}
-	setParameterValue(m->output, v);
 }
 
 void updateMod(Mod *mod, float deltaTime) {

@@ -308,7 +308,7 @@ static int test_route_to_fm_param_affects_value(void) {
     inst->envelopes[idx] = createAD(inst->paramList, inst->modList,
                                     0.1f, 0.2f, "AD+");
     inst->envelopeCount++;
-    ASSERT_TRUE(addModulation(inst->paramList,
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idx]->base,
                               level, 1.0f, MO_ADD),
                 "route env→op0.level");
@@ -329,7 +329,7 @@ static int test_route_to_fm_param_affects_value(void) {
     /* removeModulation unwires the connection but leaves the source
      * alive. With no modulators on `level`, post-pass currentValue ==
      * baseValue. */
-    ASSERT_TRUE(removeModulation(inst->paramList, level,
+    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level,
                                  &inst->envelopes[idx]->base),
                 "unwrap env→op0.level");
     processModulations(inst->paramList, inst->modList, 0.016f);
@@ -340,7 +340,7 @@ static int test_route_to_fm_param_affects_value(void) {
      * Wire the same modulator onto op[1].level (still MO_ADD 1.0).
      * Set baseValue=0.5 so the modulator contribution is observable.
      */
-    addModulation(inst->paramList,
+    addModulation(inst->paramList, inst->modList,
                   &inst->envelopes[idx]->base,
                   level, 1.0f, MO_ADD);
     Parameter *level1 = inst->id.fm.ops[1]->level;
@@ -359,8 +359,8 @@ static int test_route_to_fm_param_affects_value(void) {
      * separately below in the dedicated test). Verify op0 back to base
      * and op1 modulated after the swap.
      */
-    removeModulation(inst->paramList, level, &inst->envelopes[idx]->base);
-    addModulation(inst->paramList, &inst->envelopes[idx]->base,
+    removeModulation(inst->paramList, inst->modList, level, &inst->envelopes[idx]->base);
+    addModulation(inst->paramList, inst->modList, &inst->envelopes[idx]->base,
                   level1, 1.0f, MO_ADD);
     setParameterBaseValue(inst->envelopes[idx]->base.output, 0.5f);
     processModulations(inst->paramList, inst->modList, 0.016f);
@@ -393,11 +393,11 @@ static int test_remove_modulation_is_surgical(void) {
                                      0.1f, 0.2f, "ADB");
     inst->envelopeCount++;
 
-    ASSERT_TRUE(addModulation(inst->paramList,
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idxA]->base,
                               level, 1.0f, MO_ADD),
                 "route A");
-    ASSERT_TRUE(addModulation(inst->paramList,
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idxB]->base,
                               level, 1.0f, MO_ADD),
                 "route B");
@@ -408,7 +408,7 @@ static int test_remove_modulation_is_surgical(void) {
     /* both wired: base + 0.10 + 0.40 = base + 0.50 */
     ASSERT_NEAR(level->currentValue, base + 0.50f, 0.0001f);
 
-    ASSERT_TRUE(removeModulation(inst->paramList, level,
+    ASSERT_TRUE(removeModulation(inst->paramList, inst->modList, level,
                                  &inst->envelopes[idxA]->base),
                 "unwrap A only");
     processModulations(inst->paramList, inst->modList, 0.016f);
@@ -454,7 +454,7 @@ static int test_rewire_modulation_swaps_source(void) {
                                      0.1f, 0.2f, "Bmod");
     inst->envelopeCount++;
 
-    ASSERT_TRUE(addModulation(inst->paramList,
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idxA]->base,
                               level, 1.0f, MO_ADD),
                 "route A");
@@ -495,7 +495,7 @@ static int test_voice_render_after_route_and_delete(void) {
     inst->envelopes[idx] = createAD(inst->paramList, inst->modList,
                                     0.1f, 0.2f, "AD+");
     inst->envelopeCount++;
-    ASSERT_TRUE(addModulation(inst->paramList,
+    ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
                               &inst->envelopes[idx]->base,
                               inst->id.fm.ops[0]->level, 1.0f, MO_ADD),
                 "route env→op0.level");

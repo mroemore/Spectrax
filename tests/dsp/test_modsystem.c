@@ -134,7 +134,7 @@ static int test_add_modulation_wiring(void) {
     ModList *ml = createModList();
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, &env->base, dest, 0.5f, MO_ADD),
+    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD),
                 "addModulation returns true");
     ASSERT_EQ(dest->modulator_count, 1);
     ASSERT_TRUE(dest->modulators != NULL, "dest->modulators set");
@@ -196,25 +196,25 @@ static int test_process_modulation_arithmetic(void) {
     setParameterValue(env->base.output, 0.5f); /* has no effect on
         processModulations in the un-triggered case */
 
-    addModulation(pl, &env->base, dest, 0.5f, MO_ADD);
+    addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "ADD: env output resets to 0, dest=baseValue");
 
-    removeModulation(pl, dest, &env->base);
-    addModulation(pl, &env->base, dest, 0.5f, MO_MUL);
+    removeModulation(pl, ml, dest, &env->base);
+    addModulation(pl, ml, &env->base, dest, 0.5f, MO_MUL);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 0.0f, 0.0001f,
                 "MUL: baseValue*0 = 0 when env output resets to 0");
 
-    removeModulation(pl, dest, &env->base);
-    addModulation(pl, &env->base, dest, 0.5f, MO_SUB);
+    removeModulation(pl, ml, dest, &env->base);
+    addModulation(pl, ml, &env->base, dest, 0.5f, MO_SUB);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "SUB: env output resets to 0, dest=baseValue");
 
-    removeModulation(pl, dest, &env->base);
-    addModulation(pl, &env->base, dest, 0.5f, MO_DIV);
+    removeModulation(pl, ml, dest, &env->base);
+    addModulation(pl, ml, &env->base, dest, 0.5f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "DIV: env output resets to 0, dest=baseValue");
@@ -227,8 +227,8 @@ static int test_process_modulation_arithmetic(void) {
      * than dividing by zero and producing NaN/Inf). */
     Envelope *env2 = createAD(pl, ml, 0.1f, 0.2f, "AD2");
     setParameterValue(env2->base.output, 0.0f);
-    removeModulation(pl, dest, &env->base);
-    addModulation(pl, &env2->base, dest, 1.0f, MO_DIV);
+    removeModulation(pl, ml, dest, &env->base);
+    addModulation(pl, ml, &env2->base, dest, 1.0f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "DIV by zero skipped: finalValue stays at baseValue");
@@ -265,8 +265,8 @@ static int test_multiple_modulators_apply_in_order(void) {
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 100.0f);
     triggerEnvelope(e1);
     triggerEnvelope(e2);
-    addModulation(pl, &e1->base, dest, 1.0f, MO_ADD);
-    addModulation(pl, &e2->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
     ASSERT_TRUE(dest->modulators->source == &e2->base,
                 "prepended: e2 (added last) is at the head of the list");
@@ -384,20 +384,20 @@ static int test_remove_modulation(void) {
     ModList *ml = createModList();
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, &env->base, dest, 0.5f, MO_ADD);
+    addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
     int before = pl->count;
-    ASSERT_TRUE(removeModulation(pl, dest, &env->base), "removed");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base), "removed");
     ASSERT_EQ(dest->modulator_count, 0, "no modulators left");
     ASSERT_TRUE(dest->modulators == NULL, "list empty");
     ASSERT_EQ(pl->count, before - 2, "amount+type params removed from list");
-    ASSERT_TRUE(!removeModulation(pl, dest, &env->base), "absent returns false");
+    ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base), "absent returns false");
 
     /* mid-list: two modulators, remove the head */
     Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
-    addModulation(pl, &env->base, dest, 1.0f, MO_ADD);
-    addModulation(pl, &e2->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
-    ASSERT_TRUE(removeModulation(pl, dest, &e2->base), "remove head");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, &e2->base), "remove head");
     ASSERT_EQ(dest->modulator_count, 1, "one left");
     ASSERT_EQ(dest->modulators->source, &env->base, "tail survives");
     teardown(pl, ml);
@@ -424,14 +424,14 @@ static int test_remove_modulations_for_source(void) {
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
     Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, &env->base, d1, 1.0f, MO_ADD);
-    addModulation(pl, &env->base, d2, 1.0f, MO_MUL);
+    addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD);
+    addModulation(pl, ml, &env->base, d2, 1.0f, MO_MUL);
     int before = pl->count;
-    ASSERT_EQ(removeModulationsForSource(pl, &env->base), 2, "two connections removed");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 2, "two connections removed");
     ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
     ASSERT_EQ(pl->count, before - 4, "four amount/type params removed");
-    ASSERT_EQ(removeModulationsForSource(pl, &env->base), 0, "none left");
+    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0, "none left");
     teardown(pl, ml);
     printf("PASS test_remove_modulations_for_source\n");
     return 0;
@@ -484,7 +484,7 @@ static int test_rewire_modulation(void) {
     Envelope *e1 = createAD(pl, ml, 0.1f, 0.2f, "E1");
     Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, &e1->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
     ASSERT_TRUE(rewireModulation(pl, dest, &e1->base, &e2->base), "rewired");
     ASSERT_TRUE(dest->modulators->source == &e2->base, "source now e2");
     ASSERT_TRUE(!rewireModulation(pl, dest, &e1->base, &e2->base),
@@ -520,7 +520,7 @@ static int test_remove_mod(void) {
     ModList *ml = createModList();
     Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, &env->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
     int before = pl->count;   /* 5 env params + dest + amount + type = 8 */
     int modBefore = ml->count; /* 1 */
     ASSERT_TRUE(removeMod(ml, pl, &env->base), "removeMod succeeds");
@@ -600,8 +600,8 @@ static int test_two_cycle_feedback(void) {
 	LFO *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
 	a->base.generate = constGenQuarter;
 	b->base.generate = constGenHalf;
-	addModulation(pl, &b->base, a->base.output, 1.0f, MO_ADD);
-	addModulation(pl, &a->base, b->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &b->base, a->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &a->base, b->base.output, 1.0f, MO_ADD);
 	for(int i = 0; i < 200; i++) {
 		processModulations(pl, ml, 0.016f);
 		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
@@ -640,9 +640,9 @@ static int test_three_cycle_feedback(void) {
 	a->base.generate = constGenOneTenth;
 	b->base.generate = constGenTwoTenths;
 	c->base.generate = constGenThreeTenths;
-	addModulation(pl, &b->base, a->base.output, 1.0f, MO_ADD);
-	addModulation(pl, &c->base, b->base.output, 1.0f, MO_ADD);
-	addModulation(pl, &a->base, c->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &b->base, a->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &c->base, b->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &a->base, c->base.output, 1.0f, MO_ADD);
 	for(int i = 0; i < 500; i++) {
 		processModulations(pl, ml, 0.016f);
 		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
@@ -680,11 +680,11 @@ static int test_self_modulation(void) {
 	ModList *ml = createModList();
 	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
 	a->base.generate = constGenQuarter;
-	addModulation(pl, &a->base, a->base.output, 1.0f, MO_ADD);
+	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_ADD);
 	processModulations(pl, ml, 0.016f);
 	ASSERT_NEAR(a->base.output->currentValue, 0.25f, 0.0001f, "self-ADD stable at 0.25");
-	removeModulation(pl, a->base.output, &a->base);
-	addModulation(pl, &a->base, a->base.output, 1.0f, MO_MUL);
+	removeModulation(pl, ml, a->base.output, &a->base);
+	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_MUL);
 	processModulations(pl, ml, 0.016f);
 	ASSERT_NEAR(a->base.output->currentValue, 0.0f, 0.0001f, "self-MUL: 0 base * 0.25 = 0");
 	teardown(pl, ml);
@@ -749,18 +749,18 @@ static int test_remove_failure_modes(void) {
 	ASSERT_TRUE(!removeFromParamList(NULL, NULL), "removeFromParamList NULL/NULL");
 	ASSERT_TRUE(!removeFromParamList(NULL, (Parameter *)0x1), "removeFromParamList NULL list");
 	ASSERT_TRUE(!removeFromParamList(pl, NULL), "removeFromParamList NULL param");
-	ASSERT_TRUE(!removeModulation(NULL, NULL, NULL), "removeModulation all NULL");
-	ASSERT_TRUE(!removeModulation(pl, NULL, NULL), "removeModulation NULL dest");
-	ASSERT_TRUE(!removeModulation(pl, NULL, (Mod *)0x1), "removeModulation NULL dest+source");
-	ASSERT_TRUE(!removeModulationsForSource(NULL, NULL), "removeModulationsForSource NULL/NULL");
-	ASSERT_TRUE(!removeModulationsForSource(NULL, (Mod *)0x1), "removeModulationsForSource NULL list");
+	ASSERT_TRUE(!removeModulation(NULL, NULL, NULL, NULL), "removeModulation all NULL");
+	ASSERT_TRUE(!removeModulation(pl, ml, NULL, NULL), "removeModulation NULL dest");
+	ASSERT_TRUE(!removeModulation(pl, ml, NULL, (Mod *)0x1), "removeModulation NULL dest+source");
+	ASSERT_TRUE(!removeModulationsForSource(NULL, NULL, NULL), "removeModulationsForSource NULL/NULL");
+	ASSERT_TRUE(!removeModulationsForSource(NULL, NULL, (Mod *)0x1), "removeModulationsForSource NULL list");
 
 	/* absent items on a live list: no crash, no mutation */
 	Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
 	Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
 	int before = pl->count;
-	ASSERT_TRUE(!removeModulation(pl, dest, &env->base), "absent connection -> false");
-	ASSERT_EQ(removeModulationsForSource(pl, &env->base), 0, "no modulations to remove");
+	ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base), "absent connection -> false");
+	ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0, "no modulations to remove");
 	ASSERT_EQ(pl->count, before, "absent removals do not mutate the list");
 	teardown(pl, ml);
 	printf("PASS test_remove_failure_modes\n");
@@ -813,8 +813,8 @@ static int test_change_mod_type(void) {
     Mod *m0 = &env->base;
     Parameter *out = m0->output;
     ASSERT_TRUE(out != NULL, "env has an output param");
-    ASSERT_TRUE(addModulation(pl, m0, dest, 1.0f, MO_ADD), "route env->dest");
-    ASSERT_TRUE(addModulation(pl, m0, dest2, 1.0f, MO_MUL), "route env->dest2");
+    ASSERT_TRUE(addModulation(pl, ml, m0, dest, 1.0f, MO_ADD), "route env->dest");
+    ASSERT_TRUE(addModulation(pl, ml, m0, dest2, 1.0f, MO_MUL), "route env->dest2");
     int before = ml->count;
     int beforeIdx = -1;
     for(int i = 0; i < ml->count; i++) if(ml->mods[i] == m0) beforeIdx = i;
