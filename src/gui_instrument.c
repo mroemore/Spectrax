@@ -1391,6 +1391,8 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 
 void gui_instrument_draw(void) {
 	syncModWrapScroll();
+	syncPickerBaseScroll();
+	syncPickerDestRects();
 	drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 	if (igui) {
 		/* route-lines overlay is driven by the focused selection each frame */

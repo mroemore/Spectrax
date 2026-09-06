@@ -1047,4 +1047,86 @@ void syncModWrapScroll(void) {
 	scrollToVisible((ScrollContainer *)sc, sel);
 }
 
+/* T7: while the ROUTE picker is up, re-pin every dest button to its base
+ * dial's CURRENT rect. The base mod container may have scrolled (base
+ * selection nav, or the picker itself via syncPickerBaseScroll), moving
+ * the dials the buttons overlay — the pins from cbOpenRouteLayer go stale
+ * the moment anything scrolls. */
+void syncPickerDestRects(void) {
+	InstrumentGui *ig = igui;
+	if(!ig) {
+		return;
+	}
+	Layer *route = findLayerByName(&ig->overlayLayers, "ROUTE");
+	if(!route || !route->graph || !route->graph->root) {
+		return;
+	}
+	Graph *base = getSelectedInstGraph();
+	if(!base || !base->root) {
+		return;
+	}
+	ListElement *e = route->graph->root->items->head;
+	for(int i = 0; i < route->graph->root->itemCount && e; i++) {
+		GuiNode *btn = *(GuiNode **)e->data;
+		if(btn->actionCb != cbRouteToDest) {
+			e = e->next;
+			continue;
+		}
+		DestCtx *dc = (DestCtx *)btn->actionCtx;
+		if(!dc || !dc->dest) {
+			e = e->next;
+			continue;
+		}
+		Rectangle r;
+		if(findDialRectForParam(base->root, dc->dest, &r)) {
+			btn->x = (uint16_t)r.x;
+			btn->y = (uint16_t)r.y;
+			btn->w = (uint16_t)r.width;
+			btn->h = (uint16_t)r.height;
+		}
+		e = e->next;
+	}
+}
+
+/* T7: picker-driven base scroll. When the picker's selected dest lives
+ * inside the scrollable mod container but is scrolled out of view, scroll
+ * the base container so the dest's row is revealed (the picker buttons
+ * then follow via syncPickerDestRects, and the route lines via their
+ * live-rect reads). Dests in the FM/preset sections don't scroll — the
+ * mod container only contains the modulator source rows. */
+void syncPickerBaseScroll(void) {
+	InstrumentGui *ig = igui;
+	if(!ig) {
+		return;
+	}
+	Layer *route = findLayerByName(&ig->overlayLayers, "ROUTE");
+	if(!route || !route->graph || !route->graph->selected) {
+		return;
+	}
+	DestCtx *dc = (DestCtx *)route->graph->selected->actionCtx;
+	if(!dc || !dc->dest) {
+		return;
+	}
+	Graph *base = getSelectedInstGraph();
+	if(!base || !base->root) {
+		return;
+	}
+	GuiNode *modwrap = findScrollContainerByName(base->root, "mod_wrap");
+	if(!modwrap) {
+		return;
+	}
+	GuiNode *dial = findDialNodeForParam(base->root, dc->dest);
+	if(!dial) {
+		return;
+	}
+	GuiNode *p = dial;
+	while(p && p != modwrap) {
+		p = p->container;
+	}
+	if(!p) {
+		return;
+	}
+	scrollToVisible((ScrollContainer *)modwrap, dial);
+}
+
 
