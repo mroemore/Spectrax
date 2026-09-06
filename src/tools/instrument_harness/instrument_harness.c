@@ -88,6 +88,8 @@ extern InstrumentGui *igui;
 typedef enum {
 	SOP_KEY,             /* one-frame keypress: ADD, REMOVE, LEFT/RIGHT/UP/DOWN */
 	SOP_EDIT_ARROW,      /* hold EDIT + arrow for one frame, then release */
+	SOP_HOLD_FUNCTION,   /* hold KM_FUNCTION until RELEASE */
+	SOP_RELEASE,         /* release the held key */
 	SOP_FRAMES,          /* idle for N frames (all keys released) */
 	SOP_ASSERT_ENVCOUNT, /* inst->envelopeCount == N */
 	SOP_ASSERT_MODULATORS, /* ops[op]->{fb|rat|lvl}->modulator_count == N */
@@ -329,6 +331,16 @@ static void parseScript(const char *path) {
 			s->op = SOP_KEY; s->a.key = KM_START; s->frames = 1;
 		} else if(strcmp(op, "FUNCTION") == 0) {
 			s->op = SOP_KEY; s->a.key = KM_FUNCTION; s->frames = 1;
+		} else if(strcmp(op, "HOLD") == 0) {
+			KeyMapping held;
+			if(nt < 2 || !parseKeyName(tokens[1], &held) || held != KM_FUNCTION) {
+				fclose(fp);
+				failScript(lineno, "HOLD requires FUNCTION");
+				return;
+			}
+			s->op = SOP_HOLD_FUNCTION; s->frames = 1;
+		} else if(strcmp(op, "RELEASE") == 0) {
+			s->op = SOP_RELEASE; s->frames = 1;
 		} else if(strcmp(op, "EDIT") == 0) {
 			if(nt < 2) {
 				/* Task 4: standalone EDIT injects a one-frame KM_EDIT press so
@@ -1007,6 +1019,8 @@ static void runAssertVoiceCount(int lineno, int expected) {
 	}
 }
 
+static bool g_scriptHeldFunction = false;
+
 /* Zero the keys array; used as the resting state between scripted events. */
 static void clearInjectedKeys(InputState *state) {
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
@@ -1020,7 +1034,18 @@ static void clearInjectedKeys(InputState *state) {
  * block the interactive loop uses. */
 static void applyScriptEventInjection(InputState *state, const ScriptStep *s, int subframe) {
 	(void)state;
+	if(g_scriptHeldFunction && s->op != SOP_RELEASE) {
+		injectKey(state, KM_FUNCTION, true, false);
+	}
 	switch(s->op) {
+		case SOP_HOLD_FUNCTION:
+			g_scriptHeldFunction = true;
+			injectKey(state, KM_FUNCTION, true, false);
+			break;
+		case SOP_RELEASE:
+			g_scriptHeldFunction = false;
+			injectKey(state, KM_FUNCTION, false, false);
+			break;
 		case SOP_KEY:
 			/* single-frame just-pressed */
 			injectKey(state, s->a.key, true, false);

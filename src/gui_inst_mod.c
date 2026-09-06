@@ -678,6 +678,82 @@ static void cbDeleteConfirmYes(void *ctx) {
 	}
 }
 
+/* T12: clear-all-routes confirm. KM_FUNCTION+KM_EDIT on a source's ROUTE
+ * button pushes a confirm layer ("clear all modulations for ENV_xyz?")
+ * with NO selected by default; YES removes every route FROM that source
+ * (attenuator-aware) and rebuilds. */
+static char g_clearAllMsg[96];
+
+static void drawClearAllText(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	if(!gn || !g_clearAllMsg[0]) {
+		return;
+	}
+	Vector2 m = MeasureTextEx(pixelFont, g_clearAllMsg, 9, 1);
+	float x = gn->x + (gn->w - m.x) / 2.0f;
+	float y = gn->y + (gn->h - m.y) / 2.0f;
+	DrawTextEx(pixelFont, g_clearAllMsg, (Vector2){ x, y }, 9, 1, cs.labelSelected);
+}
+
+static void cbClearAllCancel(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+}
+
+static void cbClearAllConfirmYes(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(ig) {
+		popLayer(&ig->overlayLayers);
+	}
+	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+		return;
+	}
+	Mod *src = sc->inst->modList->mods[sc->idx];
+	if(!src) {
+		return;
+	}
+	pthread_mutex_lock(&g_audioLock);
+	sc->inst->rebuilding = true;
+	removeModulationsForSource(sc->inst->paramList, sc->inst->modList, src);
+	rebuildInstrumentGraph();
+	sc->inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+	syncRouteLinesOverlay(ig);
+}
+
+void cbOpenClearAllLayer(void *ctx) {
+	SourceCtx *sc = (SourceCtx *)ctx;
+	InstrumentGui *ig = igui;
+	if(!ig || !sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+		return;
+	}
+	Mod *src = sc->inst->modList->mods[sc->idx];
+	if(!src || !src->name) {
+		return;
+	}
+	snprintf(g_clearAllMsg, sizeof(g_clearAllMsg), "clear all modulations for %s?", src->name);
+	Graph *g = createGraph(na_horizontal);
+	const int py = (SCREEN_H - 90) / 2;
+	const int px = (SCREEN_W - 300) / 2;
+	GuiNode *label = createGuiNode(px, py, 300, 28, 0, na_horizontal, "CLEARALL_TEXT", 0, 0);
+	label->drawable = true;
+	label->draw = drawClearAllText;
+	appendItem(g->root, label, 1);
+	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbClearAllCancel, sc);
+	noBtn->name = strdup("CLEARALL_NO");
+	GuiNode *yesBtn = createActionBtnGuiNode(px + 170, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbClearAllConfirmYes, sc);
+	yesBtn->name = strdup("CLEARALL_YES");
+	appendItem(g->root, noBtn, 1);
+	appendItem(g->root, yesBtn, 1);
+	changeGraphSelection(g, noBtn);
+	Layer *layer = createLayer(g, px, py, 300, 90, "CLEARALL", true, true);
+	pushLayer(&ig->overlayLayers, layer);
+}
+
 
 static void cbDeleteSource(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
@@ -1294,13 +1370,24 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 	if(!mod || mod->type == MT_ATTEN) {
 		return;
 	}
+	/* The source-row action buttons (ROUTE/TYPE/DEL) capture &g_sourceCtx[idx],
+	 * a SHARED array. refreshSourceCtx clobbers the whole array, so it must
+	 * reflect the instrument that owns the interactive (SELECTED) graph —
+	 * a non-selected channel's build refreshing it would leave the selected
+	 * channel's captured ctx pointing at the wrong instrument. Refresh from
+	 * the selected channel's build only (idempotent per row). */
+	{
+		InstrumentGui *ig = igui;
+		if(ig && inst == ig->vm->instruments[*ig->selectedInstrument]) {
+			refreshSourceCtx(inst);
+		}
+	}
 	bool core = idx < inst->coreEnvelopeCount;
 	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
 	wrap->drawable = true;
 	wrap->draw = drawWrapperNode;
 
 	if(!core) {
-		refreshSourceCtx(inst);
 		GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
 		                                         modTypeTag(mod->type), 0, cbCycleSourceType, &g_sourceCtx[idx]);
 		typeBtn->name = strdup(modTypeTag(mod->type));

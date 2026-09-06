@@ -945,6 +945,13 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		 * the call is a use-after-free. */
 		ActionCallback cb = sel->actionCb;
 		if(cb) {
+			/* T12: KM_FUNCTION held + KM_EDIT on a source's ROUTE
+			 * button pushes the clear-all-routes confirm instead of
+			 * opening the picker. */
+			if(cb == cbOpenRouteLayer && isKeyHeld(is, KM_FUNCTION)) {
+				cbOpenClearAllLayer(sel->actionCtx);
+				return true;
+			}
 			bool needsRebuild = (cb == cbPresetPrev || cb == cbPresetNext);
 			cb(sel->actionCtx);
 			/* PREV/NEXT apply a preset, which rebuilds the paramList;

@@ -25,6 +25,8 @@ void guiPickerFrameSync(void);
 void guiPickerUpdateDeferred(void);
 void guiPickerEditorDraw(void);
 bool guiPickerEditorInput(InputState *is);
+void cbOpenRouteLayer(void *ctx);
+void cbOpenClearAllLayer(void *ctx);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);

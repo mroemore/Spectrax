@@ -1,0 +1,73 @@
+# clear_routes.txt - T12: KM_FUNCTION + KM_EDIT on a source's ROUTE button
+# pushes the clear-all confirm (NO default). EDIT on NO cancels and leaves
+# the base graph on the ROUTE button; RIGHT to YES + EDIT clears all of the
+# source's routes and returns the base graph to RATIO1. The route-removal
+# semantics themselves are asserted at the unit level (test_modsystem's
+# removeModulationsForSource tests); this fixture covers the UI flow.
+# FM instrument: boot selection = RATIO1; bank = fm1..fm5.
+
+# --- ADD a runtime source so it has a ROUTE button ------------------------
+DOWN
+DOWN
+ASSERT selected==MODS_ADD
+EDIT
+ASSERT envcount==5
+
+# --- Navigate to the runtime source's ROUTE (RIGHT x5 from ENV type) -----
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+
+# --- Route op1 feedback (the picker's first dial is voiceCount; DOWN -> fb)
+EDIT
+ASSERT topLayerSelected==voiceCount
+DOWN
+ASSERT topLayerSelected==feedback
+EDIT
+# (rebuild resets the base selection to RATIO1)
+
+# --- Re-navigate to ROUTE after the route's rebuild -----------------------
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+
+# --- KM_FUNCTION + KM_EDIT opens the clear-all confirm (NO default) -------
+HOLD FUNCTION
+EDIT
+ASSERT topLayerSelected==CLEARALL_NO
+
+# --- EDIT again on NO cancels: confirm closes, base stays on ROUTE --------
+EDIT
+RELEASE
+ASSERT selected==ROUTE
+
+# --- Re-open and confirm YES clears (base returns to RATIO1) --------------
+HOLD FUNCTION
+EDIT
+ASSERT topLayerSelected==CLEARALL_NO
+RIGHT
+ASSERT topLayerSelected==CLEARALL_YES
+EDIT
+RELEASE
+ASSERT selected==RATIO1
