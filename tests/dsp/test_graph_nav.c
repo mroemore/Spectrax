@@ -570,6 +570,35 @@ static int test_arranger_cell_node(void) {
  * exercises the clamp boundaries: under-clamp, in-range, over-clamp,
  * and no-op when the target equals the current visibleStart.
  */
+static int test_scroll_container_to_visible(void) {
+    /* The scroll bug: scrollToVisible updated scrollOffset but never
+     * re-ran reflow, so children kept their stale positions and nothing
+     * visibly scrolled. Regression: after scrolling to a far row, the
+     * row's y must be inside the viewport. */
+    ScrollContainer *sc = (ScrollContainer *)createScrollContainer(0, 0, 100, 120, 40, "sc");
+    ASSERT_TRUE(sc != NULL, "container created");
+    GuiNode *rows[8];
+    for(int i = 0; i < 8; i++) {
+        rows[i] = createGuiNode(0, 0, 0, 0, 0, na_vertical, "row", 0, 0);
+        appendItem(&sc->base, rows[i], 1);
+    }
+    /* contentH = 8*40 = 320; viewport 120; maxOff = 200. Row 7 sits at
+     * y = 0 + 7*40 - 0 = 280 initially (below the viewport). */
+    ASSERT_EQ(sc->contentH, 320, "content height 8 rows");
+    scrollToVisible(sc, rows[7]);
+    int y7 = (int)rows[7]->y;
+    ASSERT_TRUE(y7 >= 0 && y7 + 40 <= 120,
+                "row 7 visible inside viewport after scroll");
+    ASSERT_EQ(y7, 80, "row 7's bottom pinned to the viewport bottom");
+    /* Scroll back up to row 0: offset returns to 0 and the row is at top. */
+    scrollToVisible(sc, rows[0]);
+    ASSERT_EQ(sc->scrollOffset, 0, "scrolled back to top");
+    ASSERT_EQ((int)rows[0]->y, 0, "row 0 at the top");
+    freeGuiNode(&sc->base);
+    printf("PASS test_scroll_container_to_visible\n");
+    return 0;
+}
+
 static int test_scroll_arranger_window_to(void) {
     Arranger a; memset(&a, 0, sizeof(a));
     a.enabledChannels = 2;
@@ -961,6 +990,7 @@ int main(void) {
     fails += test_init_gui_node_null_callback();
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
+    fails += test_scroll_container_to_visible();
     fails += test_scroll_arranger_window_to();
     fails += test_sync_arranger_selection();
     fails += test_navigate_arranger_graph_to();

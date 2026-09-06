@@ -108,7 +108,7 @@ GuiNode *createScrollContainer(int x, int y, int w, int h, int rowH, const char 
  * scroll container. No-op if sel is not under sc (the base
  * rectangle is the viewport). */
 void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
-	if(!sc || !sel || !sc->base.container) {
+	if(!sc || !sel) {
 		return;
 	}
 	/* Only act when sel lives inside sc. Walk up: if we hit sc->base
@@ -120,20 +120,41 @@ void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
 	if(!p) {
 		return;
 	}
+	/* Children above the viewport have negative reflowed y that wraps
+	 * in the uint16 field, so sel->y is unreliable for off-viewport
+	 * rows. Reconstruct the row's UNSCROLLED rect from its index in
+	 * the container's item list. */
+	int rowIndex = -1;
+	if(sc->base.items) {
+		ListElement *e = sc->base.items->head;
+		for(int i = 0; i < sc->base.itemCount && e; i++) {
+			if(*(GuiNode **)e->data == sel) {
+				rowIndex = i;
+				break;
+			}
+			e = e->next;
+		}
+	}
+	if(rowIndex < 0) {
+		return;
+	}
+	int rowH = sc->rowH > 0 ? sc->rowH : 1;
+	int rowTop = (int)sc->base.y + sc->base.padding + rowIndex * rowH;
+	int rowBot = rowTop + rowH;
 	int viewH = (int)sc->base.h;
 	int maxOff = sc->contentH - viewH;
 	if(maxOff < 0) {
 		maxOff = 0;
 	}
 	int target = sc->scrollOffset;
-	int rowTop = (int)sel->y;
-	int rowBot = rowTop + (int)sel->h;
 	int viewTop = (int)sc->base.y;
 	int viewBot = viewTop + viewH;
-	if(rowTop < viewTop) {
-		target = sc->scrollOffset + (rowTop - viewTop);
-	} else if(rowBot > viewBot) {
-		target = sc->scrollOffset + (rowBot - viewBot);
+	int rowTopVis = rowTop - sc->scrollOffset;
+	int rowBotVis = rowTopVis + rowH;
+	if(rowTopVis < viewTop) {
+		target = rowTop - viewTop;
+	} else if(rowBotVis > viewBot) {
+		target = rowTop + rowH - viewBot;
 	}
 	if(target < 0) {
 		target = 0;
@@ -141,7 +162,13 @@ void scrollToVisible(ScrollContainer *sc, const GuiNode *sel) {
 	if(target > maxOff) {
 		target = maxOff;
 	}
-	sc->scrollOffset = target;
+	if(target != sc->scrollOffset) {
+		sc->scrollOffset = target;
+		/* Children are positioned by reflowCoordinates with the offset
+		 * baked in — re-run it so the rows actually move (without this,
+		 * scrolling updates the offset but nothing visibly shifts). */
+		reflowCoordinates(&sc->base);
+	}
 }
 
 void freeGuiNode(GuiNode *gn) {
