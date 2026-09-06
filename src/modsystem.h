@@ -39,6 +39,7 @@ typedef enum {
 	MT_ENV, // Envelope
 	MT_RND, // Random
 	MT_OFS, // Constant Offset
+	MT_ATTEN, // Attenuator (per-connection, inserted by addModulation)
 	MT_COUNT
 } ModType;
 
@@ -78,6 +79,15 @@ typedef struct Mod {
 	bool processed;
 	bool visiting;
 	ModGenerate generate;
+	/* MT_ATTEN only (per-connection attenuator, inserted by addModulation):
+	 * input is the real upstream mod whose output feeds this node.
+	 * attenAmount is shared with the connection's amount param (0..2);
+	 * attenPolarity: 0 = bipolar, 1 = unipolar (clamp negatives to 0);
+	 * attenCurve: 0 = linear, 1 = curved (sign-preserving sqrt). */
+	struct Mod *input;
+	Parameter *attenAmount;
+	Parameter *attenPolarity;
+	Parameter *attenCurve;
 } Mod;
 
 typedef struct ModConnection {

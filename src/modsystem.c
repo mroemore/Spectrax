@@ -370,6 +370,13 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 			}
 			break;
 		}
+		case MT_ATTEN: {
+			/* The atten's own params are list-owned too. */
+			if(mod->attenAmount) removeFromParamList(paramList, mod->attenAmount);
+			if(mod->attenPolarity) removeFromParamList(paramList, mod->attenPolarity);
+			if(mod->attenCurve) removeFromParamList(paramList, mod->attenCurve);
+			break;
+		}
 		default:
 			break;
 	}
@@ -388,6 +395,22 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 			break;
 		case MT_ENV:
 			freeEnvelope((Envelope *)mod);
+			break;
+		case MT_ATTEN:
+			/* Free the atten's own params before freeMod takes the output. */
+			if(mod->attenAmount) {
+				freeParameter(mod->attenAmount);
+				mod->attenAmount = NULL;
+			}
+			if(mod->attenPolarity) {
+				freeParameter(mod->attenPolarity);
+				mod->attenPolarity = NULL;
+			}
+			if(mod->attenCurve) {
+				freeParameter(mod->attenCurve);
+				mod->attenCurve = NULL;
+			}
+			freeMod(mod);
 			break;
 		default:
 			freeMod(mod);
@@ -705,6 +728,28 @@ void generateDrunk(void *self) {
 	setParameterValue(rnd->base.output, rnd->base.output->currentValue + rnd->lastRandom);
 }
 
+/* MT_ATTEN attenuator node: passes the upstream mod's output through an
+ * amount scale (0..2), an optional unipolar clamp, and an optional
+ * sign-preserving sqrt curve. Stateless across calls - updateMod has
+ * nothing to advance for this type. */
+static void modGenerateAtten(void *self) {
+	Mod *m = (Mod *)self;
+	if(!m->input || !m->input->output) {
+		setParameterValue(m->output, 0.0f);
+		return;
+	}
+	float v = getParameterValue(m->input->output);
+	float amt = m->attenAmount ? getParameterValue(m->attenAmount) : 1.0f;
+	v *= amt;
+	if(m->attenPolarity && getParameterValueAsInt(m->attenPolarity) == 1) {
+		v = fmaxf(v, 0.0f);
+	}
+	if(m->attenCurve && getParameterValueAsInt(m->attenCurve) == 1) {
+		v = copysignf(powf(fabsf(v), 0.5f), v);
+	}
+	setParameterValue(m->output, v);
+}
+
 void updateMod(Mod *mod, float deltaTime) {
 	// DEBUG_LOG("update mod");
 	if(mod == NULL) return;
@@ -740,6 +785,9 @@ void updateMod(Mod *mod, float deltaTime) {
 			if(r_phase >= 1.0f) r_phase -= 1.0f;
 			setParameterBaseValue(rand->phase, r_phase);
 			setParameterValue(rand->phase, r_phase);
+		case MT_ATTEN:
+			// Stateless: generate handles the passthrough, nothing to advance
+			break;
 		default:
 			break;
 	}

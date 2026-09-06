@@ -907,6 +907,7 @@ static const char *modTypeTag(ModType t) {
 	switch(t) {
 		case MT_LFO: return "LFO";
 		case MT_RND: return "RND";
+		case MT_ATTEN: return "ATTN";
 		default:     return "ENV";
 	}
 }
