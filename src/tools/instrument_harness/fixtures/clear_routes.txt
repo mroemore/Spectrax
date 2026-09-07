@@ -9,6 +9,10 @@
 # FM instrument: boot selection = RATIO1; bank = fm1..fm5.
 
 # --- ADD a runtime source so it has a ROUTE button ------------------------
+# 5 DOWNs reach MODS_ADD (FM box has 5 rows now).
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 ASSERT selected==MODS_ADD
@@ -16,6 +20,10 @@ EDIT
 ASSERT envcount==5
 
 # --- Navigate to the runtime source's ROUTE (RIGHT x5 from ENV type) -----
+# From RATIO1: 10 DOWNs reach ENV(env[4]).
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN

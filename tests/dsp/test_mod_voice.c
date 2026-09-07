@@ -1286,6 +1286,20 @@ static int test_type_cycle_order(void) {
     return 0;
 }
 
+/*
+ * Bug 2 regression (user report): the ROUTELINES overlay keeps drawing the
+ * PREVIOUS source's routes when a different ROUTE button becomes selected
+ * via navigation from below. syncRouteLinesOverlay used to early-return
+ * when the overlay was already up, so g_routeLinesCtx stayed stale. Moving
+ * from a same-row element to a ROUTE button worked only because the
+ * overlay got torn down in between (non-ROUTE selection -> shouldShow
+ * false -> removed -> re-created with the new ctx).
+ *
+ * Headless-unfriendly (createInstrumentGui allocates render textures), so
+ * the executable regression lives in the instrument_harness fixture
+ * `route_lines_follow_selection.txt` (ASSERT routelinesrc==N verb).
+ */
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1332,6 +1346,9 @@ int main(void) {
     fails += test_voice_graph_copy_syncs_and_isolates();
     /* Task 2.4 — voice graph survives a source retype + rebuild */
     fails += test_voice_graph_survives_source_retype();
+
+    /* Bug 2 — ROUTELINES ctx follows selection hops between sources
+     * (executable regression in the instrument_harness fixture). */
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

@@ -93,6 +93,7 @@ typedef enum {
 	SOP_FRAMES,          /* idle for N frames (all keys released) */
 	SOP_ASSERT_ENVCOUNT, /* inst->envelopeCount == N */
 	SOP_ASSERT_MODULATORS, /* ops[op]->{fb|rat|lvl}->modulator_count == N */
+	SOP_ASSERT_ROUTELINESRC, /* ROUTELINES ctx srcIdx == N */
 	SOP_ASSERT_SELECTED, /* currentGraph->selected->name == "NAME" */
 	SOP_ASSERT_PRESET,   /* presetBank has a patch whose name matches "NAME" */
 	SOP_ASSERT_FILE,     /* "data/instrument_presets/<sanitized>" exists on disk */
@@ -462,6 +463,15 @@ static void parseScript(const char *path) {
 					return;
 				}
 				s->op = SOP_ASSERT_ENVCOUNT; s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "routelinesrc") == 0) {
+				/* ASSERT routelinesrc == <N>: the ROUTELINES overlay's
+				 * g_routeLinesCtx.srcIdx (which source's routes are drawn). */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT routelinesrc==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_ROUTELINESRC; s->a.n = atoi(tokens[3]);
 			} else if(strcmp(tokens[1], "modulators") == 0) {
 				/* ASSERT modulators == ( <op> , <kind> , <N> ) */
 				if(nt < 9 || strcmp(tokens[2], "==") != 0 ||
@@ -1121,6 +1131,18 @@ static void processScriptAssert(const ScriptStep *s) {
 		case SOP_ASSERT_ENVCOUNT:
 			runAssertEnvcount(s->lineno, s->a.n);
 			break;
+		case SOP_ASSERT_ROUTELINESRC: {
+			extern int guiRouteLinesSource(void);
+			int got = guiRouteLinesSource();
+			if(got != s->a.n) {
+				fprintf(stdout, "FAIL line %d: ASSERT routelinesrc==%d failed: got %d\n",
+				        s->lineno, s->a.n, got);
+				failScript(s->lineno, "ASSERT routelinesrc mismatch");
+				return;
+			}
+			fprintf(stdout, "PASS line %d: routelinesrc==%d\n", s->lineno, s->a.n);
+			break;
+		}
 		case SOP_ASSERT_MODULATORS:
 			runAssertModulators(s->lineno, s->opIdx, s->kind, s->b.n);
 			break;

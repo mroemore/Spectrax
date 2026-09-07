@@ -7,9 +7,9 @@
 #   META          -> the meta row (was 4px pre-Task-4; must now match
 #                    the other rows)
 #   presetwrappa  -> the preset row (must match the meta row in height)
-#   R_1           -> the first FM dial row (visual reference for the
+#   FMR1          -> the first FM op dial row (visual reference for the
 #                    standard row height)
-#   FM_CONTROLS   -> the FM inst control block, for visual comparison
+#   fm_ctrl       -> the FM inst control scroll box, for visual comparison
 #
 # A pre-Task-4 run would show META h=4; after the rework META h must be
 # within a few px of R_1's h. The fixture captures a SHOT PNG as
@@ -28,8 +28,8 @@ FRAMES 5
 # Report the wrappers so the harness log captures the post-layout sizes.
 REPORT META
 REPORT presetwrappa
-REPORT R_1
-REPORT FM_CONTROLS
+REPORT FMR1
+REPORT fm_ctrl
 
 # Confirm the cursor starts on RATIO1 (deep inside FM_CONTROLS, well
 # below the meta row).
@@ -77,12 +77,12 @@ REPORT TNEXT
 REPORT VOICES
 
 # DOWN three times: should leave the meta row (VOICES), drop through
-# the preset row, then land on RATIO3 in FM_CONTROLS (the first dial
-# of the second FM dial row, R_2). The cursor trace for a fresh
-# FM-instrument state is:
-#   VOICES (top meta) -DOWN-> PREV (preset) -DOWN-> RATIO1 (R_1)
-#                                            -DOWN-> RATIO3 (R_2)
-# So 3 DOWNs is the exact count to land on RATIO3. (The original
+# the preset row, then land on RATIO2 in FM_CONTROLS (the first dial of
+# the second FM op row). The cursor trace for a fresh FM-instrument state
+# (FM box has 5 rows now: op1..op4 + ALG/PAN/GAIN) is:
+#   VOICES (top meta) -DOWN-> PREV (preset) -DOWN-> RATIO1 (op1)
+#                                            -DOWN-> RATIO2 (op2)
+# So 3 DOWNs is the exact count to land on RATIO2. (The original
 # spec called for 30 DOWNs to walk the full graph round-trip, but
 # that loops past FM_CONTROLS into the mod_wrap AD-env nodes
 # (ATTACK, DECAY, ...) and asserted a wrong target — the reviewer's
@@ -93,9 +93,9 @@ DOWN
 DOWN
 DOWN
 FRAMES 2
-# Assert we're back in FM_CONTROLS (R_2 first dial), proving the
+# Assert we're back in FM_CONTROLS (op2's first dial), proving the
 # cursor left the meta row and traversed preset -> FM.
-ASSERT selected == RATIO3
+ASSERT selected == RATIO2
 
 # Capture the screen for the human-readable evidence trail.
 SHOT /tmp/spectrax_task4_inst.png

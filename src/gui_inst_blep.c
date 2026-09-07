@@ -27,7 +27,11 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 	GuiNode *waveShape = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SHAPE", selected, incParameterBaseValue, inst->id.blep.shape);
 	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *pitch = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PITCH", 0, incParameterBaseValue, inst->pitch);
+	GuiNode *gain = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "GAIN", 0, incParameterBaseValue, inst->gain);
 	pan->draw = drawDiscreteDialGuiNode;
+	pitch->draw = drawDiscreteDialGuiNode;
+	gain->draw = drawDiscreteDialGuiNode;
 
 	if(selected) {
 		g->selected = waveShape;
@@ -38,6 +42,8 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 	appendItem(btnrow1, waveShape, 1);
 	appendItem(btnrow1, pan, 1);
+	appendItem(btnrow1, pitch, 1);
+	appendItem(btnrow1, gain, 1);
 	appendItem(btnrow1, sp1, 4);
 
 	appendItem(btnrow2, sp2, 1);

@@ -1,9 +1,14 @@
 # mod_sources.txt - unified mod-sources container end-to-end
 # FM instrument: core 4 envelopes, then runtime sources (env[4]...).
 # Boot selection = RATIO1; bank = fm1..fm5.
+# The FM controls box has 5 rows (op1..op4 + ALG/PAN/GAIN), so MODS_ADD is
+# 5 DOWNs from RATIO1 and a runtime row's TYPE button is 10 DOWNs.
 
 # --- ADD a runtime source -------------------------------------------------
-# DOWN DOWN lands on MODS_ADD (mod-wrap header); EDIT fires cbAddModSource.
+# 5 DOWNs land on MODS_ADD (mod-wrap header); EDIT fires cbAddModSource.
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 ASSERT selected==MODS_ADD
@@ -11,10 +16,13 @@ EDIT
 ASSERT envcount==5
 
 # --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
-# After ADD (line 6) selection reset to RATIO1; DOWN x7 reaches env[4]'s
-# TYPE button: RATIO3 -> MODS_ADD -> ATTACK(env0) -> ATTACK(env1) ->
-# ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT cycles the type
-# and rebuilds, resetting selection to RATIO1, so we re-navigate each time.
+# After ADD selection reset to RATIO1; DOWN x10 reaches env[4]'s
+# TYPE button: RATIO2 -> RATIO3 -> RATIO4 -> ALG -> MODS_ADD -> ATTACK(env0)
+# -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT
+# cycles the type and rebuilds, resetting selection to RATIO1.
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN
@@ -33,6 +41,9 @@ DOWN
 DOWN
 DOWN
 DOWN
+DOWN
+DOWN
+DOWN
 ASSERT selected==LFO
 EDIT
 # Now RND.
@@ -43,9 +54,15 @@ DOWN
 DOWN
 DOWN
 DOWN
+DOWN
+DOWN
+DOWN
 ASSERT selected==RND
 EDIT
 # Back to ENV.
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN
@@ -104,7 +121,13 @@ ASSERT envcount==4
 # no dial in the FM section) must be listed and routable.
 DOWN
 DOWN
+DOWN
+DOWN
+DOWN
 EDIT
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN

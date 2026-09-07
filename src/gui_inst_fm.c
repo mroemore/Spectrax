@@ -18,62 +18,67 @@
 #include "gui_inst_internal.h"
 
 void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst) {
-	GuiNode *btnwrap = createGuiNode(0, 0, 100, 100, 0, na_vertical, "FM_CONTROLS", 0, 0);
-	btnwrap->draw = drawWrapperNode;
-	btnwrap->drawable = true;
+	/* Task 5.2: the FM controls box is a ScrollContainer (rowH 35, the
+	 * AD-env standard) so every per-op control — including the outLevel /
+	 * pitch / gain dests that only existed on the routing layer — has a
+	 * reachable base dial. Content is 5 rows (one op per row + a misc
+	 * row), viewport is 3 rows, so a scrollbar appears for the last two.
+	 * One op per row keeps the 5 dial labels (FEEDBACK1 etc.) from
+	 * colliding, which 2 ops/row does. */
+	const int fmRowH = 35;
+	GuiNode *fmScroll = createScrollContainer(0, 0, 100, fmRowH * 3, fmRowH, "fm_ctrl");
+	fmScroll->drawable = true;
+	fmScroll->draw = drawWrapperNode;
 
-	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
-	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
-
-	GuiNode *rat1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO1", 1, incParameterBaseValue, inst->id.fm.ops[0]->ratio);
-	GuiNode *fb1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK1", 0, incParameterBaseValue, inst->id.fm.ops[0]->feedbackAmount);
-	GuiNode *lvl1 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL1", 0, incParameterBaseValue, inst->id.fm.ops[0]->level);
-	GuiNode *rat2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO2", 0, incParameterBaseValue, inst->id.fm.ops[1]->ratio);
-	GuiNode *fb2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK2", 0, incParameterBaseValue, inst->id.fm.ops[1]->feedbackAmount);
-	GuiNode *lvl2 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL2", 0, incParameterBaseValue, inst->id.fm.ops[1]->level);
-	GuiNode *rat3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO3", 0, incParameterBaseValue, inst->id.fm.ops[2]->ratio);
-	GuiNode *fb3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK3", 0, incParameterBaseValue, inst->id.fm.ops[2]->feedbackAmount);
-	GuiNode *lvl3 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL3", 0, incParameterBaseValue, inst->id.fm.ops[2]->level);
-	GuiNode *rat4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATIO4", 0, incParameterBaseValue, inst->id.fm.ops[3]->ratio);
-	GuiNode *fb4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "FEEDBACK4", 0, incParameterBaseValue, inst->id.fm.ops[3]->feedbackAmount);
-	GuiNode *lvl4 = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEVEL4", 0, incParameterBaseValue, inst->id.fm.ops[3]->level);
-	GuiNode *alg = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->id.fm.selectedAlgorithm);
-	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
-	alg->draw = drawDiscreteDialGuiNode;
-	pan->draw = drawDiscreteDialGuiNode;
-	if(selected) {
-		g->selected = rat1;
+	GuiNode *oprow[4];
+	GuiNode *miscrow = createGuiNode(0, 0, 100, 100, 1, na_horizontal, "FMR5", 0, 0);
+	for(int i = 0; i < 4; i++) {
+		char nm[8];
+		snprintf(nm, sizeof(nm), "FMR%d", i + 1);
+		oprow[i] = createGuiNode(0, 0, 100, 100, 1, na_horizontal, nm, 0, 0);
 	}
 
-	GuiNode *sp1 = createBlankGuiNode();
-	GuiNode *sp2 = createBlankGuiNode();
-	GuiNode *sp4 = createBlankGuiNode();
-	GuiNode *sp5 = createBlankGuiNode();
+	GuiNode *dials[4][5]; /* per-op: ratio, feedback, level, outLevel, pitch */
+	const char *labels[5] = { "RATIO", "FEEDBACK", "LEVEL", "OUTLV", "PITCH" };
+	for(int i = 0; i < 4; i++) {
+		Parameter *p[5];
+		p[0] = inst->id.fm.ops[i]->ratio;
+		p[1] = inst->id.fm.ops[i]->feedbackAmount;
+		p[2] = inst->id.fm.ops[i]->level;
+		p[3] = inst->id.fm.ops[i]->outLevel;
+		p[4] = inst->id.fm.ops[i]->pitch;
+		for(int j = 0; j < 5; j++) {
+			char dname[16];
+			snprintf(dname, sizeof(dname), "%s%d", labels[j], i + 1);
+			bool isSel = (i == 0 && j == 0) ? selected : 0;
+			dials[i][j] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, dname, isSel, incParameterBaseValue, p[j]);
+		}
+	}
+	GuiNode *alg = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->id.fm.selectedAlgorithm);
+	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
+	GuiNode *gain = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "GAIN", 0, incParameterBaseValue, inst->gain);
+	alg->draw = drawDiscreteDialGuiNode;
+	pan->draw = drawDiscreteDialGuiNode;
+	gain->draw = drawDiscreteDialGuiNode;
+	if(selected) {
+		g->selected = dials[0][0];
+	}
 
-	appendItem(btnrow1, rat1, 40);
-	appendItem(btnrow1, fb1, 40);
-	appendItem(btnrow1, lvl1, 40);
-	appendItem(btnrow1, sp1, 5);
-	appendItem(btnrow1, rat2, 40);
-	appendItem(btnrow1, fb2, 40);
-	appendItem(btnrow1, lvl2, 40);
-	appendItem(btnrow1, sp2, 5);
-	appendItem(btnrow1, pan, 20);
+	for(int i = 0; i < 4; i++) {
+		for(int j = 0; j < 5; j++) {
+			appendItem(oprow[i], dials[i][j], 60);
+		}
+		appendItem(oprow[i], createBlankGuiNode(), 4);
+		appendItem(fmScroll, oprow[i], 1);
+	}
 
-	appendItem(btnrow2, rat3, 40);
-	appendItem(btnrow2, fb3, 40);
-	appendItem(btnrow2, lvl3, 40);
-	appendItem(btnrow2, sp4, 5);
-	appendItem(btnrow2, rat4, 40);
-	appendItem(btnrow2, fb4, 40);
-	appendItem(btnrow2, lvl4, 40);
-	appendItem(btnrow2, sp5, 5);
-	appendItem(btnrow2, alg, 20);
+	appendItem(miscrow, alg, 60);
+	appendItem(miscrow, pan, 60);
+	appendItem(miscrow, gain, 60);
+	appendItem(miscrow, createBlankGuiNode(), 8);
+	appendItem(fmScroll, miscrow, 1);
 
-	appendItem(btnwrap, btnrow1, 1);
-	appendItem(btnwrap, btnrow2, 1);
-
-	appendItem(container, btnwrap, weight);
+	appendItem(container, fmScroll, weight);
 }
 
 

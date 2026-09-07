@@ -70,6 +70,11 @@ void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	 * it when empty. */
 	initLayerStack(&ig->overlayLayers);
 	igui = ig;
+	/* Bug 2: refresh the source ctx AFTER igui is assigned — the boot
+	 * graphs were built before igui existed, so the selected-channel
+	 * refresh inside appendModSourceEntry never ran and every ROUTE/DEL
+	 * button captured a g_sourceCtx slot with idx==0. */
+	guiInstRefreshSourceCtx();
 }
 
 
@@ -1369,7 +1374,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	appendItem(instwrap, presetWrap, 5);
 	switch(inst->voiceType) {
 		case VOICE_TYPE_FM:
-			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 8, true, inst);
+			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 13, true, inst);
 			break;
 		case VOICE_TYPE_SAMPLE:
 			appendSampleInstControlNode(instGraph, instwrap, "sctrl", 8, true, inst);

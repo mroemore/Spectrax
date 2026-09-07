@@ -15,7 +15,12 @@ FRAMES 1
 ASSERT selected==RATIO1
 ASSERT envcount==4
 
-# Move down to the mod-wrap header.
+# Move down to the mod-wrap header. The FM controls box now has 5 rows
+# (op1..op4 + ALG/PAN/GAIN), so it takes 5 DOWNs: RATIO1 -> RATIO2 ->
+# RATIO3 -> RATIO4 -> ALG -> MODS_ADD.
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 ASSERT selected==MODS_ADD
@@ -26,9 +31,12 @@ EDIT
 ASSERT envcount==5
 
 # Re-navigate to the new runtime entry's ENV type button. From RATIO1,
-# 7 DOWNs reach the new entry's ENV action button: RATIO3 -> MODS_ADD
-# -> ATTACK(env[0]) -> ATTACK(env[1]) -> ATTACK(env[2]) -> ATTACK(env[3])
-# -> ENV(env[4]).
+# 10 DOWNs reach the new entry's ENV action button: RATIO2 -> RATIO3 ->
+# RATIO4 -> ALG -> MODS_ADD -> ATTACK(env[0]) -> ATTACK(env[1]) ->
+# ATTACK(env[2]) -> ATTACK(env[3]) -> ENV(env[4]).
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN
@@ -74,9 +82,13 @@ LEFT
 LEFT
 ASSERT selected==ENV
 
-# EDIT cycles ENV -> LFO.
+# EDIT cycles ENV -> LFO. The rebuild resets selection to RATIO1; 10
+# DOWNs re-reach the (now LFO) runtime row.
 EDIT
 ASSERT envcount==5
+DOWN
+DOWN
+DOWN
 DOWN
 DOWN
 DOWN

@@ -31,6 +31,14 @@ void cbOpenClearAllLayer(void *ctx);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);
+/* boot-path source-ctx refresh (see gui_inst_mod.c) — called once from
+ * createInstrumentGui after igui is assigned */
+void guiInstRefreshSourceCtx(void);
+/* test hook: which source's routes the ROUTELINES overlay currently shows */
+int guiRouteLinesSource(void);
+/* find a source's ROUTE button by source position (its actionCtx is the
+ * &g_sourceCtx[idx] slot). Exposed for the route-lines regression test. */
+GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx);
 
 /* Spec #3: picker bookkeeping. syncRouteLinesOverlay decides whether
  * to push the gradient overlay based on g_routePickerCount, not on a

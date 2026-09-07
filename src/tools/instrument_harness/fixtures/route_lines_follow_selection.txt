@@ -1,0 +1,37 @@
+# Bug 2: ROUTELINES overlay must follow the selected source even when the
+# cursor hops between ROUTE buttons via UP/DOWN (not just same-row moves).
+FRAMES 4
+ASSERT selected==RATIO1
+# Route source 0 -> op0 feedback and source 1 -> op0 feedback so both
+# sources have active routes (per the user's repro). Then walk the ROUTE
+# buttons and assert the overlay ctx follows each hop.
+# From RATIO1: DOWN x5 -> MODS_ADD; DOWN -> ATTACK(env0); RIGHT x4 -> ROUTE(env0)
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ATTACK
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+FRAMES 2
+ASSERT routelinesrc==0
+# DOWN -> env1 ATTACK; RIGHT x4 -> ROUTE(env1)
+DOWN
+ASSERT selected==ATTACK
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+FRAMES 2
+ASSERT routelinesrc==1
+# UP -> back to env0 ROUTE; the overlay is already up — ctx must refresh to 0.
+UP
+ASSERT selected==ROUTE
+FRAMES 2
+ASSERT routelinesrc==0

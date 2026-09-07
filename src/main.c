@@ -37,6 +37,11 @@
  * at x = gfx.texture.width/2 that are not background.
  * Must be a no-op (zero effect, zero prints) when --probe-route is absent. */
 static bool g_probeRoute = false;
+static bool g_probeTempo = false;
+static long g_tempoProbeLastMs = 0;
+static int g_lastProbedBpm = -1;
+static int g_lastProbedEven = -1;
+static int g_lastProbedOdd = -1;
 
 /* --volume / -V output attenuation (0..100, default 100 = unchanged).
  * Applied ONLY to the final samples written to the audio device; the
@@ -185,6 +190,35 @@ static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
 	}
 	UnloadImage(img);
 	return count;
+}
+
+/* --probe-tempo diagnostic (rule #1136: zero effect without the flag).
+ * Logs the tempo state once at startup, then whenever bpm or the step
+ * sample counts change, plus a heartbeat every ~2s while playing. */
+static void probeTempoState(paTestData *data) {
+	if(!g_probeTempo || !data || !data->arranger || !data->arranger->tempoSettings.bpm) {
+		return;
+	}
+	Parameter *bpm = data->arranger->tempoSettings.bpm;
+	Parameter *swing = data->arranger->tempoSettings.swing;
+	int bv = (int)getParameterValue(bpm);
+	int ev = data->arranger->tempoSettings.samplesPerEvenStep;
+	int od = data->arranger->tempoSettings.samplesPerOddStep;
+	int sw = swing ? (int)getParameterValue(swing) : -1;
+	bool changed = (bv != g_lastProbedBpm || ev != g_lastProbedEven || od != g_lastProbedOdd);
+	double now = GetTime();
+	/* log on change, plus a ~2s heartbeat while playing so a steady-state
+	 * turbo cadence is captured even if nothing changes */
+	bool heartbeat = data->arranger->playing && (now - g_tempoProbeLastMs > 2.0);
+	if(changed || heartbeat) {
+		fprintf(stderr, "TEMPO bpm=%d base=%.1f even=%d odd=%d swing=%d playing=%d elapsed=%d t=%.1f\n",
+		        bv, bpm->baseValue, ev, od, sw, data->arranger->playing,
+		        data->arranger->tempoSettings.samplesElapsed, now);
+		g_tempoProbeLastMs = (long)now;
+		g_lastProbedBpm = bv;
+		g_lastProbedEven = ev;
+		g_lastProbedOdd = od;
+	}
 }
 
 static void probeStepRoute(ApplicationState *appState) {
@@ -442,6 +476,9 @@ int main(int argc, char **argv) {
 		if(strcmp(argv[i], "--probe-route") == 0) {
 			g_probeRoute = true;
 		}
+		if(strcmp(argv[i], "--probe-tempo") == 0) {
+			g_probeTempo = true;
+		}
 		if((strcmp(argv[i], "--volume") == 0 || strcmp(argv[i], "-V") == 0) && i + 1 < argc) {
 			char *end = NULL;
 			unsigned long v = strtoul(argv[i + 1], &end, 10);
@@ -549,6 +586,7 @@ int main(int argc, char **argv) {
 			}
 		}
 		probeStepRoute(appState);
+		probeTempoState(&data);
 		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();

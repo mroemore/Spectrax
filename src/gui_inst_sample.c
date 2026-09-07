@@ -106,7 +106,9 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	GuiNode *sampleIndex = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->id.sampler.sampleIndex);
 	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
 	GuiNode *loop = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->id.sampler.loopSample);
+	GuiNode *gain = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "GAIN", 0, incParameterBaseValue, inst->gain);
 	pan->draw = drawDiscreteDialGuiNode;
+	gain->draw = drawDiscreteDialGuiNode;
 	GuiNode *loopStart = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, incParameterBaseValue, inst->id.sampler.loopStartIndex);
 	GuiNode *loopEnd = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, incParameterBaseValue, inst->id.sampler.loopEndIndex);
 	GuiNode *playbackType = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PLAYBACK", 0, incParameterBaseValue, inst->id.sampler.playbackType);
@@ -121,6 +123,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	appendItem(btnrow1, sampleIndex, 1);
 	appendItem(btnrow1, pan, 1);
 	appendItem(btnrow1, loop, 1);
+	appendItem(btnrow1, gain, 1);
 	appendItem(btnrow1, loopStart, 1);
 	appendItem(btnrow1, loopEnd, 1);
 	appendItem(btnrow1, playbackType, 1);

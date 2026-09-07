@@ -432,6 +432,12 @@ typedef struct {
 
 static RouteLinesCtx g_routeLinesCtx;
 
+/* test hook: which source's routes the ROUTELINES overlay is currently
+ * showing (srcIdx in g_routeLinesCtx). -1 if never set. */
+int guiRouteLinesSource(void) {
+	return g_routeLinesCtx.srcIdx;
+}
+
 
 static void cbRouteToDest(void *ctx);
 static bool connFromSource(ModConnection *c, Mod *src);
@@ -450,6 +456,27 @@ static void refreshSourceCtx(Instrument *inst) {
 	for(int i = 0; i < MAX_ENVELOPES; i++) {
 		g_sourceCtx[i].inst = inst;
 		g_sourceCtx[i].idx = i;
+	}
+}
+
+/* Boot-path fix (Bug 2): createInstrumentGui builds every channel's graph
+ * BEFORE `igui` is assigned, so the selected-channel refresh inside
+ * appendModSourceEntry never runs on the boot path — every ROUTE/DEL/clear
+ * button captures a g_sourceCtx slot whose .idx field is still 0. The
+ * ROUTELINES display + the picker both resolve the source from sc->idx, so
+ * they would all report source 0 until the first rebuild. Called from
+ * createInstrumentGui once igui is set; the ROUTE buttons point AT the
+ * array slots, so refreshing the slots retroactively fixes the captured
+ * ctx without a graph rebuild. Only ever refresh for the SELECTED channel
+ * (cross-channel clobber rule #1163). */
+void guiInstRefreshSourceCtx(void) {
+	InstrumentGui *ig = igui;
+	if(!ig || !ig->vm || !ig->selectedInstrument) {
+		return;
+	}
+	int ch = *ig->selectedInstrument;
+	if(ch >= 0 && ch < ig->vm->enabledChannels && ig->vm->instruments[ch]) {
+		refreshSourceCtx(ig->vm->instruments[ch]);
 	}
 }
 
@@ -525,7 +552,7 @@ static Mod *scMod(const SourceCtx *sc) {
  * boot node (RATIO1). Find the source's ROUTE button in the freshly
  * built graph (its actionCtx is the &g_sourceCtx[idx] slot the builder
  * just refreshed) and put the cursor back on it. */
-static GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx) {
+GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx) {
 	if(!n) {
 		return NULL;
 	}
@@ -1657,15 +1684,25 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 	bool shouldShow = onRouteBtn || pickerOpen;
 	Layer *existing = findLayerByName(&ig->overlayLayers, "ROUTELINES");
 	if(shouldShow) {
-		if(existing) {
-			return; /* already up — no-op so we don't churn layers */
-		}
+		/* Refresh the source context whenever a ROUTE button is the
+		 * selection — NOT just when the overlay is first created. If the
+		 * overlay is already up (cursor came from another ROUTE button
+		 * below) and we early-return here, g_routeLinesCtx keeps pointing
+		 * at the previous source, so the lines keep drawing that source's
+		 * routes even though the cursor now sits on a different one. */
 		if(onRouteBtn) {
 			SourceCtx *sc = (SourceCtx *)sel->actionCtx;
-			if(sc && sc->inst) {
-				g_routeLinesCtx.inst = sc->inst;
+			/* resolveSourceCtx re-points sc->inst at the CURRENTLY
+			 * displayed instrument (captured ctx may be stale on the boot
+			 * path) and keeps sc->idx a valid source position. */
+			Instrument *resolved = sc ? resolveSourceCtx(sc) : NULL;
+			if(resolved) {
+				g_routeLinesCtx.inst = resolved;
 				g_routeLinesCtx.srcIdx = sc->idx;
 			}
+		}
+		if(existing) {
+			return; /* already up — ctx refreshed above */
 		}
 		/* When only the picker is open (no source button is currently
 		 * hovered), the picker already bumped g_routeLinesCtx before
@@ -1881,11 +1918,22 @@ void syncModWrapScroll(void) {
 	if(!sel) {
 		return;
 	}
-	GuiNode *sc = findScrollContainerByName(g->root, "mod_wrap");
-	if(!sc) {
-		return;
+	/* Task 5.2: the FM controls box is a ScrollContainer too — scroll
+	 * whichever scrollable container the selection lives inside (the mod
+	 * source wrap or the FM box). Walk the ancestor chain: the selection
+	 * is a grandchild (a dial/btn inside a row inside the container). */
+	GuiNode *p = sel;
+	while(p && p->container) {
+		if(p->container->scrollable) {
+			scrollToVisible((ScrollContainer *)p->container, sel);
+			return;
+		}
+		p = p->container;
 	}
-	scrollToVisible((ScrollContainer *)sc, sel);
+	GuiNode *sc = findScrollContainerByName(g->root, "mod_wrap");
+	if(sc) {
+		scrollToVisible((ScrollContainer *)sc, sel);
+	}
 }
 
 /* T7: while the ROUTE picker is up, re-pin every dest button to its base
