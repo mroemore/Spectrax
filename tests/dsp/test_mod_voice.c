@@ -127,8 +127,8 @@ static int test_runtime_source_lifecycle(void) {
     ASSERT_EQ(inst->envelopeCount, inst->modList->count, "envelopeCount tracks modList count");
     Mod *m = inst->modList->mods[before];
     ASSERT_EQ(m->type, MT_ENV, "default source is an envelope");
-    Envelope *env = (Envelope *)m;
-    ASSERT_EQ(env->stageCount, 2, "default source has an AD shape");
+    Mod *env = (Mod *)m;
+    ASSERT_EQ(env->data.env.stageCount, 2, "default source has an AD shape");
 
     /* core sources cannot be removed */
     removeSource(inst, 0);
@@ -195,8 +195,8 @@ static int test_preset_load_rebuilds_voices(void) {
     /* Voices must alias the CURRENT instrument stage params. */
     Voice *v = vm->voicePools[0][0];
     ASSERT_TRUE(v->envelope[0] != NULL, "voice envelope exists");
-    ASSERT_EQ(v->envelope[0]->stages[0].duration,
-              inst->envelopes[0]->stages[0].duration,
+    ASSERT_EQ(v->envelope[0]->data.env.stages[0].duration,
+              inst->envelopes[0]->data.env.stages[0].duration,
               "voice aliases the new instrument stage param");
 
     freeVoiceManager(vm);
@@ -309,7 +309,7 @@ static int test_route_to_fm_param_affects_value(void) {
                                     0.1f, 0.2f, "AD+");
     inst->envelopeCount++;
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idx]->base,
+                              inst->envelopes[idx],
                               level, 1.0f, MO_ADD),
                 "route env→op0.level");
     /* Per-connection attenuator (Task 2): the connection's source is
@@ -325,7 +325,7 @@ static int test_route_to_fm_param_affects_value(void) {
      * stays at baseValue. The atten (amount 1.0) then passes 0.25
      * onto the destination's base (0.1) → 0.35.
      */
-    setParameterBaseValue(inst->envelopes[idx]->base.output, 0.25f);
+    setParameterBaseValue(inst->envelopes[idx]->output, 0.25f);
     processModulations(inst->paramList, inst->modList, 0.016f);
     ASSERT_NEAR(level->currentValue, base + 0.25f, 0.0001f);
 
@@ -344,7 +344,7 @@ static int test_route_to_fm_param_affects_value(void) {
      * Set baseValue=0.5 so the modulator contribution is observable.
      */
     addModulation(inst->paramList, inst->modList,
-                  &inst->envelopes[idx]->base,
+                  inst->envelopes[idx],
                   level, 1.0f, MO_ADD);
     Parameter *level1 = inst->id.fm.ops[1]->level;
     float base1 = level1->baseValue;
@@ -360,9 +360,9 @@ static int test_route_to_fm_param_affects_value(void) {
      * and op1 modulated after the swap.
      */
     removeModulation(inst->paramList, inst->modList, level, a2);
-    addModulation(inst->paramList, inst->modList, &inst->envelopes[idx]->base,
+    addModulation(inst->paramList, inst->modList, inst->envelopes[idx],
                   level1, 1.0f, MO_ADD);
-    setParameterBaseValue(inst->envelopes[idx]->base.output, 0.5f);
+    setParameterBaseValue(inst->envelopes[idx]->output, 0.5f);
     processModulations(inst->paramList, inst->modList, 0.016f);
     ASSERT_NEAR(level1->currentValue, base1 + 0.5f, 0.0001f);
     ASSERT_NEAR(level->currentValue, base, 0.0001f);
@@ -394,18 +394,18 @@ static int test_remove_modulation_is_surgical(void) {
     inst->envelopeCount++;
 
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idxA]->base,
+                              inst->envelopes[idxA],
                               level, 1.0f, MO_ADD),
                 "route A");
     /* Per-connection attenuator (Task 2): conn->source is A's atten. */
     Mod *aA = level->modulators->source;
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idxB]->base,
+                              inst->envelopes[idxB],
                               level, 1.0f, MO_ADD),
                 "route B");
 
-    setParameterBaseValue(inst->envelopes[idxA]->base.output, 0.10f);
-    setParameterBaseValue(inst->envelopes[idxB]->base.output, 0.40f);
+    setParameterBaseValue(inst->envelopes[idxA]->output, 0.10f);
+    setParameterBaseValue(inst->envelopes[idxB]->output, 0.40f);
     processModulations(inst->paramList, inst->modList, 0.016f);
     /* both wired: base + 0.10 + 0.40 = base + 0.50 */
     ASSERT_NEAR(level->currentValue, base + 0.50f, 0.0001f);
@@ -423,8 +423,8 @@ static int test_remove_modulation_is_surgical(void) {
     ModConnection *conn = level->modulators;
     int sawA = 0, sawB = 0;
     while (conn) {
-        if (conn->source->input == &inst->envelopes[idxA]->base) sawA = 1;
-        if (conn->source->input == &inst->envelopes[idxB]->base) sawB = 1;
+        if (conn->source->data.atten.input == inst->envelopes[idxA]) sawA = 1;
+        if (conn->source->data.atten.input == inst->envelopes[idxB]) sawB = 1;
         conn = conn->next;
     }
     ASSERT_TRUE(!sawA, "A modulator unwired");
@@ -464,7 +464,7 @@ static int test_rewire_modulation_swaps_source(void) {
     inst->envelopeCount++;
 
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idxA]->base,
+                              inst->envelopes[idxA],
                               level, 1.0f, MO_ADD),
                 "route A");
     /* Per-connection attenuator (Task 2): conn->source is A's atten. */
@@ -472,7 +472,7 @@ static int test_rewire_modulation_swaps_source(void) {
     /* Give B its own atten (the rewire target) via op1.level. */
     Parameter *level1 = inst->id.fm.ops[1]->level;
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idxB]->base,
+                              inst->envelopes[idxB],
                               level1, 1.0f, MO_ADD),
                 "route B");
     Mod *aB = level1->modulators->source;
@@ -480,8 +480,8 @@ static int test_rewire_modulation_swaps_source(void) {
     /* Rewire op0.level's connection from A's atten to B's atten */
     ASSERT_TRUE(rewireModulation(inst->paramList, level, aA, aB),
                 "rewire A→B");
-    setParameterBaseValue(inst->envelopes[idxA]->base.output, 0.10f);
-    setParameterBaseValue(inst->envelopes[idxB]->base.output, 0.70f);
+    setParameterBaseValue(inst->envelopes[idxA]->output, 0.10f);
+    setParameterBaseValue(inst->envelopes[idxB]->output, 0.70f);
     processModulations(inst->paramList, inst->modList, 0.016f);
     /* only B contributes now: base + 0.70 */
     ASSERT_NEAR(level->currentValue, base + 0.70f, 0.0001f);
@@ -490,7 +490,7 @@ static int test_rewire_modulation_swaps_source(void) {
     ModConnection *conn = level->modulators;
     ASSERT_TRUE(conn != NULL, "one connection survives rewire");
     ASSERT_TRUE(conn->source == aB, "rewired connection source is B's atten");
-    ASSERT_TRUE(conn->source->input == &inst->envelopes[idxB]->base,
+    ASSERT_TRUE(conn->source->data.atten.input == inst->envelopes[idxB],
                 "that atten reads envB");
 
     free_env(&e);
@@ -515,7 +515,7 @@ static int test_voice_render_after_route_and_delete(void) {
                                     0.1f, 0.2f, "AD+");
     inst->envelopeCount++;
     ASSERT_TRUE(addModulation(inst->paramList, inst->modList,
-                              &inst->envelopes[idx]->base,
+                              inst->envelopes[idx],
                               inst->id.fm.ops[0]->level, 1.0f, MO_ADD),
                 "route env→op0.level");
 
@@ -533,7 +533,7 @@ static int test_voice_render_after_route_and_delete(void) {
     OutVal out1 = generateVoice(e.vm, v, 1.0f, 440.0f);
 
     ASSERT_TRUE(removeMod(inst->modList, inst->paramList,
-                          &inst->envelopes[idx]->base),
+                          inst->envelopes[idx]),
                 "runtime envelope removed via removeMod");
     inst->envelopeCount--;
 
@@ -565,7 +565,7 @@ static int test_core_envelope_delete_rejected(void) {
     TestEnv e;
     if (make_env(&e, 2)) return 1;
     Instrument *inst = e.vm->instruments[0];
-    Envelope *core = inst->envelopes[0];
+    Mod *core = inst->envelopes[0];
     ASSERT_TRUE(inst->coreEnvelopeCount == 4,
                 "core count recorded at init");
     /* The UI guard fires when (idx < coreEnvelopeCount). Simulating
@@ -576,7 +576,7 @@ static int test_core_envelope_delete_rejected(void) {
     /* Core envelope's mod pointer is still in the instrument's modList */
     int found = 0;
     for (int i = 0; i < inst->modList->count; i++) {
-        if (inst->modList->mods[i] == &core->base) {
+        if (inst->modList->mods[i] == core) {
             found = 1;
             break;
         }
@@ -598,10 +598,10 @@ static int test_remove_mod_primitively_accepts_core(void) {
     TestEnv e;
     if (make_env(&e, 2)) return 1;
     Instrument *inst = e.vm->instruments[0];
-    Envelope *core = inst->envelopes[0];
+    Mod *core = inst->envelopes[0];
 
     /* removeMod does not consult coreEnvelopeCount. */
-    bool removed = removeMod(inst->modList, inst->paramList, &core->base);
+    bool removed = removeMod(inst->modList, inst->paramList, core);
     ASSERT_TRUE(removed, "removeMod accepts core when called bare");
     /* The freed envelope pointer is now dangling. The voice pool's
      * envelope[0] aliases this struct via stage duration/curvature
@@ -851,7 +851,7 @@ static int test_preset_from_instrument_roundtrip(void) {
     bool foundRT = false;
     for (int i = 0; i < dst->modList->count; i++) {
         if (dst->modList->mods[i]->type == MT_ENV) {
-            Envelope *env = (Envelope *)dst->modList->mods[i];
+            Mod *env = (Mod *)dst->modList->mods[i];
             if (env == dst->envelopes[4]) { foundRT = true; break; }
         }
     }

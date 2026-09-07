@@ -99,7 +99,7 @@ static int hasRouteFrom(ParamList *pl, Parameter *dest, Mod *src) {
     ModConnection *c = dest->modulators;
     while(c) {
         if(c->source == src) return 1;
-        if(c->source && c->source->type == MT_ATTEN && c->source->input == src) {
+        if(c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src) {
             return 1;
         }
         c = c->next;
@@ -149,17 +149,17 @@ static int test_create_lists(void) {
 static int test_add_modulation_wiring(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD),
+    ASSERT_TRUE(addModulation(pl, ml, env, dest, 0.5f, MO_ADD),
                 "addModulation returns true");
     ASSERT_EQ(dest->modulator_count, 1);
     ASSERT_TRUE(dest->modulators != NULL, "dest->modulators set");
     Mod *src = dest->modulators->source;
     ASSERT_EQ(src->type, MT_ATTEN, "source is the inserted attenuator");
-    ASSERT_TRUE(src->input == &env->base, "attenuator input is the env");
+    ASSERT_TRUE(src->data.atten.input == env, "attenuator input is the env");
     ASSERT_TRUE(dest->modulators->amount != NULL, "amount param present");
-    ASSERT_TRUE(dest->modulators->amount == src->attenAmount,
+    ASSERT_TRUE(dest->modulators->amount == src->data.atten.attenAmount,
                 "conn amount IS the atten's attenAmount");
     ASSERT_TRUE(dest->modulators->type != NULL, "type param created");
     ASSERT_EQ(pl->count, 11, "5 env params + dest + type + 4 atten params");
@@ -208,14 +208,14 @@ static int test_add_modulation_wiring(void) {
 static int test_process_modulation_arithmetic(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 100.0f);
     /* Pre-apply prime: the atten sees this 0.5 on the first pass
      * (its generate runs before the apply pass resets the env
      * output), then it is gone. */
-    setParameterValue(env->base.output, 0.5f);
+    setParameterValue(env->output, 0.5f);
 
-    addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
+    addModulation(pl, ml, env, dest, 0.5f, MO_ADD);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.5f, 0.0001f,
                 "ADD first pass: atten passes the pre-apply prime 0.5");
@@ -224,19 +224,19 @@ static int test_process_modulation_arithmetic(void) {
                 "ADD: env output reset to 0, dest = baseValue");
 
     removeModulation(pl, ml, dest, dest->modulators->source);
-    addModulation(pl, ml, &env->base, dest, 0.5f, MO_MUL);
+    addModulation(pl, ml, env, dest, 0.5f, MO_MUL);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 0.0f, 0.0001f,
                 "MUL: baseValue*0 = 0 when env output resets to 0");
 
     removeModulation(pl, ml, dest, dest->modulators->source);
-    addModulation(pl, ml, &env->base, dest, 0.5f, MO_SUB);
+    addModulation(pl, ml, env, dest, 0.5f, MO_SUB);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "SUB: env output resets to 0, dest = baseValue");
 
     removeModulation(pl, ml, dest, dest->modulators->source);
-    addModulation(pl, ml, &env->base, dest, 0.5f, MO_DIV);
+    addModulation(pl, ml, env, dest, 0.5f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "DIV: env output resets to 0, dest = baseValue");
@@ -247,10 +247,10 @@ static int test_process_modulation_arithmetic(void) {
      * baseValue=1.0. We confirm with a SECOND, zeroed envelope that
      * the skip path actually skips (finalValue remains 1.0 rather
      * than dividing by zero and producing NaN/Inf). */
-    Envelope *env2 = createAD(pl, ml, 0.1f, 0.2f, "AD2");
-    setParameterValue(env2->base.output, 0.0f);
+    Mod *env2 = createAD(pl, ml, 0.1f, 0.2f, "AD2");
+    setParameterValue(env2->output, 0.0f);
     removeModulation(pl, ml, dest, dest->modulators->source);
-    addModulation(pl, ml, &env2->base, dest, 1.0f, MO_DIV);
+    addModulation(pl, ml, env2, dest, 1.0f, MO_DIV);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f,
                 "DIV by zero skipped: finalValue stays at baseValue");
@@ -282,21 +282,21 @@ static int test_process_modulation_arithmetic(void) {
 static int test_multiple_modulators_apply_in_order(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *e1 = createAD(pl, ml, 1.0f, 1.0f, "E1");
-    Envelope *e2 = createAD(pl, ml, 1.0f, 1.0f, "E2");
+    Mod *e1 = createAD(pl, ml, 1.0f, 1.0f, "E1");
+    Mod *e2 = createAD(pl, ml, 1.0f, 1.0f, "E2");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 100.0f);
     triggerEnvelope(e1);
     triggerEnvelope(e2);
-    addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
-    addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, e1, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, e2, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
     /* Connection sources are the per-connection attenuators; the real
      * envelope is reached through the atten's input. */
     ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN &&
-                dest->modulators->source->input == &e2->base,
+                dest->modulators->source->data.atten.input == e2,
                 "prepended: e2's atten (added last) is at the head of the list");
     ASSERT_TRUE(dest->modulators->next->source->type == MT_ATTEN &&
-                dest->modulators->next->source->input == &e1->base,
+                dest->modulators->next->source->data.atten.input == e1,
                 "e1's atten (added first) is the tail");
     processModulations(pl, ml, 0.0f);
     /* With a 1.0s attack and one PA_SR step, env output is ~2e-8 and
@@ -318,14 +318,14 @@ static int test_multiple_modulators_apply_in_order(void) {
 static int test_envelope_create_and_stage_overflow(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *ad = createAD(pl, ml, 0.1f, 0.2f, "AD");
-    ASSERT_EQ(ad->stageCount, 2, "AD has 2 stages");
-    Envelope *adsr = createADSR(pl, ml, 0.1f, 0.2f, 0.3f, 0.4f, "ADSR");
-    ASSERT_EQ(adsr->stageCount, 4, "ADSR has 4 stages");
+    Mod *ad = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    ASSERT_EQ(ad->data.env.stageCount, 2, "AD has 2 stages");
+    Mod *adsr = createADSR(pl, ml, 0.1f, 0.2f, 0.3f, 0.4f, "ADSR");
+    ASSERT_EQ(adsr->data.env.stageCount, 4, "ADSR has 4 stages");
     for (int i = 0; i < 10; i++) {
         addEnvelopeStage(pl, ad, true, 0.1f, 0.5f, 0.5f, "X");
     }
-    ASSERT_EQ(ad->stageCount, MAX_ENVELOPE_STAGES, "stages capped at MAX");
+    ASSERT_EQ(ad->data.env.stageCount, MAX_ENVELOPE_STAGES, "stages capped at MAX");
     teardown(pl, ml);
     printf("PASS test_envelope_create_and_stage_overflow\n");
     return 0;
@@ -377,18 +377,18 @@ static int test_empty_process_modulations(void) {
  * the LFO phase must stay in [0.0, 1.0). updateMod handles the wrap
  * (subtract 1.0 when >= 1.0).
  *
- * Note: createLFO sets lfo->base.generate = generateEnvelope via
+ * Note: createLFO sets lfo->generate = generateEnvelope via
  * initMod's current implementation (the `generate` argument is
  * ignored). That's a latent bug we don't pin here — this test only
  * checks phase wrap. */
 static int test_lfo_phase_wrap(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *lfo = createLFO(pl, ml, 0, 0.4f, LS_SIN, "LFO");
+    Mod *lfo = createLFO(pl, ml, 0, 0.4f, LS_SIN, "LFO");
     ASSERT_TRUE(lfo != NULL, "createLFO");
     for (int i = 0; i < 100; i++) {
         processModulations(pl, ml, 0.1f);
-        ASSERT_TRUE(lfo->phase->baseValue >= 0.0f && lfo->phase->baseValue < 1.0f,
+        ASSERT_TRUE(lfo->data.lfo.phase->baseValue >= 0.0f && lfo->data.lfo.phase->baseValue < 1.0f,
                     "LFO phase stays in [0,1)");
     }
     teardown(pl, ml);
@@ -412,32 +412,32 @@ static int test_lfo_phase_wrap(void) {
 static int test_remove_modulation(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, ml, &env->base, dest, 0.5f, MO_ADD);
+    addModulation(pl, ml, env, dest, 0.5f, MO_ADD);
     /* Atten-aware removal: passing the REAL source now matches the
      * atten-routed connection and GCs the attenuator. */
     int before = pl->count;
     int modBefore = ml->count;
-    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base),
+    ASSERT_TRUE(removeModulation(pl, ml, dest, env),
                 "removed via the real source (atten-aware)");
     ASSERT_EQ(dest->modulator_count, 0, "no modulators left");
     ASSERT_TRUE(dest->modulators == NULL, "list empty");
     ASSERT_EQ(pl->count, before - 5, "type param + 4 atten params removed");
     ASSERT_EQ(ml->count, modBefore - 1, "atten GC'd — env alone in modList");
-    ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base), "absent returns false");
+    ASSERT_TRUE(!removeModulation(pl, ml, dest, env), "absent returns false");
 
     /* mid-list: two modulators, remove the head */
-    Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
-    addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
-    addModulation(pl, ml, &e2->base, dest, 1.0f, MO_ADD);
+    Mod *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
+    addModulation(pl, ml, env, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, e2, dest, 1.0f, MO_ADD);
     ASSERT_EQ(dest->modulator_count, 2, "two modulators");
     Mod *head = dest->modulators->source;
-    ASSERT_TRUE(head->input == &e2->base, "head is e2's atten");
+    ASSERT_TRUE(head->data.atten.input == e2, "head is e2's atten");
     ASSERT_TRUE(removeModulation(pl, ml, dest, head), "remove head");
     ASSERT_EQ(dest->modulator_count, 1, "one left");
     ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN &&
-                dest->modulators->source->input == &env->base, "tail survives");
+                dest->modulators->source->data.atten.input == env, "tail survives");
     teardown(pl, ml);
     printf("PASS test_remove_modulation\n");
     return 0;
@@ -464,14 +464,14 @@ static int test_remove_modulation(void) {
 static int test_remove_modulations_for_source(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
     Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD);
-    addModulation(pl, ml, &env->base, d2, 1.0f, MO_MUL);
+    addModulation(pl, ml, env, d1, 1.0f, MO_ADD);
+    addModulation(pl, ml, env, d2, 1.0f, MO_MUL);
     /* One atten per route, both fed by env. */
     int before = pl->count;
-    ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 2,
+    ASSERT_EQ(removeModulationsForSource(pl, ml, env), 2,
               "real source removes both routes (atten-aware)");
     ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
@@ -487,18 +487,18 @@ static int test_remove_modulations_for_source(void) {
 static int test_remove_from_modlist(void) {
     ModList *ml = createModList();
     ParamList *pl = createParamList();
-    Envelope *a = createAD(pl, ml, 0.1f, 0.2f, "A");
-    Envelope *b = createAD(pl, ml, 0.1f, 0.2f, "B");
-    Envelope *c = createAD(pl, ml, 0.1f, 0.2f, "C");
+    Mod *a = createAD(pl, ml, 0.1f, 0.2f, "A");
+    Mod *b = createAD(pl, ml, 0.1f, 0.2f, "B");
+    Mod *c = createAD(pl, ml, 0.1f, 0.2f, "C");
     ASSERT_EQ(ml->count, 3, "3 mods");
-    ASSERT_TRUE(removeFromModList(ml, &b->base), "remove middle");
+    ASSERT_TRUE(removeFromModList(ml, b), "remove middle");
     ASSERT_EQ(ml->count, 2, "count 2 after remove");
-    ASSERT_EQ(ml->mods[0], &a->base, "a first");
-    ASSERT_EQ(ml->mods[1], &c->base, "c shifted down");
-    ASSERT_TRUE(removeFromModList(ml, &a->base), "remove first");
-    ASSERT_TRUE(removeFromModList(ml, &c->base), "remove last");
+    ASSERT_EQ(ml->mods[0], a, "a first");
+    ASSERT_EQ(ml->mods[1], c, "c shifted down");
+    ASSERT_TRUE(removeFromModList(ml, a), "remove first");
+    ASSERT_TRUE(removeFromModList(ml, c), "remove last");
     ASSERT_EQ(ml->count, 0, "empty");
-    ASSERT_TRUE(!removeFromModList(ml, &b->base), "absent returns false");
+    ASSERT_TRUE(!removeFromModList(ml, b), "absent returns false");
     teardown(pl, ml);
     printf("PASS test_remove_from_modlist\n");
     return 0;
@@ -536,20 +536,20 @@ static int test_remove_from_paramlist(void) {
 static int test_rewire_modulation(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *e1 = createAD(pl, ml, 0.1f, 0.2f, "E1");
-    Envelope *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
+    Mod *e1 = createAD(pl, ml, 0.1f, 0.2f, "E1");
+    Mod *e2 = createAD(pl, ml, 0.1f, 0.2f, "E2");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
     Parameter *scratch = createParameter(pl, "scratch", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, ml, &e1->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, e1, dest, 1.0f, MO_ADD);
     Mod *a1 = dest->modulators->source;
     /* Give e2 its own atten so we have a rewire target. */
-    addModulation(pl, ml, &e2->base, scratch, 1.0f, MO_ADD);
+    addModulation(pl, ml, e2, scratch, 1.0f, MO_ADD);
     Mod *a2 = scratch->modulators->source;
-    ASSERT_TRUE(a1->type == MT_ATTEN && a1->input == &e1->base, "a1 is e1's atten");
-    ASSERT_TRUE(a2->type == MT_ATTEN && a2->input == &e2->base, "a2 is e2's atten");
+    ASSERT_TRUE(a1->type == MT_ATTEN && a1->data.atten.input == e1, "a1 is e1's atten");
+    ASSERT_TRUE(a2->type == MT_ATTEN && a2->data.atten.input == e2, "a2 is e2's atten");
     ASSERT_TRUE(rewireModulation(pl, dest, a1, a2), "rewired");
     ASSERT_TRUE(dest->modulators->source == a2, "source now e2's atten");
-    ASSERT_TRUE(dest->modulators->source->input == &e2->base, "that atten reads e2");
+    ASSERT_TRUE(dest->modulators->source->data.atten.input == e2, "that atten reads e2");
     ASSERT_TRUE(!rewireModulation(pl, dest, a1, a2),
                 "old source absent -> false");
     teardown(pl, ml);
@@ -581,12 +581,12 @@ static int test_wrap_increment(void) {
 static int test_remove_mod(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD);
+    addModulation(pl, ml, env, dest, 1.0f, MO_ADD);
     int before = pl->count;   /* 5 env + dest + type + 4 atten params = 11 */
     int modBefore = ml->count; /* env + atten = 2 */
-    ASSERT_TRUE(removeMod(ml, pl, &env->base), "removeMod succeeds");
+    ASSERT_TRUE(removeMod(ml, pl, env), "removeMod succeeds");
     /* removeMod drops the env (5 params), and its final GC pass frees
      * every atten whose input was the env — here the route's atten,
      * which takes its connection's type param (1) + its own 4 params
@@ -606,7 +606,7 @@ static int test_remove_mod(void) {
      * registered in ml2. */
     ParamList *pl2 = createParamList();
     ModList *ml2 = createModList();
-    Envelope *other = createAD(pl2, ml2, 0.1f, 0.2f, "OTHER");
+    Mod *other = createAD(pl2, ml2, 0.1f, 0.2f, "OTHER");
     Mod ghost = {0};
     ASSERT_TRUE(!removeMod(ml2, pl2, &ghost), "not in this list");
     ASSERT_EQ(ml2->count, 1, "nothing removed");
@@ -670,27 +670,27 @@ static void constGenThreeTenths(void *self) {
 static int test_two_cycle_feedback(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
-	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
-	LFO *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
-	a->base.generate = constGenQuarter;
-	b->base.generate = constGenHalf;
-	addModulation(pl, ml, &b->base, a->base.output, 1.0f, MO_ADD);
-	addModulation(pl, ml, &a->base, b->base.output, 1.0f, MO_ADD);
+	Mod *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	Mod *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
+	a->generate = constGenQuarter;
+	b->generate = constGenHalf;
+	addModulation(pl, ml, b, a->output, 1.0f, MO_ADD);
+	addModulation(pl, ml, a, b->output, 1.0f, MO_ADD);
 	for(int i = 0; i < 200; i++) {
 		processModulations(pl, ml, 0.016f);
-		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
-	                isfinite(b->base.output->currentValue),
+		ASSERT_TRUE(isfinite(a->output->currentValue) &&
+	                isfinite(b->output->currentValue),
 		            "both outputs stay finite");
-		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
-	                a->base.output->currentValue <= 1.0f,
+		ASSERT_TRUE(a->output->currentValue >= 0.0f &&
+	                a->output->currentValue <= 1.0f,
 		            "A output clamped to [0,1]");
-		ASSERT_TRUE(b->base.output->currentValue >= 0.0f &&
-	                b->base.output->currentValue <= 1.0f,
+		ASSERT_TRUE(b->output->currentValue >= 0.0f &&
+	                b->output->currentValue <= 1.0f,
 		            "B output clamped to [0,1]");
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.5f, 0.0001f,
+	ASSERT_NEAR(a->output->currentValue, 0.5f, 0.0001f,
 	            "A fixed at 0.5 (its atten reads B's pre-apply gen 0.5)");
-	ASSERT_NEAR(b->base.output->currentValue, 0.25f, 0.0001f,
+	ASSERT_NEAR(b->output->currentValue, 0.25f, 0.0001f,
 	            "B fixed at 0.25 (its atten reads A's pre-apply gen 0.25)");
 	teardown(pl, ml);
 	printf("PASS test_two_cycle_feedback\n");
@@ -714,32 +714,32 @@ static int test_two_cycle_feedback(void) {
 static int test_three_cycle_feedback(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
-	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
-	LFO *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
-	LFO *c = createLFO(pl, ml, 0, 0.4f, LS_SIN, "C");
-	a->base.generate = constGenOneTenth;
-	b->base.generate = constGenTwoTenths;
-	c->base.generate = constGenThreeTenths;
-	addModulation(pl, ml, &b->base, a->base.output, 1.0f, MO_ADD);
-	addModulation(pl, ml, &c->base, b->base.output, 1.0f, MO_ADD);
-	addModulation(pl, ml, &a->base, c->base.output, 1.0f, MO_ADD);
+	Mod *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	Mod *b = createLFO(pl, ml, 0, 0.4f, LS_SIN, "B");
+	Mod *c = createLFO(pl, ml, 0, 0.4f, LS_SIN, "C");
+	a->generate = constGenOneTenth;
+	b->generate = constGenTwoTenths;
+	c->generate = constGenThreeTenths;
+	addModulation(pl, ml, b, a->output, 1.0f, MO_ADD);
+	addModulation(pl, ml, c, b->output, 1.0f, MO_ADD);
+	addModulation(pl, ml, a, c->output, 1.0f, MO_ADD);
 	for(int i = 0; i < 500; i++) {
 		processModulations(pl, ml, 0.016f);
-		ASSERT_TRUE(isfinite(a->base.output->currentValue) &&
-	                isfinite(b->base.output->currentValue) &&
-	                isfinite(c->base.output->currentValue),
+		ASSERT_TRUE(isfinite(a->output->currentValue) &&
+	                isfinite(b->output->currentValue) &&
+	                isfinite(c->output->currentValue),
 		            "all three outputs stay finite");
-		ASSERT_TRUE(a->base.output->currentValue >= 0.0f &&
-		                a->base.output->currentValue <= 1.0f &&
-		                b->base.output->currentValue >= 0.0f &&
-		                b->base.output->currentValue <= 1.0f &&
-		                c->base.output->currentValue >= 0.0f &&
-		                c->base.output->currentValue <= 1.0f,
+		ASSERT_TRUE(a->output->currentValue >= 0.0f &&
+		                a->output->currentValue <= 1.0f &&
+		                b->output->currentValue >= 0.0f &&
+		                b->output->currentValue <= 1.0f &&
+		                c->output->currentValue >= 0.0f &&
+		                c->output->currentValue <= 1.0f,
 		            "all three outputs clamped to [0,1]");
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.2f, 0.0001f, "A fixed at 0.2 (reads B's pre-apply gen)");
-	ASSERT_NEAR(b->base.output->currentValue, 0.3f, 0.0001f, "B fixed at 0.3 (reads C's pre-apply gen)");
-	ASSERT_NEAR(c->base.output->currentValue, 0.1f, 0.0001f, "C fixed at 0.1 (reads A's pre-apply gen)");
+	ASSERT_NEAR(a->output->currentValue, 0.2f, 0.0001f, "A fixed at 0.2 (reads B's pre-apply gen)");
+	ASSERT_NEAR(b->output->currentValue, 0.3f, 0.0001f, "B fixed at 0.3 (reads C's pre-apply gen)");
+	ASSERT_NEAR(c->output->currentValue, 0.1f, 0.0001f, "C fixed at 0.1 (reads A's pre-apply gen)");
 	teardown(pl, ml);
 	printf("PASS test_three_cycle_feedback\n");
 	return 0;
@@ -763,21 +763,21 @@ static int test_three_cycle_feedback(void) {
 static int test_self_modulation(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
-	LFO *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
-	a->base.generate = constGenQuarter;
-	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_ADD);
+	Mod *a = createLFO(pl, ml, 0, 0.4f, LS_SIN, "A");
+	a->generate = constGenQuarter;
+	addModulation(pl, ml, a, a->output, 1.0f, MO_ADD);
 	for(int i = 0; i < 8; i++) {
 		processModulations(pl, ml, 0.016f);
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.25f, 0.0001f, "self-ADD stable at 0.25");
+	ASSERT_NEAR(a->output->currentValue, 0.25f, 0.0001f, "self-ADD stable at 0.25");
 	/* The connection's source is the self-atten — remove by it, not
 	 * by the LFO. */
-	removeModulation(pl, ml, a->base.output, a->base.output->modulators->source);
-	addModulation(pl, ml, &a->base, a->base.output, 1.0f, MO_MUL);
+	removeModulation(pl, ml, a->output, a->output->modulators->source);
+	addModulation(pl, ml, a, a->output, 1.0f, MO_MUL);
 	for(int i = 0; i < 8; i++) {
 		processModulations(pl, ml, 0.016f);
 	}
-	ASSERT_NEAR(a->base.output->currentValue, 0.0f, 0.0001f, "self-MUL: 0 base * 0.25 = 0");
+	ASSERT_NEAR(a->output->currentValue, 0.0f, 0.0001f, "self-MUL: 0 base * 0.25 = 0");
 	teardown(pl, ml);
 	printf("PASS test_self_modulation\n");
 	return 0;
@@ -801,10 +801,10 @@ static Mod *connAtten(ModConnection *c) {
 static int test_atten_identity(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
-    src->base.generate = constGenQuarter; /* 0.25 every pass */
+    Mod *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->generate = constGenQuarter; /* 0.25 every pass */
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_TRUE(addModulation(pl, ml, src, dest, 1.0f, MO_ADD), "routed");
     ModConnection *c = dest->modulators;
     Mod *atten = connAtten(c);
     ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
@@ -822,14 +822,14 @@ static int test_atten_identity(void) {
 static int test_atten_amount(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
-    src->base.generate = constGenQuarter;
+    Mod *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->generate = constGenQuarter;
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_TRUE(addModulation(pl, ml, src, dest, 1.0f, MO_ADD), "routed");
     ModConnection *c = dest->modulators;
     Mod *atten = connAtten(c);
     ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
-    ASSERT_TRUE(c->amount == atten->attenAmount,
+    ASSERT_TRUE(c->amount == atten->data.atten.attenAmount,
                 "conn->amount is the atten's attenAmount");
     setParameterBaseValue(c->amount, 0.5f);
     processModulations(pl, ml, 0.016f);
@@ -860,10 +860,10 @@ static void negHalfGen(void *self) {
 static int test_atten_polarity_uni(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
-    src->base.generate = negHalfGen; /* -0.5 every pass */
+    Mod *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->generate = negHalfGen; /* -0.5 every pass */
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_TRUE(addModulation(pl, ml, src, dest, 1.0f, MO_ADD), "routed");
     ModConnection *c = dest->modulators;
     Mod *atten = connAtten(c);
     ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
@@ -875,7 +875,7 @@ static int test_atten_polarity_uni(void) {
     ASSERT_NEAR(dest->currentValue, 0.5f, 0.0001f, "bi: 1.0 + (-0.5*1.0)");
 
     /* uni-polar (pol=1): the atten clamps the negative to 0. */
-    setParameterBaseValue(atten->attenPolarity, 1.0f);
+    setParameterBaseValue(atten->data.atten.attenPolarity, 1.0f);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.0f, 0.0001f, "uni: 1.0 + max(-0.5, 0)");
     teardown(pl, ml);
@@ -888,14 +888,14 @@ static int test_atten_polarity_uni(void) {
 static int test_atten_curve(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
-    src->base.generate = constGenQuarter;
+    Mod *src = createLFO(pl, ml, 0, 0.4f, LS_SIN, "src");
+    src->generate = constGenQuarter;
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &src->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_TRUE(addModulation(pl, ml, src, dest, 1.0f, MO_ADD), "routed");
     ModConnection *c = dest->modulators;
     Mod *atten = connAtten(c);
     ASSERT_TRUE(atten != NULL, "route runs through an attenuator");
-    setParameterBaseValue(atten->attenCurve, 1.0f);
+    setParameterBaseValue(atten->data.atten.attenCurve, 1.0f);
     processModulations(pl, ml, 0.016f);
     ASSERT_NEAR(dest->currentValue, 1.5f, 0.0001f,
                 "curve: 1.0 + sqrt(0.25) = 1.0 + 0.5");
@@ -911,14 +911,14 @@ static int test_atten_curve(void) {
 static int test_atten_lazy_insertion(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
     ASSERT_EQ(ml->count, 1, "source alone in modList before the route");
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD), "routed");
+    ASSERT_TRUE(addModulation(pl, ml, env, dest, 1.0f, MO_ADD), "routed");
     ASSERT_EQ(ml->count, 2, "addModulation lazily inserted the attenuator");
     ModConnection *c = dest->modulators;
     ASSERT_TRUE(c->source->type == MT_ATTEN, "conn->source is the attenuator");
-    ASSERT_TRUE(c->source->input == &env->base, "conn->source->input is the real source");
+    ASSERT_TRUE(c->source->data.atten.input == env, "conn->source->data.atten.input is the real source");
     teardown(pl, ml);
     printf("PASS test_atten_lazy_insertion\n");
     return 0;
@@ -938,10 +938,10 @@ static int test_atten_lazy_insertion(void) {
 static int test_atten_cleanup(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
     Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD), "route d1");
+    ASSERT_TRUE(addModulation(pl, ml, env, d1, 1.0f, MO_ADD), "route d1");
     Mod *a = d1->modulators->source;
     ASSERT_TRUE(connAtten(d1->modulators) == a, "d1's source is the atten");
     ASSERT_TRUE(addModulation(pl, ml, a, d2, 1.0f, MO_ADD),
@@ -968,12 +968,12 @@ static int test_remove_by_real_source(void) {
      * and the atten is GC'd when the last connection goes. */
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, dest, 1.0f, MO_ADD), "route");
+    ASSERT_TRUE(addModulation(pl, ml, env, dest, 1.0f, MO_ADD), "route");
     ASSERT_EQ(dest->modulator_count, 1, "one connection");
     ASSERT_TRUE(dest->modulators->source->type == MT_ATTEN, "via attenuator");
-    ASSERT_TRUE(removeModulation(pl, ml, dest, &env->base), "remove via real source");
+    ASSERT_TRUE(removeModulation(pl, ml, dest, env), "remove via real source");
     ASSERT_EQ(dest->modulator_count, 0, "connection gone");
     ASSERT_EQ(ml->count, 1, "atten GC'd — only the env remains");
     teardown(pl, ml);
@@ -987,13 +987,13 @@ static int test_remove_modulations_for_source_atten(void) {
      * attenuators and GC them. */
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
     Parameter *d1 = createParameter(pl, "d1", 1.0f, 0.0f, 10.0f);
     Parameter *d2 = createParameter(pl, "d2", 1.0f, 0.0f, 10.0f);
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, d1, 1.0f, MO_ADD), "route d1");
-    ASSERT_TRUE(addModulation(pl, ml, &env->base, d2, 1.0f, MO_ADD), "route d2");
+    ASSERT_TRUE(addModulation(pl, ml, env, d1, 1.0f, MO_ADD), "route d1");
+    ASSERT_TRUE(addModulation(pl, ml, env, d2, 1.0f, MO_ADD), "route d2");
     ASSERT_EQ(ml->count, 3, "env + one atten per route");
-    int removed = removeModulationsForSource(pl, ml, &env->base);
+    int removed = removeModulationsForSource(pl, ml, env);
     ASSERT_EQ(removed, 2, "both routes removed via the real source");
     ASSERT_EQ(d1->modulator_count, 0, "d1 clean");
     ASSERT_EQ(d2->modulator_count, 0, "d2 clean");
@@ -1067,11 +1067,11 @@ static int test_remove_failure_modes(void) {
 	ASSERT_TRUE(!removeModulationsForSource(NULL, NULL, (Mod *)0x1), "removeModulationsForSource NULL list");
 
 	/* absent items on a live list: no crash, no mutation */
-	Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+	Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
 	Parameter *dest = createParameter(pl, "dest", 1.0f, 0.0f, 10.0f);
 	int before = pl->count;
-	ASSERT_TRUE(!removeModulation(pl, ml, dest, &env->base), "absent connection -> false");
-	ASSERT_EQ(removeModulationsForSource(pl, ml, &env->base), 0, "no modulations to remove");
+	ASSERT_TRUE(!removeModulation(pl, ml, dest, env), "absent connection -> false");
+	ASSERT_EQ(removeModulationsForSource(pl, ml, env), 0, "no modulations to remove");
 	ASSERT_EQ(pl->count, before, "absent removals do not mutate the list");
 	teardown(pl, ml);
 	printf("PASS test_remove_failure_modes\n");
@@ -1097,14 +1097,14 @@ static int test_clear_null_and_empty(void) {
 static int test_generated_output_survives_apply(void) {
 	ParamList *pl = createParamList();
 	ModList *ml = createModList();
-	Envelope *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
+	Mod *env = createAD(pl, ml, 0.1f, 0.2f, "AD");
 	triggerEnvelope(env);
 	processModulations(pl, ml, 0.016f);
 	/* The generate pass wrote a non-zero level into the envelope output; the
 	 * apply pass must not clobber mod source outputs back to their baseValue.
 	 * The instrument-page mod strip reads exactly these outputs, so a clobber
 	 * makes it show nothing while a note plays. */
-	ASSERT_TRUE(getParameterValue(env->base.output) > 0.0f,
+	ASSERT_TRUE(getParameterValue(env->output) > 0.0f,
 	            "envelope output survives the processModulations apply pass");
 	teardown(pl, ml);
 	printf("PASS test_generated_output_survives_apply\n");
@@ -1120,8 +1120,8 @@ static int test_change_mod_type(void) {
     Parameter *dest = createParameter(pl, "dest", 0.5f, 0.0f, 1.0f);
     Parameter *dest2 = createParameter(pl, "dest2", 0.5f, 0.0f, 1.0f);
 
-    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
-    Mod *m0 = &env->base;
+    Mod *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    Mod *m0 = env;
     Parameter *out = m0->output;
     ASSERT_TRUE(out != NULL, "env has an output param");
     ASSERT_TRUE(addModulation(pl, ml, m0, dest, 1.0f, MO_ADD), "route env->dest");
@@ -1131,10 +1131,10 @@ static int test_change_mod_type(void) {
     for(int i = 0; i < ml->count; i++) if(ml->mods[i] == m0) beforeIdx = i;
     ASSERT_TRUE(beforeIdx >= 0, "env is registered in modList");
 
-    /* ENV -> LFO */
+    /* ENV -> Mod */
     ASSERT_TRUE(changeModType(ml, m0, MT_LFO, pl), "ENV->LFO succeeds");
     Mod *m1 = ml->mods[beforeIdx];
-    ASSERT_TRUE(m1 != m0, "a fresh struct was allocated");
+    ASSERT_TRUE(m1 == m0, "the same struct is reused (in-place union swap)");
     ASSERT_EQ(m1->type, MT_LFO, "type is now LFO");
     ASSERT_TRUE(m1->output == out, "output param is preserved (same pointer)");
     ASSERT_EQ(ml->count, before, "modList count unchanged");
@@ -1142,10 +1142,10 @@ static int test_change_mod_type(void) {
     ASSERT_TRUE(hasRouteFrom(pl, dest, m1), "dest still modulated by the (new) source");
     ASSERT_TRUE(hasRouteFrom(pl, dest2, m1), "dest2 still modulated by the (new) source");
     /* old type params are gone from the list */
-    LFO *lfo = (LFO *)m1;
-    ASSERT_TRUE(paramRegistered(pl, lfo->rate), "new LFO rate registered");
-    ASSERT_TRUE(paramRegistered(pl, lfo->phase), "new LFO phase registered");
-    ASSERT_TRUE(!env->stages[0].duration || !paramRegistered(pl, env->stages[0].duration), "old env stage params removed");
+    Mod *lfo = (Mod *)m1;
+    ASSERT_TRUE(paramRegistered(pl, lfo->data.lfo.rate), "new LFO rate registered");
+    ASSERT_TRUE(paramRegistered(pl, lfo->data.lfo.phase), "new LFO phase registered");
+    ASSERT_TRUE(!env->data.env.stages[0].duration || !paramRegistered(pl, env->data.env.stages[0].duration), "old env stage params removed");
     int found = 0;
     for(int i = 0; i < pl->count; i++) {
         if(pl->params[i] && pl->params[i]->name && strcmp(pl->params[i]->name, "dest") == 0) found++;
@@ -1164,8 +1164,8 @@ static int test_change_mod_type(void) {
     Mod *m3 = ml->mods[beforeIdx];
     ASSERT_EQ(m3->type, MT_ENV, "type is now ENV");
     ASSERT_TRUE(m3->output == out, "output preserved");
-    Envelope *env2 = (Envelope *)m3;
-    ASSERT_EQ(env2->stageCount, 2, "fresh env has 2 AD stages");
+    Mod *env2 = (Mod *)m3;
+    ASSERT_EQ(env2->data.env.stageCount, 2, "fresh env has 2 AD stages");
     ASSERT_TRUE(hasRouteFrom(pl, dest, m3), "dest still routed after RND->ENV");
 
     /* invalid type rejected */
@@ -1181,8 +1181,8 @@ static int test_change_mod_type(void) {
 static int test_change_mod_type_same_type(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
-    Mod *m0 = &env->base;
+    Mod *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    Mod *m0 = env;
     int count = ml->count;
     ASSERT_TRUE(changeModType(ml, m0, MT_ENV, pl), "same-type change is a no-op");
     ASSERT_EQ(ml->count, count, "no structural change");
@@ -1196,14 +1196,14 @@ static int test_change_mod_type_same_type(void) {
 static int test_change_mod_type_null(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Envelope *env = createAD(pl, ml, 0.25f, 4.25f, "src");
-    ASSERT_TRUE(!changeModType(NULL, &env->base, MT_LFO, pl), "NULL list rejected");
+    Mod *env = createAD(pl, ml, 0.25f, 4.25f, "src");
+    ASSERT_TRUE(!changeModType(NULL, env, MT_LFO, pl), "NULL list rejected");
     ASSERT_TRUE(!changeModType(ml, NULL, MT_LFO, pl), "NULL mod rejected");
-    ASSERT_TRUE(!changeModType(ml, &env->base, MT_LFO, NULL), "NULL paramList rejected");
+    ASSERT_TRUE(!changeModType(ml, env, MT_LFO, NULL), "NULL paramList rejected");
     /* unregistered mod rejected */
-    Envelope *stray = createEnvelope(pl, ml, "stray2");
-    removeFromModList(ml, &stray->base);
-    ASSERT_TRUE(!changeModType(ml, &stray->base, MT_LFO, pl), "unregistered mod rejected");
+    Mod *stray = createEnvelope(pl, ml, "stray2");
+    removeFromModList(ml, stray);
+    ASSERT_TRUE(!changeModType(ml, stray, MT_LFO, pl), "unregistered mod rejected");
     freeParamList(pl);
     freeModList(ml);
     printf("PASS test_change_mod_type_null\n");
@@ -1217,25 +1217,25 @@ static int test_change_mod_type_null(void) {
 static int test_lfo_shape_param(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    LFO *lfo = createLFO(pl, ml, 0, 1.0f, LS_SIN, "lfo");
-    ASSERT_TRUE(lfo->shape != NULL, "LFO has a shape Parameter");
-    ASSERT_EQ(getParameterValueAsInt(lfo->shape), LS_SIN, "shape param defaults to the initial shape");
-    ASSERT_EQ(lfo->base.generate == generateSine ? 1 : 0, 1, "generate is generateSine for LS_SIN");
+    Mod *lfo = createLFO(pl, ml, 0, 1.0f, LS_SIN, "lfo");
+    ASSERT_TRUE(lfo->data.lfo.shape != NULL, "LFO has a shape Parameter");
+    ASSERT_EQ(getParameterValueAsInt(lfo->data.lfo.shape), LS_SIN, "shape param defaults to the initial shape");
+    ASSERT_EQ(lfo->generate == generateSine ? 1 : 0, 1, "generate is generateSine for LS_SIN");
 
-    setParameterBaseValue(lfo->shape, (float)LS_SQU);
-    ASSERT_EQ(lfo->shapeValue, LS_SQU, "onChange synced lfo->shapeValue int");
-    ASSERT_EQ(lfo->base.generate == generateSquare ? 1 : 0, 1, "generate is generateSquare for LS_SQU");
+    setParameterBaseValue(lfo->data.lfo.shape, (float)LS_SQU);
+    ASSERT_EQ(lfo->data.lfo.shapeValue, LS_SQU, "onChange synced lfo->data.lfo.shapeValue int");
+    ASSERT_EQ(lfo->generate == generateSquare ? 1 : 0, 1, "generate is generateSquare for LS_SQU");
 
-    setParameterBaseValue(lfo->shape, (float)LS_RMP);
-    ASSERT_EQ(lfo->base.generate == generateRamp ? 1 : 0, 1, "generate is generateRamp for LS_RMP");
+    setParameterBaseValue(lfo->data.lfo.shape, (float)LS_RMP);
+    ASSERT_EQ(lfo->generate == generateRamp ? 1 : 0, 1, "generate is generateRamp for LS_RMP");
 
     /* clamp: out-of-range writes clamp to the range */
-    setParameterBaseValue(lfo->shape, 999.0f);
-    ASSERT_EQ(getParameterValueAsInt(lfo->shape), LS_RMP, "out-of-range clamps to LS_RMP");
+    setParameterBaseValue(lfo->data.lfo.shape, 999.0f);
+    ASSERT_EQ(getParameterValueAsInt(lfo->data.lfo.shape), LS_RMP, "out-of-range clamps to LS_RMP");
 
     /* removeMod removes the shape param */
-    ASSERT_TRUE(removeMod(ml, pl, &lfo->base), "removeMod removes the LFO");
-    ASSERT_TRUE(!paramRegistered(pl, lfo->shape), "shape param removed with the LFO");
+    ASSERT_TRUE(removeMod(ml, pl, lfo), "removeMod removes the LFO");
+    ASSERT_TRUE(!paramRegistered(pl, lfo->data.lfo.shape), "shape param removed with the LFO");
 
     freeParamList(pl);
     freeModList(ml);
@@ -1246,16 +1246,16 @@ static int test_lfo_shape_param(void) {
 static int test_rand_shape_param(void) {
     ParamList *pl = createParamList();
     ModList *ml = createModList();
-    Random *rnd = createRandom(pl, ml, 0, 1.0f, RT_SNH, "rnd");
-    ASSERT_TRUE(rnd->shape != NULL, "Random has a shape Parameter");
-    ASSERT_EQ(getParameterValueAsInt(rnd->shape), RT_SNH, "shape param defaults to RT_SNH");
-    ASSERT_EQ(rnd->base.generate == generateRandom ? 1 : 0, 1, "generate is generateRandom for RT_SNH");
+    Mod *rnd = createRandom(pl, ml, 0, 1.0f, RT_SNH, "rnd");
+    ASSERT_TRUE(rnd->data.rnd.shape != NULL, "Random has a shape Parameter");
+    ASSERT_EQ(getParameterValueAsInt(rnd->data.rnd.shape), RT_SNH, "shape param defaults to RT_SNH");
+    ASSERT_EQ(rnd->generate == generateRandom ? 1 : 0, 1, "generate is generateRandom for RT_SNH");
 
-    setParameterBaseValue(rnd->shape, (float)RT_DRK);
-    ASSERT_EQ(rnd->shapeValue, RT_DRK, "onChange synced rnd->shapeValue int");
-    ASSERT_EQ(rnd->base.generate == generateDrunk ? 1 : 0, 1, "generate is generateDrunk for RT_DRK");
+    setParameterBaseValue(rnd->data.rnd.shape, (float)RT_DRK);
+    ASSERT_EQ(rnd->data.rnd.shapeValue, RT_DRK, "onChange synced rnd->data.rnd.shapeValue int");
+    ASSERT_EQ(rnd->generate == generateDrunk ? 1 : 0, 1, "generate is generateDrunk for RT_DRK");
 
-    ASSERT_TRUE(removeMod(ml, pl, &rnd->base), "removeMod removes the Random");
+    ASSERT_TRUE(removeMod(ml, pl, rnd), "removeMod removes the Random");
     freeParamList(pl);
     freeModList(ml);
     printf("PASS test_rand_shape_param\n");

@@ -659,6 +659,19 @@ if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
 	if(mod->type == newType) {
 		return true;
 	}
+	/* The mod must be a member of the list it is being retyped in (the
+	 * list is passed for registration invariants; membership is the
+	 * established contract). */
+	bool registered = false;
+	for(int i = 0; i < modList->count; i++) {
+		if(modList->mods[i] == mod) {
+			registered = true;
+			break;
+		}
+	}
+	if(!registered) {
+		return false;
+	}
 
 	/* Free the OLD type's payload params from the list (they are list-owned).
 	 * The Mod struct itself is REUSED for the new type: output + name are
