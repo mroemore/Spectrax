@@ -1262,6 +1262,28 @@ static int test_rand_shape_param(void) {
     return 0;
 }
 
+/* Task 1.1: the union'd Mod layout. createAD/createLFO return Mod* whose
+ * `data` union carries the type payload; `type` selects the member. This
+ * test is the layout contract — it compiles + passes once Task 1.2
+ * re-types the creators in modsystem.c. */
+static int test_mod_union_payload(void) {
+    ParamList *pl = createParamList();
+    ModList *ml = createModList();
+    Mod *env = createAD(pl, ml, 0.1f, 0.2f, "UENV");
+    ASSERT_TRUE(env != NULL, "createAD returns a Mod");
+    ASSERT_EQ(env->type, MT_ENV, "envelope mod type is MT_ENV");
+    ASSERT_EQ(env->data.env.stageCount, 2, "AD has two stages in the env payload");
+    ASSERT_EQ(env->data.env.stages[0].duration->baseValue, 0.1f, "attack duration in the env payload");
+    Mod *lfo = createLFO(pl, ml, 0, 0.4f, LS_SIN, "ULFO");
+    ASSERT_TRUE(lfo != NULL, "createLFO returns a Mod");
+    ASSERT_EQ(lfo->type, MT_LFO, "lfo mod type is MT_LFO");
+    ASSERT_EQ(lfo->data.lfo.rate->baseValue, 0.4f, "rate in the lfo payload");
+    freeParamList(pl);
+    freeModList(ml);
+    printf("PASS test_mod_union_payload\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1302,6 +1324,7 @@ int main(void) {
     fails += test_change_mod_type_null();
     fails += test_lfo_shape_param();
     fails += test_rand_shape_param();
+    fails += test_mod_union_payload();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

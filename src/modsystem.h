@@ -71,6 +71,57 @@ typedef struct Parameter {
 	ParamCallback onChange;
 } Parameter;
 
+typedef struct EnvelopeStage {
+	bool isRising;
+	bool isSustain;
+	char name[MAX_NAME_LEN];
+	Parameter *duration; // seconds
+	float targetLevel;
+	Parameter *curvature; // 0.0 = log, 0.5 = linear, 1.0 = exp
+	struct EnvelopeStage *next;
+} EnvelopeStage;
+
+/* Per-type payloads for the union'd Mod. Each Mod carries exactly one of
+ * these; `Mod.type` selects the active member, and `changeModType` swaps
+ * it in place (the Mod pointer, `output` and `name` are stable, so
+ * ModConnection.source references survive a retype). */
+typedef struct {
+	struct Mod *input; /* real upstream mod feeding this node */
+	Parameter *attenAmount; /* shared with the connection's amount param (0..2) */
+	Parameter *attenPolarity; /* 0 = bipolar, 1 = unipolar (clamp negatives) */
+	Parameter *attenCurve; /* 0 = linear, 1 = curved (sign-preserving sqrt) */
+} AttenState;
+
+typedef struct {
+	EnvelopeStage stages[MAX_ENVELOPE_STAGES];
+	int currentStageIndex;
+	int stageCount;
+	float currentTime;
+	float totalElapsedTime;
+	float currentLevel;
+	bool isTriggered;
+	bool isSustaining;
+	bool loop;
+} EnvState;
+
+typedef struct {
+	Parameter *rate;
+	Parameter *phase;
+	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
+	int shapeValue;
+	Parameter *playMode; /* routable discrete 0=FREERUN 1=RETRIGGER (Phase 4) */
+} LfoState;
+
+typedef struct {
+	Parameter *rate;
+	Parameter *phase;
+	float lastPhase;
+	float lastRandom;
+	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
+	int shapeValue;
+	Parameter *playMode;
+} RndState;
+
 typedef struct Mod {
 	ModType type;
 	Parameter *output;
@@ -79,15 +130,12 @@ typedef struct Mod {
 	bool processed;
 	bool visiting;
 	ModGenerate generate;
-	/* MT_ATTEN only (per-connection attenuator, inserted by addModulation):
-	 * input is the real upstream mod whose output feeds this node.
-	 * attenAmount is shared with the connection's amount param (0..2);
-	 * attenPolarity: 0 = bipolar, 1 = unipolar (clamp negatives to 0);
-	 * attenCurve: 0 = linear, 1 = curved (sign-preserving sqrt). */
-	struct Mod *input;
-	Parameter *attenAmount;
-	Parameter *attenPolarity;
-	Parameter *attenCurve;
+	union {
+		EnvState env;
+		LfoState lfo;
+		RndState rnd;
+		AttenState atten;
+	} data;
 } Mod;
 
 typedef struct ModConnection {
@@ -115,28 +163,10 @@ typedef struct {
 } LfoPresetData;
 
 typedef struct {
-	Mod base;
-	Parameter *rate;
-	Parameter *phase;
-	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
-	int shapeValue;
-} LFO;
-
-typedef struct {
 	float rate;
 	float phase;
 	int shape;
 } RandPresetData;
-
-typedef struct {
-	Mod base;
-	Parameter *rate;
-	Parameter *phase;
-	float lastPhase;
-	float lastRandom;
-	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
-	int shapeValue;
-} Random;
 
 typedef struct {
 	bool isRising;
@@ -147,34 +177,11 @@ typedef struct {
 	float curvature;
 } EnvStagePresetData;
 
-typedef struct EnvelopeStage {
-	bool isRising;
-	bool isSustain;
-	char name[MAX_NAME_LEN];
-	Parameter *duration; // seconds
-	float targetLevel;
-	Parameter *curvature; // 0.0 = log, 0.5 = linear, 1.0 = exp
-	struct EnvelopeStage *next;
-} EnvelopeStage;
-
 typedef struct {
 	EnvStagePresetData stages[MAX_ENVELOPE_STAGES];
 	int stageCount;
 	bool loop;
 } EnvPresetData;
-
-typedef struct {
-	Mod base;
-	EnvelopeStage stages[MAX_ENVELOPE_STAGES];
-	int currentStageIndex;
-	int stageCount;
-	float currentTime;
-	float totalElapsedTime;
-	float currentLevel;
-	bool isTriggered;
-	bool isSustaining;
-	bool loop;
-} Envelope;
 
 typedef struct {
 	ModType type;
@@ -208,30 +215,30 @@ void processModulations(ParamList *paramList, ModList *modList, float deltaTime)
 void initMod(Mod *mod, ParamList *paramList, const char *name, ModType type, ModGenerate generate);
 void cbLfoShapeOnChange(void *data);
 void cbRandShapeOnChange(void *data);
-void initLfoDefaults(LFO *lfo, ParamList *paramList, float rate, int shape);
-LFO *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name);
-void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type);
-Random *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name);
-void initEnvelopeDefaults(Envelope *env);
-Envelope *createEnvelope(ParamList *paramList, ModList *modList, const char *name);
+void initLfoDefaults(Mod *lfo, ParamList *paramList, float rate, int shape);
+Mod *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name);
+void initRandDefaults(Mod *rnd, ParamList *paramList, float rate, RandomType type);
+Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name);
+void initEnvelopeDefaults(Mod *env);
+Mod *createEnvelope(ParamList *paramList, ModList *modList, const char *name);
 Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, const char *name);
 // EnvelopeStage* createEnvelopeStage(bool isRising, float duration, float targetLevel, float curvature, char* name);
-void addEnvelopeStage(ParamList *paramList, Envelope *env, bool isRising, float duration, float targetLevel, float initialCurvature, char *name);
-void addParamPointerEnvelopeStage(ParamList *paramList, Envelope *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name);
-Envelope *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name);
-Envelope *createParamPointerADSR(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *s, Parameter *r, char *name);
-Envelope *createAD(ParamList *paramList, ModList *modList, float a, float d, char *name);
-Envelope *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name);
+void addEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, float duration, float targetLevel, float initialCurvature, char *name);
+void addParamPointerEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name);
+Mod *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name);
+Mod *createParamPointerADSR(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *s, Parameter *r, char *name);
+Mod *createAD(ParamList *paramList, ModList *modList, float a, float d, char *name);
+Mod *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name);
 
 void initADPresetData(ModPreset *mp, float aDuration, float dDuration, float aCurve, float dCurve);
 void initLfoPresetData(ModPreset *mp, LfoShape shape, float rate, float phase);
 void initRandPresetData(ModPreset *mp, LfoShape shape, float rate, float phase);
-void initEnvelopeFromPreset(ModPreset *mp, Envelope *e, ParamList *paramList, ModList *modlist);
-void saveEnvPreset(EnvPresetData *epd, Envelope *e);
-void initLfoFromPreset(LfoPresetData *epd, LFO *e, ParamList *paramList, ModList *modlist);
-void saveLfoPreset(LfoPresetData *epd, LFO *e);
-void initRandFromPreset(RandPresetData *epd, Random *e, ParamList *paramList, ModList *modlist);
-void saveRandPreset(RandPresetData *epd, Random *e);
+void initEnvelopeFromPreset(ModPreset *mp, Mod *e, ParamList *paramList, ModList *modlist);
+void saveEnvPreset(EnvPresetData *epd, Mod *e);
+void initLfoFromPreset(LfoPresetData *epd, Mod *e, ParamList *paramList, ModList *modlist);
+void saveLfoPreset(LfoPresetData *epd, Mod *e);
+void initRandFromPreset(RandPresetData *epd, Mod *e, ParamList *paramList, ModList *modlist);
+void saveRandPreset(RandPresetData *epd, Mod *e);
 
 void generateCurve(float *data, size_t length, float curve, int steepnessFactor);
 void generateCurveWavetables(WavetablePool *wtp, size_t iterations, size_t wtLength);
@@ -243,7 +250,7 @@ void generateRandom(void *self);
 void generateDrunk(void *self);
 float applyCurve(float x, float curvature);
 void generateEnvelope(void *self);
-void triggerEnvelope(Envelope *env);
+void triggerEnvelope(Mod *env);
 
 Parameter *createParameter(ParamList *paramList, const char *name, float initialValue, float minValue, float maxValue);
 Parameter *createParameterEx(ParamList *paramList, const char *name, float initialValue, float minValue, float maxValue, float fineIncrement, float coarseIncrement);
@@ -265,9 +272,9 @@ void freeParamList(ParamList *list);
 void freeModList(ModList *list);
 void freeParameter(Parameter *param);
 void freeMod(Mod *mod);
-void freeLFO(LFO *lfo);
-void freeRandom(Random *rnd);
-void freeEnvelope(Envelope *env);
+void freeLFO(Mod *lfo);
+void freeRandom(Mod *rnd);
+void freeEnvelope(Mod *env);
 
 void cleanupModSystem(ModList *list);
 
