@@ -220,6 +220,12 @@ typedef struct {
 	 * displayed dial from the live voice pool. Owned by the instrument's
 	 * paramList (freed with the instrument). */
 	Parameter *voiceCountParam;
+	/* Task 2.2: voice-driver destination params. `gain` represents the
+	 * per-voice gain path (volume + FM outLevels), `pitch` the BLEP
+	 * frequency driver. Both are real routable destinations seeded with
+	 * default connections at instrument init + preset load. */
+	Parameter *gain;
+	Parameter *pitch;
 	union {
 		SamplerInstrumentData sampler;
 		FmInstrumentData fm;

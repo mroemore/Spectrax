@@ -120,11 +120,13 @@ static int test_runtime_source_lifecycle(void) {
     ASSERT_TRUE(inst != NULL, "init_instrument FM");
     int core = inst->coreEnvelopeCount;   /* 4 for FM */
     int before = inst->modList->count;
+    int beforeSrc = modSourceCount(inst->modList);
     (void)core; /* referenced in brief; kept for traceability */
 
     addRuntimeSource(inst);
     ASSERT_EQ(inst->modList->count, before + 1, "addRuntimeSource appends a source");
-    ASSERT_EQ(inst->envelopeCount, inst->modList->count, "envelopeCount tracks modList count");
+    ASSERT_EQ(inst->envelopeCount, modSourceCount(inst->modList),
+              "envelopeCount tracks the source count (attens excluded)");
     Mod *m = inst->modList->mods[before];
     ASSERT_EQ(m->type, MT_ENV, "default source is an envelope");
     Mod *env = (Mod *)m;
@@ -133,13 +135,13 @@ static int test_runtime_source_lifecycle(void) {
     /* core sources cannot be removed */
     removeSource(inst, 0);
     ASSERT_EQ(inst->modList->count, before + 1, "core source removal rejected");
-    /* out-of-range rejected */
+    /* out-of-range rejected (source position) */
     removeSource(inst, inst->modList->count);
     ASSERT_EQ(inst->modList->count, before + 1, "out-of-range removal rejected");
-    /* runtime source removed */
-    removeSource(inst, before);
+    /* runtime source removed — runtime source is at source position `beforeSrc` */
+    removeSource(inst, beforeSrc);
     ASSERT_EQ(inst->modList->count, before, "runtime source removed");
-    ASSERT_EQ(inst->envelopeCount, before, "envelopeCount synced after removal");
+    ASSERT_EQ(inst->envelopeCount, beforeSrc, "envelopeCount synced after removal");
 
     free(inst);
     freeSamplePool(sp);

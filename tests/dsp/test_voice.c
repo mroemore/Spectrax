@@ -386,6 +386,33 @@ static int test_voice_operator_owns_params(void) {
     return 0;
 }
 
+/* Task 2.2: the instrument carries voice-driver destination params (gain,
+ * per-op outLevel/pitch) seeded with default connections at init + on
+ * preset load. The FM default preset path must produce them (createVoiceManager
+ * inits a SAMPLE instrument then applies the FM default preset). */
+static int test_default_gain_connections_seeded(void) {
+    TestEnv e;
+    if (make_env(&e, 4) != 0) return 1;
+
+    Instrument *inst = e.vm->instruments[0];
+    ASSERT_TRUE(inst != NULL, "instrument exists");
+    ASSERT_INT_EQ((int)inst->voiceType, (int)VOICE_TYPE_FM);
+    ASSERT_TRUE(inst->gain != NULL, "instrument has a gain dest param");
+    ASSERT_INT_EQ(inst->gain->modulator_count, 1);
+    ASSERT_TRUE(inst->gain->modulators->source->type == MT_ATTEN,
+                "connection wraps source[0] in an attenuator");
+    ASSERT_TRUE(inst->gain->modulators->source->data.atten.input == inst->modList->mods[0],
+                "source[0] drives gain by default");
+    for (int i = 0; i < MAX_FM_OPERATORS; i++) {
+        ASSERT_TRUE(inst->id.fm.ops[i] != NULL, "fm op exists");
+        ASSERT_INT_EQ(inst->id.fm.ops[i]->outLevel->modulator_count, 1);
+        ASSERT_TRUE(inst->id.fm.ops[i]->pitch != NULL, "per-op pitch param exists");
+        ASSERT_INT_EQ((int)(inst->id.fm.ops[i]->pitch->baseValue * 10), 0);
+    }
+    printf("PASS test_default_gain_connections_seeded\n");
+    return 0;
+}
+
 static int test_free_manager_no_voices(void) {
     TestEnv e;
     if (make_env(&e, 0) != 0) return 1;
@@ -431,6 +458,7 @@ int main(void) {
     failed |= test_polyphony_all_voices_sound();
     failed |= test_granular_processor_renders();
     failed |= test_voice_operator_owns_params();
+    failed |= test_default_gain_connections_seeded();
     failed |= test_free_manager_no_voices();
     failed |= test_free_voice_manager_clean();
 

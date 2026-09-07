@@ -11,8 +11,10 @@ EDIT
 ASSERT envcount==5
 
 # --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
-# From RATIO1: 7 DOWNs reach env[4]'s TYPE button (RATIO3 -> MODS_ADD ->
-# ATTACK(env0) -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4)).
+# After ADD (line 6) selection reset to RATIO1; DOWN x7 reaches env[4]'s
+# TYPE button: RATIO3 -> MODS_ADD -> ATTACK(env0) -> ATTACK(env1) ->
+# ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT cycles the type
+# and rebuilds, resetting selection to RATIO1, so we re-navigate each time.
 DOWN
 DOWN
 DOWN
@@ -54,9 +56,9 @@ DOWN
 ASSERT selected==ENV
 
 # --- Route the source to op1 feedback via the picking layer ---------------
-# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; N2 lands the
-# cursor on the CLOSEST dest (env[4]'s own decay-curve dial, es_Curve).
-# JUMPTL reaches op1 feedback directly.
+# RIGHT x5 from ENV reaches ROUTE (ATTACK -> CURVE -> DECAY -> CURVE ->
+# ROUTE). EDIT opens the picker; N2 lands the cursor on the CLOSEST dest
+# (env[4]'s own decay-curve dial, es_Curve).
 RIGHT
 RIGHT
 RIGHT

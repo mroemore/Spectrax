@@ -50,7 +50,7 @@ float sineFmAlgo(Operator *ops[], float frequency, int algorithm) {
 }
 
 float sine_op(Operator *op, float frequency, float mod) {
-	float phase_inc = (frequency * getParameterValue(op->ratio)) / SAMPLE_RATE;
+	float phase_inc = opFrequencyAt(op, frequency) / SAMPLE_RATE;
 	float feedbackLevel = getParameterValue(op->feedbackAmount) * op->lastVal;
 	op->phase = fmodf(op->phase + phase_inc, 1.0f);
 	float a = sinf(TWO_PI * (op->phase + mod));
@@ -74,6 +74,7 @@ Operator *createOperator(ParamList *paramList, float ratio) {
 	op->ratio = createParameterEx(paramList, "ratio", ratio, 0.25f, 30.0f, 0.01f, 1.0f);
 	op->level = createParameter(paramList, "level", 0.1f, 0.0f, 1.0f);
 	op->outLevel = createParameter(paramList, "outLevel", 0.5f, 0.0f, 1.0f);
+	op->pitch = createParameterEx(paramList, "pitch", 0.0f, -1000.0f, 1000.0f, 0.1f, 1.0f);
 	op->generate = sine_wave;
 	return op;
 }
@@ -89,6 +90,7 @@ Operator *createParamPointerOperator(ParamList *paramList, Parameter *fbamt, Par
 	op->ratio = ratio;
 	op->level = level;
 	op->outLevel = createParameter(paramList, "outLevel", 0.5f, 0.0f, 1.0f);
+	op->pitch = createParameterEx(paramList, "pitch", 0.0f, -1000.0f, 1000.0f, 0.1f, 1.0f);
 	return op;
 }
 
@@ -121,4 +123,9 @@ void syncOperatorFromInstrument(Operator *voiceOp, const Operator *instOp) {
 	setParameterBaseValue(voiceOp->ratio, instOp->ratio->baseValue);
 	setParameterBaseValue(voiceOp->level, instOp->level->baseValue);
 	setParameterBaseValue(voiceOp->outLevel, instOp->outLevel->baseValue);
+	setParameterBaseValue(voiceOp->pitch, instOp->pitch->baseValue);
+}
+
+float opFrequencyAt(const Operator *op, float fundamental) {
+	return fundamental * getParameterValue(op->ratio) + getParameterValue(op->pitch);
 }

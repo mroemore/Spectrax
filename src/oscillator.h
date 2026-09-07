@@ -41,6 +41,7 @@ typedef struct {
 	Parameter *ratio;
 	Parameter *level;
 	Parameter *outLevel;
+	Parameter *pitch; /* continuous Hz offset on top of fundamental*ratio */
 } Operator;
 
 static int fm_algorithm[ALGO_COUNT * ALGO_SIZE][2] = {
@@ -100,6 +101,7 @@ Operator *createOperator(ParamList *paramList, float ratio);
 Operator *createParamPointerOperator(ParamList *paramList, Parameter *fbamt, Parameter *ratio, Parameter *level);
 Operator *createVoiceOperator(ParamList *paramList, const Operator *proto);
 void syncOperatorFromInstrument(Operator *voiceOp, const Operator *instOp);
+float opFrequencyAt(const Operator *op, float fundamental);
 void freeOperator(Operator *op);
 
 #endif // OSCILLATOR_H

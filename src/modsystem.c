@@ -105,6 +105,41 @@ void addToModList(ModList *list, Mod *mod) {
 	}
 }
 
+/* Task 2.2: the modList holds BOTH sources (ENV/LFO/RND) and the
+ * connection-internal attenuators addModulation inserts. Source-count
+ * consumers (source container rows, envelopeCount sync, ADD/REMOVE
+ * guards) must count only the non-atten mods. modIndexAt maps a source
+ * position (0-based, skipping attens) back to the modList index; -1 if
+ * out of range. */
+int modSourceCount(ModList *list) {
+	if(!list) {
+		return 0;
+	}
+	int n = 0;
+	for(int i = 0; i < list->count; i++) {
+		if(list->mods[i] && list->mods[i]->type != MT_ATTEN) {
+			n++;
+		}
+	}
+	return n;
+}
+
+int modIndexAt(ModList *list, int sourcePos) {
+	if(!list) {
+		return -1;
+	}
+	int n = 0;
+	for(int i = 0; i < list->count; i++) {
+		if(list->mods[i] && list->mods[i]->type != MT_ATTEN) {
+			if(n == sourcePos) {
+				return i;
+			}
+			n++;
+		}
+	}
+	return -1;
+}
+
 Parameter *createParameter(ParamList *paramList, const char *name, float initialValue, float minValue, float maxValue) {
 	Parameter *param = (Parameter *)malloc(sizeof(Parameter));
 	if(param) {

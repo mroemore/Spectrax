@@ -518,6 +518,10 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 	return true;
 }
 
+/* Task 2.2: defined below init_instrument; forward-declared so
+ * applyInstrumentPreset (earlier in the file) can re-seed on load. */
+static void initVoiceDrivers(Instrument *inst);
+
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	/* Task 8: gate the audio thread out while we tear down + rebuild the
 	 * param/mod lists. The PortAudio callback reads these lists every
@@ -623,6 +627,9 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	 * this the meta-row VOICES dial reads a dangling Parameter (garbage
 	 * name/range). Same class as the selectedPresetIndex fix above. */
 	instrument->voiceCountParam = createParameterPro(instrument->paramList, "voiceCount", 1.0f, 1.0f, 8.0f, 1.0f, 1.0f, instrument, cb_setVoiceCount);
+	/* Task 2.2: the voice-driver dests + default seeds are derived from the
+	 * source list + voice type, so they are re-seeded on every load. */
+	initVoiceDrivers(instrument);
 	/* Task 6: stamp the snapshot with the loaded preset's identity so
 	 * the dirty bit flips to clean. Search the bank by name (rather
 	 * than passing the index around) because some call sites — notably
@@ -716,13 +723,17 @@ Preset presetFromInstrument(Instrument *instrument) {
 		default:
 			break;
 	}
-	int n = instrument->modList ? instrument->modList->count : 0;
+	int n = instrument->modList ? modSourceCount(instrument->modList) : 0;
 	if(n > MAX_ENVELOPES + MAX_LFOS) {
 		n = MAX_ENVELOPES + MAX_LFOS;
 	}
 	p.modSettingsCount = n;
 	for(int i = 0; i < n; i++) {
-		Mod *mod = instrument->modList->mods[i];
+		int mi = modIndexAt(instrument->modList, i);
+		if(mi < 0) {
+			break;
+		}
+		Mod *mod = instrument->modList->mods[mi];
 		p.modSettings[i].type = mod->type;
 		switch(mod->type) {
 			case MT_ENV:
@@ -816,6 +827,38 @@ void addPresetToBank(PresetBank *pb, Preset p) {
 		pb->presetCount++;
 	} else {
 		printf("WARNING: Max patches reached, not adding patch.\n");
+	}
+}
+
+/* Task 2.2: voice-driver destination params + seeded default connections.
+ * Creates the `gain` (per-voice gain path) and `pitch` (BLEP frequency
+ * driver) destinations and seeds the default modulation wiring per type:
+ *   - all types: source[0] -> gain (MUL 1.0)
+ *   - FM:        source[0] -> ops[i]->outLevel (MUL 1.0) for i in 0..3
+ *   - BLEP:      source[1] -> pitch (ADD 400.5)
+ * The seeds are ordinary ModConnections: the route overlay draws them, the
+ * picker lists the destinations, and they can be cleared/rerouted. Called
+ * from init_instrument (fresh instrument) and applyInstrumentPreset (load)
+ * so the voice graph copy and the route overlay always agree. */
+static void initVoiceDrivers(Instrument *inst) {
+	if(!inst) {
+		return;
+	}
+	inst->gain = createParameterEx(inst->paramList, "gain", 1.0f, 0.0f, 2.0f, 0.05f, 0.5f);
+	inst->pitch = createParameterEx(inst->paramList, "pitch", 1.0f, 0.0f, 2.0f, 0.05f, 0.5f);
+	if(inst->envelopeCount < 1 || !inst->modList || inst->modList->count < 1) {
+		return;
+	}
+	Mod *src0 = inst->modList->mods[0];
+	addModulation(inst->paramList, inst->modList, src0, inst->gain, 1.0f, MO_MUL);
+	if(inst->voiceType == VOICE_TYPE_FM) {
+		for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+			if(inst->id.fm.ops[i] && inst->id.fm.ops[i]->outLevel) {
+				addModulation(inst->paramList, inst->modList, src0, inst->id.fm.ops[i]->outLevel, 1.0f, MO_MUL);
+			}
+		}
+	} else if(inst->voiceType == VOICE_TYPE_BLEP && inst->envelopeCount >= 2 && inst->modList->count >= 2) {
+		addModulation(inst->paramList, inst->modList, inst->modList->mods[1], inst->pitch, 400.5f, MO_ADD);
 	}
 }
 
@@ -931,6 +974,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 
 	(*instrument)->voiceType = vt;
 	(*instrument)->coreEnvelopeCount = (*instrument)->envelopeCount;
+	initVoiceDrivers(*instrument);
 }
 
 void updateSampleReferences(void *instrument) {

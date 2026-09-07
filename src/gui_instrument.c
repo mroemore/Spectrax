@@ -1394,11 +1394,12 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	appendItem(modHdr, modAdd, 1);
 	appendItem(modHdr, modLabel, 4);
 	appendItem(instwrap, modHdr, 2);
-	int nRows = inst->modList->count + 1; /* rows + 1 trailing blank */
+	int nRows = modSourceCount(inst->modList) + 1; /* rows + 1 trailing blank */
 	int modRowH = 40;
 	int modH = modRowH * nRows;
 	GuiNode *modwrap = createScrollContainer(0, 0, 100, modH, modRowH, "mod_wrap");
-	for(int i = 0; i < inst->modList->count; i++) {
+	int srcCount = modSourceCount(inst->modList);
+	for(int i = 0; i < srcCount; i++) {
 		appendModSourceEntry(instGraph, modwrap, inst, i, 1, false);
 	}
 	appendBlankNode(modwrap, 1);

@@ -198,6 +198,8 @@ ParamList *createParamList();
 void clearParamList(ParamList *list);
 void clearModList(ModList *list);
 void addToModList(ModList *list, Mod *mod);
+int modSourceCount(ModList *list);
+int modIndexAt(ModList *list, int sourcePos);
 void addToParamList(ParamList *list, Parameter *param);
 bool removeFromModList(ModList *list, Mod *mod);
 bool removeFromParamList(ParamList *list, Parameter *param);

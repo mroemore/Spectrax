@@ -164,8 +164,9 @@ static void drawRouteDestNode(void *self) {
 	/* T9: KM_FUNCTION held (g_routeErase is set each frame from the
 	 * held state) overrides the visuals — every dest shows whether it is
 	 * routed or not; the selected one gets the instruction text. */
-	if(g_routeErase && dc && dc->inst && dc->dest && dc->srcIdx >= 0 && dc->srcIdx < dc->inst->modList->count) {
-		Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	if(g_routeErase && dc && dc->inst && dc->dest && dc->srcIdx >= 0 && dc->srcIdx < modSourceCount(dc->inst->modList)) {
+		int mi = modIndexAt(dc->inst->modList, dc->srcIdx);
+		Mod *src = (mi >= 0) ? dc->inst->modList->mods[mi] : NULL;
 		bool routed = src && connFromSource(dc->dest->modulators, src);
 		if(routed) {
 			/* routed: oscillate bright↔dark red */
@@ -192,8 +193,9 @@ static void drawRouteDestNode(void *self) {
 	 * dial at the cell (the function-held states above take precedence;
 	 * when both are held the erase visuals win). */
 	if(g_pickerEditHeld && gn->selected && dc && dc->inst && dc->dest &&
-	   dc->srcIdx >= 0 && dc->srcIdx < dc->inst->modList->count) {
-		Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	   dc->srcIdx >= 0 && dc->srcIdx < modSourceCount(dc->inst->modList)) {
+		int mi = modIndexAt(dc->inst->modList, dc->srcIdx);
+		Mod *src = (mi >= 0) ? dc->inst->modList->mods[mi] : NULL;
 		ModConnection *conn = NULL;
 		if(src) {
 			for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
@@ -242,7 +244,7 @@ static void drawRouteDestNode(void *self) {
 
 
 void addRuntimeSource(Instrument *inst) {
-	if(!inst || !inst->modList || inst->modList->count >= MAX_ENVELOPES) {
+	if(!inst || !inst->modList || modSourceCount(inst->modList) >= MAX_ENVELOPES) {
 		return;
 	}
 	/* Task 8: the audio thread iterates inst->paramList/modList every
@@ -258,9 +260,10 @@ void addRuntimeSource(Instrument *inst) {
 	if(env && inst->envelopeCount < MAX_ENVELOPES) {
 		inst->envelopes[inst->envelopeCount] = env;
 	}
-	/* Task 3: envelopeCount now mirrors modList->count so the harness
-	 * ASSERT envcount reads the synced value. */
-	inst->envelopeCount = inst->modList->count;
+	/* Task 3: envelopeCount tracks the SOURCE count (non-atten) so the
+	 * harness ASSERT envcount + the voice aliasing stay aligned even
+	 * though the modList also holds connection attenuators. */
+	inst->envelopeCount = modSourceCount(inst->modList);
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -268,7 +271,17 @@ void addRuntimeSource(Instrument *inst) {
 
 
 void removeSource(Instrument *inst, int srcIndex) {
-	if(!inst || !inst->modList || srcIndex < inst->coreEnvelopeCount || srcIndex >= inst->modList->count) {
+	if(!inst || !inst->modList) {
+		return;
+	}
+	/* `srcIndex` is a SOURCE position (0-based over non-atten mods). Core
+	 * sources (0..coreEnvelopeCount-1) are protected; runtime sources can
+	 * be removed. Resolve to the modList index (attenuators interleave). */
+	if(srcIndex < inst->coreEnvelopeCount || srcIndex >= modSourceCount(inst->modList)) {
+		return;
+	}
+	int mi = modIndexAt(inst->modList, srcIndex);
+	if(mi < 0) {
 		return;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate + free from the
@@ -276,15 +289,15 @@ void removeSource(Instrument *inst, int srcIndex) {
 	 * closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	inst->rebuilding = true;
-	removeMod(inst->modList, inst->paramList, inst->modList->mods[srcIndex]);
+	removeMod(inst->modList, inst->paramList, inst->modList->mods[mi]);
 	/* Task 3 fix: clear the mirror slot so the old builder's
 	 * rebuildInstrumentGraph does not deref a freed envelope. Task 4 will
 	 * remove the mirror entirely when it replaces the builder. */
-	if(srcIndex < MAX_ENVELOPES) {
-		inst->envelopes[srcIndex] = NULL;
+	if(mi < MAX_ENVELOPES) {
+		inst->envelopes[mi] = NULL;
 	}
-	/* Task 3: keep envelopeCount synced with modList->count. */
-	inst->envelopeCount = inst->modList->count;
+	/* Task 3: keep envelopeCount synced with the source count. */
+	inst->envelopeCount = modSourceCount(inst->modList);
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -451,10 +464,52 @@ static Instrument *resolveSourceCtx(SourceCtx *sc) {
 		return NULL;
 	}
 	sc->inst = inst;
-	if(sc->idx < 0 || sc->idx >= inst->modList->count) {
+	/* `idx` is a SOURCE position (0-based over non-atten mods). Validate
+	 * against the source count; consumers resolve to a modList index via
+	 * modIndexAtSource(). */
+	if(sc->idx < 0 || sc->idx >= modSourceCount(inst->modList)) {
 		return NULL;
 	}
 	return inst;
+}
+
+/* Resolve a SourceCtx source-position to a modList index (skipping the
+ * connection-internal attenuators addModulation interleaves). -1 if the
+ * position is out of range for the displayed instrument. */
+static int scModIndex(const SourceCtx *sc) {
+	InstrumentGui *ig = igui;
+	if(!ig || !sc) {
+		return -1;
+	}
+	Instrument *inst = ig->vm->instruments[*ig->selectedInstrument];
+	if(!inst || !inst->modList) {
+		return -1;
+	}
+	return modIndexAt(inst->modList, sc->idx);
+}
+
+/* The actual Mod for a SourceCtx, or NULL. Uses sc->inst if set,
+ * else resolves the displayed instrument's modList by source position. */
+static Mod *scMod(const SourceCtx *sc) {
+	if(!sc) {
+		return NULL;
+	}
+	Instrument *inst = sc->inst;
+	if(!inst || !inst->modList) {
+		InstrumentGui *ig = igui;
+		if(!ig) {
+			return NULL;
+		}
+		inst = ig->vm->instruments[*ig->selectedInstrument];
+		if(!inst || !inst->modList) {
+			return NULL;
+		}
+	}
+	int mi = modIndexAt(inst->modList, sc->idx);
+	if(mi < 0) {
+		return NULL;
+	}
+	return inst->modList->mods[mi];
 }
 
 /* N1 (user report): when a ROUTE picker closes via a mutation that
@@ -742,10 +797,10 @@ bool guiPickerHeldAmountAdjust(InputState *is) {
 	}
 	GuiNode *sel = route->graph->selected;
 	DestCtx *dc = (sel && sel->actionCb == cbRouteToDest) ? (DestCtx *)sel->actionCtx : NULL;
-	if(!dc || !dc->inst || !dc->dest || dc->srcIdx < 0 || dc->srcIdx >= dc->inst->modList->count) {
+	if(!dc || !dc->inst || !dc->dest || dc->srcIdx < 0 || dc->srcIdx >= modSourceCount(dc->inst->modList)) {
 		return false;
 	}
-	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	int mi_ = modIndexAt(dc->inst->modList, dc->srcIdx); Mod *src = (mi_ >= 0) ? dc->inst->modList->mods[mi_] : NULL;
 	if(!src) {
 		return false;
 	}
@@ -812,10 +867,10 @@ void guiPickerUpdateDeferred(void) {
 	g_pickerPendingToggle = false;
 	g_pickerPendingCtx = NULL;
 	InstrumentGui *ig = igui;
-	if(!ig || !dc->inst || dc->srcIdx < 0 || dc->srcIdx >= dc->inst->modList->count || !dc->dest) {
+	if(!ig || !dc->inst || dc->srcIdx < 0 || dc->srcIdx >= modSourceCount(dc->inst->modList) || !dc->dest) {
 		return;
 	}
-	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	int mi_ = modIndexAt(dc->inst->modList, dc->srcIdx); Mod *src = (mi_ >= 0) ? dc->inst->modList->mods[mi_] : NULL;
 	if(!src) {
 		return;
 	}
@@ -917,10 +972,10 @@ static void cbClearAllConfirmYes(void *ctx) {
 	if(ig) {
 		popLayer(&ig->overlayLayers);
 	}
-	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= modSourceCount(sc->inst->modList)) {
 		return;
 	}
-	Mod *src = sc->inst->modList->mods[sc->idx];
+	Mod *src = scMod(sc);
 	if(!src) {
 		return;
 	}
@@ -944,7 +999,7 @@ void cbOpenClearAllLayer(void *ctx) {
 	if(!inst) {
 		return;
 	}
-	Mod *src = inst->modList->mods[sc->idx];
+	Mod *src = scMod(sc);
 	if(!src || !src->name) {
 		return;
 	}
@@ -1071,7 +1126,7 @@ static void cbRouteToDest(void *ctx) {
 	/* Walk the destination's modulator chain to decide whether to add
 	 * or remove. There is no public hasModulation() — the connection
 	 * list is the source of truth. */
-	Mod *src = dc->inst->modList->mods[dc->srcIdx];
+	int mi_ = modIndexAt(dc->inst->modList, dc->srcIdx); Mod *src = (mi_ >= 0) ? dc->inst->modList->mods[mi_] : NULL;
 	if(!src) {
 		return;
 	}
@@ -1428,10 +1483,10 @@ static void drawRouteLinesNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	RouteLinesCtx *rc = &g_routeLinesCtx;
 	(void)gn;
-	if(!rc->inst || rc->srcIdx < 0 || rc->srcIdx >= rc->inst->modList->count) {
+	if(!rc->inst || rc->srcIdx < 0 || rc->srcIdx >= modSourceCount(rc->inst->modList)) {
 		return;
 	}
-	Mod *src = rc->inst->modList->mods[rc->srcIdx];
+	int mi_ = modIndexAt(rc->inst->modList, rc->srcIdx); Mod *src = (mi_ >= 0) ? rc->inst->modList->mods[mi_] : NULL;
 	Graph *base = getSelectedInstGraph();
 	if(!base || !base->root) {
 		return;
@@ -1574,11 +1629,11 @@ void cbAddModSource(void *ctx) {
 
 static void cbCycleSourceType(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
-	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= sc->inst->modList->count) {
+	if(!sc || !sc->inst) {
 		return;
 	}
-	Mod *mod = sc->inst->modList->mods[sc->idx];
-	if(mod && mod->type == MT_ATTEN) {
+	Mod *mod = scMod(sc);
+	if(!mod || mod->type == MT_ATTEN) {
 		return;
 	}
 	ModType next = MT_ENV;
@@ -1593,7 +1648,7 @@ static void cbCycleSourceType(void *ctx) {
 	pthread_mutex_lock(&g_audioLock);
 	sc->inst->rebuilding = true;
 	if(changeModType(sc->inst->modList, mod, next, sc->inst->paramList)) {
-		sc->inst->envelopeCount = sc->inst->modList->count;
+		sc->inst->envelopeCount = modSourceCount(sc->inst->modList);
 		rebuildInstrumentGraph();
 	}
 	sc->inst->rebuilding = false;
@@ -1612,7 +1667,11 @@ static const char *modTypeTag(ModType t) {
 
 
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected) {
-	Mod *mod = inst->modList->mods[idx];
+	Mod *mod = NULL;
+	if(inst && inst->modList) {
+		int mi = modIndexAt(inst->modList, idx);
+		mod = (mi >= 0) ? inst->modList->mods[mi] : NULL;
+	}
 	/* Attenuators are connection-internal: they never appear as source
 	 * rows (no row, no type-cycling, no ROUTE button). Their routes are
 	 * managed through the real source they shape. */

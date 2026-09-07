@@ -118,6 +118,7 @@ typedef enum {
 	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
 	SOP_REPORT,        /* Task 4: print a GuiNode's rect (x y w h) to stdout */
 	SOP_SHOWTL,        /* print the top non-passive layer's selected node name */
+	SOP_SHOW,          /* print the base graph's selected node name */
 	SOP_JUMP_TL,       /* changeGraphSelection on the top non-passive layer's graph */
 	SOP_QUIT
 } ScriptOpKind;
@@ -423,6 +424,8 @@ static void parseScript(const char *path) {
 			s->name[sizeof(s->name) - 1] = '\0';
 		} else if(strcmp(op, "SHOWTL") == 0) {
 			s->op = SOP_SHOWTL; s->frames = 1;
+		} else if(strcmp(op, "SHOW") == 0) {
+			s->op = SOP_SHOW; s->frames = 1;
 		} else if(strcmp(op, "JUMPTL") == 0) {
 			if(nt < 2) {
 				fclose(fp);
@@ -1156,6 +1159,14 @@ static void processScriptAssert(const ScriptStep *s) {
 			Layer *top = igui ? topNonPassiveLayer(&igui->overlayLayers) : NULL;
 			GuiNode *sel = (top && top->graph) ? top->graph->selected : NULL;
 			fprintf(stdout, "SHOWTL: %s\n", (sel && sel->name) ? sel->name : "(null)");
+			break;
+		}
+		case SOP_SHOW: {
+			extern InstrumentGui *igui;
+			extern Graph *getSelectedInstGraph(void);
+			Graph *g = igui ? getSelectedInstGraph() : NULL;
+			GuiNode *sel = (g && g->selected) ? g->selected : NULL;
+			fprintf(stdout, "SHOW: %s\n", (sel && sel->name) ? sel->name : "(null)");
 			break;
 		}
 		case SOP_JUMP_TL: {
