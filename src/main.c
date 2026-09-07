@@ -342,9 +342,13 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 			for(int v = 0; v < data->voiceManager->voiceCount[j]; v++) {
 				Voice *currentVoice = data->voiceManager->voicePools[j][v];
 				if(currentVoice->active) {
+					/* Task 2.3: live-base sync from the instrument before
+					 * this voice's per-sample modulation pass. */
+					syncVoiceGraph(currentVoice);
 					processModulations(currentVoice->paramList, currentVoice->modList, 1.0f / SAMPLE_RATE);
 					// Handle envelope
-					if(!currentVoice->envelope[0]->data.env.isTriggered) {
+					Mod *gainDriver = (currentVoice->cloneCount > 0) ? currentVoice->clones[0] : NULL;
+					if(gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
 						setParameterValue(currentVoice->volume, 1.0f);
 						setParameterBaseValue(currentVoice->volume, 1.0f);
 						currentVoice->active = 0;

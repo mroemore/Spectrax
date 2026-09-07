@@ -239,8 +239,127 @@ void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]) {
 	voice->rightPhase = 0.0f;
 	voice->samplesElapsed = 0;
 	voice->active = 1;
-	for(int e = 0; e < voice->envCount; e++) {
-		triggerEnvelope(voice->envelope[e]);
+	triggerVoiceMods(voice);
+}
+
+/* Task 2.3/2.4: on note-on, retrigger the voice's ENV clones (stage reset).
+ * LFO/RND clones follow their play mode — Part 4 adds the parameter; until
+ * then they free-run (no phase reset). */
+void triggerVoiceMods(Voice *v) {
+	if(!v) {
+		return;
+	}
+	for(int i = 0; i < v->cloneCount; i++) {
+		Mod *m = v->clones[i];
+		if(m && m->type == MT_ENV) {
+			EnvState *e = &m->data.env;
+			e->currentStageIndex = 0;
+			e->currentTime = 0.0f;
+			e->isTriggered = true;
+		}
+	}
+}
+
+/* Voice mirror of an instrument destination Parameter, or NULL. */
+static Parameter *voiceDestFor(Voice *v, Parameter *instDest) {
+	for(int i = 0; i < v->destCount; i++) {
+		if(v->destMap[i].inst == instDest) {
+			return v->destMap[i].voice;
+		}
+	}
+	return NULL;
+}
+
+/* The voice clone mirroring an instrument source Mod, or NULL. */
+static Mod *voiceCloneForSource(Voice *v, Mod *instSource) {
+	for(int i = 0; i < v->cloneCount; i++) {
+		if(v->instSources[i] && *v->instSources[i] == instSource) {
+			return v->clones[i];
+		}
+	}
+	return NULL;
+}
+
+/* Task 2.3: replicate every instrument connection onto the voice's mirror
+ * destination params (source clones -> voice dests), creating the voice's
+ * own connection-internal attenuators via addModulation. Records the
+ * (instrument atten, voice atten) pairs so the per-buffer sync can keep
+ * the route amount/polarity/curve live. */
+static void replicateConnections(Voice *v, Instrument *inst) {
+	if(!inst || !inst->paramList) {
+		return;
+	}
+	for(int pi = 0; pi < inst->paramList->count; pi++) {
+		Parameter *dest = inst->paramList->params[pi];
+		if(!dest) {
+			continue;
+		}
+		for(ModConnection *conn = dest->modulators; conn; conn = conn->next) {
+			Mod *connSrc = conn->source;
+			if(!connSrc) {
+				continue;
+			}
+			Mod *realSource = (connSrc->type == MT_ATTEN) ? connSrc->data.atten.input : connSrc;
+			if(!realSource) {
+				continue;
+			}
+			Mod *sourceClone = voiceCloneForSource(v, realSource);
+			if(!sourceClone) {
+				continue;
+			}
+			Parameter *mirror = voiceDestFor(v, dest);
+			if(!mirror) {
+				continue;
+			}
+			float amount = (connSrc->type == MT_ATTEN && connSrc->data.atten.attenAmount)
+				? connSrc->data.atten.attenAmount->baseValue
+				: (conn->amount ? conn->amount->baseValue : 1.0f);
+			ModulationOperation op = conn->type ? (ModulationOperation)getParameterValueAsInt(conn->type) : MO_ADD;
+			if(!addModulation(v->paramList, v->modList, sourceClone, mirror, amount, op)) {
+				continue;
+			}
+			if(connSrc->type == MT_ATTEN && v->attenCount < MAX_MODS) {
+				Mod *voiceAtten = mirror->modulators ? mirror->modulators->source : NULL;
+				if(voiceAtten) {
+					v->attenPairs[v->attenCount].inst = connSrc;
+					v->attenPairs[v->attenCount].voice = voiceAtten;
+					v->attenCount++;
+				}
+			}
+		}
+	}
+}
+
+/* Task 2.3: per-buffer base sync. Copies each clone's payload param
+ * baseValues from the instrument source, the route attenuator params from
+ * the instrument attens, and the destination param baseValues (gain ->
+ * volume, per-op feedback/ratio/level/outLevel/pitch) from the instrument
+ * dests. `frequency` is note-driven and skipped. Called once per buffer
+ * before the voice's per-sample processModulations so AD/LFO-rate edits
+ * reach sounding notes on the next buffer. */
+void syncVoiceGraph(Voice *v) {
+	if(!v) {
+		return;
+	}
+	for(int i = 0; i < v->cloneCount; i++) {
+		Mod *src = (v->instSources[i] && *v->instSources[i]) ? *v->instSources[i] : NULL;
+		if(src) {
+			syncModValues(v->clones[i], src);
+		}
+	}
+	for(int i = 0; i < v->attenCount; i++) {
+		if(v->attenPairs[i].inst && v->attenPairs[i].voice) {
+			syncModValues(v->attenPairs[i].voice, v->attenPairs[i].inst);
+		}
+	}
+	for(int i = 0; i < v->destCount; i++) {
+		if(!v->destMap[i].inst || !v->destMap[i].voice) {
+			continue;
+		}
+		if(v->destMap[i].voice == v->frequency) {
+			continue;
+		}
+		setParameterBaseValue(v->destMap[i].voice, v->destMap[i].inst->baseValue);
 	}
 }
 
@@ -257,27 +376,23 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 	voice->active = 0;
 	voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
 	voice->type = inst->voiceType;
-	// printf("active: %i\n", voice->active);
-	voice->envCount = inst->envelopeCount;
-	voice->lfoCount = inst->lfoCount;
-	for(int i = 0; i < voice->envCount; i++) {
-		voice->envelope[i] = createParamPointerAD(
-		  voice->paramList,
-		  voice->modList,
-		  inst->envelopes[i]->data.env.stages[0].duration,
-		  inst->envelopes[i]->data.env.stages[1].duration,
-		  inst->envelopes[i]->data.env.stages[0].curvature,
-		  inst->envelopes[i]->data.env.stages[1].curvature,
-		  "ADp");
-	}
+	/* The per-voice graph copy replaces the pointer-alias arrays: they are
+	 * retired (kept zeroed for a clean compile boundary until Task 2.4). */
+	voice->envCount = 0;
+	voice->lfoCount = 0;
+	memset(voice->envelope, 0, sizeof(voice->envelope));
+	memset(voice->lfo, 0, sizeof(voice->lfo));
+	voice->cloneCount = 0;
+	voice->attenCount = 0;
+	voice->destCount = 0;
+	memset(voice->clones, 0, sizeof(voice->clones));
+	memset(voice->instSources, 0, sizeof(voice->instSources));
 	for(int i = 0; i < MAX_DETUNE; i++) {
 		voice->detunePhase[i] = 0.0f;
 	}
 
 	switch(voice->type) {
 		case VOICE_TYPE_BLEP:
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->volume, 1.0f, MO_MUL);
-			addModulation(voice->paramList, voice->modList, voice->envelope[1], voice->frequency, 400.5f, MO_ADD);
 			voice->generate = generateBlep;
 			break;
 
@@ -285,21 +400,13 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			voice->vd.sampler.sample = inst->id.sampler.sample;
 			voice->vd.sampler.samplePosition = 0.0f; // Initialize sample position
 			voice->vd.sampler.samplePool = inst->id.sampler.sp;
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->volume, 1.0f, MO_MUL);
 			voice->generate = generateSample;
 			break;
 
 		case VOICE_TYPE_FM:
-			voice->vd.fm.operators[0] = createVoiceOperator(voice->paramList, inst->id.fm.ops[0]);
-			voice->vd.fm.operators[1] = createVoiceOperator(voice->paramList, inst->id.fm.ops[1]);
-			voice->vd.fm.operators[2] = createVoiceOperator(voice->paramList, inst->id.fm.ops[2]);
-			voice->vd.fm.operators[3] = createVoiceOperator(voice->paramList, inst->id.fm.ops[3]);
-
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[0]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[1]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[2]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[3]->outLevel, 1.0f, MO_MUL);
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->volume, 1.0f, MO_MUL);
+			for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+				voice->vd.fm.operators[i] = createVoiceOperator(voice->paramList, inst->id.fm.ops[i]);
+			}
 			voice->generate = generateFM;
 			break;
 		case VOICE_TYPE_GRAIN:
@@ -309,11 +416,60 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 		case VOICE_TYPE_SPECTRAL:
 			voice->vd.spectral.sample = inst->id.sampler.sample;
 			voice->vd.spectral.samplePosition = 0.0f; // Initialize sample position
-			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->volume, 1.0f, MO_MUL);
 			voice->generate = generateSpectral;
 		default:
 			break;
 	}
+
+	/* Register the instrument dest -> voice mirror dest pairs. `gain` maps
+	 * to the voice volume, `pitch` to frequency (connection replication
+	 * only; the per-buffer sync skips frequency), and each FM op param maps
+	 * to its voice operator's mirror. */
+	if(inst->gain) {
+		voice->destMap[voice->destCount].inst = inst->gain;
+		voice->destMap[voice->destCount].voice = voice->volume;
+		voice->destCount++;
+	}
+	if(inst->pitch) {
+		voice->destMap[voice->destCount].inst = inst->pitch;
+		voice->destMap[voice->destCount].voice = voice->frequency;
+		voice->destCount++;
+	}
+	if(voice->type == VOICE_TYPE_FM) {
+		for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+			Operator *vo = voice->vd.fm.operators[i];
+			Operator *io = inst->id.fm.ops[i];
+			if(!vo || !io) {
+				continue;
+			}
+			if(io->feedbackAmount && voice->destCount < 32) { voice->destMap[voice->destCount].inst = io->feedbackAmount; voice->destMap[voice->destCount].voice = vo->feedbackAmount; voice->destCount++; }
+			if(io->ratio && voice->destCount < 32) { voice->destMap[voice->destCount].inst = io->ratio; voice->destMap[voice->destCount].voice = vo->ratio; voice->destCount++; }
+			if(io->level && voice->destCount < 32) { voice->destMap[voice->destCount].inst = io->level; voice->destMap[voice->destCount].voice = vo->level; voice->destCount++; }
+			if(io->outLevel && voice->destCount < 32) { voice->destMap[voice->destCount].inst = io->outLevel; voice->destMap[voice->destCount].voice = vo->outLevel; voice->destCount++; }
+			if(io->pitch && voice->destCount < 32) { voice->destMap[voice->destCount].inst = io->pitch; voice->destMap[voice->destCount].voice = vo->pitch; voice->destCount++; }
+		}
+	}
+
+	/* Clone every instrument source into this voice, then replicate the
+	 * instrument's connections onto the voice's mirror dests. */
+	int srcCount = inst->modList ? modSourceCount(inst->modList) : 0;
+	for(int i = 0; i < srcCount; i++) {
+		int mi = modIndexAt(inst->modList, i);
+		if(mi < 0) {
+			continue;
+		}
+		Mod *src = inst->modList->mods[mi];
+		Mod *clone = cloneMod(voice->paramList, voice->modList, src);
+		if(!clone) {
+			continue;
+		}
+		int ci = voice->cloneCount;
+		voice->clones[ci] = clone;
+		voice->instSources[ci] = &inst->modList->mods[mi];
+		voice->cloneCount++;
+	}
+	replicateConnections(voice, inst);
+
 	voice->filter = createFilter(kTransposeCanonical, secondOrderLPF, 250.0f, 10.0f);
 }
 

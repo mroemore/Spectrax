@@ -274,6 +274,21 @@ struct Voice {
 	int lfoCount;
 	Mod *envelope[4];
 	Mod *lfo[2];
+	/* Task 2.3: per-voice mod graph copy. The voice owns a full copy of
+	 * the instrument's source mods (clones[]), their connections, and the
+	 * destination params they modulate. instSources[i] is a pointer to the
+	 * instrument's Mod* slot that clones[i] mirrors, so the per-buffer
+	 * base sync (syncVoiceGraph) can reach the live instrument values.
+	 * attenPairs records the (instrument atten, voice atten) pairs for the
+	 * connection-internal attenuators, and destMap the instrument dest ->
+	 * voice mirror dest pairs (frequency is note-driven and skipped). */
+	int cloneCount;
+	Mod *clones[MAX_MODS];
+	Mod **instSources[MAX_MODS];
+	int attenCount;
+	struct { Mod *inst; Mod *voice; } attenPairs[MAX_MODS];
+	int destCount;
+	struct { Parameter *inst; Parameter *voice; } destMap[32];
 	Parameter *frequency;
 	Parameter *volume;
 	Instrument *instrumentRef;
@@ -336,6 +351,8 @@ Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
 bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt);
 bool setChannelVoiceCount(VoiceManager *vm, int channel, int count);
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
+void triggerVoiceMods(Voice *v);
+void syncVoiceGraph(Voice *v);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
 
 void initDefaultFmPreset(Preset *p);

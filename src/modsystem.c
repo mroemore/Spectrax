@@ -1083,6 +1083,191 @@ void initMod(Mod *mod, ParamList *paramList, const char *name, ModType type, Mod
 	mod->visiting = false;
 }
 
+/* Task 2.3: deep-copy a source mod into the voice's own lists. The clone
+ * carries its OWN payload params (values + ranges copied from `src`), its
+ * own `output`, and the same `name`/`generate`. For MT_ATTEN the `input`
+ * pointer is left NULL — the caller resolves it to the voice's clone of
+ * the real upstream source. Envelope clones start untriggered. */
+Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src) {
+	if(!src || !voicePl) {
+		return NULL;
+	}
+	Mod *c = (Mod *)calloc(1, sizeof(Mod));
+	initMod(c, voicePl, src->name, src->type, src->generate);
+	c->generate = src->generate;
+	switch(src->type) {
+		case MT_ENV: {
+			EnvState *e = &c->data.env;
+			const EnvState *se = &src->data.env;
+			e->stageCount = se->stageCount;
+			e->loop = se->loop;
+			e->isTriggered = false;
+			e->currentStageIndex = 0;
+			e->currentTime = 0.0f;
+			e->totalElapsedTime = 0.0f;
+			e->currentLevel = 0.0f;
+			e->isSustaining = false;
+			for(int i = 0; i < e->stageCount && i < MAX_ENVELOPE_STAGES; i++) {
+				e->stages[i].isRising = se->stages[i].isRising;
+				e->stages[i].isSustain = se->stages[i].isSustain;
+				e->stages[i].targetLevel = se->stages[i].targetLevel;
+				strncpy(e->stages[i].name, se->stages[i].name, MAX_NAME_LEN);
+				if(se->stages[i].duration) {
+					e->stages[i].duration = createParameter(voicePl, se->stages[i].duration->name,
+						se->stages[i].duration->baseValue, se->stages[i].duration->minValue, se->stages[i].duration->maxValue);
+				}
+				if(se->stages[i].curvature) {
+					e->stages[i].curvature = createParameter(voicePl, se->stages[i].curvature->name,
+						se->stages[i].curvature->baseValue, se->stages[i].curvature->minValue, se->stages[i].curvature->maxValue);
+				}
+			}
+			break;
+		}
+		case MT_LFO: {
+			LfoState *l = &c->data.lfo;
+			const LfoState *sl = &src->data.lfo;
+			if(sl->rate) {
+				l->rate = createParameter(voicePl, sl->rate->name, sl->rate->baseValue, sl->rate->minValue, sl->rate->maxValue);
+			}
+			if(sl->phase) {
+				l->phase = createParameter(voicePl, sl->phase->name, sl->phase->baseValue, sl->phase->minValue, sl->phase->maxValue);
+			}
+			if(sl->shape) {
+				l->shape = createParameter(voicePl, sl->shape->name, sl->shape->baseValue, sl->shape->minValue, sl->shape->maxValue);
+			}
+			if(sl->playMode) {
+				l->playMode = createParameter(voicePl, sl->playMode->name, sl->playMode->baseValue, sl->playMode->minValue, sl->playMode->maxValue);
+			}
+			l->shapeValue = sl->shapeValue;
+			break;
+		}
+		case MT_RND: {
+			RndState *r = &c->data.rnd;
+			const RndState *sr = &src->data.rnd;
+			r->lastPhase = 0.0f;
+			r->lastRandom = 0.0f;
+			if(sr->rate) {
+				r->rate = createParameter(voicePl, sr->rate->name, sr->rate->baseValue, sr->rate->minValue, sr->rate->maxValue);
+			}
+			if(sr->phase) {
+				r->phase = createParameter(voicePl, sr->phase->name, sr->phase->baseValue, sr->phase->minValue, sr->phase->maxValue);
+			}
+			if(sr->shape) {
+				r->shape = createParameter(voicePl, sr->shape->name, sr->shape->baseValue, sr->shape->minValue, sr->shape->maxValue);
+			}
+			if(sr->playMode) {
+				r->playMode = createParameter(voicePl, sr->playMode->name, sr->playMode->baseValue, sr->playMode->minValue, sr->playMode->maxValue);
+			}
+			r->shapeValue = sr->shapeValue;
+			break;
+		}
+		case MT_ATTEN: {
+			AttenState *a = &c->data.atten;
+			const AttenState *sa = &src->data.atten;
+			/* The attenuator must not clip bipolar values: mirror the
+			 * widened [-2,2] output range. */
+			c->output->minValue = -2.0f;
+			c->output->maxValue = 2.0f;
+			if(sa->attenAmount) {
+				a->attenAmount = createParameter(voicePl, sa->attenAmount->name,
+					sa->attenAmount->baseValue, sa->attenAmount->minValue, sa->attenAmount->maxValue);
+			}
+			if(sa->attenPolarity) {
+				a->attenPolarity = createParameter(voicePl, sa->attenPolarity->name,
+					sa->attenPolarity->baseValue, sa->attenPolarity->minValue, sa->attenPolarity->maxValue);
+			}
+			if(sa->attenCurve) {
+				a->attenCurve = createParameter(voicePl, sa->attenCurve->name,
+					sa->attenCurve->baseValue, sa->attenCurve->minValue, sa->attenCurve->maxValue);
+			}
+			a->input = NULL; /* caller resolves to the voice's source clone */
+			break;
+		}
+		default:
+			break;
+	}
+	if(voiceMl) {
+		addToModList(voiceMl, c);
+	}
+	return c;
+}
+
+/* Task 2.3: copy each payload param baseValue from `src` into the clone's
+ * OWN params. Dispatch on the source's type so a retyped source syncs into
+ * a retyped clone. Attenuators copy amount/polarity/curve (input is stable
+ * once resolved). */
+void syncModValues(Mod *c, const Mod *src) {
+	if(!c || !src) {
+		return;
+	}
+	switch(src->type) {
+		case MT_ENV: {
+			EnvState *e = &c->data.env;
+			const EnvState *se = &src->data.env;
+			int n = (e->stageCount < se->stageCount) ? e->stageCount : se->stageCount;
+			for(int i = 0; i < n; i++) {
+				if(e->stages[i].duration && se->stages[i].duration) {
+					setParameterBaseValue(e->stages[i].duration, se->stages[i].duration->baseValue);
+				}
+				if(e->stages[i].curvature && se->stages[i].curvature) {
+					setParameterBaseValue(e->stages[i].curvature, se->stages[i].curvature->baseValue);
+				}
+			}
+			break;
+		}
+		case MT_LFO: {
+			LfoState *l = &c->data.lfo;
+			const LfoState *sl = &src->data.lfo;
+			if(l->rate && sl->rate) {
+				setParameterBaseValue(l->rate, sl->rate->baseValue);
+			}
+			if(l->phase && sl->phase) {
+				setParameterBaseValue(l->phase, sl->phase->baseValue);
+			}
+			if(l->shape && sl->shape) {
+				setParameterBaseValue(l->shape, sl->shape->baseValue);
+			}
+			if(l->playMode && sl->playMode) {
+				setParameterBaseValue(l->playMode, sl->playMode->baseValue);
+			}
+			break;
+		}
+		case MT_RND: {
+			RndState *r = &c->data.rnd;
+			const RndState *sr = &src->data.rnd;
+			if(r->rate && sr->rate) {
+				setParameterBaseValue(r->rate, sr->rate->baseValue);
+			}
+			if(r->phase && sr->phase) {
+				setParameterBaseValue(r->phase, sr->phase->baseValue);
+			}
+			if(r->shape && sr->shape) {
+				setParameterBaseValue(r->shape, sr->shape->baseValue);
+			}
+			if(r->playMode && sr->playMode) {
+				setParameterBaseValue(r->playMode, sr->playMode->baseValue);
+			}
+			break;
+		}
+		case MT_ATTEN: {
+			AttenState *a = &c->data.atten;
+			const AttenState *sa = &src->data.atten;
+			if(a->attenAmount && sa->attenAmount) {
+				setParameterBaseValue(a->attenAmount, sa->attenAmount->baseValue);
+			}
+			if(a->attenPolarity && sa->attenPolarity) {
+				setParameterBaseValue(a->attenPolarity, sa->attenPolarity->baseValue);
+			}
+			if(a->attenCurve && sa->attenCurve) {
+				setParameterBaseValue(a->attenCurve, sa->attenCurve->baseValue);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+}
+
 void initEnvelopeDefaults(Mod *env) {
 	EnvState *e = &env->data.env;
 	e->currentLevel = 0.0f;

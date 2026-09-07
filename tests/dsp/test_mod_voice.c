@@ -194,12 +194,18 @@ static int test_preset_load_rebuilds_voices(void) {
     applyInstrumentPreset(inst, pb.patches[0]);
     rebuildVoicesForInstrument(vm, inst);
 
-    /* Voices must alias the CURRENT instrument stage params. */
+    /* Voices now own a full copy of the instrument's source mods (graph
+     * copy) rather than aliasing stage params by pointer. The first clone
+     * mirrors the instrument's source[0] (the seeded gain driver). */
     Voice *v = vm->voicePools[0][0];
-    ASSERT_TRUE(v->envelope[0] != NULL, "voice envelope exists");
-    ASSERT_EQ(v->envelope[0]->data.env.stages[0].duration,
-              inst->envelopes[0]->data.env.stages[0].duration,
-              "voice aliases the new instrument stage param");
+    ASSERT_TRUE(v->cloneCount >= 1, "voice has at least one source clone");
+    ASSERT_TRUE(v->clones[0] != NULL, "voice clone exists");
+    ASSERT_TRUE(v->clones[0]->data.env.stages[0].duration !=
+                    inst->envelopes[0]->data.env.stages[0].duration,
+                "voice owns its stage params (not aliased)");
+    ASSERT_EQ((int)(v->clones[0]->data.env.stages[0].duration->baseValue * 100),
+              (int)(inst->envelopes[0]->data.env.stages[0].duration->baseValue * 100),
+              "voice clone copies the instrument stage value");
 
     freeVoiceManager(vm);
     freeWavetablePool(wtp);
@@ -1119,6 +1125,35 @@ static int test_set_channel_voice_count(void) {
  *   6. chipLabelCharIndex returns 0 for chars not in the table.
  * If any assertion fails the test prints the line + returns non-zero
  * so meson flags it (same shape as the other tests in this file). */
+static int test_voice_graph_copy_syncs_and_isolates(void) {
+    ParamList *ipl = createParamList();
+    ModList *iml = createModList();
+    Mod *env = createAD(ipl, iml, 0.25f, 4.25f, "AD");
+    ASSERT_TRUE(env != NULL, "instrument env created");
+    Parameter *gain = createParameter(ipl, "gain", 1.0f, 0.0f, 2.0f);
+    ASSERT_TRUE(addModulation(ipl, iml, env, gain, 1.0f, MO_MUL), "inst gain route");
+
+    ParamList *vpl = createParamList();
+    ModList *vml = createModList();
+    Mod *clone = cloneMod(vpl, vml, env);
+    ASSERT_TRUE(clone != NULL, "cloneMod returns a Mod");
+    ASSERT_EQ(clone->type, MT_ENV, "clone preserves the env type");
+    ASSERT_TRUE(clone->data.env.stages[0].duration != env->data.env.stages[0].duration,
+                "clone owns its stage params (not aliased)");
+    ASSERT_EQ((int)(clone->data.env.stages[0].duration->baseValue * 100), 25, "clone copies attack duration");
+
+    setParameterBaseValue(env->data.env.stages[0].duration, 1.0f);
+    syncModValues(clone, env);
+    ASSERT_EQ((int)(clone->data.env.stages[0].duration->baseValue * 100), 100, "sync copies the base value");
+
+    freeParamList(vpl);
+    freeModList(vml);
+    freeParamList(ipl);
+    freeModList(iml);
+    printf("PASS test_voice_graph_copy_syncs_and_isolates\n");
+    return 0;
+}
+
 static int test_chip_label_edit(void) {
     /* 1. cursor clamped at 0 + at strlen */
     int cursor = 0;
@@ -1253,6 +1288,9 @@ int main(void) {
 
     /* Task 4 — meta-row type cycle (SAMPLE->FM->BLEP->SAMPLE) */
     fails += test_type_cycle_order();
+
+    /* Task 2.3 — per-voice graph copy + base sync */
+    fails += test_voice_graph_copy_syncs_and_isolates();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

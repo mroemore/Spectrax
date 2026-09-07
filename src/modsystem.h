@@ -200,6 +200,8 @@ void clearModList(ModList *list);
 void addToModList(ModList *list, Mod *mod);
 int modSourceCount(ModList *list);
 int modIndexAt(ModList *list, int sourcePos);
+Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src);
+void syncModValues(Mod *c, const Mod *src);
 void addToParamList(ParamList *list, Parameter *param);
 bool removeFromModList(ModList *list, Mod *mod);
 bool removeFromParamList(ParamList *list, Parameter *param);
