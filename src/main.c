@@ -344,7 +344,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 				if(currentVoice->active) {
 					processModulations(currentVoice->paramList, currentVoice->modList, 1.0f / SAMPLE_RATE);
 					// Handle envelope
-					if(!currentVoice->envelope[0]->isTriggered) {
+					if(!currentVoice->envelope[0]->data.env.isTriggered) {
 						setParameterValue(currentVoice->volume, 1.0f);
 						setParameterBaseValue(currentVoice->volume, 1.0f);
 						currentVoice->active = 0;

@@ -250,7 +250,7 @@ void addRuntimeSource(Instrument *inst) {
 	 * audio lock closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	inst->rebuilding = true;
-	Envelope *env = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
+	Mod *env = createAD(inst->paramList, inst->modList, 0.25f, 4.25f, "AD+");
 	/* Task 3 fix: mirror the freshly-created envelope into inst->envelopes[]
 	 * BEFORE syncing envelopeCount, so the old builder's rebuildInstrumentGraph
 	 * call below can dereference inst->envelopes[envIndex] safely. Task 4 will
@@ -659,26 +659,26 @@ static void attenEditorFire(void) {
 	}
 	switch(g_attenEditorFocus) {
 		case 1: /* curve */
-			if(g_attenEditorAtten->attenCurve) {
-				setParameterBaseValue(g_attenEditorAtten->attenCurve,
-				                     getParameterValueAsInt(g_attenEditorAtten->attenCurve) ? 0 : 1);
+			if(g_attenEditorAtten->data.atten.attenCurve) {
+				setParameterBaseValue(g_attenEditorAtten->data.atten.attenCurve,
+				                     getParameterValueAsInt(g_attenEditorAtten->data.atten.attenCurve) ? 0 : 1);
 			}
 			break;
 		case 2: /* polarity */
-			if(g_attenEditorAtten->attenPolarity) {
-				setParameterBaseValue(g_attenEditorAtten->attenPolarity,
-				                     getParameterValueAsInt(g_attenEditorAtten->attenPolarity) ? 0 : 1);
+			if(g_attenEditorAtten->data.atten.attenPolarity) {
+				setParameterBaseValue(g_attenEditorAtten->data.atten.attenPolarity,
+				                     getParameterValueAsInt(g_attenEditorAtten->data.atten.attenPolarity) ? 0 : 1);
 			}
 			break;
 		case 3: /* reset */
 			if(g_attenEditorConn && g_attenEditorConn->amount) {
 				setParameterBaseValue(g_attenEditorConn->amount, 1.0f);
 			}
-			if(g_attenEditorAtten->attenCurve) {
-				setParameterBaseValue(g_attenEditorAtten->attenCurve, 0.0f);
+			if(g_attenEditorAtten->data.atten.attenCurve) {
+				setParameterBaseValue(g_attenEditorAtten->data.atten.attenCurve, 0.0f);
 			}
-			if(g_attenEditorAtten->attenPolarity) {
-				setParameterBaseValue(g_attenEditorAtten->attenPolarity, 0.0f);
+			if(g_attenEditorAtten->data.atten.attenPolarity) {
+				setParameterBaseValue(g_attenEditorAtten->data.atten.attenPolarity, 0.0f);
 			}
 			break;
 		default:
@@ -1420,7 +1420,7 @@ static bool connFromSource(ModConnection *c, Mod *src) {
 	if(c->source == src) {
 		return true;
 	}
-	return c->source && c->source->type == MT_ATTEN && c->source->input == src;
+	return c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src;
 }
 
 
@@ -1645,7 +1645,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 
 	switch(mod->type) {
 		case MT_ENV: {
-			Envelope *e = (Envelope *)mod;
+			EnvState *e = &mod->data.env;
 			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, e->stages[0].duration), 4);
 			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, e->stages[0].curvature), 4);
 			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, e->stages[1].duration), 4);
@@ -1653,7 +1653,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			break;
 		}
 		case MT_LFO: {
-			LFO *l = (LFO *)mod;
+			LfoState *l = &mod->data.lfo;
 			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATE", selected, incParameterBaseValue, l->rate), 4);
 			if(l->shape) {
 				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, l->shape), 4);
@@ -1661,7 +1661,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			break;
 		}
 		case MT_RND: {
-			Random *r = (Random *)mod;
+			RndState *r = &mod->data.rnd;
 			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "RATE", selected, incParameterBaseValue, r->rate), 4);
 			if(r->shape) {
 				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, r->shape), 4);
@@ -1799,8 +1799,8 @@ void guiPickerEditorDraw(void) {
 	DrawRectangleLinesEx((Rectangle){ px, py, pw, ph }, 1, cs.labelSelected);
 
 	float amt = g_attenEditorConn->amount ? getParameterValue(g_attenEditorConn->amount) : 1.0f;
-	int curve = g_attenEditorAtten && g_attenEditorAtten->attenCurve ? getParameterValueAsInt(g_attenEditorAtten->attenCurve) : 0;
-	int pol = g_attenEditorAtten && g_attenEditorAtten->attenPolarity ? getParameterValueAsInt(g_attenEditorAtten->attenPolarity) : 0;
+	int curve = g_attenEditorAtten && g_attenEditorAtten->data.atten.attenCurve ? getParameterValueAsInt(g_attenEditorAtten->data.atten.attenCurve) : 0;
+	int pol = g_attenEditorAtten && g_attenEditorAtten->data.atten.attenPolarity ? getParameterValueAsInt(g_attenEditorAtten->data.atten.attenPolarity) : 0;
 
 	const char *labels[4];
 	char amtBuf[24];

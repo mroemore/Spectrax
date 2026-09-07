@@ -68,8 +68,8 @@ typedef struct {
 	Parameter *grainMs;
 	Parameter *volume;
 	Sample *sample;
-	Envelope *mainEnv;
-	Envelope *grainEnvs[GRAIN_COUNT];
+	Mod *mainEnv;
+	Mod *grainEnvs[GRAIN_COUNT];
 
 } GranularProcessor;
 
@@ -178,7 +178,7 @@ typedef struct VoiceManager VoiceManager;
 typedef struct {
 	ModList *modList;
 	ParamList *paramList;
-	Envelope *envelopes[MAX_ENVELOPES];
+	Mod *envelopes[MAX_ENVELOPES];
 	int envelopeCount;
 	int coreEnvelopeCount;
 	int lfoCount;
@@ -266,8 +266,8 @@ struct Voice {
 	ModList *modList;
 	int envCount;
 	int lfoCount;
-	Envelope *envelope[4];
-	LFO *lfo[2];
+	Mod *envelope[4];
+	Mod *lfo[2];
 	Parameter *frequency;
 	Parameter *volume;
 	Instrument *instrumentRef;
