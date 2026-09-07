@@ -9,6 +9,35 @@
 #define OLD_PRESET_DATA_OFFSET offsetof(Preset, voiceType)
 #define OLD_PRESET_SIZE (sizeof(Preset) - OLD_PRESET_DATA_OFFSET)
 
+/* V2 (IPB2) predated the per-op `pitch` float. The pitch field interleaves
+ * inside each OperatorData (it follows outLevel), so the old body cannot be
+ * read into the current struct by truncation — every op's fields would
+ * misalign. We mirror the old layout exactly and copy field-by-field, so
+ * pitch defaults to 0.0 ("no offset"). */
+typedef struct {
+	float feedbackAmount;
+	float ratio;
+	float level;
+	float outLevel;
+} OperatorDataV2;
+
+typedef struct {
+	OperatorDataV2 ops[MAX_FM_OPERATORS];
+	int selectedAlgorithm;
+} FmPatchV2;
+
+typedef struct {
+	char name[33];
+	VoiceType voiceType;
+	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+	int modSettingsCount;
+	union {
+		SamplerPatch sampler;
+		FmPatchV2 fm;
+		BlepPatch blep;
+	} pd;
+} PresetV2;
+
 static int cmpPresetPaths(const void *a, const void *b) {
 	const char *const *pa = a;
 	const char *const *pb = b;
@@ -35,7 +64,7 @@ PresetFileResult savePresetFile(const char *filename, Preset *preset) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V2)) {
+	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
 		fclose(file);
 		return PRESET_ERROR_WRITE;
 	}
@@ -54,7 +83,7 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V2)) {
+	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
 		if(fread(&preset, sizeof(Preset), 1, file) != 1) {
 			fclose(file);
 			return PRESET_ERROR_READ;
@@ -63,7 +92,56 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 		addPresetToBank(pb, preset);
 		return PRESET_OK;
 	}
-	/* V1: old magic, struct without the name field */
+	/* V2: same struct minus the per-op `pitch` field. */
+	fclose(file);
+	file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V2)) {
+		/* fall through to V1 handling below */
+	} else {
+		/* The struct begins immediately after the 4-byte magic. Read the
+		 * V2-sized body into a layout-mirror struct (pitch absent). */
+		PresetV2 v2;
+		memset(&v2, 0, sizeof(v2));
+		if(fread(&v2, sizeof(v2), 1, file) != 1) {
+			fclose(file);
+			return PRESET_ERROR_READ;
+		}
+		fclose(file);
+		/* Copy the common fields, then the FM ops field-by-field (pitch
+		 * stays 0). */
+		Preset migrated;
+		memset(&migrated, 0, sizeof(migrated));
+		memcpy(migrated.name, v2.name, sizeof(migrated.name));
+		migrated.voiceType = v2.voiceType;
+		memcpy(migrated.modSettings, v2.modSettings, sizeof(migrated.modSettings));
+		migrated.modSettingsCount = v2.modSettingsCount;
+		switch(migrated.voiceType) {
+			case VOICE_TYPE_FM:
+				migrated.pd.fm.selectedAlgorithm = v2.pd.fm.selectedAlgorithm;
+				for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+					migrated.pd.fm.ops[i].feedbackAmount = v2.pd.fm.ops[i].feedbackAmount;
+					migrated.pd.fm.ops[i].ratio = v2.pd.fm.ops[i].ratio;
+					migrated.pd.fm.ops[i].level = v2.pd.fm.ops[i].level;
+					migrated.pd.fm.ops[i].outLevel = v2.pd.fm.ops[i].outLevel;
+					migrated.pd.fm.ops[i].pitch = 0.0f;
+				}
+				break;
+			case VOICE_TYPE_SAMPLE:
+				migrated.pd.sampler = v2.pd.sampler;
+				break;
+			case VOICE_TYPE_BLEP:
+				migrated.pd.blep = v2.pd.blep;
+				break;
+			default:
+				break;
+		}
+		/* V2 bodies were already name-bearing; just re-add (pitch stays 0). */
+		addPresetToBank(pb, migrated);
+		return PRESET_OK;
+	}
 	fclose(file);
 	file = fopen(filename, "rb");
 	if(!file) {

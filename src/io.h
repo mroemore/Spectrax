@@ -15,6 +15,7 @@
 #define CHIP_LABELS_SECTION "LABL"
 #define PRESET_MAGIC_HEADER "IPBH"
 #define PRESET_MAGIC_HEADER_V2 "IPB2"
+#define PRESET_MAGIC_HEADER_V3 "IPB3"
 
 #ifdef _WIN32
 #define CloseWindow RLCloseWindow

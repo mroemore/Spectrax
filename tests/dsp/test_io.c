@@ -213,11 +213,11 @@ static int test_save_preset_ok(void) {
     make_preset(&p, 1);
     ASSERT_EQ(savePresetFile(path, &p), PRESET_OK);
 
-    /* Magic header (V2 = IPB2; V1 = IPBH kept for migration only) */
+    /* Magic header (V3 = IPB3; V1 = IPBH kept for migration only) */
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
-    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V2, 4) == 0,
-                "preset file must start with IPB2 magic (V2 format)");
+    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V3, 4) == 0,
+                "preset file must start with IPB3 magic (V3 format)");
 
     /* Non-empty, exactly magic + raw struct */
     ASSERT_EQ(file_size(path), (long long)(4 + sizeof(Preset)));
@@ -856,15 +856,69 @@ static int test_preset_v1_migration(void) {
     ASSERT_EQ_MSG(pb->presetCount, 1, "v1 preset loaded");
     ASSERT_TRUE(strcmp(pb->patches[0].name, "oldpreset") == 0, "name from filename");
 
-    /* migration re-saved the file as V2: check the header magic */
+    /* migration re-saved the file as V3: check the header magic */
     fp = fopen(v1, "rb");
     ASSERT_TRUE(fp != NULL, "open v1 for read");
-    ASSERT_TRUE(readAndVerifyChunkHeader(fp, "IPB2"), "file now V2 after migration");
+    ASSERT_TRUE(readAndVerifyChunkHeader(fp, PRESET_MAGIC_HEADER_V3), "file now V3 after migration");
     fclose(fp);
 
     free(pb);
     remove(v1);
     printf("PASS test_preset_v1_migration\n");
+    return 0;
+}
+
+/* A V2 file (IPB2, struct WITHOUT the per-op `pitch` field) loads with the
+ * pitch field defaulting to 0.0, and re-saves as V3. The V2 body uses the
+ * old OperatorData (no pitch), so we mirror it exactly. */
+static int test_preset_v2_pitch_migration(void) {
+    ensure_tmp_dirs();
+    const char *v2 = TMP_DIR "presetdir/v2old.ipb";
+    remove(v2);
+    Preset p;
+    make_preset(&p, 3);
+    p.voiceType = VOICE_TYPE_FM; /* V2 FM patch (not the BLEP default) */
+    strncpy(p.name, "v2old", sizeof(p.name));
+    p.pd.fm.ops[1].ratio = 2.5f;
+    p.pd.fm.ops[2].outLevel = 0.75f;
+    /* Build the V2-shaped body: name/voiceType/modSettings/count are the
+     * same; only the FM op layout differs (no pitch float per op). */
+    char body[sizeof(Preset)];
+    memset(body, 0, sizeof(body));
+    memcpy(body, p.name, sizeof(p.name));
+    memcpy(body + offsetof(Preset, voiceType), &p.voiceType, sizeof(p.voiceType));
+    memcpy(body + offsetof(Preset, modSettings), p.modSettings, sizeof(p.modSettings));
+    memcpy(body + offsetof(Preset, modSettingsCount), &p.modSettingsCount, sizeof(p.modSettingsCount));
+    /* FM patch: write each op's 4 floats (no pitch) then the algo int. */
+    char *fm = body + offsetof(Preset, pd.fm);
+    for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+        float f[4] = { p.pd.fm.ops[i].feedbackAmount, p.pd.fm.ops[i].ratio,
+                       p.pd.fm.ops[i].level, p.pd.fm.ops[i].outLevel };
+        memcpy(fm + i * (int)sizeof(float) * 4, f, sizeof(f));
+    }
+    memcpy(fm + MAX_FM_OPERATORS * 4 * (int)sizeof(float),
+           &p.pd.fm.selectedAlgorithm, sizeof(p.pd.fm.selectedAlgorithm));
+
+    FILE *fp = fopen(v2, "wb");
+    ASSERT_TRUE(fp != NULL, "open v2 for write");
+    ASSERT_TRUE(writeChunkHeader(fp, "IPB2"), "v2 header written");
+    /* V2 body length = current struct minus 4 op-pitch floats */
+    int v2_body = (int)sizeof(Preset) - MAX_FM_OPERATORS * (int)sizeof(float);
+    ASSERT_TRUE(fwrite(body, v2_body, 1, fp) == 1, "v2 body written");
+    fclose(fp);
+
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(loadPresetFile(v2, pb) == PRESET_OK, "v2 load ok");
+    ASSERT_EQ_MSG(pb->presetCount, 1, "v2 preset loaded");
+    ASSERT_TRUE(strcmp(pb->patches[0].name, "v2old") == 0, "name preserved from v2 body");
+    ASSERT_TRUE(pb->patches[0].pd.fm.ops[1].ratio == 2.5f, "op ratio migrated from v2");
+    ASSERT_TRUE(pb->patches[0].pd.fm.ops[2].outLevel == 0.75f, "op outLevel migrated from v2");
+    ASSERT_TRUE(pb->patches[0].pd.fm.ops[0].pitch == 0.0f,
+                "pitch defaults to 0 when absent in V2");
+
+    free(pb);
+    remove(v2);
+    printf("PASS test_preset_v2_pitch_migration\n");
     return 0;
 }
 
@@ -1127,6 +1181,7 @@ int main(void) {
     failed |= test_directory_list();
     failed |= test_preset_name_roundtrip();
     failed |= test_preset_v1_migration();
+    failed |= test_preset_v2_pitch_migration();
     failed |= test_preset_ship_dir_migration();
     failed |= test_save_sequencer_ok();
     failed |= test_sequencer_roundtrip();

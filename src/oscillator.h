@@ -27,6 +27,7 @@ typedef struct {
 	float ratio;
 	float level;
 	float outLevel;
+	float pitch; /* continuous Hz offset (added on top of fundamental*ratio) */
 } OperatorData;
 
 typedef struct {

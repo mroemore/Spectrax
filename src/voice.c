@@ -328,6 +328,7 @@ void initDefaultFmPreset(Preset *p) {
 		p1.pd.fm.ops[i].level = 0.25;
 		p1.pd.fm.ops[i].outLevel = 1.0;
 		p1.pd.fm.ops[i].ratio = 1.0;
+		p1.pd.fm.ops[i].pitch = 0.0;
 	}
 	p1.pd.fm.ops[1].ratio = 2.0;
 	p1.pd.fm.ops[2].ratio = 3.0;
@@ -550,6 +551,8 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 				setParameterValue(instrument->id.fm.ops[i]->feedbackAmount, p.pd.fm.ops[i].feedbackAmount);
 				setParameterBaseValue(instrument->id.fm.ops[i]->outLevel, p.pd.fm.ops[i].outLevel);
 				setParameterValue(instrument->id.fm.ops[i]->outLevel, p.pd.fm.ops[i].outLevel);
+				setParameterBaseValue(instrument->id.fm.ops[i]->pitch, p.pd.fm.ops[i].pitch);
+				setParameterValue(instrument->id.fm.ops[i]->pitch, p.pd.fm.ops[i].pitch);
 			}
 			setParameterBaseValue(instrument->id.fm.selectedAlgorithm, (float)p.pd.fm.selectedAlgorithm);
 			setParameterValue(instrument->id.fm.selectedAlgorithm, (float)p.pd.fm.selectedAlgorithm);
@@ -706,6 +709,7 @@ Preset presetFromInstrument(Instrument *instrument) {
 				p.pd.fm.ops[i].level = getParameterValue(instrument->id.fm.ops[i]->level);
 				p.pd.fm.ops[i].feedbackAmount = getParameterValue(instrument->id.fm.ops[i]->feedbackAmount);
 				p.pd.fm.ops[i].outLevel = getParameterValue(instrument->id.fm.ops[i]->outLevel);
+				p.pd.fm.ops[i].pitch = getParameterValue(instrument->id.fm.ops[i]->pitch);
 			}
 			break;
 		case VOICE_TYPE_SAMPLE:
