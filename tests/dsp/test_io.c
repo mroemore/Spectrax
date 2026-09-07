@@ -922,6 +922,29 @@ static int test_preset_v2_pitch_migration(void) {
     return 0;
 }
 
+/* Task 3.2: a preset's per-op pitch survives the load path into the FM
+ * instrument, and the derived voice-driver seeds (gain/outLevel) are
+ * re-created on load. */
+static int test_preset_pitch_and_gain_roundtrip(void) {
+    Preset p = makeDefaultFmPreset();
+    p.pd.fm.ops[0].pitch = 55.0f;
+    SamplePool *sp = createSamplePool();
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_FM, sp, NULL);
+    ASSERT_TRUE(inst != NULL, "init_instrument FM");
+    applyInstrumentPreset(inst, p);
+    ASSERT_TRUE(inst->id.fm.ops[0]->pitch != NULL, "op0 pitch param exists");
+    ASSERT_EQ((int)inst->id.fm.ops[0]->pitch->baseValue, 55);
+    /* gain is a derived seed (re-seeded on load); the FM outLevel seeds exist. */
+    ASSERT_TRUE(inst->gain != NULL, "gain dest re-created on load");
+    ASSERT_EQ(inst->gain->modulator_count, 1);
+    ASSERT_EQ(inst->id.fm.ops[0]->outLevel->modulator_count, 1);
+    free(inst);
+    freeSamplePool(sp);
+    printf("PASS test_preset_pitch_and_gain_roundtrip\n");
+    return 0;
+}
+
 /* Loading the real shipped V1 preset directory must migrate every file:
  * the 5 default-FM .ipb files load with names derived from their filenames.
  * Meson runs this test with cwd == builddir, so the shipped dir is reached
@@ -1182,6 +1205,7 @@ int main(void) {
     failed |= test_preset_name_roundtrip();
     failed |= test_preset_v1_migration();
     failed |= test_preset_v2_pitch_migration();
+    failed |= test_preset_pitch_and_gain_roundtrip();
     failed |= test_preset_ship_dir_migration();
     failed |= test_save_sequencer_ok();
     failed |= test_sequencer_roundtrip();

@@ -949,16 +949,8 @@ void initPresetBank(PresetBank *pb) {
  * a flat algorithm -- a harmless init sound. */
 Preset makeDefaultFmPreset(void) {
 	Preset p;
-	memset(&p, 0, sizeof(p));
+	initDefaultFmPreset(&p); /* 4 AD env mods + per-op values, matching a fresh FM instrument */
 	p.name[0] = '\0';
-	p.voiceType = VOICE_TYPE_FM;
-	for(int i = 0; i < MAX_FM_OPERATORS; i++) {
-		p.pd.fm.ops[i].ratio = 1.0f;
-		p.pd.fm.ops[i].level = 0.5f;
-		p.pd.fm.ops[i].outLevel = 0.5f;
-		p.pd.fm.ops[i].feedbackAmount = 0.0f;
-	}
-	p.pd.fm.selectedAlgorithm = 0;
 	return p;
 }
 
