@@ -46,6 +46,9 @@
 #include "wavetable.h"
 #include "notes.h"
 #include "modsystem.h"
+#include "sequencer.h"
+#include "appstate.h"
+#include "io.h"
 
 #define TEST_SAMPLE_LEN 4096
 
@@ -431,6 +434,221 @@ static int test_free_manager_no_voices(void) {
  * volume param (each freed 2-3 times). Fixed: each object is owned and
  * freed exactly once (mods own structs, paramList owns all params).
  */
+/* appstate.c's setSelectedPattern calls rebuildPatternGraph(); the graph
+ * doesn't exist in this test context, so the real symbol is stubbed. */
+void rebuildPatternGraph(void) {
+}
+
+/*
+ * Note-delete repro (user report: "deleting the 3rd note in the pattern
+ * editor causes a segfault"). Mimics main.c's audio callback: a pattern
+ * plays on channel 0, a note at step 2 triggers a voice, then the GUI
+ * deletes that note (FUNCTION+EDIT -> editCurrentNote OFF) mid-playback
+ * while the voice is still ringing. Renders more samples after the delete.
+ */
+static int test_note_delete_mid_playback_does_not_crash(void) {
+    TestEnv e;
+    if (make_env(&e, 4) != 0) return 1;
+
+    ApplicationState *as = createApplicationState();
+    ASSERT_TRUE(as != NULL, "createApplicationState");
+    PatternList *pl = createPatternList(as);
+    ASSERT_TRUE(pl != NULL, "createPatternList");
+
+    /* Pattern 0: notes on steps 0,1,2 (the 3rd note is step index 2). */
+    int notes[MAX_SEQUENCE_LENGTH][NOTE_INFO_SIZE];
+    memset(notes, OFF, sizeof(notes));
+    notes[0][0] = C;  notes[0][1] = 3;
+    notes[1][0] = E;  notes[1][1] = 3;
+    notes[2][0] = G;  notes[2][1] = 3;
+    int pi = addPattern(pl, 16, notes);
+    ASSERT_INT_EQ(pi, 0);
+
+    ParamList *gpl = createParamList();
+    ASSERT_TRUE(gpl != NULL, "createParamList");
+    Arranger *arr = createArranger(&e.settings, e.vm, as, gpl);
+    ASSERT_TRUE(arr != NULL, "createArranger");
+    arr->enabledChannels = 1;
+    arr->playing = 1;
+    arr->song[0][0] = 0; /* channel 0, row 0 -> pattern 0 */
+    Sequencer *seq = createSequencer(arr);
+    ASSERT_TRUE(seq != NULL, "createSequencer");
+    seq->running[0] = 1;
+    seq->pattern_index[0] = 0;
+
+    int stepSamples = SAMPLE_RATE / 8; /* 8 steps/sec, coarse */
+    for (int step = 0; step < 12; step++) {
+        incrementSequencer(seq, pl, arr);
+        if (seq->running[0]) {
+            int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
+            if (note[0] != OFF) {
+                Voice *v = getFreeVoice(e.vm, 0);
+                triggerVoice(v, note);
+            }
+        }
+        /* render one "buffer" for the channel the way patestCallback does */
+        for (int i = 0; i < stepSamples; i++) {
+            for (int v = 0; v < e.vm->voiceCount[0]; v++) {
+                Voice *cv = e.vm->voicePools[0][v];
+                if (!cv->active) continue;
+                syncVoiceGraph(cv);
+                processModulations(cv->paramList, cv->modList, 1.0f / (float)SAMPLE_RATE);
+                Mod *gainDriver = (cv->cloneCount > 0) ? cv->clones[0] : NULL;
+                if (gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
+                    setParameterValue(cv->volume, 1.0f);
+                    setParameterBaseValue(cv->volume, 1.0f);
+                    cv->active = 0;
+                }
+                generateVoice(e.vm, cv, 440.0f / (float)SAMPLE_RATE, 440.0f);
+            }
+        }
+        /* step 4: the GUI deletes step 2's note (the 3rd note). */
+        if (step == 4) {
+            editCurrentNote(pl, 0, 2, (int[]){ OFF, 0 });
+            ASSERT_INT_EQ(pl->patterns[0].notes[2][0], OFF);
+        }
+    }
+
+    /* After the delete + playback continues, the pattern data must be intact. */
+    ASSERT_INT_EQ(pl->patterns[0].notes[0][0], C);
+    ASSERT_INT_EQ(pl->patterns[0].notes[1][0], E);
+    ASSERT_INT_EQ(pl->patterns[0].notes[2][0], OFF);
+
+    free(seq);
+    free(arr);
+    freeParamList(gpl);
+    free(pl);
+    free(as);
+    printf("PASS test_note_delete_mid_playback_does_not_crash\n");
+    return 0;
+}
+
+/*
+ * Note-delete repro (user report: "deleting the 3rd note in the pattern
+ * editor causes a segfault") using the AUTO-LOADED save file. Loads the
+ * real bin/s1.sng (the song the app boots with), then deletes EVERY note
+ * in every pattern while simulating the audio callback, to find which
+ * (pattern, step) crashes.
+ */
+static int test_note_delete_autoload_song(void) {
+    TestEnv e;
+    if (make_env(&e, 4) != 0) return 1;
+
+    ApplicationState *as = createApplicationState();
+    ASSERT_TRUE(as != NULL, "createApplicationState");
+    PatternList *pl = createPatternList(as);
+    ASSERT_TRUE(pl != NULL, "createPatternList");
+
+    ParamList *gpl = createParamList();
+    ASSERT_TRUE(gpl != NULL, "createParamList");
+    Arranger *arr = createArranger(&e.settings, e.vm, as, gpl);
+    ASSERT_TRUE(arr != NULL, "createArranger");
+
+    /* locate the auto-load save (meson cwd == builddir; manual runs == repo root) */
+    const char *song_path = "../bin/s1.sng";
+    FILE *probe = fopen(song_path, "rb");
+    if (!probe) { song_path = "bin/s1.sng"; probe = fopen(song_path, "rb"); }
+    if (!probe) {
+        fprintf(stderr, "SKIP test_note_delete_autoload_song (no %s)\n", song_path);
+        free(arr); freeParamList(gpl); free(pl); free(as);
+        return 0;
+    }
+    fclose(probe);
+
+    SequencerFileResult r = loadSequencerState(song_path, arr, pl);
+    ASSERT_INT_EQ(r, SEQ_OK);
+    ASSERT_TRUE(pl->pattern_count > 0, "song has patterns");
+    arr->enabledChannels = e.settings.enabledChannels;
+    arr->playing = 1;
+    Sequencer *seq = createSequencer(arr);
+    ASSERT_TRUE(seq != NULL, "createSequencer");
+
+    int stepSamples = SAMPLE_RATE / 8;
+    for (int p = 0; p < pl->pattern_count; p++) {
+        if (pl->patterns[p].pattern_size <= 0) continue;
+        seq->running[0] = 1;
+        seq->pattern_index[0] = p;
+        seq->playhead_index[0] = 0;
+        /* delete every non-blank step of this pattern while playing */
+        for (int s = 0; s < pl->patterns[p].pattern_size; s++) {
+            if (pl->patterns[p].notes[s][0] == OFF) continue;
+            for (int step = 0; step < 4; step++) {
+                incrementSequencer(seq, pl, arr);
+                if (seq->running[0]) {
+                    int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
+                    if (note[0] != OFF) {
+                        Voice *v = getFreeVoice(e.vm, 0);
+                        triggerVoice(v, note);
+                    }
+                }
+                for (int i = 0; i < stepSamples; i++) {
+                    for (int v = 0; v < e.vm->voiceCount[0]; v++) {
+                        Voice *cv = e.vm->voicePools[0][v];
+                        if (!cv->active) continue;
+                        syncVoiceGraph(cv);
+                        processModulations(cv->paramList, cv->modList, 1.0f / (float)SAMPLE_RATE);
+                        Mod *gainDriver = (cv->cloneCount > 0) ? cv->clones[0] : NULL;
+                        if (gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
+                            setParameterValue(cv->volume, 1.0f);
+                            setParameterBaseValue(cv->volume, 1.0f);
+                            cv->active = 0;
+                        }
+                        generateVoice(e.vm, cv, 440.0f / (float)SAMPLE_RATE, 440.0f);
+                    }
+                }
+            }
+            editCurrentNote(pl, p, s, (int[]){ OFF, 0 });
+            ASSERT_INT_EQ(pl->patterns[p].notes[s][0], OFF);
+        }
+    }
+
+    printf("PASS test_note_delete_autoload_song (%s, %d patterns)\n", song_path, pl->pattern_count);
+    free(seq);
+    free(arr);
+    freeParamList(gpl);
+    free(pl);
+    free(as);
+    return 0;
+}
+
+/*
+ * Root-cause probe for the note-delete crash: setCurrentNote passes
+ * `&note` to onNoteSet (setLastUsedNote), which reads the stack ADDRESS
+ * of the note array into lastUsedNote. The next ADD then writes that
+ * stack address into the pattern; playing it indexes noteFrequencies[addr]
+ * out of bounds.
+ */
+static int test_last_used_note_poisoning(void) {
+    TestEnv e;
+    if (make_env(&e, 4) != 0) return 1;
+
+    ApplicationState *as = createApplicationState();
+    ASSERT_TRUE(as != NULL, "createApplicationState");
+    PatternList *pl = createPatternList(as);
+    ASSERT_TRUE(pl != NULL, "createPatternList");
+
+    int init[NOTE_INFO_SIZE] = { C, 3 };
+    setCurrentNote(pl, 0, 0, init);
+    /* After a note-set, lastUsedNote should hold the NOTE, not an address. */
+    ASSERT_INT_EQ(as->lastUsedNote[0], C);
+    ASSERT_INT_EQ(as->lastUsedNote[1], 3);
+
+    /* mimic the pattern-screen ADD path: setCurrentNote(..., lastUsedNote) */
+    setCurrentNote(pl, 0, 1, as->lastUsedNote);
+    ASSERT_INT_EQ(pl->patterns[0].notes[1][0], C);
+    ASSERT_INT_EQ(pl->patterns[0].notes[1][1], 3);
+
+    /* the poisoned note must not OOB-index noteFrequencies on playback */
+    int *n = getStep(pl, 0, 1);
+    ASSERT_TRUE(n[0] >= 0 && n[0] < NOTE_COUNT && n[1] >= 0 && n[1] < MAX_OCTAVES,
+                "pattern note stays a valid pitch after ADD-via-lastUsedNote");
+
+    free(pl);
+    free(as);
+    printf("PASS test_last_used_note_poisoning\n");
+    return 0;
+}
+
 static int test_free_voice_manager_clean(void) {
     TestEnv e;
     if (make_env(&e, 4) != 0) return 1;
@@ -459,6 +677,9 @@ int main(void) {
     failed |= test_granular_processor_renders();
     failed |= test_voice_operator_owns_params();
     failed |= test_default_gain_connections_seeded();
+    failed |= test_note_delete_mid_playback_does_not_crash();
+    failed |= test_note_delete_autoload_song();
+    failed |= test_last_used_note_poisoning();
     failed |= test_free_manager_no_voices();
     failed |= test_free_voice_manager_clean();
 

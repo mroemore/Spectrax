@@ -33,6 +33,8 @@ foreach name : test_names
   elif name == 'test_mod_voice'
     extra_srcs = test_mod_voice_extra
     link_libs = [core_lib, seq_lib, vizfx_lib]
+  elif name == 'test_voice'
+    link_libs = [core_lib, seq_lib]
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),

@@ -256,7 +256,7 @@ bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteInde
 void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	patternList->patterns[patternIndex].notes[noteIndex][0] = note[0];
 	patternList->patterns[patternIndex].notes[noteIndex][1] = note[1];
-	patternList->onNoteSet.f(patternList->onNoteSet.appstateRef, &note);
+	patternList->onNoteSet.f(patternList->onNoteSet.appstateRef, note);
 }
 
 void editCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
