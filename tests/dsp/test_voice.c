@@ -356,6 +356,36 @@ static int test_granular_processor_renders(void) {
     return 0;
 }
 
+/* Task 2.1: voice FM operators own their params (no aliasing). The voice
+ * operator's params are created fresh in the voice's paramList and their
+ * base values sync from the instrument operator via
+ * syncOperatorFromInstrument. */
+static int test_voice_operator_owns_params(void) {
+    ParamList *pl = createParamList();
+    Operator *proto = createOperator(pl, 2.0f);
+    setParameterBaseValue(proto->feedbackAmount, 0.4f);
+    setParameterBaseValue(proto->level, 0.7f);
+
+    ParamList *vpl = createParamList();
+    Operator *vop = createVoiceOperator(vpl, proto);
+    ASSERT_TRUE(vop != NULL, "createVoiceOperator returned an op");
+    ASSERT_TRUE(vop->feedbackAmount != proto->feedbackAmount,
+                "voice op owns its params (not aliased)");
+    ASSERT_INT_EQ((int)(vop->feedbackAmount->baseValue * 10), 4); /* 0.4 */
+    ASSERT_INT_EQ((int)(vop->level->baseValue * 10), 7);          /* 0.7 */
+
+    setParameterBaseValue(proto->level, 0.3f);
+    syncOperatorFromInstrument(vop, proto);
+    ASSERT_INT_EQ((int)(vop->level->baseValue * 10), 3);          /* 0.3 */
+
+    free(vop);
+    free(proto);
+    freeParamList(pl);
+    freeParamList(vpl);
+    printf("PASS test_voice_operator_owns_params\n");
+    return 0;
+}
+
 static int test_free_manager_no_voices(void) {
     TestEnv e;
     if (make_env(&e, 0) != 0) return 1;
@@ -400,6 +430,7 @@ int main(void) {
     failed |= test_blep_default_shape_is_silent_bug();
     failed |= test_polyphony_all_voices_sound();
     failed |= test_granular_processor_renders();
+    failed |= test_voice_operator_owns_params();
     failed |= test_free_manager_no_voices();
     failed |= test_free_voice_manager_clean();
 

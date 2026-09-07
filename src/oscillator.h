@@ -98,6 +98,8 @@ float sineFmAlgo(Operator *ops[OP_COUNT], float frequency, int algorithm);
 float sine_op(Operator *op, float frequency, float mod);
 Operator *createOperator(ParamList *paramList, float ratio);
 Operator *createParamPointerOperator(ParamList *paramList, Parameter *fbamt, Parameter *ratio, Parameter *level);
+Operator *createVoiceOperator(ParamList *paramList, const Operator *proto);
+void syncOperatorFromInstrument(Operator *voiceOp, const Operator *instOp);
 void freeOperator(Operator *op);
 
 #endif // OSCILLATOR_H

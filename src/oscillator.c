@@ -97,3 +97,28 @@ void freeOperator(Operator *op) {
 	freeParameter(op->level);
 	free(op);
 }
+
+/* Task 2.1: a voice-owned FM operator. Creates fresh feedback/ratio/level/
+ * outLevel params in the voice's paramList (via createOperator) and copies
+ * the instrument operator's current baseValues so a fresh voice matches the
+ * dials. Unlike createParamPointerOperator this does NOT alias the
+ * instrument params — the voice owns its storage and the per-buffer base
+ * sync (syncOperatorFromInstrument) keeps it live. */
+Operator *createVoiceOperator(ParamList *paramList, const Operator *proto) {
+	Operator *op = createOperator(paramList, 1.0f);
+	if(!op) {
+		return NULL;
+	}
+	syncOperatorFromInstrument(op, proto);
+	return op;
+}
+
+void syncOperatorFromInstrument(Operator *voiceOp, const Operator *instOp) {
+	if(!voiceOp || !instOp) {
+		return;
+	}
+	setParameterBaseValue(voiceOp->feedbackAmount, instOp->feedbackAmount->baseValue);
+	setParameterBaseValue(voiceOp->ratio, instOp->ratio->baseValue);
+	setParameterBaseValue(voiceOp->level, instOp->level->baseValue);
+	setParameterBaseValue(voiceOp->outLevel, instOp->outLevel->baseValue);
+}

@@ -290,10 +290,10 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			break;
 
 		case VOICE_TYPE_FM:
-			voice->vd.fm.operators[0] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[0]->feedbackAmount, inst->id.fm.ops[0]->ratio, inst->id.fm.ops[0]->level);
-			voice->vd.fm.operators[1] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[1]->feedbackAmount, inst->id.fm.ops[1]->ratio, inst->id.fm.ops[1]->level);
-			voice->vd.fm.operators[2] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[2]->feedbackAmount, inst->id.fm.ops[2]->ratio, inst->id.fm.ops[2]->level);
-			voice->vd.fm.operators[3] = createParamPointerOperator(voice->paramList, inst->id.fm.ops[3]->feedbackAmount, inst->id.fm.ops[3]->ratio, inst->id.fm.ops[3]->level);
+			voice->vd.fm.operators[0] = createVoiceOperator(voice->paramList, inst->id.fm.ops[0]);
+			voice->vd.fm.operators[1] = createVoiceOperator(voice->paramList, inst->id.fm.ops[1]);
+			voice->vd.fm.operators[2] = createVoiceOperator(voice->paramList, inst->id.fm.ops[2]);
+			voice->vd.fm.operators[3] = createVoiceOperator(voice->paramList, inst->id.fm.ops[3]);
 
 			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[0]->outLevel, 1.0f, MO_MUL);
 			addModulation(voice->paramList, voice->modList, voice->envelope[0], voice->vd.fm.operators[1]->outLevel, 1.0f, MO_MUL);
