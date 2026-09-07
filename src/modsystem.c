@@ -231,17 +231,17 @@ int getParameterValueAsInt(Parameter *param) {
  * nothing to advance for this type. */
 static void modGenerateAtten(void *self) {
 	Mod *m = (Mod *)self;
-	if(!m->input || !m->input->output) {
+	if(!m->data.atten.input || !m->data.atten.input->output) {
 		setParameterValue(m->output, 0.0f);
 		return;
 	}
-	float v = getParameterValue(m->input->output);
-	float amt = m->attenAmount ? getParameterValue(m->attenAmount) : 1.0f;
+	float v = getParameterValue(m->data.atten.input->output);
+	float amt = m->data.atten.attenAmount ? getParameterValue(m->data.atten.attenAmount) : 1.0f;
 	v *= amt;
-	if(m->attenPolarity && getParameterValueAsInt(m->attenPolarity) == 1) {
+	if(m->data.atten.attenPolarity && getParameterValueAsInt(m->data.atten.attenPolarity) == 1) {
 		v = fmaxf(v, 0.0f);
 	}
-	if(m->attenCurve && getParameterValueAsInt(m->attenCurve) == 1) {
+	if(m->data.atten.attenCurve && getParameterValueAsInt(m->data.atten.attenCurve) == 1) {
 		v = copysignf(powf(fabsf(v), 0.5f), v);
 	}
 	setParameterValue(m->output, v);
@@ -277,7 +277,7 @@ Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, co
 	/* initMod ignores its generate argument (it hardcodes
 	 * generateEnvelope) - set the real generate fn explicitly. */
 	m->generate = modGenerateAtten;
-	m->input = source;
+	m->data.atten.input = source;
 	/* The attenuator must not clip bipolar values before the destination
 	 * sees them: initMod gives the output param a [0,1] range, which
 	 * would clamp negative swings before the polarity logic can act.
@@ -289,11 +289,11 @@ Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, co
 	 * createParameter's strndup does the final safe truncate. */
 	char pName[MAX_NAME_LEN + 8];
 	snprintf(pName, sizeof(pName), "%s_amt", source->name);
-	m->attenAmount = createParameter(paramList, pName, 1.0f, 0.0f, 2.0f);
+	m->data.atten.attenAmount = createParameter(paramList, pName, 1.0f, 0.0f, 2.0f);
 	snprintf(pName, sizeof(pName), "%s_pol", source->name);
-	m->attenPolarity = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+	m->data.atten.attenPolarity = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
 	snprintf(pName, sizeof(pName), "%s_crv", source->name);
-	m->attenCurve = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+	m->data.atten.attenCurve = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
 	addToModList(modList, m);
 	return m;
 }
@@ -332,7 +332,7 @@ bool addModulation(ParamList *paramList, ModList *modList, Mod *source, Paramete
 				removeFromParamList(paramList, conn->amount);
 				freeParameter(conn->amount);
 			}
-			conn->amount = atten->attenAmount;
+			conn->amount = atten->data.atten.attenAmount;
 			conn->source = atten;
 		}
 	}
@@ -380,7 +380,7 @@ static bool modConnFromSource(ModConnection *conn, Mod *src) {
 	if(conn->source == src) {
 		return true;
 	}
-	return conn->source && conn->source->type == MT_ATTEN && conn->source->input == src;
+	return conn->source && conn->source->type == MT_ATTEN && conn->source->data.atten.input == src;
 }
 bool removeModulation(ParamList *list, ModList *modList, Parameter *destination, Mod *source) {
 	if(!list || !destination || !source) {
@@ -491,7 +491,7 @@ int removeModulationsForSource(ParamList *list, ModList *modList, Mod *source) {
 		int gcCount = 0;
 		for(int i = 0; i < modList->count && gcCount < MAX_MODS; i++) {
 			Mod *m = modList->mods[i];
-			if(m && m->type == MT_ATTEN && m->input == source && !attenStillInUse(list, m)) {
+			if(m && m->type == MT_ATTEN && m->data.atten.input == source && !attenStillInUse(list, m)) {
 				toGc[gcCount++] = m;
 			}
 		}
@@ -512,21 +512,23 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 	/* Remove the mod's own params from the list (owned by paramList). */
 	switch(mod->type) {
 		case MT_LFO: {
-			LFO *lfo = (LFO *)mod;
+			LfoState *lfo = &mod->data.lfo;
 			if(lfo->rate) removeFromParamList(paramList, lfo->rate);
 			if(lfo->phase) removeFromParamList(paramList, lfo->phase);
 			if(lfo->shape) removeFromParamList(paramList, lfo->shape);
+			if(lfo->playMode) removeFromParamList(paramList, lfo->playMode);
 			break;
 		}
 		case MT_RND: {
-			Random *rnd = (Random *)mod;
+			RndState *rnd = &mod->data.rnd;
 			if(rnd->rate) removeFromParamList(paramList, rnd->rate);
 			if(rnd->phase) removeFromParamList(paramList, rnd->phase);
 			if(rnd->shape) removeFromParamList(paramList, rnd->shape);
+			if(rnd->playMode) removeFromParamList(paramList, rnd->playMode);
 			break;
 		}
 		case MT_ENV: {
-			Envelope *env = (Envelope *)mod;
+			EnvState *env = &mod->data.env;
 			for(int i = 0; i < env->stageCount; i++) {
 				if(env->stages[i].duration) {
 					removeFromParamList(paramList, env->stages[i].duration);
@@ -539,9 +541,9 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 		}
 		case MT_ATTEN: {
 			/* The atten's own params are list-owned too. */
-			if(mod->attenAmount) removeFromParamList(paramList, mod->attenAmount);
-			if(mod->attenPolarity) removeFromParamList(paramList, mod->attenPolarity);
-			if(mod->attenCurve) removeFromParamList(paramList, mod->attenCurve);
+			if(mod->data.atten.attenAmount) removeFromParamList(paramList, mod->data.atten.attenAmount);
+			if(mod->data.atten.attenPolarity) removeFromParamList(paramList, mod->data.atten.attenPolarity);
+			if(mod->data.atten.attenCurve) removeFromParamList(paramList, mod->data.atten.attenCurve);
 			break;
 		}
 		default:
@@ -562,7 +564,7 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 			Mod *orphan = NULL;
 			for(int i = 0; i < modList->count; i++) {
 				Mod *m = modList->mods[i];
-				if(m && m->type == MT_ATTEN && m->input == mod) {
+				if(m && m->type == MT_ATTEN && m->data.atten.input == mod) {
 					orphan = m;
 					break;
 				}
@@ -578,27 +580,27 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 	 * because the list no longer holds those pointers.) */
 	switch(mod->type) {
 		case MT_LFO:
-			freeLFO((LFO *)mod);
+			freeLFO((Mod *)mod);
 			break;
 		case MT_RND:
-			freeRandom((Random *)mod);
+			freeRandom((Mod *)mod);
 			break;
 		case MT_ENV:
-			freeEnvelope((Envelope *)mod);
+			freeEnvelope((Mod *)mod);
 			break;
 		case MT_ATTEN:
 			/* Free the atten's own params before freeMod takes the output. */
-			if(mod->attenAmount) {
-				freeParameter(mod->attenAmount);
-				mod->attenAmount = NULL;
+			if(mod->data.atten.attenAmount) {
+				freeParameter(mod->data.atten.attenAmount);
+				mod->data.atten.attenAmount = NULL;
 			}
-			if(mod->attenPolarity) {
-				freeParameter(mod->attenPolarity);
-				mod->attenPolarity = NULL;
+			if(mod->data.atten.attenPolarity) {
+				freeParameter(mod->data.atten.attenPolarity);
+				mod->data.atten.attenPolarity = NULL;
 			}
-			if(mod->attenCurve) {
-				freeParameter(mod->attenCurve);
-				mod->attenCurve = NULL;
+			if(mod->data.atten.attenCurve) {
+				freeParameter(mod->data.atten.attenCurve);
+				mod->data.atten.attenCurve = NULL;
 			}
 			freeMod(mod);
 			break;
@@ -651,45 +653,36 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 	if(!modList || !mod || !paramList) {
 		return false;
 	}
-	if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
+if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
 		return false;
 	}
 	if(mod->type == newType) {
 		return true;
 	}
-	int slot = -1;
-	for(int i = 0; i < modList->count; i++) {
-		if(modList->mods[i] == mod) {
-			slot = i;
-			break;
-		}
-	}
-	if(slot < 0) {
-		return false;
-	}
-	Parameter *output = mod->output;
-	char name[MAX_NAME_LEN];
-	strncpy(name, mod->name, MAX_NAME_LEN);
 
-/* Remove the OLD type params from the list (they are freed with the
-	 * old struct below). */
+	/* Free the OLD type's payload params from the list (they are list-owned).
+	 * The Mod struct itself is REUSED for the new type: output + name are
+	 * preserved and the pointer is stable, so every ModConnection.source
+	 * that references this mod stays valid (routes survive the retype). */
 	switch(mod->type) {
 		case MT_LFO: {
-			LFO *l = (LFO *)mod;
+			LfoState *l = &mod->data.lfo;
 			if(l->rate) removeFromParamList(paramList, l->rate);
 			if(l->phase) removeFromParamList(paramList, l->phase);
 			if(l->shape) removeFromParamList(paramList, l->shape);
+			if(l->playMode) removeFromParamList(paramList, l->playMode);
 			break;
 		}
 		case MT_RND: {
-			Random *r = (Random *)mod;
+			RndState *r = &mod->data.rnd;
 			if(r->rate) removeFromParamList(paramList, r->rate);
 			if(r->phase) removeFromParamList(paramList, r->phase);
 			if(r->shape) removeFromParamList(paramList, r->shape);
+			if(r->playMode) removeFromParamList(paramList, r->playMode);
 			break;
 		}
 		case MT_ENV: {
-			Envelope *e = (Envelope *)mod;
+			EnvState *e = &mod->data.env;
 			for(int i = 0; i < e->stageCount; i++) {
 				if(e->stages[i].duration) removeFromParamList(paramList, e->stages[i].duration);
 				if(e->stages[i].curvature) removeFromParamList(paramList, e->stages[i].curvature);
@@ -700,77 +693,31 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 			break;
 	}
 
-	Mod *fresh = NULL;
+	/* Swap the payload in place on the SAME Mod. `type` selects the new
+	 * union member; output + name are untouched. */
+	memset(&mod->data, 0, sizeof(mod->data));
 	switch(newType) {
-		case MT_LFO: {
-			LFO *l = (LFO *)calloc(1, sizeof(LFO));
-			memcpy(&l->base, mod, sizeof(Mod));
-			l->base.output = output;
-			l->base.type = MT_LFO;
-			/* initLfoDefaults sets l->shapeValue, l->shape (Parameter), and
-			 * l->base.generate via cbLfoShapeOnChange. */
-			initLfoDefaults(l, paramList, 1.0f, LS_SIN);
-			fresh = &l->base;
-			break;
-		}
-		case MT_RND: {
-			Random *r = (Random *)calloc(1, sizeof(Random));
-			memcpy(&r->base, mod, sizeof(Mod));
-			r->base.output = output;
-			r->base.type = MT_RND;
-			/* initRandDefaults sets r->shapeValue, r->shape (Parameter), and
-			 * r->base.generate via cbRandShapeOnChange. */
-			initRandDefaults(r, paramList, 1.0f, RT_SNH);
-			fresh = &r->base;
-			break;
-		}
-		case MT_ENV: {
-			Envelope *e = (Envelope *)calloc(1, sizeof(Envelope));
-			memcpy(&e->base, mod, sizeof(Mod));
-			e->base.output = output;
-			e->base.type = MT_ENV;
-			initEnvelopeDefaults(e);
-			addEnvelopeStage(paramList, e, true, 0.25f, 1.0f, 0.95f, "A");
-			addEnvelopeStage(paramList, e, false, 4.25f, 0.0f, 0.1f, "D");
-			e->base.generate = generateEnvelope;
-			fresh = &e->base;
-			break;
-		}
-		default:
-			break;
-	}
-	if(!fresh) {
-		return false;
-	}
-
-	rewireModulationsForSource(paramList, mod, fresh);
-	modList->mods[slot] = fresh;
-
-	/* Connection-internal attenuators that passed through the old
-	 * struct must follow it: their input pointer would dangle once
-	 * the old struct is freed below. */
-	for(int i = 0; i < modList->count; i++) {
-		Mod *m = modList->mods[i];
-		if(m && m->type == MT_ATTEN && m->input == mod) {
-			m->input = fresh;
-		}
-	}
-
-	/* Free the old struct WITHOUT freeing the shared output param. */
-	mod->output = NULL;
-	switch(mod->type) {
 		case MT_LFO:
-			freeLFO((LFO *)mod);
+			mod->type = MT_LFO;
+			/* initLfoDefaults sets shapeValue, shape (Parameter) and
+			 * generate via cbLfoShapeOnChange. */
+			initLfoDefaults(mod, paramList, 1.0f, LS_SIN);
 			break;
 		case MT_RND:
-			freeRandom((Random *)mod);
+			mod->type = MT_RND;
+			/* initRandDefaults sets shapeValue, shape (Parameter) and
+			 * generate via cbRandShapeOnChange. */
+			initRandDefaults(mod, paramList, 1.0f, RT_SNH);
 			break;
 		case MT_ENV:
-			freeEnvelope((Envelope *)mod);
+			mod->type = MT_ENV;
+			initEnvelopeDefaults(mod);
+			addEnvelopeStage(paramList, mod, true, 0.25f, 1.0f, 0.95f, "A");
+			addEnvelopeStage(paramList, mod, false, 4.25f, 0.0f, 0.1f, "D");
+			mod->generate = generateEnvelope;
 			break;
 		default:
-			freeMod(mod);
-			break;
+			return false;
 	}
 	return true;
 }
@@ -793,17 +740,18 @@ void wrapIncrementParameter(Parameter *p, float step) {
 	}
 	setParameterBaseValue(p, v);
 }
-void initRandDefaults(Random *rnd, ParamList *paramList, float rate, RandomType type) {
-	rnd->lastPhase = 0.0f;
-	rnd->lastRandom = 0.0f;
-	rnd->rate = createParameter(paramList, "RNG rate", rate, 0.1f, 100.0f);
-	rnd->phase = createParameter(paramList, "RNG phase", 0.0f, 0.0f, 1.0f);
-	rnd->shape = createParameterPro(paramList, "RNG shape", (float)type, 0.0f, (float)(RT_COUNT - 1), 1.0f, 1.0f, rnd, cbRandShapeOnChange);
-	rnd->shapeValue = type;
+void initRandDefaults(Mod *rnd, ParamList *paramList, float rate, RandomType type) {
+	RndState *r = &rnd->data.rnd;
+	r->lastPhase = 0.0f;
+	r->lastRandom = 0.0f;
+	r->rate = createParameter(paramList, "RNG rate", rate, 0.1f, 100.0f);
+	r->phase = createParameter(paramList, "RNG phase", 0.0f, 0.0f, 1.0f);
+	r->shape = createParameterPro(paramList, "RNG shape", (float)type, 0.0f, (float)(RT_COUNT - 1), 1.0f, 1.0f, rnd, cbRandShapeOnChange);
+	r->shapeValue = type;
 	cbRandShapeOnChange(rnd); /* sync base.generate + shapeValue from the param */
 }
-Random *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name) {
-	Random *rnd = (Random *)malloc(sizeof(Random));
+Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name) {
+	Mod *rnd = (Mod *)calloc(1, sizeof(Mod));
 
 	ModGenerate genFunc;
 	switch(type) {
@@ -815,54 +763,57 @@ Random *createRandom(ParamList *paramList, ModList *modList, int index, float ra
 			genFunc = generateRandom;
 			break;
 	}
-	initMod((Mod *)rnd, paramList, name, MT_RND, genFunc);
+	initMod(rnd, paramList, name, MT_RND, genFunc);
 	initRandDefaults(rnd, paramList, rate, type);
-	addToModList(modList, &rnd->base);
+	addToModList(modList, rnd);
 
 	return rnd;
 }
 
 void cbLfoShapeOnChange(void *data) {
-	LFO *lfo = (LFO *)data;
+	Mod *lfo = (Mod *)data;
 	if(!lfo) {
 		return;
 	}
-	int sh = (lfo->shape) ? getParameterValueAsInt(lfo->shape) : lfo->shapeValue;
+	LfoState *l = &lfo->data.lfo;
+	int sh = (l->shape) ? getParameterValueAsInt(l->shape) : l->shapeValue;
 	if(sh < 0) sh = 0;
 	if(sh >= LS_COUNT) sh = LS_COUNT - 1;
-	lfo->shapeValue = sh;
+	l->shapeValue = sh;
 	switch(sh) {
-		case LS_SQU: lfo->base.generate = generateSquare; break;
-		case LS_RMP: lfo->base.generate = generateRamp; break;
-		default:     lfo->base.generate = generateSine; break;
+		case LS_SQU: lfo->generate = generateSquare; break;
+		case LS_RMP: lfo->generate = generateRamp; break;
+		default:     lfo->generate = generateSine; break;
 	}
 }
 
 void cbRandShapeOnChange(void *data) {
-	Random *rnd = (Random *)data;
+	Mod *rnd = (Mod *)data;
 	if(!rnd) {
 		return;
 	}
-	int sh = (rnd->shape) ? getParameterValueAsInt(rnd->shape) : rnd->shapeValue;
+	RndState *r = &rnd->data.rnd;
+	int sh = (r->shape) ? getParameterValueAsInt(r->shape) : r->shapeValue;
 	if(sh < 0) sh = 0;
 	if(sh >= RT_COUNT) sh = RT_COUNT - 1;
-	rnd->shapeValue = sh;
+	r->shapeValue = sh;
 	switch(sh) {
-		case RT_DRK: rnd->base.generate = generateDrunk; break;
-		default:     rnd->base.generate = generateRandom; break;
+		case RT_DRK: rnd->generate = generateDrunk; break;
+		default:     rnd->generate = generateRandom; break;
 	}
 }
 
-void initLfoDefaults(LFO *lfo, ParamList *paramList, float rate, int shape) {
-	lfo->rate = createParameter(paramList, "LFO rate", rate, 0.1f, 100.0f);
-	lfo->phase = createParameter(paramList, "LFO phase", 0.0f, 0.0f, 1.0f);
-	lfo->shape = createParameterPro(paramList, "LFO shape", (float)shape, 0.0f, (float)(LS_COUNT - 1), 1.0f, 1.0f, lfo, cbLfoShapeOnChange);
-	lfo->shapeValue = shape;
+void initLfoDefaults(Mod *lfo, ParamList *paramList, float rate, int shape) {
+	LfoState *l = &lfo->data.lfo;
+	l->rate = createParameter(paramList, "LFO rate", rate, 0.1f, 100.0f);
+	l->phase = createParameter(paramList, "LFO phase", 0.0f, 0.0f, 1.0f);
+	l->shape = createParameterPro(paramList, "LFO shape", (float)shape, 0.0f, (float)(LS_COUNT - 1), 1.0f, 1.0f, lfo, cbLfoShapeOnChange);
+	l->shapeValue = shape;
 	cbLfoShapeOnChange(lfo); /* sync base.generate + shapeValue from the param */
 }
 
-LFO *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name) {
-	LFO *lfo = (LFO *)malloc(sizeof(LFO));
+Mod *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name) {
+	Mod *lfo = (Mod *)calloc(1, sizeof(Mod));
 	ModGenerate genFunc;
 	switch(shape) {
 		case LS_SQU:
@@ -876,56 +827,58 @@ LFO *createLFO(ParamList *paramList, ModList *modList, int index, float rate, in
 			genFunc = generateSine;
 			break;
 	}
-	initMod((Mod *)lfo, paramList, name, MT_LFO, genFunc);
+	initMod(lfo, paramList, name, MT_LFO, genFunc);
 	initLfoDefaults(lfo, paramList, rate, shape);
-	addToModList(modList, &lfo->base);
+	addToModList(modList, lfo);
 
 	return lfo;
 }
 
 void generateSine(void *self) {
-	LFO *lfo = (LFO *)self;
-	float value = sinf(getParameterValue(lfo->phase) * TWO_PI);
-	setParameterBaseValue(lfo->base.output, value);
-	setParameterValue(lfo->base.output, value);
+	Mod *lfo = (Mod *)self;
+	float value = sinf(getParameterValue(lfo->data.lfo.phase) * TWO_PI);
+	setParameterBaseValue(lfo->output, value);
+	setParameterValue(lfo->output, value);
 }
 
 void generateSquare(void *self) {
-	LFO *lfo = (LFO *)self;
-	float value = getParameterValue(lfo->phase) < 0.5f ? 1.0f : -1.0f;
-	setParameterBaseValue(lfo->base.output, value);
-	setParameterValue(lfo->base.output, value);
+	Mod *lfo = (Mod *)self;
+	float value = getParameterValue(lfo->data.lfo.phase) < 0.5f ? 1.0f : -1.0f;
+	setParameterBaseValue(lfo->output, value);
+	setParameterValue(lfo->output, value);
 }
 
 void generateRamp(void *self) {
-	LFO *lfo = (LFO *)self;
-	float value = (getParameterValue(lfo->phase) - 1.0f) * 2.0f;
-	setParameterBaseValue(lfo->base.output, value);
-	setParameterValue(lfo->base.output, value);
+	Mod *lfo = (Mod *)self;
+	float value = (getParameterValue(lfo->data.lfo.phase) - 1.0f) * 2.0f;
+	setParameterBaseValue(lfo->output, value);
+	setParameterValue(lfo->output, value);
 }
 
 void generateRandom(void *self) {
-	Random *rnd = (Random *)self;
-	float phase = getParameterValue(rnd->phase);
+	Mod *rnd = (Mod *)self;
+	RndState *r = &rnd->data.rnd;
+	float phase = getParameterValue(r->phase);
 
-	if(phase < rnd->lastPhase) {
-		rnd->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+	if(phase < r->lastPhase) {
+		r->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
 	}
 
-	rnd->lastPhase = phase;
-	setParameterBaseValue(rnd->base.output, rnd->lastRandom);
-	setParameterValue(rnd->base.output, rnd->lastRandom);
+	r->lastPhase = phase;
+	setParameterBaseValue(rnd->output, r->lastRandom);
+	setParameterValue(rnd->output, r->lastRandom);
 }
 
 void generateDrunk(void *self) {
-	Random *rnd = (Random *)self;
-	float phase = getParameterValue(rnd->phase);
+	Mod *rnd = (Mod *)self;
+	RndState *r = &rnd->data.rnd;
+	float phase = getParameterValue(r->phase);
 
-	rnd->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-	rnd->lastRandom *= 0.5f * ((float)rand() / (float)RAND_MAX);
-	rnd->lastPhase = phase;
-	setParameterBaseValue(rnd->base.output, rnd->base.output->currentValue + rnd->lastRandom);
-	setParameterValue(rnd->base.output, rnd->base.output->currentValue + rnd->lastRandom);
+	r->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+	r->lastRandom *= 0.5f * ((float)rand() / (float)RAND_MAX);
+	r->lastPhase = phase;
+	setParameterBaseValue(rnd->output, rnd->output->currentValue + r->lastRandom);
+	setParameterValue(rnd->output, rnd->output->currentValue + r->lastRandom);
 }
 
 void updateMod(Mod *mod, float deltaTime) {
@@ -933,36 +886,37 @@ void updateMod(Mod *mod, float deltaTime) {
 	if(mod == NULL) return;
 
 	switch(mod->type) {
-		Envelope *env = NULL;
-		LFO *lfo = NULL;
-		Random *rand = NULL;
 		float l_phase = 0.0f;
 		float r_phase = 0.0f;
 		float l_rate = 0.0f;
 		float r_rate = 0.0f;
-		case MT_ENV:
-			env = (Envelope *)mod;
+		case MT_ENV: {
+			EnvState *env = &mod->data.env;
 			if(env->isTriggered) {
 				env->currentTime += deltaTime;
 			}
 			break;
-		case MT_LFO:
-			lfo = (LFO *)mod;
-			l_phase = getParameterValue(lfo->phase);
-			l_rate = getParameterValue(lfo->rate);
+		}
+		case MT_LFO: {
+			LfoState *l = &mod->data.lfo;
+			l_phase = getParameterValue(l->phase);
+			l_rate = getParameterValue(l->rate);
 			l_phase += l_rate * deltaTime;
 			if(l_phase >= 1.0f) l_phase -= 1.0f;
-			setParameterBaseValue(lfo->phase, l_phase);
-			setParameterValue(lfo->phase, l_phase);
+			setParameterBaseValue(l->phase, l_phase);
+			setParameterValue(l->phase, l_phase);
 			break;
-		case MT_RND:
-			rand = (Random *)mod;
-			r_phase = getParameterValue(rand->phase);
-			r_rate = getParameterValue(rand->rate);
+		}
+		case MT_RND: {
+			RndState *r = &mod->data.rnd;
+			r_phase = getParameterValue(r->phase);
+			r_rate = getParameterValue(r->rate);
 			r_phase += r_rate * deltaTime;
 			if(r_phase >= 1.0f) r_phase -= 1.0f;
-			setParameterBaseValue(rand->phase, r_phase);
-			setParameterValue(rand->phase, r_phase);
+			setParameterBaseValue(r->phase, r_phase);
+			setParameterValue(r->phase, r_phase);
+			break;
+		}
 		case MT_ATTEN:
 			// Stateless: generate handles the passthrough, nothing to advance
 			break;
@@ -992,30 +946,35 @@ float applyCurve(float x, float curvature) {
 	}
 }
 
-void triggerEnvelope(Envelope *env) {
+void triggerEnvelope(Mod *env) {
 	// DEBUG_LOG("triggering env");
-	env->currentStageIndex = 0;
-	env->currentTime = 0;
-	env->isTriggered = true;
+	EnvState *e = &env->data.env;
+	e->currentStageIndex = 0;
+	e->currentTime = 0;
+	e->isTriggered = true;
 }
 
 void generateEnvelope(void *self) {
-	Envelope *env = (Envelope *)self;
-	if(!env || !env->isTriggered || env->currentStageIndex >= env->stageCount) {
+	Mod *env = (Mod *)self;
+	if(!env) {
+		return;
+	}
+	EnvState *e = &env->data.env;
+	if(!e->isTriggered || e->currentStageIndex >= e->stageCount) {
 		return;
 	}
 
-	EnvelopeStage *stage = &env->stages[env->currentStageIndex];
+	EnvelopeStage *stage = &e->stages[e->currentStageIndex];
 	if(!stage->duration || !stage->curvature) {
 		return;
 	}
 
 	float dt = 1.0f / PA_SR;
-	env->currentTime += dt;
+	e->currentTime += dt;
 
 	int tIdx = 8;
 	Wavetable *wt = envTables->tables[tIdx];
-	float t = env->currentTime / stage->duration->baseValue;
+	float t = e->currentTime / stage->duration->baseValue;
 	int index0 = (int)(t * wt->length);
 	int index1 = index0 < wt->length ? index0 + 1 : index0;
 	float diff = fmodf(t, 1.0f);
@@ -1023,24 +982,24 @@ void generateEnvelope(void *self) {
 
 	// float shapedT = applyCurve(t, stage->curvature->currentValue);
 
-	float startLevel = (env->currentStageIndex > 0) ? env->stages[env->currentStageIndex - 1].targetLevel : 0.0f;
+	float startLevel = (e->currentStageIndex > 0) ? e->stages[e->currentStageIndex - 1].targetLevel : 0.0f;
 
-	env->currentLevel = startLevel + (stage->targetLevel - startLevel) * enval;
+	e->currentLevel = startLevel + (stage->targetLevel - startLevel) * enval;
 
 	if(index0 >= wt->length - 1) {
-		// printf("stage %i complete\n", env->currentStageIndex);
+		// printf("stage %i complete\n", e->currentStageIndex);
 
-		env->currentTime = 0.0f;
-		env->currentLevel = stage->targetLevel;
-		if(++env->currentStageIndex >= env->stageCount) {
-			env->isTriggered = false;
+		e->currentTime = 0.0f;
+		e->currentLevel = stage->targetLevel;
+		if(++e->currentStageIndex >= e->stageCount) {
+			e->isTriggered = false;
 			// printf("TRIGGER OFF!!!!!!\n");
 		}
 	}
 
 	// Important: Update output parameter
-	setParameterBaseValue(env->base.output, env->currentLevel);
-	setParameterValue(env->base.output, env->currentLevel);
+	setParameterBaseValue(env->output, e->currentLevel);
+	setParameterValue(env->output, e->currentLevel);
 }
 
 void modifyParameterValue(Parameter *parameter, float relativeValue) {
@@ -1076,36 +1035,38 @@ void initMod(Mod *mod, ParamList *paramList, const char *name, ModType type, Mod
 	mod->visiting = false;
 }
 
-void initEnvelopeDefaults(Envelope *env) {
-	env->currentLevel = 0.0f;
-	env->currentStageIndex = 0;
-	env->stageCount = 0;
-	env->currentTime = 0.0f;
-	env->totalElapsedTime = 0.0f;
-	env->isTriggered = false;
-	env->isSustaining = false;
-	env->loop = false;
+void initEnvelopeDefaults(Mod *env) {
+	EnvState *e = &env->data.env;
+	e->currentLevel = 0.0f;
+	e->currentStageIndex = 0;
+	e->stageCount = 0;
+	e->currentTime = 0.0f;
+	e->totalElapsedTime = 0.0f;
+	e->isTriggered = false;
+	e->isSustaining = false;
+	e->loop = false;
 }
 
-Envelope *createEnvelope(ParamList *paramList, ModList *modList, const char *name) {
-	Envelope *env = (Envelope *)malloc(sizeof(Envelope));
-	initMod((Mod *)env, paramList, name, MT_ENV, generateEnvelope);
+Mod *createEnvelope(ParamList *paramList, ModList *modList, const char *name) {
+	Mod *env = (Mod *)calloc(1, sizeof(Mod));
+	initMod(env, paramList, name, MT_ENV, generateEnvelope);
 	initEnvelopeDefaults(env);
 
-	addToModList(modList, &env->base);
+	addToModList(modList, env);
 
 	return env;
 }
 
-void addEnvelopeStage(ParamList *paramList, Envelope *env, bool isRising, float duration, float targetLevel, float initialCurvature, char *name) {
-	if(env->stageCount >= MAX_ENVELOPE_STAGES) {
+void addEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, float duration, float targetLevel, float initialCurvature, char *name) {
+	EnvState *e = &env->data.env;
+	if(e->stageCount >= MAX_ENVELOPE_STAGES) {
 		return;
 	}
 
 	char nameBuf[32];
-	int idx = env->stageCount;
+	int idx = e->stageCount;
 
-	EnvelopeStage *stage = &env->stages[idx];
+	EnvelopeStage *stage = &e->stages[idx];
 	stage->isRising = isRising;
 	stage->isSustain = (duration <= 0.0f);
 	strncpy(stage->name, name, MAX_NAME_LEN);
@@ -1113,19 +1074,20 @@ void addEnvelopeStage(ParamList *paramList, Envelope *env, bool isRising, float 
 	stage->duration = createParameter(paramList, "duration", duration, 0.001f, 10.0f);
 	stage->targetLevel = targetLevel;
 	stage->curvature = createParameter(paramList, "curve", initialCurvature, -1.0f, 1.0f);
-	env->stageCount++;
+	e->stageCount++;
 }
 
-void addParamPointerEnvelopeStage(ParamList *paramList, Envelope *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name) {
+void addParamPointerEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name) {
 	// DEBUG_LOG("add env stage");
-	if(env->stageCount >= MAX_ENVELOPE_STAGES) {
+	EnvState *e = &env->data.env;
+	if(e->stageCount >= MAX_ENVELOPE_STAGES) {
 		return;
 	}
 
 	char nameBuf[32];
-	int idx = env->stageCount;
+	int idx = e->stageCount;
 
-	EnvelopeStage *stage = &env->stages[idx];
+	EnvelopeStage *stage = &e->stages[idx];
 	stage->isRising = isRising;
 	stage->isSustain = (duration->baseValue <= 0.0f);
 	strncpy(stage->name, name, MAX_NAME_LEN);
@@ -1136,12 +1098,12 @@ void addParamPointerEnvelopeStage(ParamList *paramList, Envelope *env, bool isRi
 
 	stage->curvature = initialCurvature;
 
-	env->stageCount++;
+	e->stageCount++;
 }
 
-Envelope *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name) {
+Mod *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name) {
 	// DEBUG_LOG("create adsr");
-	Envelope *env = createEnvelope(paramList, modList, name);
+	Mod *env = createEnvelope(paramList, modList, name);
 
 	addEnvelopeStage(paramList, env, true, a, 1.0f, 0.75f, "A");  // Attack
 	addEnvelopeStage(paramList, env, false, d, 0.7f, 0.75f, "D"); // Decay
@@ -1151,8 +1113,8 @@ Envelope *createADSR(ParamList *paramList, ModList *modList, float a, float d, f
 	return env;
 }
 
-Envelope *createAD(ParamList *paramList, ModList *modList, float a, float d, char *name) {
-	Envelope *env = createEnvelope(paramList, modList, name);
+Mod *createAD(ParamList *paramList, ModList *modList, float a, float d, char *name) {
+	Mod *env = createEnvelope(paramList, modList, name);
 
 	addEnvelopeStage(paramList, env, true, a, 1.0f, 0.95f, "A"); // Attack
 	addEnvelopeStage(paramList, env, false, d, 0.0f, 0.1f, "D"); // Decay
@@ -1160,8 +1122,8 @@ Envelope *createAD(ParamList *paramList, ModList *modList, float a, float d, cha
 	return env;
 }
 
-Envelope *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name) {
-	Envelope *env = createEnvelope(paramList, modList, name);
+Mod *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name) {
+	Mod *env = createEnvelope(paramList, modList, name);
 
 	addParamPointerEnvelopeStage(paramList, env, true, a, 1.0f, acurve, "A");  // Attack
 	addParamPointerEnvelopeStage(paramList, env, false, d, 0.0f, dcurve, "D"); // Decay
@@ -1210,7 +1172,7 @@ void initRandPresetData(ModPreset *mp, LfoShape shape, float rate, float phase) 
 		.shape = shape
 	};
 }
-void initEnvelopeFromPreset(ModPreset *mp, Envelope *e, ParamList *paramList, ModList *modlist) {
+void initEnvelopeFromPreset(ModPreset *mp, Mod *e, ParamList *paramList, ModList *modlist) {
 	if(!mp || !e || !paramList) {
 		printf("ERROR: NULL passed to envelope preset init.\n");
 		return;
@@ -1218,64 +1180,67 @@ void initEnvelopeFromPreset(ModPreset *mp, Envelope *e, ParamList *paramList, Mo
 	mp->type = MT_ENV;
 	EnvPresetData *epd = &mp->md.env;
 
-	initMod((Mod *)e, paramList, "env", MT_ENV, generateEnvelope);
+	initMod(e, paramList, "env", MT_ENV, generateEnvelope);
 	initEnvelopeDefaults(e);
 
-	e->loop = epd->loop;
-	e->stageCount = epd->stageCount;
-	for(int i = 0; i < e->stageCount; i++) {
-		e->stages[i] = (EnvelopeStage){
+	EnvState *e2 = &e->data.env;
+	e2->loop = epd->loop;
+	e2->stageCount = epd->stageCount;
+	for(int i = 0; i < e2->stageCount; i++) {
+		e2->stages[i] = (EnvelopeStage){
 			.curvature = createParameter(paramList, "es_Curve", epd->stages[i].curvature, 0.0f, 1.0f),
 			.duration = createParameter(paramList, "es_Duration", epd->stages[i].duration, 0.001f, 10.0f),
 			.isRising = epd->stages[i].isRising,
 			.isSustain = epd->stages[i].isSustain,
 			.targetLevel = epd->stages[i].targetLevel
 		};
-		strncpy(e->stages[i].name, epd->stages[i].name, MAX_NAME_LEN);
+		strncpy(e2->stages[i].name, epd->stages[i].name, MAX_NAME_LEN);
 	}
 
 	if(modlist) {
-		addToModList(modlist, &e->base);
+		addToModList(modlist, e);
 	}
 }
-void saveEnvPreset(EnvPresetData *epd, Envelope *e) {
+void saveEnvPreset(EnvPresetData *epd, Mod *e) {
 	if(!epd || !e) {
 		printf("ERROR: NULL passed to envelope preset save.\n");
 		return;
 	}
-	epd->loop = e->loop;
-	epd->stageCount = e->stageCount;
-	for(int i = 0; i < e->stageCount; i++) {
+	EnvState *e2 = &e->data.env;
+	epd->loop = e2->loop;
+	epd->stageCount = e2->stageCount;
+	for(int i = 0; i < e2->stageCount; i++) {
 		epd->stages[i] = (EnvStagePresetData){
-			.curvature = getParameterValue(e->stages[i].curvature),
-			.duration = getParameterValue(e->stages[i].duration),
-			.isRising = e->stages[i].isRising,
-			.isSustain = e->stages[i].isSustain,
-			.targetLevel = e->stages[i].targetLevel
+			.curvature = getParameterValue(e2->stages[i].curvature),
+			.duration = getParameterValue(e2->stages[i].duration),
+			.isRising = e2->stages[i].isRising,
+			.isSustain = e2->stages[i].isSustain,
+			.targetLevel = e2->stages[i].targetLevel
 		};
-		strncpy(epd->stages[i].name, e->stages[i].name, MAX_NAME_LEN);
+		strncpy(epd->stages[i].name, e2->stages[i].name, MAX_NAME_LEN);
 	}
 }
-void initLfoFromPreset(LfoPresetData *lpd, LFO *lfo, ParamList *paramList, ModList *modlist) {
-	initMod((Mod *)lfo, paramList, "LFO", MT_LFO, NULL);
+void initLfoFromPreset(LfoPresetData *lpd, Mod *lfo, ParamList *paramList, ModList *modlist) {
+	initMod(lfo, paramList, "LFO", MT_LFO, NULL);
 	/* initLfoDefaults creates the shape Parameter, sets shapeValue from
-	 * lpd->shape, and cbLfoShapeOnChange syncs lfo->base.generate. Any
+	 * lpd->shape, and cbLfoShapeOnChange syncs lfo->generate. Any
 	 * subsequent route that changes lfo->shape will also re-sync via that
 	 * callback. */
 	initLfoDefaults(lfo, paramList, lpd->rate, lpd->shape);
 
 	if(modlist) {
-		addToModList(modlist, &lfo->base);
+		addToModList(modlist, lfo);
 	}
 }
-void saveLfoPreset(LfoPresetData *lpd, LFO *lfo) {
-	lpd->phase = getParameterValue(lfo->phase);
-	lpd->rate = getParameterValue(lfo->rate);
-	lpd->shape = lfo->shapeValue;
+void saveLfoPreset(LfoPresetData *lpd, Mod *lfo) {
+	LfoState *l = &lfo->data.lfo;
+	lpd->phase = getParameterValue(l->phase);
+	lpd->rate = getParameterValue(l->rate);
+	lpd->shape = l->shapeValue;
 }
-void initRandFromPreset(RandPresetData *rpd, Random *rnd, ParamList *paramList, ModList *modlist) {
+void initRandFromPreset(RandPresetData *rpd, Mod *rnd, ParamList *paramList, ModList *modlist) {
 }
-void saveRandPreset(RandPresetData *rpd, Random *rng) {
+void saveRandPreset(RandPresetData *rpd, Mod *rng) {
 }
 
 void processModulations(ParamList *paramList, ModList *modList, float deltaTime) {
@@ -1385,50 +1350,58 @@ void freeParamList(ParamList *list) {
 	free(list);
 }
 
-void freeLFO(LFO *lfo) {
+void freeLFO(Mod *lfo) {
 	if(!lfo) return;
 
+	LfoState *l = &lfo->data.lfo;
 	// Free parameters in specific order
-	if(lfo->phase) {
-		freeParameter(lfo->phase);
-		lfo->phase = NULL;
+	if(l->phase) {
+		freeParameter(l->phase);
+		l->phase = NULL;
 	}
-	if(lfo->rate) {
-		freeParameter(lfo->rate);
-		lfo->rate = NULL;
+	if(l->rate) {
+		freeParameter(l->rate);
+		l->rate = NULL;
 	}
-	if(lfo->shape) {
-		freeParameter(lfo->shape);
-		lfo->shape = NULL;
+	if(l->shape) {
+		freeParameter(l->shape);
+		l->shape = NULL;
 	}
-	if(lfo->base.output) {
-		freeParameter(lfo->base.output);
-		lfo->base.output = NULL;
+	if(l->playMode) {
+		freeParameter(l->playMode);
+		l->playMode = NULL;
+	}
+	if(lfo->output) {
+		freeParameter(lfo->output);
+		lfo->output = NULL;
 	}
 
 	free(lfo);
 }
 
-void freeRandom(Random *rnd) {
+void freeRandom(Mod *rnd) {
 	if(!rnd) return;
 
-	freeParameter(rnd->base.output);
-	freeParameter(rnd->rate);
-	freeParameter(rnd->phase);
-	freeParameter(rnd->shape);
-	rnd->shape = NULL;
+	RndState *r = &rnd->data.rnd;
+	freeParameter(rnd->output);
+	freeParameter(r->rate);
+	freeParameter(r->phase);
+	freeParameter(r->shape);
+	freeParameter(r->playMode);
+	r->shape = NULL;
 
 	free(rnd);
 }
 
-void freeEnvelope(Envelope *env) {
+void freeEnvelope(Mod *env) {
 	if(!env) return;
 
-	freeParameter(env->base.output);
+	EnvState *e = &env->data.env;
+	freeParameter(env->output);
 
-	for(int i = 0; i < env->stageCount; i++) {
-		freeParameter(env->stages[i].duration);
-		freeParameter(env->stages[i].curvature);
+	for(int i = 0; i < e->stageCount; i++) {
+		freeParameter(e->stages[i].duration);
+		freeParameter(e->stages[i].curvature);
 	}
 
 	free(env);
@@ -1444,13 +1417,13 @@ void cleanupModSystem(ModList *list) {
 		// Free mod-specific resources
 		switch(mod->type) {
 			case MT_LFO:
-				freeLFO((LFO *)mod);
+				freeLFO((Mod *)mod);
 				break;
 			case MT_RND:
-				freeRandom((Random *)mod);
+				freeRandom((Mod *)mod);
 				break;
 			case MT_ENV:
-				freeEnvelope((Envelope *)mod);
+				freeEnvelope((Mod *)mod);
 				break;
 			default:
 				freeMod(mod);
