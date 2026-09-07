@@ -1154,6 +1154,45 @@ static int test_voice_graph_copy_syncs_and_isolates(void) {
     return 0;
 }
 
+static int test_voice_graph_survives_source_retype(void) {
+    SamplePool *sp = createSamplePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_FM, sp, &pb);
+    ASSERT_TRUE(inst != NULL, "init_instrument FM");
+    ASSERT_TRUE(inst->modList->count > 0, "sources exist");
+
+    /* Build a voice graph copy via the voice manager-less path: create a
+     * fresh voice + initialize_voice against this instrument. */
+    Voice *v = (Voice *)calloc(1, sizeof(Voice));
+    ASSERT_TRUE(v != NULL, "voice alloc");
+    initialize_voice(v, inst);
+    ASSERT_TRUE(v->cloneCount >= 1, "voice cloned the source");
+    ASSERT_EQ(v->clones[0]->type, MT_ENV, "first clone is an env");
+
+    /* Retype source[0] ENV -> LFO in the instrument, then rebuild the
+     * voice copy. The fresh clone must be an LFO with its own rate param
+     * and no dangling reads. */
+    Mod *src0 = inst->modList->mods[0];
+    ASSERT_TRUE(changeModType(inst->modList, src0, MT_LFO, inst->paramList),
+                "changeModType ENV->LFO");
+    freeVoice(v);
+    v = (Voice *)calloc(1, sizeof(Voice));
+    ASSERT_TRUE(v != NULL, "voice realloc");
+    initialize_voice(v, inst);
+    ASSERT_EQ(v->clones[0]->type, MT_LFO, "clone follows the retyped source");
+    ASSERT_TRUE(v->clones[0]->data.lfo.rate != NULL, "LFO clone has its own rate param");
+    ASSERT_TRUE(v->clones[0]->data.lfo.rate != src0->data.lfo.rate,
+                "LFO clone rate is not aliased");
+
+    freeVoice(v);
+    free(inst);
+    freeSamplePool(sp);
+    printf("PASS test_voice_graph_survives_source_retype\n");
+    return 0;
+}
+
 static int test_chip_label_edit(void) {
     /* 1. cursor clamped at 0 + at strlen */
     int cursor = 0;
@@ -1291,6 +1330,8 @@ int main(void) {
 
     /* Task 2.3 — per-voice graph copy + base sync */
     fails += test_voice_graph_copy_syncs_and_isolates();
+    /* Task 2.4 — voice graph survives a source retype + rebuild */
+    fails += test_voice_graph_survives_source_retype();
 
     if (fails) {
         fprintf(stderr, "%d integration test(s) failed\n", fails);

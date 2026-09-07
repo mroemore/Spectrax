@@ -264,6 +264,10 @@ void addRuntimeSource(Instrument *inst) {
 	 * harness ASSERT envcount + the voice aliasing stay aligned even
 	 * though the modList also holds connection attenuators. */
 	inst->envelopeCount = modSourceCount(inst->modList);
+	/* Task 2.4: structural mutations re-clone every voice's mod graph. */
+	if(inst->vm) {
+		rebuildVoicesForInstrument(inst->vm, inst);
+	}
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -298,6 +302,10 @@ void removeSource(Instrument *inst, int srcIndex) {
 	}
 	/* Task 3: keep envelopeCount synced with the source count. */
 	inst->envelopeCount = modSourceCount(inst->modList);
+	/* Task 2.4: structural mutations re-clone every voice's mod graph. */
+	if(inst->vm) {
+		rebuildVoicesForInstrument(inst->vm, inst);
+	}
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -882,6 +890,9 @@ void guiPickerUpdateDeferred(void) {
 	pthread_mutex_lock(&g_audioLock);
 	dc->inst->rebuilding = true;
 	removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
+	if(dc->inst->vm) {
+		rebuildVoicesForInstrument(dc->inst->vm, dc->inst);
+	}
 	rebuildInstrumentGraph();
 	dc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -982,6 +993,9 @@ static void cbClearAllConfirmYes(void *ctx) {
 	pthread_mutex_lock(&g_audioLock);
 	sc->inst->rebuilding = true;
 	removeModulationsForSource(sc->inst->paramList, sc->inst->modList, src);
+	if(sc->inst->vm) {
+		rebuildVoicesForInstrument(sc->inst->vm, sc->inst);
+	}
 	rebuildInstrumentGraph();
 	sc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
@@ -1151,6 +1165,9 @@ static void cbRouteToDest(void *ctx) {
 			}
 			removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, src);
 		}
+		if(dc->inst->vm) {
+			rebuildVoicesForInstrument(dc->inst->vm, dc->inst);
+		}
 		dc->inst->rebuilding = false;
 		pthread_mutex_unlock(&g_audioLock);
 		/* No pop, no rebuild — the picker stays open and the
@@ -1181,6 +1198,9 @@ static void cbRouteToDest(void *ctx) {
 		pthread_mutex_lock(&g_audioLock);
 		dc->inst->rebuilding = true;
 		addModulation(dc->inst->paramList, dc->inst->modList, src, dc->dest, 1.0f, MO_ADD);
+		if(dc->inst->vm) {
+			rebuildVoicesForInstrument(dc->inst->vm, dc->inst);
+		}
 		rebuildInstrumentGraph();
 		dc->inst->rebuilding = false;
 		pthread_mutex_unlock(&g_audioLock);
@@ -1649,6 +1669,9 @@ static void cbCycleSourceType(void *ctx) {
 	sc->inst->rebuilding = true;
 	if(changeModType(sc->inst->modList, mod, next, sc->inst->paramList)) {
 		sc->inst->envelopeCount = modSourceCount(sc->inst->modList);
+		if(sc->inst->vm) {
+			rebuildVoicesForInstrument(sc->inst->vm, sc->inst);
+		}
 		rebuildInstrumentGraph();
 	}
 	sc->inst->rebuilding = false;

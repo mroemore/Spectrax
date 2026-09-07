@@ -1310,30 +1310,6 @@ void addEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, float durat
 	e->stageCount++;
 }
 
-void addParamPointerEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name) {
-	// DEBUG_LOG("add env stage");
-	EnvState *e = &env->data.env;
-	if(e->stageCount >= MAX_ENVELOPE_STAGES) {
-		return;
-	}
-
-	char nameBuf[32];
-	int idx = e->stageCount;
-
-	EnvelopeStage *stage = &e->stages[idx];
-	stage->isRising = isRising;
-	stage->isSustain = (duration->baseValue <= 0.0f);
-	strncpy(stage->name, name, MAX_NAME_LEN);
-
-	stage->duration = duration;
-
-	stage->targetLevel = targetLevel;
-
-	stage->curvature = initialCurvature;
-
-	e->stageCount++;
-}
-
 Mod *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name) {
 	// DEBUG_LOG("create adsr");
 	Mod *env = createEnvelope(paramList, modList, name);
@@ -1351,15 +1327,6 @@ Mod *createAD(ParamList *paramList, ModList *modList, float a, float d, char *na
 
 	addEnvelopeStage(paramList, env, true, a, 1.0f, 0.95f, "A"); // Attack
 	addEnvelopeStage(paramList, env, false, d, 0.0f, 0.1f, "D"); // Decay
-
-	return env;
-}
-
-Mod *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name) {
-	Mod *env = createEnvelope(paramList, modList, name);
-
-	addParamPointerEnvelopeStage(paramList, env, true, a, 1.0f, acurve, "A");  // Attack
-	addParamPointerEnvelopeStage(paramList, env, false, d, 0.0f, dcurve, "D"); // Decay
 
 	return env;
 }

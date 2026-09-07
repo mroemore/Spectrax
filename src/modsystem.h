@@ -228,11 +228,8 @@ Mod *createEnvelope(ParamList *paramList, ModList *modList, const char *name);
 Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, const char *name);
 // EnvelopeStage* createEnvelopeStage(bool isRising, float duration, float targetLevel, float curvature, char* name);
 void addEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, float duration, float targetLevel, float initialCurvature, char *name);
-void addParamPointerEnvelopeStage(ParamList *paramList, Mod *env, bool isRising, Parameter *duration, float targetLevel, Parameter *initialCurvature, char *name);
 Mod *createADSR(ParamList *paramList, ModList *modList, float a, float d, float s, float r, char *name);
-Mod *createParamPointerADSR(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *s, Parameter *r, char *name);
 Mod *createAD(ParamList *paramList, ModList *modList, float a, float d, char *name);
-Mod *createParamPointerAD(ParamList *paramList, ModList *modList, Parameter *a, Parameter *d, Parameter *acurve, Parameter *dcurve, char *name);
 
 void initADPresetData(ModPreset *mp, float aDuration, float dDuration, float aCurve, float dCurve);
 void initLfoPresetData(ModPreset *mp, LfoShape shape, float rate, float phase);

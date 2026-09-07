@@ -313,17 +313,10 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		}
 	}
 
-	// process instrument-level param changes:
-	for(int j = 0; j < MAX_SEQUENCER_CHANNELS; j++) {
-		Instrument *chInst = data->voiceManager->instruments[j];
-		/* Task 8: skip channels whose lists are being rebuilt by the GUI
-		 * thread (applyInstrumentPreset / voice rebuild). Reading them
-		 * here mid-rebuild is a use-after-free -> segfault. */
-		if(chInst->rebuilding) {
-			continue;
-		}
-		processModulations(chInst->paramList, chInst->modList, 1.0f / framesPerBuffer);
-	}
+	/* Task 2.4: audio comes solely from the per-voice mod graphs. The
+	 * instrument's own modLists no longer run in the audio path (their
+	 * sources/dests are the control plane; voices carry the copies and
+	 * syncVoiceGraph pulls live baseValues every buffer). */
 	// process song-level param changes:
 	processModulations(data->globalParameters, data->modList, 1.0f / framesPerBuffer);
 

@@ -376,12 +376,7 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 	voice->active = 0;
 	voice->volume = createParameter(voice->paramList, "volume", 1.0f, 0.0f, 1.0f);
 	voice->type = inst->voiceType;
-	/* The per-voice graph copy replaces the pointer-alias arrays: they are
-	 * retired (kept zeroed for a clean compile boundary until Task 2.4). */
-	voice->envCount = 0;
-	voice->lfoCount = 0;
-	memset(voice->envelope, 0, sizeof(voice->envelope));
-	memset(voice->lfo, 0, sizeof(voice->lfo));
+	/* The per-voice graph copy replaces the old pointer-alias arrays. */
 	voice->cloneCount = 0;
 	voice->attenCount = 0;
 	voice->destCount = 0;
@@ -1047,6 +1042,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->presetBank = pb;
+	(*instrument)->vm = NULL; /* wired by createVoiceManager after this returns */
 	/* Task 6: meta-row voice-count dial. Range 1..8 (the user-facing
 	 * upper bound — MAX_VOICES_PER_CHANNEL caps at 16 but a 1..8
 	 * dial is the most usable for live resizing; setChannelVoiceCount

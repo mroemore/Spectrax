@@ -270,10 +270,6 @@ struct Voice {
 	int active;
 	ParamList *paramList;
 	ModList *modList;
-	int envCount;
-	int lfoCount;
-	Mod *envelope[4];
-	Mod *lfo[2];
 	/* Task 2.3: per-voice mod graph copy. The voice owns a full copy of
 	 * the instrument's source mods (clones[]), their connections, and the
 	 * destination params they modulate. instSources[i] is a pointer to the
