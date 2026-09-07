@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_NODE_CHILDREN 32
+#define MAX_NODE_CHILDREN 64
 
 typedef struct ListElement ListElement;
 typedef struct Node Node;

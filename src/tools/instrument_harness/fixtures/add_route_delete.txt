@@ -49,27 +49,21 @@ RIGHT
 ASSERT selected==ROUTE
 EDIT
 ASSERT topLayerSelected==es_Curve
-UP
-UP
-UP
-UP
+JUMPTL feedback
 ASSERT topLayerSelected==feedback
-# EDIT routes the runtime source to op1 feedback.
+# EDIT routes the runtime source to op0 feedback.
 EDIT
-ASSERT modulators==(3,0,1)
+ASSERT modulators==(0,0,1)
 # N1: cbRouteToDest pops + rebuilds and reselects the source's ROUTE
 # button — the cursor is already on ROUTE for the unroute.
 EDIT
-UP
-UP
-UP
-UP
+JUMPTL feedback
 ASSERT topLayerSelected==feedback
 # EDIT on a routed dest defers its toggle (T11 double-tap window) —
 # wait for the deferred remove to fire.
 EDIT
 FRAMES 30
-ASSERT modulators==(3,0,0)
+ASSERT modulators==(0,0,0)
 # After the unroute N1 reselects the source's ROUTE. Walk LEFT through
 # the entry back to its ENV type button for the type-cycle section:
 # ROUTE <- CURVE <- DECAY <- CURVE <- ATTACK <- TYPE.

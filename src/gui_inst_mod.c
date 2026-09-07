@@ -1267,6 +1267,63 @@ static void drawPickerGhostLines(void *self) {
 }
 
 
+/* Task 3.1: append the instrument dests that have no dial yet (gain,
+ * per-op outLevel/pitch) to the picker collection. Each gets a fallback
+ * rect so its dest button pins + nav works: gain/pitch near the mod-wrap
+ * area, per-op dests offset below the op's feedback dial. */
+static void appendNoDialDests(Instrument *inst, GuiNode *instGraphRoot,
+                              Parameter **params, GuiNode **nodes, Rectangle *rects,
+                              int cap, int *n) {
+	if(!inst) {
+		return;
+	}
+	GuiNode *wrap = findScrollContainerByName(instGraphRoot, "mod_wrap");
+	if(inst->gain) {
+		if(*n < cap) {
+			params[*n] = inst->gain;
+			nodes[*n] = NULL;
+			if(wrap) {
+				rects[*n] = (Rectangle){ wrap->x, wrap->y, wrap->w, 40 };
+			} else {
+				rects[*n] = (Rectangle){ 100, 100, 120, 40 };
+			}
+			(*n)++;
+		}
+	}
+	if(inst->pitch) {
+		if(*n < cap) {
+			params[*n] = inst->pitch;
+			nodes[*n] = NULL;
+			if(wrap) {
+				rects[*n] = (Rectangle){ wrap->x + 40, wrap->y + 40, wrap->w - 40, 40 };
+			} else {
+				rects[*n] = (Rectangle){ 140, 140, 120, 40 };
+			}
+			(*n)++;
+		}
+	}
+	for(int i = 0; i < MAX_FM_OPERATORS; i++) {
+		Operator *io = inst->id.fm.ops[i];
+		if(!io) {
+			continue;
+		}
+		GuiNode *fb = findDialNodeForParam(instGraphRoot, io->feedbackAmount);
+		Rectangle base = fb ? (Rectangle){ fb->x, fb->y, fb->w, fb->h } : (Rectangle){ 100, 100, 100, 40 };
+		if(io->outLevel && *n < cap) {
+			params[*n] = io->outLevel;
+			nodes[*n] = NULL;
+			rects[*n] = (Rectangle){ base.x, base.y + 40, base.width, base.height };
+			(*n)++;
+		}
+		if(io->pitch && *n < cap) {
+			params[*n] = io->pitch;
+			nodes[*n] = NULL;
+			rects[*n] = (Rectangle){ base.x + 60, base.y + 40, base.width, base.height };
+			(*n)++;
+		}
+	}
+}
+
 void cbOpenRouteLayer(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
@@ -1286,8 +1343,16 @@ void cbOpenRouteLayer(void *ctx) {
 	}
 	Parameter *params[MAX_PARAMS];
 	GuiNode *nodes[MAX_PARAMS];
+	Rectangle rects[MAX_PARAMS];
 	int n = 0;
 	collectRoutableDials(instGraph->root, params, nodes, MAX_PARAMS, &n);
+	/* Task 3.1: dests without a dial yet (gain, per-op outLevel/pitch) are
+	 * still routable. Append them so the picker lists every destination;
+	 * each gets a fallback rect near its op row / the mod-wrap area. */
+	for(int i = 0; i < n; i++) {
+		rects[i] = (Rectangle){ nodes[i]->x, nodes[i]->y, nodes[i]->w, nodes[i]->h };
+	}
+	appendNoDialDests(inst, instGraph->root, params, nodes, rects, MAX_PARAMS, &n);
 	if(n <= 0) {
 		return;
 	}
@@ -1337,10 +1402,10 @@ void cbOpenRouteLayer(void *ctx) {
 	ghost->w = SCREEN_W;
 	ghost->h = SCREEN_H;
 	for(int i = 0; i < n; i++) {
-		destBtns[i]->x = nodes[i]->x;
-		destBtns[i]->y = nodes[i]->y;
-		destBtns[i]->w = nodes[i]->w;
-		destBtns[i]->h = nodes[i]->h;
+		destBtns[i]->x = rects[i].x;
+		destBtns[i]->y = rects[i].y;
+		destBtns[i]->w = rects[i].width;
+		destBtns[i]->h = rects[i].height;
 	}
 	/* N2 (user report): pick the destination CLOSEST to the source's
 	 * ROUTE button rather than the first dial collected — entering the

@@ -55,10 +55,10 @@ DOWN
 DOWN
 ASSERT selected==ENV
 
-# --- Route the source to op1 feedback via the picking layer ---------------
-# RIGHT x5 from ENV reaches ROUTE (ATTACK -> CURVE -> DECAY -> CURVE ->
-# ROUTE). EDIT opens the picker; N2 lands the cursor on the CLOSEST dest
-# (env[4]'s own decay-curve dial, es_Curve).
+# --- Route the source to op0 feedback via the picking layer ----------------
+# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; N2 lands the
+# cursor on the CLOSEST dest (env[4]'s own decay-curve dial, es_Curve).
+# JUMPTL reaches the first "feedback" dest (op0) directly.
 RIGHT
 RIGHT
 RIGHT
@@ -67,26 +67,20 @@ RIGHT
 ASSERT selected==ROUTE
 EDIT
 ASSERT topLayerSelected==es_Curve
-UP
-UP
-UP
-UP
+JUMPTL feedback
 ASSERT topLayerSelected==feedback
 EDIT
-ASSERT modulators==(3,0,1)
+ASSERT modulators==(0,0,1)
 # N1: cbRouteToDest pops + rebuilds and reselects env[4]'s ROUTE button —
 # the cursor is already on ROUTE for the unroute.
 EDIT
-UP
-UP
-UP
-UP
+JUMPTL feedback
 ASSERT topLayerSelected==feedback
 # EDIT on a routed dest defers its toggle (T11 double-tap window) —
 # wait for the deferred remove to fire.
 EDIT
 FRAMES 30
-ASSERT modulators==(3,0,0)
+ASSERT modulators==(0,0,0)
 
 # --- Delete via the confirm modal -----------------------------------------
 # After the unroute N1 reselects env[4]'s ROUTE; RIGHT lands on DEL.
@@ -104,5 +98,32 @@ RIGHT
 ASSERT topLayerSelected==DELETE_YES
 EDIT
 ASSERT envcount==4
+
+# --- Task 3.1: no-dial dests join the picker ------------------------------
+# Re-add a runtime source; open its picker; the `gain` dest (unique name,
+# no dial in the FM section) must be listed and routable.
+DOWN
+DOWN
+EDIT
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+ASSERT topLayerSelected==es_Curve
+JUMPTL gain
+ASSERT topLayerSelected==gain
+EDIT
+ASSERT selected==ROUTE
 
 QUIT
