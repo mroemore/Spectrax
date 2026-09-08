@@ -1,7 +1,7 @@
 # pagenav.txt - page navigation on the instrument screen.
 # FUNCTION+UP/DOWN: vertical page nav across the 4 groups (META, preset,
-# FM controls, modulators). SELECT+LEFT/RIGHT: horizontal row-edge nav.
-# FUNCTION+LEFT/RIGHT = channel switch (tested by the chip fixtures).
+# FM controls, modulators). FUNCTION+LEFT/RIGHT: horizontal row-edge nav.
+# SELECT+UP/DOWN = channel cycling; SELECT+LEFT/RIGHT = scene switch.
 
 FRAMES 4
 ASSERT selected==RATIO1
@@ -41,15 +41,15 @@ RELEASE
 FRAMES 2
 ASSERT selected==ALG
 
-# SELECT+RIGHT -> row's rightmost (GAIN, the last dial in the FM bottom row).
-HOLD SELECT
+# FUNCTION+RIGHT -> row's rightmost (GAIN, the last dial in the FM bottom row).
+HOLD FUNCTION
 RIGHT
 RELEASE
 FRAMES 2
 ASSERT selected==GAIN
 
-# SELECT+LEFT -> back to the row's leftmost (ALG).
-HOLD SELECT
+# FUNCTION+LEFT -> back to the row's leftmost (ALG).
+HOLD FUNCTION
 LEFT
 RELEASE
 FRAMES 2

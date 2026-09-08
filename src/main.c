@@ -647,16 +647,12 @@ int main(int argc, char **argv) {
 			data.arranger->playing ? stopPlaying(data.arranger) : startPlaying(data.sequencer, data.patternList, data.arranger, appState->currentScene);
 		}
 		if(isKeyHeld(appState->inputState, KM_SELECT)) {
-			/* SELECT+LEFT/RIGHT = scene switch on every screen EXCEPT the
-			 * instrument screen, where SELECT+LEFT/RIGHT is the horizontal
-			 * page-nav (Home/End) binding. */
-			if(appState->currentScene != SCENE_INSTRUMENT) {
-				if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-					decrementScene(appState);
-				}
-				if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-					incrementScene(appState);
-				}
+			/* SELECT+LEFT/RIGHT = scene switch (global, all screens). */
+			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+				decrementScene(appState);
+			}
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+				incrementScene(appState);
 			}
 		}
 		// Scene specific controls
@@ -889,9 +885,7 @@ int main(int argc, char **argv) {
 					/* FUNCTION+arrows = page navigation (user request):
 					 * FUNCTION+UP/DOWN skip to the group's lowest/highest
 					 * selectable and wrap to the next group; FUNCTION+LEFT/
-					 * RIGHT keep the CHANNEL SWITCH (moved back here per
-					 * user preference). SELECT+arrows do the page nav's
-					 * horizontal row-edge behaviour. */
+					 * RIGHT do the horizontal row-edge page nav (Home/End). */
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
 						instrumentPageNav(KM_UP);
 					}
@@ -899,20 +893,20 @@ int main(int argc, char **argv) {
 						instrumentPageNav(KM_DOWN);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						selectArrangerCell(data.arranger, 0, -1, 0);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						selectArrangerCell(data.arranger, 0, 1, 0);
-					}
-				}
-				if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
-					/* SELECT+arrows = horizontal page nav (Home/End-type:
-					 * row's rightmost/leftmost, then adjacent row's edge). */
-					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						instrumentPageNav(KM_LEFT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 						instrumentPageNav(KM_RIGHT);
+					}
+				}
+				if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
+					/* SELECT+UP/DOWN = channel cycling on the instrument
+					 * screen (SELECT+LEFT/RIGHT is the global scene switch). */
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						selectArrangerCell(data.arranger, 0, -1, 0);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						selectArrangerCell(data.arranger, 0, 1, 0);
 					}
 				}
 				/* Task 4: handlePresetUiInput always runs first. It drives

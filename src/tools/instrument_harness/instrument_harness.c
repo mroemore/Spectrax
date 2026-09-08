@@ -1469,8 +1469,7 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
 		/* Mirror main.c: FUNCTION+UP/DOWN = vertical page nav; FUNCTION+
-		 * LEFT/RIGHT = channel switch; SELECT+LEFT/RIGHT = horizontal
-		 * page nav (row edge, then adjacent row). */
+		 * LEFT/RIGHT = horizontal page nav (row edge, then adjacent row). */
 		if(isKeyJustPressed(appState->inputState, KM_UP)) {
 			instrumentPageNav(KM_UP);
 		}
@@ -1478,18 +1477,19 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 			instrumentPageNav(KM_DOWN);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-			selectArrangerCell(data->arranger, 0, -1, 0);
-		}
-		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-			selectArrangerCell(data->arranger, 0, 1, 0);
-		}
-	}
-	if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
-		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 			instrumentPageNav(KM_LEFT);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 			instrumentPageNav(KM_RIGHT);
+		}
+	}
+	if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
+		/* SELECT+UP/DOWN = channel cycling on the instrument screen. */
+		if(isKeyJustPressed(appState->inputState, KM_UP)) {
+			selectArrangerCell(data->arranger, 0, -1, 0);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+			selectArrangerCell(data->arranger, 0, 1, 0);
 		}
 	}
 
