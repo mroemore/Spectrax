@@ -346,6 +346,24 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 		if(data->arranger->playing) {
 			if(g_probeTempo) {
 				g_tempoProbeSteps++;
+				/* Per-step log for the first 5s of probe runtime: captures
+				 * the exact cadence + what triggers on each step so a
+				 * turbo episode at startup is visible step-by-step even if
+				 * it corrects itself before the 2s heartbeat. */
+				double pn = GetTime();
+				if(g_tempoProbeStartT == 0.0) {
+					g_tempoProbeStartT = pn;
+				}
+				if(pn - g_tempoProbeStartT < 5.0) {
+					fprintf(stderr, "STEP %ld bpm=%d swing=%d ssw=%d ev=%d od=%d stepSmp=%d\n",
+					        g_tempoProbeSteps,
+					        (int)getParameterValue(data->arranger->tempoSettings.bpm),
+					        (int)getParameterValueAsInt(data->arranger->tempoSettings.swing),
+					        data->arranger->tempoSettings.swingStep,
+					        data->arranger->tempoSettings.samplesPerEvenStep,
+					        data->arranger->tempoSettings.samplesPerOddStep,
+					        stepSamples);
+				}
 			}
 			incrementSequencer(data->sequencer, data->patternList, data->arranger);
 			for(int sc = 0; sc < data->arranger->enabledChannels; sc++) {
