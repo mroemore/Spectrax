@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
@@ -1438,5 +1439,313 @@ void gui_instrument_draw(void) {
 		syncRouteLinesOverlay(igui);
 		layerStackDraw(&igui->overlayLayers);
 		guiPickerEditorDraw();
+	}
+}
+
+/* FUNCTION+arrow page navigation on the instrument screen.
+ *
+ * Vertical (UP/DOWN): the instwrap column is divided into 4 groups —
+ * META (instrument type), presetwrappa (preset controls), the inst
+ * control box (FM/SAMPLE/BLEP params) and the modulator section
+ * (mods_hdr + mod_wrap). DOWN jumps to the group's LOWEST selectable,
+ * and from the last item wraps to the NEXT group's first; UP is
+ * symmetric. Horizontal (LEFT/RIGHT): the same idea inside the current
+ * row — jump to its rightmost/leftmost selectable, wrapping to the
+ * adjacent row's edge at the boundary. */
+#define PAGE_NAV_MAX 512
+
+static GuiNode *findInstWrapContainer(GuiNode *n) {
+	if(!n) {
+		return NULL;
+	}
+	if(strcmp(n->name, "inst_wrap") == 0) {
+		return n;
+	}
+	if(n->items) {
+		ListElement *e = n->items->head;
+		for(int i = 0; i < n->itemCount && e; i++) {
+			GuiNode *r = findInstWrapContainer(*(GuiNode **)e->data);
+			if(r) {
+				return r;
+			}
+			e = e->next;
+		}
+	}
+	return NULL;
+}
+
+static void collectPageSelectables(GuiNode *n, GuiNode **out, int *count) {
+	if(!n || !out || !count) {
+		return;
+	}
+	if(n->selectable) {
+		if(*count < PAGE_NAV_MAX) {
+			out[(*count)++] = n;
+		}
+	}
+	if(n->items) {
+		ListElement *e = n->items->head;
+		for(int i = 0; i < n->itemCount && e; i++) {
+			collectPageSelectables(*(GuiNode **)e->data, out, count);
+			e = e->next;
+		}
+	}
+}
+
+/* Signed y: scroll containers store a row scrolled above the viewport as
+ * a wrapped uint16 (65518 for -18). Top/bottom comparisons must use the
+ * signed value or a scrolled-out top row masquerades as the bottom. */
+static int pageY(GuiNode *n) {
+	return (int)(int16_t)n->y;
+}
+
+void instrumentPageNav(int dir) {
+	Graph *g = getSelectedInstGraph();
+	if(!g || !g->root || !g->selected) {
+		return;
+	}
+	GuiNode *instwrap = findInstWrapContainer(g->root);
+	if(!instwrap || !instwrap->items) {
+		return;
+	}
+	GuiNode *groups[4] = { 0, 0, 0, 0 };
+	GuiNode *modsHdr = NULL;
+	{
+		ListElement *e = instwrap->items->head;
+		for(int i = 0; i < instwrap->itemCount && e; i++) {
+			GuiNode *c = *(GuiNode **)e->data;
+			if(strcmp(c->name, "META") == 0) {
+				groups[0] = c;
+			} else if(strcmp(c->name, "presetwrappa") == 0) {
+				groups[1] = c;
+			} else if(strcmp(c->name, "fm_ctrl") == 0 || strcmp(c->name, "sctrl") == 0 || strcmp(c->name, "blctrl") == 0) {
+				groups[2] = c;
+			} else if(strcmp(c->name, "mod_wrap") == 0) {
+				groups[3] = c;
+			} else if(strcmp(c->name, "mods_hdr") == 0) {
+				modsHdr = c;
+			}
+			e = e->next;
+		}
+	}
+
+	/* Resolve the current selection's group + the group's selectables
+	 * (the modulator group spans mods_hdr + mod_wrap). */
+	int selGroup = -1;
+	GuiNode *groupSels[PAGE_NAV_MAX];
+	int groupCount = 0;
+	for(int gi = 0; gi < 4; gi++) {
+		if(!groups[gi]) {
+			continue;
+		}
+		collectPageSelectables(groups[gi], groupSels, &groupCount);
+		if(gi == 3 && modsHdr) {
+			collectPageSelectables(modsHdr, groupSels, &groupCount);
+		}
+		GuiNode *p = g->selected;
+		bool inGroup = false;
+		while(p) {
+			if(p == groups[gi]) {
+				inGroup = true;
+				break;
+			}
+			p = p->container;
+		}
+		if(!inGroup && gi == 3 && modsHdr) {
+			p = g->selected;
+			while(p) {
+				if(p == modsHdr) {
+					inGroup = true;
+					break;
+				}
+				p = p->container;
+			}
+		}
+		if(inGroup) {
+			selGroup = gi;
+			break;
+		}
+		groupCount = 0; /* reset for the next group */
+	}
+	if(selGroup < 0 || groupCount == 0) {
+		return;
+	}
+
+
+	if(dir == KM_DOWN || dir == KM_UP) {
+		/* Top/bottom selectable of the current group by y. */
+		GuiNode *top = groupSels[0], *bottom = groupSels[0];
+		for(int i = 1; i < groupCount; i++) {
+			if(pageY(groupSels[i]) < pageY(top)) {
+				top = groupSels[i];
+			}
+			if(pageY(groupSels[i]) > pageY(bottom)) {
+				bottom = groupSels[i];
+			}
+		}
+		if(dir == KM_DOWN) {
+			if(g->selected == bottom) {
+
+				/* move to the next group's top */
+				for(int gi = selGroup + 1; gi < 4; gi++) {
+					if(!groups[gi]) {
+						continue;
+					}
+					GuiNode *sels[PAGE_NAV_MAX];
+					int cnt = 0;
+					collectPageSelectables(groups[gi], sels, &cnt);
+					if(gi == 3 && modsHdr) {
+						collectPageSelectables(modsHdr, sels, &cnt);
+					}
+					if(cnt == 0) {
+						continue;
+					}
+					GuiNode *t = sels[0];
+					for(int i = 1; i < cnt; i++) {
+						if(pageY(sels[i]) < pageY(t)) {
+							t = sels[i];
+						}
+					}
+					changeGraphSelection(g, t);
+					return;
+				}
+			} else {
+				changeGraphSelection(g, bottom);
+
+			}
+		} else {
+			if(g->selected == top) {
+				for(int gi = selGroup - 1; gi >= 0; gi--) {
+					if(!groups[gi]) {
+						continue;
+					}
+					GuiNode *sels[PAGE_NAV_MAX];
+					int cnt = 0;
+					collectPageSelectables(groups[gi], sels, &cnt);
+					if(gi == 3 && modsHdr) {
+						collectPageSelectables(modsHdr, sels, &cnt);
+					}
+					if(cnt == 0) {
+						continue;
+					}
+					GuiNode *b = sels[0];
+					for(int i = 1; i < cnt; i++) {
+						if(pageY(sels[i]) > pageY(b)) {
+							b = sels[i];
+						}
+					}
+					changeGraphSelection(g, b);
+					return;
+				}
+			} else {
+				changeGraphSelection(g, top);
+
+			}
+		}
+		return;
+	}
+
+	if(dir == KM_LEFT || dir == KM_RIGHT) {
+		/* Within the current row: find selectables sharing the selection's
+		 * y band (the row), then the leftmost/rightmost. */
+		GuiNode *rowSel[PAGE_NAV_MAX];
+		int rowCount = 0;
+		int selY = g->selected->y;
+		int selH = g->selected->h;
+		for(int i = 0; i < groupCount; i++) {
+			GuiNode *s = groupSels[i];
+			/* same row: y-bands overlap */
+			if(pageY(s) < selY + selH && pageY(s) + s->h > selY) {
+				if(rowCount < PAGE_NAV_MAX) {
+					rowSel[rowCount++] = s;
+				}
+			}
+		}
+		if(rowCount == 0) {
+			return;
+		}
+		GuiNode *left = rowSel[0], *right = rowSel[0];
+		for(int i = 1; i < rowCount; i++) {
+			if(rowSel[i]->x < left->x) {
+				left = rowSel[i];
+			}
+			if(rowSel[i]->x > right->x) {
+				right = rowSel[i];
+			}
+		}
+		if(dir == KM_RIGHT) {
+			if(g->selected == right) {
+				/* wrap: the nearest row below, then its leftmost */
+				int belowY = INT_MAX;
+				for(int i = 0; i < groupCount; i++) {
+					GuiNode *s = groupSels[i];
+					if(pageY(s) >= selY + selH && pageY(s) < belowY) {
+						bool sameRow = false;
+						for(int j = 0; j < rowCount; j++) {
+							if(s == rowSel[j]) {
+								sameRow = true;
+								break;
+							}
+						}
+						if(!sameRow) {
+							belowY = s->y;
+						}
+					}
+				}
+				GuiNode *target = NULL;
+				if(belowY < INT_MAX) {
+					/* nodes in the found row band -> leftmost */
+					for(int i = 0; i < groupCount; i++) {
+						GuiNode *s = groupSels[i];
+						if(pageY(s) == belowY || (pageY(s) > belowY && pageY(s) < belowY + 40)) {
+							if(!target || s->x < target->x) {
+								target = s;
+							}
+						}
+					}
+				}
+				if(target) {
+					changeGraphSelection(g, target);
+				}
+			} else {
+				changeGraphSelection(g, right);
+			}
+		} else {
+			if(g->selected == left) {
+				/* wrap: the nearest row above, then its rightmost */
+				int aboveY = -1;
+				for(int i = 0; i < groupCount; i++) {
+					GuiNode *s = groupSels[i];
+					if(pageY(s) + s->h <= selY && pageY(s) > aboveY) {
+						bool sameRow = false;
+						for(int j = 0; j < rowCount; j++) {
+							if(s == rowSel[j]) {
+								sameRow = true;
+								break;
+							}
+						}
+						if(!sameRow) {
+							aboveY = s->y;
+						}
+					}
+				}
+				GuiNode *target = NULL;
+				if(aboveY >= 0) {
+					for(int i = 0; i < groupCount; i++) {
+						GuiNode *s = groupSels[i];
+						if(pageY(s) == aboveY || (pageY(s) > aboveY && pageY(s) < aboveY + 40)) {
+							if(!target || s->x > target->x) {
+								target = s;
+							}
+						}
+					}
+				}
+				if(target) {
+					changeGraphSelection(g, target);
+				}
+			} else {
+				changeGraphSelection(g, left);
+			}
+		}
 	}
 }

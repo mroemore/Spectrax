@@ -31,6 +31,9 @@ void cbOpenClearAllLayer(void *ctx);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);
+/* FUNCTION+arrow page navigation: skip to the group/row edge, then wrap
+ * to the next group/row. dir is a KM_* code (KM_UP/DOWN/LEFT/RIGHT). */
+void instrumentPageNav(int dir);
 /* visibility helper: true when a dial is inside its scroll container's
  * viewport (route/ghost lines must skip dests scrolled out, whose uint16
  * y wraps to a huge value). Exposed for the regression test. */

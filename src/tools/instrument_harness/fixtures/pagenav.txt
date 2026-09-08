@@ -1,0 +1,60 @@
+# pagenav.txt - FUNCTION+arrow page navigation on the instrument screen.
+# Groups (top->bottom): META, preset, FM controls, modulators.
+# DOWN: group's lowest selectable, then wraps to the next group's first.
+# UP: symmetric. RIGHT/LEFT: row's rightmost/leftmost, then adjacent row.
+
+FRAMES 4
+ASSERT selected==RATIO1
+
+# DOWN -> FM group's lowest (ALG, the first max-y row in the FM box).
+HOLD FUNCTION
+DOWN
+RELEASE
+FRAMES 2
+ASSERT selected==ALG
+
+# DOWN again -> wrap to the modulators group's top (MODS_ADD).
+HOLD FUNCTION
+DOWN
+RELEASE
+FRAMES 2
+ASSERT selected==MODS_ADD
+
+# DOWN again -> modulators group's lowest (env3's ATTACK).
+HOLD FUNCTION
+DOWN
+RELEASE
+FRAMES 2
+ASSERT selected==ATTACK
+
+# UP -> back to the modulators top.
+HOLD FUNCTION
+UP
+RELEASE
+FRAMES 2
+ASSERT selected==MODS_ADD
+
+# UP again -> wrap to the previous group's lowest (FM bottom = ALG).
+HOLD FUNCTION
+UP
+RELEASE
+FRAMES 2
+ASSERT selected==ALG
+
+# RIGHT -> row's rightmost (GAIN, the last dial in the FM bottom row).
+HOLD FUNCTION
+RIGHT
+RELEASE
+FRAMES 2
+ASSERT selected==GAIN
+
+# RIGHT again -> next row's leftmost (ALG is the only other on row 5;
+# the wrap finds the nearest row below or stays). Use LEFT to verify
+# the row edge from ALG instead.
+HOLD FUNCTION
+LEFT
+RELEASE
+FRAMES 2
+ASSERT selected==ALG
+
+QUIT

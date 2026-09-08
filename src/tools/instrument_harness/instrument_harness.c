@@ -61,6 +61,7 @@
 #include "main.h"
 #include "gui.h"
 #include "gui_layer.h"
+#include "gui_inst_internal.h"
 #include "graph_gui.h"
 #include "input.h"
 
@@ -1455,14 +1456,19 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		removeSelectedSource();
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
-		/* Mirror main.c: FUNCTION+arrows switch the channel while the
-		 * base graph is focused. While an overlay layer is up the arrows
-		 * belong to the layer. */
+		/* Mirror main.c: FUNCTION+arrows = page navigation (skip to the
+		 * group/row edge, then wrap). Replaces the old channel switch. */
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-			selectArrangerCell(data->arranger, 0, -1, 0);
+			instrumentPageNav(KM_LEFT);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-			selectArrangerCell(data->arranger, 0, 1, 0);
+			instrumentPageNav(KM_RIGHT);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_UP)) {
+			instrumentPageNav(KM_UP);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+			instrumentPageNav(KM_DOWN);
 		}
 	}
 
@@ -1478,7 +1484,7 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		return;
 	}
 
-	if(isKeyHeld(appState->inputState, KM_EDIT)) {
+	if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION)) {
 		/* Task 3: only dispatch the value callback when the selected
 		 * node is a real dial. Mirrors the main.c guard so the scripted
 		 * fixture (EDIT + DOWN on PRESET_NAME) doesn't crash. */
@@ -1512,7 +1518,7 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 				}
 			}
 		}
-	} else {
+	} else if(!isKeyHeld(appState->inputState, KM_FUNCTION)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 			navigateGraph(currentGraph, KM_LEFT);
 		}

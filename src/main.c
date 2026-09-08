@@ -13,6 +13,7 @@
 #include "voice.h"
 #include "sample.h"
 #include "gui.h"
+#include "gui_inst_internal.h"
 #include "io.h"
 #include "io/preset_io.h"
 #include "io/config_io.h"
@@ -850,19 +851,23 @@ int main(int argc, char **argv) {
 					removeSelectedSource();
 				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
-					/* FUNCTION+arrows on the instrument screen switch the
-					 * channel via the arranger cell. While an overlay
-					 * layer (route picker / clear-all confirm / editor)
-					 * is up the arrows navigate THAT layer instead — the
-					 * channel switch must not fire, or moving the cursor
-					 * through the confirm swaps the instrument mid-flow. */
+					/* FUNCTION+arrows = page navigation (user request):
+					 * skip to the group's lowest/highest selectable, then
+					 * wrap to the next/previous group; LEFT/RIGHT do the
+					 * same inside the current row. (Replaces the old
+					 * FUNCTION+LEFT/RIGHT channel switch — channels are
+					 * switched from the arranger via the chips.) */
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						selectArrangerCell(data.arranger, 0, -1, 0);
-						// updateInstrumentGui(instrumentGui);
+						instrumentPageNav(KM_LEFT);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						selectArrangerCell(data.arranger, 0, 1, 0);
-						// updateInstrumentGui(instrumentGui);
+						instrumentPageNav(KM_RIGHT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						instrumentPageNav(KM_UP);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						instrumentPageNav(KM_DOWN);
 					}
 				}
 				/* Task 4: handlePresetUiInput always runs first. It drives
@@ -876,7 +881,7 @@ int main(int argc, char **argv) {
 				}
 				Graph *currentGraph = getSelectedInstGraph();
 
-				if(isKeyHeld(appState->inputState, KM_EDIT)) {
+if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					/* Task 3: only dispatch the value callback when the
 					 * selected node is a real dial. Pressing EDIT+arrow
 					 * on the preset name node (or an action button)
@@ -912,7 +917,7 @@ int main(int argc, char **argv) {
 							}
 						}
 					}
-				} else {
+				} else if(!isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						navigateGraphRefined(currentGraph, KM_LEFT);
 					}
