@@ -131,6 +131,26 @@ void addBlankIfEmpty(PatternList *patternList, Arranger *arranger, int sequencer
 Sequencer *createSequencer(Arranger *arranger);
 
 /**
+ * @brief Callback invoked once per running channel when a step's note fires.
+ * @param ctx Opaque context passed through from advanceSequencerStep.
+ * @param channel The channel whose note is firing.
+ * @param note The note data (pitch/octave) at the current step.
+ */
+typedef void (*StepTriggerFn)(void *ctx, int channel, const int *note);
+
+/**
+ * @brief Advance the sequencer one step and fire notes (trigger-before-advance).
+ *
+ * The audio callback calls this once per step. Each running channel's note
+ * at its CURRENT playhead fires first, then the playheads advance. Triggering
+ * before advancing means the first step of a pattern (and the first step
+ * after play starts) is step 0 — not step 1 — and a pattern's last note
+ * still sounds before an end-of-song stop. Pass trigger=NULL to advance
+ * without firing.
+ */
+void advanceSequencerStep(Sequencer *sequencer, PatternList *patternList, Arranger *arranger, StepTriggerFn trigger, void *ctx);
+
+/**
  * @brief Retrieves a step (note) from a pattern.
  * @param patternList Pointer to the PatternList.
  * @param patternIndex Index of the pattern.

@@ -317,6 +317,14 @@ static void probeFinalizeRoute(RenderTexture2D gfx) {
 	g_probeDone = true;
 }
 
+/* advanceSequencerStep trigger callback: allocate a voice for the fired
+ * note. Runs on the audio thread inside the callback's g_audioLock. */
+static void triggerSequencerNote(void *ctx, int channel, const int *note) {
+	VoiceManager *vm = (VoiceManager *)ctx;
+	Voice *voice = getFreeVoice(vm, channel);
+	triggerVoice(voice, note);
+}
+
 
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
@@ -365,16 +373,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 					        stepSamples);
 				}
 			}
-			incrementSequencer(data->sequencer, data->patternList, data->arranger);
-			for(int sc = 0; sc < data->arranger->enabledChannels; sc++) {
-				if(data->sequencer->running[sc]) {
-					int *note = getCurrentStep(data->patternList, data->sequencer->pattern_index[sc], data->sequencer->playhead_index[sc]);
-					if(note[0] != OFF) {
-						Voice *voice = getFreeVoice(data->voiceManager, sc);
-						triggerVoice(voice, note);
-					}
-				}
-			}
+			advanceSequencerStep(data->sequencer, data->patternList, data->arranger, triggerSequencerNote, data->voiceManager);
 		}
 	}
 

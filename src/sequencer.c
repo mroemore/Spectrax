@@ -296,6 +296,25 @@ void editCurrentNoteRelative(PatternList *patternList, int patternIndex, int not
 	// patternList->patterns[patternIndex].notes[noteIndex][1] = newNote[1];
 }
 
+void advanceSequencerStep(Sequencer *sequencer, PatternList *patternList, Arranger *arranger, StepTriggerFn trigger, void *ctx) {
+	/* Trigger-before-advance: fire each running channel's note at its
+	 * CURRENT playhead first, then advance. The previous model advanced
+	 * first (incrementSequencer then read), which skipped step 0 of the
+	 * first pattern on play — the first note heard was step 1 — and the
+	 * pattern's material played back-to-back ~1.5x before the loop/next
+	 * row picked up step 0 (the "double first pattern"). Triggering first
+	 * also lets a pattern's last note sound before an end-of-song stop. */
+	for(int c = 0; c < arranger->enabledChannels; c++) {
+		if(sequencer->running[c] && trigger) {
+			int *note = getCurrentStep(patternList, sequencer->pattern_index[c], sequencer->playhead_index[c]);
+			if(note[0] != OFF) {
+				trigger(ctx, c, note);
+			}
+		}
+	}
+	incrementSequencer(sequencer, patternList, arranger);
+}
+
 void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger *arranger) { // TO-DO: add pattern mode func
 	arranger->tempoSettings.swingStep = !arranger->tempoSettings.swingStep;
 	for(int i = 0; i < arranger->enabledChannels; i++) {

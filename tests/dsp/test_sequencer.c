@@ -282,6 +282,104 @@ static int test_note_cut_paste(void) {
     return 0;
 }
 
+/* First-note-skip / double-first-pattern regression (2026-09-08): the audio
+ * callback used to advance the playhead (incrementSequencer) BEFORE reading
+ * the note, so the first step of a pattern never sounded — pattern A fired
+ * steps 1..N-1 then (loop/next row) 0..N-1, heard back-to-back ~1.5x.
+ * advanceSequencerStep triggers at the CURRENT playhead then advances, so
+ * the fired sequence must be A[0..3] then B[0..3] with step 0 first. */
+static int g_firedPitches[32];
+static int g_firedCount;
+static void recordTrigger(void *ctx, int channel, const int *note) {
+	(void)ctx;
+	(void)channel;
+	g_firedPitches[g_firedCount++] = note[0];
+}
+
+static int test_play_fires_step_zero_first(void) {
+	PatternList pl;
+	memset(&pl, 0, sizeof(pl));
+	pl.pattern_count = 2;
+	pl.patterns[0].pattern_size = 4;
+	pl.patterns[1].pattern_size = 4;
+	/* distinguishable pitches per step: A = 100..103, B = 200..203 */
+	for(int s = 0; s < 4; s++) {
+		pl.patterns[0].notes[s][0] = 100 + s;
+		pl.patterns[0].notes[s][1] = 0;
+		pl.patterns[1].notes[s][0] = 200 + s;
+		pl.patterns[1].notes[s][1] = 0;
+	}
+
+	Arranger arr;
+	memset(&arr, 0, sizeof(arr));
+	arr.enabledChannels = 1;
+	arr.selected_y = 0;
+	arr.song[0][0] = 0;
+	arr.song[0][1] = 1;
+	arr.song[0][2] = -1;
+	arr.tempoSettings.loop = false;
+
+	Sequencer seq;
+	memset(&seq, 0, sizeof(seq));
+	startPlaying(&seq, &pl, &arr, 0);
+
+	g_firedCount = 0;
+	const int expected[8] = { 100, 101, 102, 103, 200, 201, 202, 203 };
+	for(int i = 0; i < 8; i++) {
+		advanceSequencerStep(&seq, &pl, &arr, recordTrigger, NULL);
+	}
+	ASSERT_EQ(g_firedCount, 8, "all 8 steps fire a note");
+	for(int i = 0; i < 8; i++) {
+		if(g_firedPitches[i] != expected[i]) {
+			ASSERT_EQ(g_firedPitches[i], expected[i],
+			          "fired sequence matches A[0..3],B[0..3]");
+		}
+	}
+	printf("PASS test_play_fires_step_zero_first\n");
+	return 0;
+}
+
+/* The last note of the last pattern must still sound before the channel
+ * stops at end-of-song (no next row, no loop). The old advance-first order
+ * set running=0 before the trigger gate, cutting the final note. */
+static int test_last_note_plays_at_song_end(void) {
+	PatternList pl;
+	memset(&pl, 0, sizeof(pl));
+	pl.pattern_count = 1;
+	pl.patterns[0].pattern_size = 4;
+	for(int s = 0; s < 4; s++) {
+		pl.patterns[0].notes[s][0] = 300 + s;
+		pl.patterns[0].notes[s][1] = 0;
+	}
+
+	Arranger arr;
+	memset(&arr, 0, sizeof(arr));
+	arr.enabledChannels = 1;
+	arr.selected_y = 0;
+	arr.song[0][0] = 0;
+	arr.song[0][1] = -1;
+	arr.tempoSettings.loop = false;
+
+	Sequencer seq;
+	memset(&seq, 0, sizeof(seq));
+	startPlaying(&seq, &pl, &arr, 0);
+
+	g_firedCount = 0;
+	const int expected[4] = { 300, 301, 302, 303 };
+	for(int i = 0; i < 5; i++) {
+		advanceSequencerStep(&seq, &pl, &arr, recordTrigger, NULL);
+	}
+	ASSERT_EQ(g_firedCount, 4, "all four notes fire including the last");
+	for(int i = 0; i < 4; i++) {
+		if(g_firedPitches[i] != expected[i]) {
+			ASSERT_EQ(g_firedPitches[i], expected[i], "A[0..3] all fire");
+		}
+	}
+	ASSERT_EQ(seq.running[0], 0, "channel stopped after song end");
+	printf("PASS test_last_note_plays_at_song_end\n");
+	return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_increment_scene_requires_selected_pattern();
@@ -291,6 +389,8 @@ int main(void) {
     fails += test_add_blank_on_occupied_cell();
     fails += test_pattern_copy_paste();
     fails += test_note_cut_paste();
+    fails += test_play_fires_step_zero_first();
+    fails += test_last_note_plays_at_song_end();
     if (fails) {
         fprintf(stderr, "%d sequencer test(s) failed\n", fails);
         return 1;
