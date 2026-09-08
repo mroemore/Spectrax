@@ -574,13 +574,15 @@ static int test_core_envelope_delete_rejected(void) {
     if (make_env(&e, 2)) return 1;
     Instrument *inst = e.vm->instruments[0];
     Mod *core = inst->envelopes[0];
+    /* The default FM patch has 4 startup SOURCES (3 AD envs + 1 vibrato
+     * LFO); coreEnvelopeCount protects all of them. */
     ASSERT_TRUE(inst->coreEnvelopeCount == 4,
                 "core count recorded at init");
     /* The UI guard fires when (idx < coreEnvelopeCount). Simulating
      * that guard: we do NOT call removeMod. Core envelope stays put. */
     ASSERT_TRUE(core == inst->envelopes[0],
                 "core envelope untouched after rejected delete");
-    ASSERT_EQ(inst->envelopeCount, 4, "count unchanged");
+    ASSERT_EQ(inst->envelopeCount, 3, "count unchanged (3 startup envs)");
     /* Core envelope's mod pointer is still in the instrument's modList */
     int found = 0;
     for (int i = 0; i < inst->modList->count; i++) {
@@ -846,7 +848,9 @@ static int test_preset_from_instrument_roundtrip(void) {
     ASSERT_TRUE(dst != NULL, "dst instrument allocated");
     applyInstrumentPreset(dst, out);
     ASSERT_EQ((int)dst->voiceType, (int)VOICE_TYPE_FM);
-    ASSERT_EQ(dst->envelopeCount, 5);
+    /* 3 default envs + the runtime env = 4 MT_ENV sources (the default
+     * FM patch's LFO is not an envelope). */
+    ASSERT_EQ(dst->envelopeCount, 4);
     ASSERT_EQ((int)dst->id.fm.selectedAlgorithm->baseValue, algoBefore);
     for (int i = 0; i < MAX_FM_OPERATORS; i++) {
         ASSERT_NEAR(dst->id.fm.ops[i]->ratio->baseValue,         opRatio[i], 0.0001f);
@@ -854,13 +858,13 @@ static int test_preset_from_instrument_roundtrip(void) {
         ASSERT_NEAR(dst->id.fm.ops[i]->outLevel->baseValue,      opOut[i],   0.0001f);
         ASSERT_NEAR(dst->id.fm.ops[i]->feedbackAmount->baseValue, opFb[i],   0.0001f);
     }
-    /* Runtime envelope survived: the 5th slot is a live Envelope in
-     * the modList, not just a count. */
+    /* Runtime envelope survived: it's the 4th MT_ENV source in the fresh
+     * instrument (3 default envs + the runtime one), so envelopes[3]. */
     bool foundRT = false;
     for (int i = 0; i < dst->modList->count; i++) {
         if (dst->modList->mods[i]->type == MT_ENV) {
             Mod *env = (Mod *)dst->modList->mods[i];
-            if (env == dst->envelopes[4]) { foundRT = true; break; }
+            if (env == dst->envelopes[3]) { foundRT = true; break; }
         }
     }
     ASSERT_TRUE(foundRT, "runtime envelope preserved through round-trip");
@@ -882,7 +886,6 @@ static int test_apply_preset_creates_lfo_mod(void) {
     if (make_env(&e, 1)) return 1;
     Instrument *inst = e.vm->instruments[0];
 
-    int lfosBefore = inst->modList->count;
 
     Preset p;
     memset(&p, 0, sizeof(p));
@@ -899,10 +902,11 @@ static int test_apply_preset_creates_lfo_mod(void) {
 
     applyInstrumentPreset(inst, p);
 
-    /* The 5th modList entry (index 4) must be an LFO. */
-    ASSERT_EQ(inst->modList->count, lfosBefore + 1);
-    ASSERT_TRUE(inst->modList->count >= 5, "enough mod slots for LFO check");
-    ASSERT_EQ((int)inst->modList->mods[4]->type, (int)MT_LFO);
+    /* The preset (4 AD + 1 LFO) is applied fresh: 5 sources. */
+    ASSERT_EQ(modSourceCount(inst->modList), 5, "5 sources after apply");
+    int mi4 = modIndexAt(inst->modList, 4);
+    ASSERT_TRUE(mi4 >= 0, "source 4 present");
+    ASSERT_EQ((int)inst->modList->mods[mi4]->type, (int)MT_LFO);
 
     free_env(&e);
     printf("PASS test_apply_preset_creates_lfo_mod\n");
@@ -1300,6 +1304,58 @@ static int test_type_cycle_order(void) {
  * `route_lines_follow_selection.txt` (ASSERT routelinesrc==N verb).
  */
 
+/*
+ * Default FM patch routing (new-FM-preset sound): env0->gain only,
+ * env1->outLevel(ops1+2), env2->outLevel(ops3+4), and the final source
+ * (an LFO) -> pitch(ops2+4) at ~40Hz depth. Guards against regressing
+ * back to the old "env0 fans out to every outLevel" seed.
+ */
+static int test_default_fm_routing(void) {
+    TestEnv e;
+    if (make_env(&e, 1)) {
+        return 1;
+    }
+    Instrument *inst = e.vm->instruments[0];
+    ASSERT_EQ(modSourceCount(inst->modList), 4, "default FM has 4 sources");
+    int mi3 = modIndexAt(inst->modList, 3);
+    ASSERT_TRUE(mi3 >= 0, "source 3 present");
+    ASSERT_EQ(inst->modList->mods[mi3]->type, MT_LFO, "source 3 is an LFO");
+
+    /* env0 -> gain only */
+    ASSERT_EQ(inst->gain->modulator_count, 1, "gain driven by one source");
+    /* env1 -> outLevel ops 1+2 */
+    ASSERT_EQ(inst->id.fm.ops[0]->outLevel->modulator_count, 1, "op1 outLevel driven");
+    ASSERT_EQ(inst->id.fm.ops[1]->outLevel->modulator_count, 1, "op2 outLevel driven");
+    /* env2 -> outLevel ops 3+4 */
+    ASSERT_EQ(inst->id.fm.ops[2]->outLevel->modulator_count, 1, "op3 outLevel driven");
+    ASSERT_EQ(inst->id.fm.ops[3]->outLevel->modulator_count, 1, "op4 outLevel driven");
+    /* LFO -> pitch ops 2+4 only */
+    ASSERT_EQ(inst->id.fm.ops[1]->pitch->modulator_count, 1, "op2 pitch driven");
+    ASSERT_EQ(inst->id.fm.ops[3]->pitch->modulator_count, 1, "op4 pitch driven");
+    ASSERT_EQ(inst->id.fm.ops[0]->pitch->modulator_count, 0, "op1 pitch unmodulated");
+
+    /* pitch depth ~40Hz (the atten amount the seed sets) */
+    ModConnection *pc = inst->id.fm.ops[1]->pitch->modulators;
+    ASSERT_TRUE(pc && pc->source && pc->source->type == MT_ATTEN, "pitch routed via atten");
+    if (pc && pc->source && pc->source->type == MT_ATTEN && pc->source->data.atten.attenAmount) {
+        ASSERT_NEAR(pc->source->data.atten.attenAmount->baseValue, 20.0f, 0.5f);
+    }
+
+    /* op1 outLevel is driven by env1, NOT env0 (the old fan-out) */
+    ModConnection *oc = inst->id.fm.ops[0]->outLevel->modulators;
+    ASSERT_TRUE(oc && oc->source && oc->source->type == MT_ATTEN, "op1 outLevel via atten");
+    if (oc && oc->source && oc->source->type == MT_ATTEN) {
+        Mod *input = oc->source->data.atten.input;
+        int mi1 = modIndexAt(inst->modList, 1);
+        ASSERT_TRUE(mi1 >= 0, "source 1 exists");
+        ASSERT_TRUE(input == inst->modList->mods[mi1], "op1 outLevel driven by env1");
+    }
+
+    free_env(&e);
+    printf("PASS test_default_fm_routing\n");
+    return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1346,6 +1402,9 @@ int main(void) {
     fails += test_voice_graph_copy_syncs_and_isolates();
     /* Task 2.4 — voice graph survives a source retype + rebuild */
     fails += test_voice_graph_survives_source_retype();
+
+    /* Default FM patch routing (env0->gain, env1/env2->outLevels, LFO->pitch) */
+    fails += test_default_fm_routing();
 
     /* Bug 2 — ROUTELINES ctx follows selection hops between sources
      * (executable regression in the instrument_harness fixture). */

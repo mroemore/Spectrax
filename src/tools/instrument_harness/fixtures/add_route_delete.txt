@@ -13,6 +13,7 @@
 
 FRAMES 1
 ASSERT selected==RATIO1
+# The boot preset (saved fm1.ipb) still has 4 AD envelopes.
 ASSERT envcount==4
 
 # Move down to the mod-wrap header. The FM controls box now has 5 rows

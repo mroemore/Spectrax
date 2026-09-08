@@ -316,15 +316,17 @@ Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, co
 	/* The attenuator must not clip bipolar values before the destination
 	 * sees them: initMod gives the output param a [0,1] range, which
 	 * would clamp negative swings before the polarity logic can act.
-	 * Widen to [-2,2] (amount up to 2 x source magnitude up to 1); the
-	 * destination's own range clamps the final applied value. */
-	m->output->minValue = -2.0f;
-	m->output->maxValue = 2.0f;
+	 * Widen to [-100,100] (amount up to 100 x source magnitude up to 1);
+	 * the destination's own range clamps the final applied value. The
+	 * upper bound was raised from 2 so Hz-style dests (per-op pitch,
+	 * ±1000Hz) can carry a real vibrato depth through the seed. */
+	m->output->minValue = -100.0f;
+	m->output->maxValue = 100.0f;
 	/* Buffers are MAX_NAME_LEN + 8 so snprintf can never truncate;
 	 * createParameter's strndup does the final safe truncate. */
 	char pName[MAX_NAME_LEN + 8];
 	snprintf(pName, sizeof(pName), "%s_amt", source->name);
-	m->data.atten.attenAmount = createParameter(paramList, pName, 1.0f, 0.0f, 2.0f);
+	m->data.atten.attenAmount = createParameter(paramList, pName, 1.0f, 0.0f, 100.0f);
 	snprintf(pName, sizeof(pName), "%s_pol", source->name);
 	m->data.atten.attenPolarity = createParameterEx(paramList, pName, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
 	snprintf(pName, sizeof(pName), "%s_crv", source->name);

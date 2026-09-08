@@ -485,9 +485,12 @@ void initDefaultFmPreset(Preset *p) {
 	p1.pd.fm.ops[2].ratio = 3.0;
 	p1.pd.fm.ops[3].ratio = 5.0;
 
-	for(int i = 0; i < p1.modSettingsCount; i++) {
+	for(int i = 0; i < p1.modSettingsCount - 1; i++) {
 		initADPresetData(&p1.modSettings[i], 0.1f, 4.5f, 0.75f, 0.75f);
 	}
+	/* The final source is a fast, low-amplitude LFO: it drives the per-op
+	 * pitch vibrato (seeded at ~±40Hz in initVoiceDrivers). */
+	initLfoPresetData(&p1.modSettings[p1.modSettingsCount - 1], LS_SIN, 16.0f, 0.0f);
 	*p = p1;
 }
 
@@ -673,6 +676,7 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 /* Task 2.2: defined below init_instrument; forward-declared so
  * applyInstrumentPreset (earlier in the file) can re-seed on load. */
 static void initVoiceDrivers(Instrument *inst);
+static void seedPitchVibrato(ParamList *pl, ModList *ml, Mod *src, Parameter *dest, float depthHz);
 
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	/* Task 8: gate the audio thread out while we tear down + rebuild the
@@ -756,10 +760,13 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 				break;
 		}
 	}
-	/* coreEnvelopeCount locks in the post-preset envelope count so
+	/* coreEnvelopeCount locks in the post-preset SOURCE count so
 	 * rebuildVoicesForInstrument / downstream layout code can rely on
-	 * the same value the preset set up. */
-	instrument->coreEnvelopeCount = instrument->envelopeCount;
+	 * the same value the preset set up. Uses modSourceCount (not
+	 * envelopeCount) so a startup LFO/RND source is protected from
+	 * type-change/delete too — the default FM patch's vibrato LFO is
+	 * part of the sound. */
+	instrument->coreEnvelopeCount = modSourceCount(instrument->modList);
 
 	/* Re-create the persistent instrument params (panning, detune
 	 * controls) that clearParamList just freed along with the preset
@@ -993,19 +1000,65 @@ static void initVoiceDrivers(Instrument *inst) {
 	}
 	inst->gain = createParameterEx(inst->paramList, "gain", 1.0f, 0.0f, 2.0f, 0.05f, 0.5f);
 	inst->pitch = createParameterEx(inst->paramList, "pitch", 1.0f, 0.0f, 2.0f, 0.05f, 0.5f);
-	if(inst->envelopeCount < 1 || !inst->modList || inst->modList->count < 1) {
+	if(!inst->modList || inst->modList->count < 1) {
 		return;
 	}
 	Mod *src0 = inst->modList->mods[0];
 	addModulation(inst->paramList, inst->modList, src0, inst->gain, 1.0f, MO_MUL);
 	if(inst->voiceType == VOICE_TYPE_FM) {
-		for(int i = 0; i < MAX_FM_OPERATORS; i++) {
-			if(inst->id.fm.ops[i] && inst->id.fm.ops[i]->outLevel) {
-				addModulation(inst->paramList, inst->modList, src0, inst->id.fm.ops[i]->outLevel, 1.0f, MO_MUL);
+		/* Default FM voice routing (the "new FM patch" sound):
+		 *   env0        -> gain (overall gain only)
+		 *   env1        -> outLevel of ops 1+2
+		 *   env2        -> outLevel of ops 3+4
+		 *   env3 (LFO)  -> pitch of ops 2+4 (fast, low-amplitude vibrato)
+		 * The sources occupy mods[0..modSourceCount); attenuators are
+		 * appended after them, so the indices stay valid. */
+		if(inst->modList->count >= 2) {
+			Mod *src1 = inst->modList->mods[1];
+			if(inst->id.fm.ops[0] && inst->id.fm.ops[0]->outLevel) {
+				addModulation(inst->paramList, inst->modList, src1, inst->id.fm.ops[0]->outLevel, 1.0f, MO_MUL);
+			}
+			if(inst->id.fm.ops[1] && inst->id.fm.ops[1]->outLevel) {
+				addModulation(inst->paramList, inst->modList, src1, inst->id.fm.ops[1]->outLevel, 1.0f, MO_MUL);
 			}
 		}
-	} else if(inst->voiceType == VOICE_TYPE_BLEP && inst->envelopeCount >= 2 && inst->modList->count >= 2) {
+		if(inst->modList->count >= 3) {
+			Mod *src2 = inst->modList->mods[2];
+			if(inst->id.fm.ops[2] && inst->id.fm.ops[2]->outLevel) {
+				addModulation(inst->paramList, inst->modList, src2, inst->id.fm.ops[2]->outLevel, 1.0f, MO_MUL);
+			}
+			if(inst->id.fm.ops[3] && inst->id.fm.ops[3]->outLevel) {
+				addModulation(inst->paramList, inst->modList, src2, inst->id.fm.ops[3]->outLevel, 1.0f, MO_MUL);
+			}
+		}
+		if(inst->modList->count >= 4) {
+			Mod *src3 = inst->modList->mods[3];
+			if(src3->type == MT_LFO) {
+				seedPitchVibrato(inst->paramList, inst->modList, src3,
+				                 inst->id.fm.ops[1] ? inst->id.fm.ops[1]->pitch : NULL, 20.0f);
+				seedPitchVibrato(inst->paramList, inst->modList, src3,
+				                 inst->id.fm.ops[3] ? inst->id.fm.ops[3]->pitch : NULL, 20.0f);
+			}
+		}
+	} else if(inst->voiceType == VOICE_TYPE_BLEP && inst->modList->count >= 2) {
 		addModulation(inst->paramList, inst->modList, inst->modList->mods[1], inst->pitch, 400.5f, MO_ADD);
+	}
+}
+
+/* Seed a per-op pitch vibrato: route `src` into `dest` (an FM op pitch)
+ * via MO_ADD, then lower the per-connection attenuator's amount so the
+ * LFO's ±1 output maps to roughly ±`depthHz` (pitch range is ±1000Hz).
+ * addModulation discards its `amount` arg when it inserts an attenuator
+ * (the atten's amount param starts at 1.0), so set it explicitly here. */
+static void seedPitchVibrato(ParamList *pl, ModList *ml, Mod *src, Parameter *dest, float depthHz) {
+	if(!dest) {
+		return;
+	}
+	if(addModulation(pl, ml, src, dest, 1.0f, MO_ADD)) {
+		ModConnection *c = dest->modulators;
+		if(c && c->source && c->source->type == MT_ATTEN && c->source->data.atten.attenAmount) {
+			setParameterBaseValue(c->source->data.atten.attenAmount, depthHz);
+		}
 	}
 }
 
