@@ -196,6 +196,8 @@ static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
 /* --probe-tempo diagnostic (rule #1136: zero effect without the flag).
  * Logs the tempo state once at startup, then whenever bpm or the step
  * sample counts change, plus a heartbeat every ~2s while playing. */
+static long g_tempoProbeSteps = 0;   /* increments once per sequencer step */
+static double g_tempoProbeStartT = 0.0;
 static void probeTempoState(paTestData *data) {
 	if(!g_probeTempo || !data || !data->arranger || !data->arranger->tempoSettings.bpm) {
 		return;
@@ -208,13 +210,20 @@ static void probeTempoState(paTestData *data) {
 	int sw = swing ? (int)getParameterValue(swing) : -1;
 	bool changed = (bv != g_lastProbedBpm || ev != g_lastProbedEven || od != g_lastProbedOdd);
 	double now = GetTime();
+	if(g_tempoProbeStartT == 0.0) {
+		g_tempoProbeStartT = now;
+	}
 	/* log on change, plus a ~2s heartbeat while playing so a steady-state
 	 * turbo cadence is captured even if nothing changes */
 	bool heartbeat = data->arranger->playing && (now - g_tempoProbeLastMs > 2.0);
 	if(changed || heartbeat) {
-		fprintf(stderr, "TEMPO bpm=%d base=%.1f even=%d odd=%d swing=%d playing=%d elapsed=%d t=%.1f\n",
+		double dt = now - g_tempoProbeStartT;
+		double stepRate = (dt > 0.001) ? (double)g_tempoProbeSteps / dt : 0.0;
+		double expectStepsPerSec = (double)bv / 60.0 * 4.0; /* 4 steps/beat at this bpm */
+		fprintf(stderr, "TEMPO bpm=%d base=%.1f even=%d odd=%d swing=%d playing=%d elapsed=%d t=%.1f steps=%ld rate=%.1f expect=%.1f\n",
 		        bv, bpm->baseValue, ev, od, sw, data->arranger->playing,
-		        data->arranger->tempoSettings.samplesElapsed, now);
+		        data->arranger->tempoSettings.samplesElapsed, now, g_tempoProbeSteps,
+		        stepRate, expectStepsPerSec);
 		g_tempoProbeLastMs = (long)now;
 		g_lastProbedBpm = bv;
 		g_lastProbedEven = ev;
@@ -335,6 +344,9 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
 		data->arranger->tempoSettings.samplesElapsed = 0;
 		if(data->arranger->playing) {
+			if(g_probeTempo) {
+				g_tempoProbeSteps++;
+			}
 			incrementSequencer(data->sequencer, data->patternList, data->arranger);
 			for(int sc = 0; sc < data->arranger->enabledChannels; sc++) {
 				if(data->sequencer->running[sc]) {
