@@ -90,6 +90,7 @@ typedef enum {
 	SOP_KEY,             /* one-frame keypress: ADD, REMOVE, LEFT/RIGHT/UP/DOWN */
 	SOP_EDIT_ARROW,      /* hold EDIT + arrow for one frame, then release */
 	SOP_HOLD_FUNCTION,   /* hold KM_FUNCTION until RELEASE */
+	SOP_HOLD_SELECT,     /* hold KM_SELECT until RELEASE */
 	SOP_RELEASE,         /* release the held key */
 	SOP_FRAMES,          /* idle for N frames (all keys released) */
 	SOP_ASSERT_ENVCOUNT, /* inst->envelopeCount == N */
@@ -338,12 +339,13 @@ static void parseScript(const char *path) {
 			s->op = SOP_KEY; s->a.key = KM_FUNCTION; s->frames = 1;
 		} else if(strcmp(op, "HOLD") == 0) {
 			KeyMapping held;
-			if(nt < 2 || !parseKeyName(tokens[1], &held) || held != KM_FUNCTION) {
+			if(nt < 2 || !parseKeyName(tokens[1], &held) || (held != KM_FUNCTION && held != KM_SELECT)) {
 				fclose(fp);
-				failScript(lineno, "HOLD requires FUNCTION");
+				failScript(lineno, "HOLD requires FUNCTION or SELECT");
 				return;
 			}
-			s->op = SOP_HOLD_FUNCTION; s->frames = 1;
+			s->op = (held == KM_FUNCTION) ? SOP_HOLD_FUNCTION : SOP_HOLD_SELECT;
+			s->frames = 1;
 		} else if(strcmp(op, "RELEASE") == 0) {
 			s->op = SOP_RELEASE; s->frames = 1;
 		} else if(strcmp(op, "EDIT") == 0) {
@@ -1047,6 +1049,7 @@ static void runAssertVoiceCount(int lineno, int expected) {
 }
 
 static bool g_scriptHeldFunction = false;
+static bool g_scriptHeldSelect = false;
 
 /* Zero the keys array; used as the resting state between scripted events. */
 static void clearInjectedKeys(InputState *state) {
@@ -1064,14 +1067,23 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 	if(g_scriptHeldFunction && s->op != SOP_RELEASE) {
 		injectKey(state, KM_FUNCTION, true, false);
 	}
+	if(g_scriptHeldSelect && s->op != SOP_RELEASE) {
+		injectKey(state, KM_SELECT, true, false);
+	}
 	switch(s->op) {
 		case SOP_HOLD_FUNCTION:
 			g_scriptHeldFunction = true;
 			injectKey(state, KM_FUNCTION, true, false);
 			break;
+		case SOP_HOLD_SELECT:
+			g_scriptHeldSelect = true;
+			injectKey(state, KM_SELECT, true, false);
+			break;
 		case SOP_RELEASE:
 			g_scriptHeldFunction = false;
 			injectKey(state, KM_FUNCTION, false, false);
+			g_scriptHeldSelect = false;
+			injectKey(state, KM_SELECT, false, false);
 			break;
 		case SOP_KEY:
 			/* single-frame just-pressed */
@@ -1456,19 +1468,28 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		removeSelectedSource();
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
-		/* Mirror main.c: FUNCTION+arrows = page navigation (skip to the
-		 * group/row edge, then wrap). Replaces the old channel switch. */
-		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-			instrumentPageNav(KM_LEFT);
-		}
-		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-			instrumentPageNav(KM_RIGHT);
-		}
+		/* Mirror main.c: FUNCTION+UP/DOWN = vertical page nav; FUNCTION+
+		 * LEFT/RIGHT = channel switch; SELECT+LEFT/RIGHT = horizontal
+		 * page nav (row edge, then adjacent row). */
 		if(isKeyJustPressed(appState->inputState, KM_UP)) {
 			instrumentPageNav(KM_UP);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 			instrumentPageNav(KM_DOWN);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+			selectArrangerCell(data->arranger, 0, -1, 0);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+			selectArrangerCell(data->arranger, 0, 1, 0);
+		}
+	}
+	if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
+		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+			instrumentPageNav(KM_LEFT);
+		}
+		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+			instrumentPageNav(KM_RIGHT);
 		}
 	}
 
@@ -1484,7 +1505,7 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		return;
 	}
 
-	if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION)) {
+	if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION) && !isKeyHeld(appState->inputState, KM_SELECT)) {
 		/* Task 3: only dispatch the value callback when the selected
 		 * node is a real dial. Mirrors the main.c guard so the scripted
 		 * fixture (EDIT + DOWN on PRESET_NAME) doesn't crash. */
@@ -1518,7 +1539,7 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 				}
 			}
 		}
-	} else if(!isKeyHeld(appState->inputState, KM_FUNCTION)) {
+	} else if(!isKeyHeld(appState->inputState, KM_FUNCTION) && !isKeyHeld(appState->inputState, KM_SELECT)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 			navigateGraph(currentGraph, KM_LEFT);
 		}

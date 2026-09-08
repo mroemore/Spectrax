@@ -617,11 +617,16 @@ int main(int argc, char **argv) {
 			data.arranger->playing ? stopPlaying(data.arranger) : startPlaying(data.sequencer, data.patternList, data.arranger, appState->currentScene);
 		}
 		if(isKeyHeld(appState->inputState, KM_SELECT)) {
-			if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-				decrementScene(appState);
-			}
-			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-				incrementScene(appState);
+			/* SELECT+LEFT/RIGHT = scene switch on every screen EXCEPT the
+			 * instrument screen, where SELECT+LEFT/RIGHT is the horizontal
+			 * page-nav (Home/End) binding. */
+			if(appState->currentScene != SCENE_INSTRUMENT) {
+				if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+					decrementScene(appState);
+				}
+				if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+					incrementScene(appState);
+				}
 			}
 		}
 		// Scene specific controls
@@ -852,22 +857,32 @@ int main(int argc, char **argv) {
 				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {
 					/* FUNCTION+arrows = page navigation (user request):
-					 * skip to the group's lowest/highest selectable, then
-					 * wrap to the next/previous group; LEFT/RIGHT do the
-					 * same inside the current row. (Replaces the old
-					 * FUNCTION+LEFT/RIGHT channel switch — channels are
-					 * switched from the arranger via the chips.) */
-					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-						instrumentPageNav(KM_LEFT);
-					}
-					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-						instrumentPageNav(KM_RIGHT);
-					}
+					 * FUNCTION+UP/DOWN skip to the group's lowest/highest
+					 * selectable and wrap to the next group; FUNCTION+LEFT/
+					 * RIGHT keep the CHANNEL SWITCH (moved back here per
+					 * user preference). SELECT+arrows do the page nav's
+					 * horizontal row-edge behaviour. */
 					if(isKeyJustPressed(appState->inputState, KM_UP)) {
 						instrumentPageNav(KM_UP);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
 						instrumentPageNav(KM_DOWN);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+						selectArrangerCell(data.arranger, 0, -1, 0);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+						selectArrangerCell(data.arranger, 0, 1, 0);
+					}
+				}
+				if(isKeyHeld(appState->inputState, KM_SELECT) && !instrumentLayerModalActive()) {
+					/* SELECT+arrows = horizontal page nav (Home/End-type:
+					 * row's rightmost/leftmost, then adjacent row's edge). */
+					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+						instrumentPageNav(KM_LEFT);
+					}
+					if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+						instrumentPageNav(KM_RIGHT);
 					}
 				}
 				/* Task 4: handlePresetUiInput always runs first. It drives
@@ -881,7 +896,7 @@ int main(int argc, char **argv) {
 				}
 				Graph *currentGraph = getSelectedInstGraph();
 
-if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION)) {
+if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, KM_FUNCTION) && !isKeyHeld(appState->inputState, KM_SELECT)) {
 					/* Task 3: only dispatch the value callback when the
 					 * selected node is a real dial. Pressing EDIT+arrow
 					 * on the preset name node (or an action button)
