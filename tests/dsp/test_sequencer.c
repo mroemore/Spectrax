@@ -199,6 +199,89 @@ static int test_add_blank_on_occupied_cell(void) {
     return 0;
 }
 
+static int test_pattern_copy_paste(void) {
+    PatternList pl;
+    memset(&pl, 0, sizeof(pl));
+    pl.pattern_count = 0;
+
+    Arranger arr;
+    memset(&arr, 0, sizeof(arr));
+    arr.enabledChannels = 2;
+    for(int c = 0; c < MAX_SEQUENCER_CHANNELS; c++) {
+        for(int r = 0; r < MAX_SONG_LENGTH; r++) {
+            arr.song[c][r] = -1;
+        }
+    }
+
+    /* Give cell (0,0) a pattern (pattern index 3). */
+    arr.song[0][0] = 3;
+
+    /* Bare EDIT on a patterned cell = copy source. */
+    ASSERT_EQ(copyPatternFromCell(&arr, 0, 0), 3, "copy returns the pattern");
+    ASSERT_EQ(clipPattern(), 3, "clipboard holds the pattern");
+    ASSERT_EQ(arr.song[0][0], 3, "copy leaves the source intact");
+
+    /* Bare EDIT on a blank cell = paste. */
+    ASSERT_EQ(pastePatternToCell(&arr, 0, 1), 3, "paste returns the pattern");
+    ASSERT_EQ(arr.song[0][1], 3, "blank cell assigned the clipboard pattern");
+    ASSERT_EQ(arr.song[0][0], 3, "source untouched by paste");
+
+    /* Pasting over an occupied cell refuses. */
+    arr.song[0][2] = 7;
+    ASSERT_EQ(pastePatternToCell(&arr, 0, 2), -1, "paste onto occupied cell refused");
+    ASSERT_EQ(arr.song[0][2], 7, "occupied cell unchanged");
+
+    /* Cut = copy + clear the source; paste still works. */
+    ASSERT_EQ(cutPatternFromCell(&arr, 0, 0), 3, "cut returns the pattern");
+    ASSERT_EQ(arr.song[0][0], -1, "cut clears the source cell");
+    ASSERT_EQ(clipPattern(), 3, "clipboard survives the cut");
+    ASSERT_EQ(pastePatternToCell(&arr, 0, 3), 3, "paste after cut works");
+    ASSERT_EQ(arr.song[0][3], 3, "cut pattern re-placed");
+    printf("PASS test_pattern_copy_paste\n");
+    return 0;
+}
+
+static void noop_cb(void *self, void *data) {
+    (void)self;
+    (void)data;
+}
+
+static int test_note_cut_paste(void) {
+    PatternList pl;
+    memset(&pl, 0, sizeof(pl));
+    pl.pattern_count = 1;
+    pl.patterns[0].pattern_size = 16;
+    pl.onNoteSet.f = noop_cb;
+    pl.onNoteSet.appstateRef = NULL;
+    /* All steps start blank (OFF). memset 0 would leave every step as
+     * a C note, which breaks currentNoteIsBlank. */
+    for(int s = 0; s < MAX_SEQUENCE_LENGTH; s++) {
+        pl.patterns[0].notes[s][0] = OFF;
+        pl.patterns[0].notes[s][1] = 0;
+    }
+
+    /* Place C4 on step 2, then cut it. */
+    int n[2] = { C, 4 };
+    setCurrentNote(&pl, 0, 2, n);
+    ASSERT_EQ(cutNoteFromStep(&pl, 0, 2), 1, "cut succeeds");
+    ASSERT_TRUE(currentNoteIsBlank(&pl, 0, 2), "cut turns the note off");
+
+    /* Paste onto a blank step. */
+    ASSERT_EQ(pasteNoteToStep(&pl, 0, 5), 1, "paste succeeds");
+    int *s = getStep(&pl, 0, 5);
+    ASSERT_EQ(s[0], C, "paste restores pitch");
+    ASSERT_EQ(s[1], 4, "paste restores octave");
+
+    /* Pasting onto a step that still has a note refuses. */
+    int other[2] = { A, 2 };
+    setCurrentNote(&pl, 0, 7, other);
+    ASSERT_EQ(pasteNoteToStep(&pl, 0, 7), 0, "paste onto occupied step refused");
+    s = getStep(&pl, 0, 7);
+    ASSERT_EQ(s[0], A, "occupied step unchanged");
+    printf("PASS test_note_cut_paste\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_increment_scene_requires_selected_pattern();
@@ -206,6 +289,8 @@ int main(void) {
     fails += test_pattern_switch_advances();
     fails += test_add_blank_on_empty_cell();
     fails += test_add_blank_on_occupied_cell();
+    fails += test_pattern_copy_paste();
+    fails += test_note_cut_paste();
     if (fails) {
         fprintf(stderr, "%d sequencer test(s) failed\n", fails);
         return 1;

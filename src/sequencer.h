@@ -232,6 +232,18 @@ void editStep(PatternList *patternList, int patternIndex, int noteIndex, int not
  */
 void stopPlaying(Arranger *arranger);
 /**
+ * @brief Copy/cut/paste clipboard for arranger pattern cells + pattern
+ * screen note steps. Copy = remember, Cut = remember + delete, Paste =
+ * place into a blank target. See sequencer.c for the module-global
+ * clipboard state.
+ */
+int clipPattern(void);
+int copyPatternFromCell(Arranger *arranger, int x, int y);
+int cutPatternFromCell(Arranger *arranger, int x, int y);
+int pastePatternToCell(Arranger *arranger, int x, int y);
+int cutNoteFromStep(PatternList *patternList, int patternIndex, int noteIndex);
+int pasteNoteToStep(PatternList *patternList, int patternIndex, int noteIndex);
+/**
  * @brief Starts playback in the Sequencer and Arranger from the current cursor position, resetting all pattern playback posiitons.
  * @param sequencer Pointer to the Sequencer.
  * @param patternList Pointer to the PatternList.

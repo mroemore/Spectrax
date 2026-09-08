@@ -652,7 +652,11 @@ int main(int argc, char **argv) {
 					}
 				} else if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
-						data.arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]] = -1;
+						/* CUT: copy the cell's pattern into the clipboard
+						 * AND clear the cell (was a plain delete). The
+						 * pattern stays in the patternList; paste-EDIT
+						 * re-points a blank cell at it. */
+						cutPatternFromCell(data.arranger, appState->selectedArrangerCell[0], appState->selectedArrangerCell[1]);
 					}
 				} else if(isKeyHeld(appState->inputState, KM_EDIT)) {
 					/* Task 4: chip EDIT+arrows behaviour. When the selected
@@ -738,6 +742,21 @@ int main(int argc, char **argv) {
 							handleExpandedChipInput(bareCh, KM_RIGHT, false);
 						}
 					} else {
+						/* Bare EDIT = copy/paste the selected cell's
+						 * pattern. EDIT on a cell that HAS a pattern sets
+						 * the clipboard (copy source); EDIT on a BLANK
+						 * cell pastes the clipboard into it. FUNCTION+EDIT
+						 * cuts (copy + delete) — see above. */
+						if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
+							int cx = appState->selectedArrangerCell[0];
+							int cy = appState->selectedArrangerCell[1];
+							if(copyPatternFromCell(data.arranger, cx, cy) < 0) {
+								int pasted = pastePatternToCell(data.arranger, cx, cy);
+								if(pasted >= 0) {
+									setSelectedPattern(appState, &pasted);
+								}
+							}
+						}
 						if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 							navigateArrangerGraph(KM_LEFT);
 						}
@@ -757,7 +776,9 @@ int main(int argc, char **argv) {
 			case SCENE_PATTERN:
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
-						editCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){ OFF, 0 }); // NOTE OFF
+						/* CUT: copy the step's note into the clipboard
+						 * AND turn it off (was a plain note-off). */
+						cutNoteFromStep(data.patternList, appState->selectedPattern, appState->selectedStep);
 					}
 					if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
 						selectArrangerCell(data.arranger, 1, -1, 0);
@@ -786,8 +807,13 @@ int main(int argc, char **argv) {
 						editCurrentNoteRelative(data.patternList, appState->selectedPattern, appState->selectedStep, (int[]){ 0, -1 });
 					} else {
 						if(currentNoteIsBlank(data.patternList, appState->selectedPattern, appState->selectedStep)) {
-							printf("blank! setting: %i %i", appState->lastUsedNote[0], appState->lastUsedNote[1]);
-							setCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, appState->lastUsedNote);
+							/* PASTE takes precedence over the "add
+							 * lastUsedNote" default: a cut note goes back
+							 * down here. */
+							if(!pasteNoteToStep(data.patternList, appState->selectedPattern, appState->selectedStep)) {
+								printf("blank! setting: %i %i", appState->lastUsedNote[0], appState->lastUsedNote[1]);
+								setCurrentNote(data.patternList, appState->selectedPattern, appState->selectedStep, appState->lastUsedNote);
+							}
 						} else {
 							int *currentStep = getStep(data.patternList, appState->selectedPattern, appState->selectedStep);
 							appState->lastUsedNote[0] = currentStep[0];

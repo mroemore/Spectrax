@@ -358,3 +358,70 @@ void startPlaying(Sequencer *sequencer, PatternList *patternList, Arranger *arra
 		}
 	}
 }
+
+/* Copy/cut/paste clipboard for the arranger's pattern cells and the
+ * pattern screen's note steps.
+ *
+ * g_clipPattern: the arranger clipboard. Copy = remember the cell's
+ * pattern index (the pattern itself stays in the patternList); Cut =
+ * remember + clear the cell's reference; Paste = assign the index to a
+ * (blank) cell. g_clipNote: the pattern-screen clipboard. Cut = remember
+ * the step's note + turn it off; Paste = place it on a (blank) step. */
+static int g_clipPattern = -1;
+static int g_clipNote[NOTE_INFO_SIZE] = { OFF, 0 };
+
+int clipPattern(void) {
+	return g_clipPattern;
+}
+
+int copyPatternFromCell(Arranger *arranger, int x, int y) {
+	if(!arranger || x < 0 || x >= arranger->enabledChannels || y < 0 || y >= MAX_SONG_LENGTH) {
+		return -1;
+	}
+	int pid = arranger->song[x][y];
+	if(pid >= 0) {
+		g_clipPattern = pid;
+	}
+	return pid;
+}
+
+int cutPatternFromCell(Arranger *arranger, int x, int y) {
+	int pid = copyPatternFromCell(arranger, x, y);
+	if(pid >= 0) {
+		arranger->song[x][y] = -1;
+	}
+	return pid;
+}
+
+int pastePatternToCell(Arranger *arranger, int x, int y) {
+	if(!arranger || x < 0 || x >= arranger->enabledChannels || y < 0 || y >= MAX_SONG_LENGTH) {
+		return -1;
+	}
+	if(g_clipPattern < 0 || arranger->song[x][y] >= 0) {
+		return -1; /* nothing to paste, or the target already has a pattern */
+	}
+	arranger->song[x][y] = g_clipPattern;
+	return arranger->song[x][y];
+}
+
+int cutNoteFromStep(PatternList *patternList, int patternIndex, int noteIndex) {
+	int *step = getStep(patternList, patternIndex, noteIndex);
+	if(!step || step[0] == OFF) {
+		return 0;
+	}
+	g_clipNote[0] = step[0];
+	g_clipNote[1] = step[1];
+	setCurrentNote(patternList, patternIndex, noteIndex, (int[]){ OFF, 0 });
+	return 1;
+}
+
+int pasteNoteToStep(PatternList *patternList, int patternIndex, int noteIndex) {
+	if(g_clipNote[0] == OFF) {
+		return 0;
+	}
+	if(!currentNoteIsBlank(patternList, patternIndex, noteIndex)) {
+		return 0; /* target step already has a note */
+	}
+	setCurrentNote(patternList, patternIndex, noteIndex, g_clipNote);
+	return 1;
+}
