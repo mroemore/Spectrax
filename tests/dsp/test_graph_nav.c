@@ -14,6 +14,7 @@
 #include <math.h>
 #include "graph_gui.h"
 #include "gui.h"  /* ARRANGER_WINDOW_ROWS, createArrangerCellGuiNode, etc. */
+#include "gui_inst_internal.h"  /* dialVisibleInViewport */
 
 /* ArrangerCellGuiNode's struct layout lives in gui.c (not gui.h); mirror
  * it locally so the edge-scroll test can flip `row` on a cell to simulate
@@ -599,6 +600,37 @@ static int test_scroll_container_to_visible(void) {
     return 0;
 }
 
+/* Route/ghost lines must skip dest dials scrolled out of their scroll
+ * container's viewport: the container reflow stores a row scrolled above
+ * the viewport as a wrapped uint16 y (e.g. 65518 for -18), which sent
+ * the OUTLV1 route line straight down off-screen. */
+static int test_dial_visible_in_viewport(void) {
+    ScrollContainer *sc = (ScrollContainer *)createScrollContainer(0, 0, 100, 120, 40, "sc");
+    ASSERT_TRUE(sc != NULL, "container created");
+    GuiNode *wraps[8];
+    GuiNode *dials[8];
+    for(int i = 0; i < 8; i++) {
+        wraps[i] = createGuiNode(0, 0, 0, 0, 0, na_horizontal, "wrap", 0, 0);
+        dials[i] = createGuiNode(0, 0, 0, 0, 0, na_vertical, "dial", 1, 0);
+        appendItem(wraps[i], dials[i], 1);
+        appendItem(&sc->base, wraps[i], 1);
+    }
+    /* Start at the top: row 0 visible, row 7 far below. */
+    ASSERT_TRUE(dialVisibleInViewport(dials[0]), "row 0 visible at top");
+    ASSERT_TRUE(!dialVisibleInViewport(dials[7]), "row 7 below viewport at top");
+
+    /* Scroll to the bottom: row 7 visible, rows 0-1 scrolled above the
+     * viewport (their y wraps to huge uint16 values). */
+    scrollToVisible(sc, dials[7]);
+    ASSERT_TRUE(dialVisibleInViewport(dials[7]), "row 7 visible at bottom");
+    ASSERT_TRUE(!dialVisibleInViewport(dials[0]), "row 0 wrapped -> not visible");
+    ASSERT_TRUE(!dialVisibleInViewport(dials[1]), "row 1 wrapped -> not visible");
+
+    freeGuiNode(&sc->base);
+    printf("PASS test_dial_visible_in_viewport\n");
+    return 0;
+}
+
 static int test_scroll_container_grandchild(void) {
     /* Production topology: the container's direct children are
      * non-selectable wrap rows; the SELECTED node is a grandchild (the
@@ -1019,6 +1051,7 @@ int main(void) {
     fails += test_arranger_cell_node();
     fails += test_scroll_container_to_visible();
     fails += test_scroll_container_grandchild();
+    fails += test_dial_visible_in_viewport();
     fails += test_scroll_arranger_window_to();
     fails += test_sync_arranger_selection();
     fails += test_navigate_arranger_graph_to();

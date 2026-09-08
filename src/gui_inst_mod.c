@@ -103,6 +103,7 @@ static void drawWrappedCellText(const char *text, Rectangle r) {
  * clip the picker drawing to it. */
 static GuiNode *findScrollContainerByName(GuiNode *n, const char *name);
 static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p);
+bool dialVisibleInViewport(GuiNode *dial);
 
 static bool destModWrapViewport(GuiNode *root, Parameter *dest, Rectangle *vp) {
 	if(!root || !dest || !vp) {
@@ -1285,7 +1286,7 @@ static void drawPickerGhostLines(void *self) {
 			continue;
 		}
 		GuiNode *dialNode = findDialNodeForParam(base->root, dest);
-		if(!dialNode) {
+		if(!dialNode || !dialVisibleInViewport(dialNode)) {
 			continue;
 		}
 		Vector2 to = { dialNode->x + dialNode->w / 2.0f, dialNode->y + dialNode->h / 2.0f };
@@ -1590,6 +1591,35 @@ static bool connFromSource(ModConnection *c, Mod *src) {
 	return c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src;
 }
 
+/* Is a dial currently VISIBLE inside its scroll container's viewport?
+ * The container reflow stores a row's y as uint16: rows scrolled ABOVE
+ * the viewport get a negative offset that wraps to a huge value (e.g.
+ * 65518 for -18), so route lines read that wrapped y and shoot straight
+ * down off-screen. Reconstruct the signed offset and require the dial's
+ * rect to intersect the viewport. Dials not in a scroll container are
+ * always visible. */
+bool dialVisibleInViewport(GuiNode *dial) {
+	if(!dial) {
+		return false;
+	}
+	GuiNode *p = dial;
+	GuiNode *wrap = NULL;
+	while(p) {
+		if(p->scrollable) {
+			wrap = p;
+			break;
+		}
+		p = p->container;
+	}
+	if(!wrap) {
+		return true;
+	}
+	int dy = (int)(int16_t)dial->y;
+	int top = (int)wrap->y;
+	int bottom = top + (int)wrap->h;
+	return (dy + (int)dial->h > top) && (dy < bottom);
+}
+
 
 static void drawRouteLinesNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
@@ -1619,7 +1649,7 @@ static void drawRouteLinesNode(void *self) {
 		while(c) {
 			if(connFromSource(c, src)) {
 				GuiNode *dialNode = findDialNodeForParam(base->root, p);
-				if(!dialNode) {
+				if(!dialNode || !dialVisibleInViewport(dialNode)) {
 					c = c->next;
 					continue;
 				}

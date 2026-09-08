@@ -31,6 +31,10 @@ void cbOpenClearAllLayer(void *ctx);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);
+/* visibility helper: true when a dial is inside its scroll container's
+ * viewport (route/ghost lines must skip dests scrolled out, whose uint16
+ * y wraps to a huge value). Exposed for the regression test. */
+bool dialVisibleInViewport(GuiNode *dial);
 /* boot-path source-ctx refresh (see gui_inst_mod.c) — called once from
  * createInstrumentGui after igui is assigned */
 void guiInstRefreshSourceCtx(void);
