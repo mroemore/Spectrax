@@ -9,6 +9,12 @@
 
 bool parseHexColor(const char *s, Color *out);
 
+/* Internal helper exposed for cross-TU reuse: map a colour name (as it
+ * appears in a theme JSON's `colors` object) to the corresponding
+ * ColourScheme field. Returns NULL when the name is unrecognised. The
+ * caller owns the returned pointer; mutating it mutates the scheme. */
+Color *themeFieldByName(ColourScheme *cs, const char *name);
+
 /* Load a theme JSON file from `path`. For each present colour key, the
  * matching ColourScheme field is overridden. For each present `font.*`
  * key (path/size/spacing), the FontConfig is overridden. Unknown keys

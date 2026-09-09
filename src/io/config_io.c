@@ -40,7 +40,7 @@ bool parseHexColor(const char *s, Color *out) {
 	return true;
 }
 
-static Color *themeFieldByName(ColourScheme *cs, const char *name) {
+Color *themeFieldByName(ColourScheme *cs, const char *name) {
 	if(!cs || !name) return NULL;
 	if(!strcmp(name, "background")) return &cs->backgroundColor;
 	if(!strcmp(name, "secondaryFont")) return &cs->secondaryFontColour;

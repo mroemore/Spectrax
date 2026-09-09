@@ -17,6 +17,7 @@
 #include "io.h"
 #include "io/preset_io.h"
 #include "io/config_io.h"
+#include "gui_style.h"
 #include "paths.h"
 #include "sequencer.h"
 #include "notes.h"
@@ -561,6 +562,15 @@ int main(int argc, char **argv) {
 		markThemeLoaded();
 	}
 
+	/* Compile the per-widget layout config (sized under
+	 * `cfgDir/layout.json`). compileLayoutConfig resolves every colour
+	 * token against the freshly-loaded ColourScheme, so it must run
+	 * after the theme load block above and before InitGUI which calls
+	 * resolve*Style for the first time. */
+	char layoutPath[1088];
+	snprintf(layoutPath, sizeof(layoutPath), "%s/layout.json", cfgDir);
+	compileLayoutConfig(layoutPath, getColourScheme());
+
 	/* Now chdir to the data dir for samples / songs / presets. */
 	if(!chdirToDataDir(dataDir)) {
 		fprintf(stderr, "spectrax: cannot use data dir '%s'\n", dataDir);
@@ -569,6 +579,10 @@ int main(int argc, char **argv) {
 
 	// loading screen
 	InitGUI();
+	/* Once the GUI has registered its node tree, every resolve*Style
+	 * lookup has a real class name to fall back on — finalizeStyles
+	 * is the post-init hook for any work that needs the live tree. */
+	finalizeStyles();
 	Texture2D loadingImage = LoadTexture("resources/images/spectrax_splash5_fix_2x.png");
 
 	BeginDrawing();

@@ -51,6 +51,14 @@ for name in sample_project.json smoke_viz.c smoke_viz.frag; do
     fi
 done
 
+# Shipped config defaults — copy from src/ to bin/ on every install so
+# the XDG provisioning below can find them. clr.json / cfg.json are
+# already tracked in bin/; layout.json is the new kid in town.
+if [ -f "$SOURCE_ROOT/src/layout.json" ] && [ ! -e "$BIN/layout.json" ]; then
+    cp "$SOURCE_ROOT/src/layout.json" "$BIN/layout.json"
+    echo "installed layout.json -> bin/"
+fi
+
 # --- XDG provisioning -------------------------------------------------
 
 # Never touch the real $HOME during a destdir (packaging) install.
@@ -70,7 +78,7 @@ DATA_DIR="$XDG_DATA/spectrax"
 mkdir -p "$CONFIG_DIR" "$DATA_DIR"
 
 # Config: copy the shipped defaults only if absent (never clobber user config).
-for name in cfg.json clr.json; do
+for name in cfg.json clr.json layout.json; do
     if [ ! -e "$CONFIG_DIR/$name" ] && [ -f "$BIN/$name" ]; then
         cp "$BIN/$name" "$CONFIG_DIR/$name"
         echo "xdg: config $name -> $CONFIG_DIR/$name"
