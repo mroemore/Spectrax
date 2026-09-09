@@ -181,12 +181,23 @@ const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn) {
 void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *out) {
 	int cx = gn->x + gn->padding;
 	int cy = gn->y + gn->padding;
-	out->knobX = cx + 2;
+	int contentW = (int)gn->w - 2 * (int)gn->padding;
+	/* Center the knob + value group in the cell when the cell is wider
+	 * than the group; otherwise keep the classic left-anchored inset so
+	 * narrow cells (env rows) render exactly as before. */
+	int groupW = st->knob.size + st->value.offsetX + st->value.width;
+	int startX;
+	if(groupW < contentW) {
+		startX = cx + (contentW - groupW) / 2;
+	} else {
+		startX = cx + 2;
+	}
+	out->knobX = startX;
 	out->knobY = cy;
 	out->knobW = st->knob.size;
 	out->knobH = st->knob.size;
-	out->valueX = out->knobX + st->value.offsetX;
-	out->valueY = out->knobY + st->value.offsetY;
+	out->valueX = startX + st->value.offsetX;
+	out->valueY = cy + st->value.offsetY;
 	out->valueW = st->value.width;
 	out->valueH = st->value.height;
 	out->labelX = cx + st->label.offsetX;

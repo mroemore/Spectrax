@@ -60,6 +60,75 @@ static int test_custom_class_geometry(void);
 static int test_btn_and_typelabel_styles(void);
 static int test_apply_layout_weights_and_classes(void);
 
+static int test_reflow_fills_weighted_row(void) {
+	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
+	 * 566px-wide row. The old integer-division reflow truncated
+	 * x_scalar to 1 and left the row ~half empty; the proportional
+	 * reflow must fill the content width exactly. */
+	GuiNode *row = createGuiNode(0, 0, 566, 35, 1, na_horizontal, "row", 0, 0);
+	GuiNode *c[6];
+	for(int i = 0; i < 5; i++) {
+		c[i] = createBlankGuiNode();
+		appendItem(row, c[i], 60);
+	}
+	c[5] = createBlankGuiNode();
+	appendItem(row, c[5], 4);
+
+	int contentDim = (int)row->w - 2 * (int)row->padding;
+	ASSERT_TRUE(contentDim == 564, "content dim 564");
+	int sum = 0;
+	for(int i = 0; i < 6; i++) {
+		sum += (int)c[i]->w;
+	}
+	ASSERT_TRUE(sum == contentDim, "row fills container exactly");
+	ASSERT_TRUE(c[0]->w > 90, "dial wide enough for its internals");
+	ASSERT_TRUE(c[4]->x > c[3]->x && c[3]->x > c[2]->x, "positions advance");
+
+	freeGuiNode(row);
+	printf("PASS test_reflow_fills_weighted_row\n");
+	return 0;
+}
+
+static int test_reflow_fills_weighted_column(void) {
+	GuiNode *col = createGuiNode(0, 0, 200, 400, 2, na_vertical, "col", 0, 0);
+	GuiNode *c0 = createBlankGuiNode();
+	GuiNode *c1 = createBlankGuiNode();
+	GuiNode *c2 = createBlankGuiNode();
+	appendItem(col, c0, 1);
+	appendItem(col, c1, 2);
+	appendItem(col, c2, 1);
+
+	int contentDim = (int)col->h - 2 * (int)col->padding;
+	int sum = (int)c0->h + (int)c1->h + (int)c2->h;
+	ASSERT_TRUE(sum == contentDim, "column fills exactly");
+	ASSERT_TRUE(c1->h > c0->h, "weight-2 child taller than weight-1");
+
+	freeGuiNode(col);
+	printf("PASS test_reflow_fills_weighted_column\n");
+	return 0;
+}
+
+static int test_dial_geometry_centers_in_wide_cell(void) {
+	/* wide cell: knob+value group centers; narrow cell: classic inset */
+	GuiNode *wide = createGuiNode(100, 200, 113, 35, 1, na_horizontal, "w", 1, 0);
+	const DialStyle *d = resolveDialStyle(wide);
+	DialGeometry g;
+	computeDialGeometry(wide, d, &g);
+	/* contentW = 113-2 = 111; groupW = 20+28+38 = 86; slack 25; startX = cx+12 */
+	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob");
+	freeGuiNode(wide);
+
+	GuiNode *narrow = createGuiNode(100, 200, 58, 35, 2, na_horizontal, "n", 1, 0);
+	const DialStyle *dn = resolveDialStyle(narrow);
+	DialGeometry gn;
+	computeDialGeometry(narrow, dn, &gn);
+	/* contentW = 58-4 = 54 < 86 -> classic inset cx+2 = 104 */
+	ASSERT_TRUE(gn.knobX == 100 + 2 + 2, "narrow cell keeps classic inset");
+	freeGuiNode(narrow);
+	printf("PASS test_dial_geometry_centers_in_wide_cell\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
@@ -72,6 +141,9 @@ int main(void) {
 	fails += test_custom_class_geometry();
 	fails += test_btn_and_typelabel_styles();
 	fails += test_apply_layout_weights_and_classes();
+	fails += test_reflow_fills_weighted_row();
+	fails += test_reflow_fills_weighted_column();
+	fails += test_dial_geometry_centers_in_wide_cell();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;

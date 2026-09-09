@@ -8,6 +8,7 @@
 #include "raylib.h"
 #include "gui.h"
 #include "graph_gui.h"
+#include "gui_style.h"
 #include "input.h"
 #include "modsystem.h"
 #include "notes.h"
@@ -66,16 +67,19 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 
 	for(int i = 0; i < 4; i++) {
 		for(int j = 0; j < 5; j++) {
-			appendItem(oprow[i], dials[i][j], 60);
+			appendItem(oprow[i], dials[i][j], 1);
 		}
-		appendItem(oprow[i], createBlankGuiNode(), 4);
+		/* Task 5.2 follow-up: the op row's arrangement (equal-width
+		 * dials filling the row) is a named layout, applied from
+		 * layout.json — the first module to dogfood the layout tier. */
+		applyLayout(oprow[i], "fm-op-row");
 		appendItem(fmScroll, oprow[i], 1);
 	}
 
-	appendItem(miscrow, alg, 60);
-	appendItem(miscrow, pan, 60);
-	appendItem(miscrow, gain, 60);
-	appendItem(miscrow, createBlankGuiNode(), 8);
+	appendItem(miscrow, alg, 1);
+	appendItem(miscrow, pan, 1);
+	appendItem(miscrow, gain, 1);
+	applyLayout(miscrow, "fm-op-row");
 	appendItem(fmScroll, miscrow, 1);
 
 	appendItem(container, fmScroll, weight);

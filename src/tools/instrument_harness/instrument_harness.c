@@ -62,6 +62,7 @@
 #include "gui.h"
 #include "gui_layer.h"
 #include "gui_inst_internal.h"
+#include "gui_style.h"
 #include "graph_gui.h"
 #include "input.h"
 
@@ -1651,6 +1652,8 @@ int main(int argc, char **argv) {
 	int scripted = parseArgs(argc, argv, &scriptPath, &probeNSources);
 
 	InitGUI();
+	compileLayoutConfig("layout.json", getColourScheme());
+	finalizeStyles();
 
 	paTestData data = { 0 };
 	ApplicationState *appState;

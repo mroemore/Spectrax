@@ -281,6 +281,26 @@ void reflowCoordinates(GuiNode *n) {
 	int x_scalar = 0;
 	int weightsAccumlator = 0;
 
+	/* Proportional distribution: each child gets a share of the
+	 * content area proportional to its weight, and the LAST child
+	 * absorbs the rounding remainder so the row/column fills the
+	 * container exactly. The old integer division (`n->w / total`)
+	 * truncated to 0 for any row whose weights summed above the
+	 * container width (e.g. FM op rows at weight 60 x5 + blank), which
+	 * silently collapsed such rows to near-zero scaling and left the
+	 * container mostly empty. */
+	int totalW = n->totalItemWeights > 0 ? n->totalItemWeights : 1;
+	int contentDim = 0;
+	int accum = 0;
+	if(n->nodeAlignment == na_horizontal) {
+		contentDim = (int)n->w - 2 * (int)n->padding;
+	} else {
+		contentDim = (int)n->h - 2 * (int)n->padding;
+	}
+	if(contentDim < 0) {
+		contentDim = 0;
+	}
+
 	ListElement *current = n->items->head;
 	for(int i = 0; i < n->itemCount; i++) {
 		GuiNode *cn = *(GuiNode **)current->data;
@@ -292,28 +312,32 @@ void reflowCoordinates(GuiNode *n) {
 
 		switch(n->nodeAlignment) {
 			case na_vertical: {
-				y_scalar = (n->h / n->totalItemWeights);
-				cn->y = n->y + (y_scalar * weightsAccumlator) + (n->padding);
-				int ch = (y_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
-				if(ch < (int)cn->padding * 2 + 4) {
-					ch = (int)cn->padding * 2 + 4;
+				int ch = (i == n->itemCount - 1)
+				           ? contentDim - accum
+				           : (*(int *)cn->weightRef->data * contentDim) / totalW;
+				int minH = (int)cn->padding * 2 + 4;
+				if(ch < minH) {
+					ch = minH;
 				}
+				cn->y = n->y + n->padding + accum;
 				cn->h = (uint16_t)ch;
 				break;
 			}
 			case na_horizontal: {
-				x_scalar = (n->w / n->totalItemWeights);
-				cn->x = n->x + (x_scalar * weightsAccumlator) + (n->padding);
-				int cw = (x_scalar * (*(int *)cn->weightRef->data)) - (n->padding * 2);
-				if(cw < (int)cn->padding * 2 + 4) {
-					cw = (int)cn->padding * 2 + 4;
+				int cw = (i == n->itemCount - 1)
+				           ? contentDim - accum
+				           : (*(int *)cn->weightRef->data * contentDim) / totalW;
+				int minW = (int)cn->padding * 2 + 4;
+				if(cw < minW) {
+					cw = minW;
 				}
+				cn->x = n->x + n->padding + accum;
 				cn->w = (uint16_t)cw;
 				break;
 			}
 		}
 
-		weightsAccumlator += *(int *)cn->weightRef->data;
+		accum += (int)((n->nodeAlignment == na_horizontal) ? cn->w : cn->h);
 		reflowCoordinates(cn);
 		current = current->next;
 	}

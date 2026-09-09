@@ -26,6 +26,11 @@
             "padding": 4,
             "weights": [1, 2, 1],
             "childClasses": ["", "big-dial", ""]
+        },
+        "fm-op-row": {
+            "orientation": "horizontal",
+            "padding": 1,
+            "weights": [1, 1, 1, 1, 1]
         }
     }
 }
