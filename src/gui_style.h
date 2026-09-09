@@ -14,6 +14,8 @@ typedef struct {
 	int radius;
 	int startAngle;
 	int sweep;
+	int offsetX;
+	int offsetY;
 	Color color;
 	bool hasAsset;
 	char assetPath[256];

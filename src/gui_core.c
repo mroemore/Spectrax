@@ -282,13 +282,17 @@ void drawDialGuiNode(void *self) {
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
-		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
 	} else {
 		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
 		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
+		/* DrawTexturePro places the rotated quad's centre at
+		 * (dest.x, dest.y), not at (dest + origin) — so the dest
+		 * top-left must carry the +radius offset for the knob graphic
+		 * to sit over the arc. knob.offsetX/offsetY nudge it further. */
 		DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 },
-		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
@@ -396,13 +400,17 @@ void drawDiscreteDialGuiNode(void *self) {
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
-		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
 	} else {
 		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
 		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
+		/* DrawTexturePro places the rotated quad's centre at
+		 * (dest.x, dest.y), not at (dest + origin) — so the dest
+		 * top-left must carry the +radius offset for the knob graphic
+		 * to sit over the arc. knob.offsetX/offsetY nudge it further. */
 		DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 },
-		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);

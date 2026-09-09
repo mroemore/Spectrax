@@ -57,14 +57,14 @@ void applyLayout(GuiNode *container, const char *name) {
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
-	.knob   = { 20, 10, -225, 270, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 	.value  = { "%05.2f", 38, 14, 28, 2, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static DialStyle g_defaultDialDiscrete = {
-	.knob   = { 20, 10, -225, 270, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 	.value  = { "%i", 10, 14, 6, 5, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
@@ -239,6 +239,8 @@ static void overlayKnob(cJSON *o, const ColourScheme *cs, KnobStyle *k) {
 	k->radius = jsonInt(o, "radius", k->radius);
 	k->startAngle = jsonInt(o, "startAngle", k->startAngle);
 	k->sweep = jsonInt(o, "sweep", k->sweep);
+	k->offsetX = jsonInt(o, "offsetX", k->offsetX);
+	k->offsetY = jsonInt(o, "offsetY", k->offsetY);
 	jsonColor(o, "color", cs, &k->color);
 	jsonStr(o, "asset", k->assetPath, sizeof(k->assetPath));
 	if(k->assetPath[0]) {
@@ -546,5 +548,19 @@ extern Font textFont;
 extern Font symbolFont;
 
 void finalizeStyles(void) {
+	/* Load each dial class's knob texture (asset path from layout.json).
+	 * Runs after InitGUI so raylib is ready; a failed load leaves
+	 * assetTex.id == 0 and the draw falls back to the procedural
+	 * disc/arc. */
+	for(int i = 0; i < g_dialClassCount; i++) {
+		if(g_dialClasses[i].knob.assetPath[0] && g_dialClasses[i].knob.assetTex.id == 0) {
+			g_dialClasses[i].knob.assetTex = LoadTexture(g_dialClasses[i].knob.assetPath);
+		}
+	}
+	for(int i = 0; i < g_discreteDialClassCount; i++) {
+		if(g_discreteDialClasses[i].knob.assetPath[0] && g_discreteDialClasses[i].knob.assetTex.id == 0) {
+			g_discreteDialClasses[i].knob.assetTex = LoadTexture(g_discreteDialClasses[i].knob.assetPath);
+		}
+	}
 	(void)pixelFont; (void)textFont; (void)symbolFont;
 }
