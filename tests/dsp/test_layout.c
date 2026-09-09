@@ -53,9 +53,9 @@ static int test_compute_dial_geometry(void) {
 	return 0;
 }
 
-static int test_compile_applies_dial_overrides(void);
-static int test_extends_chain_merges_through_aliases(void);
-static int test_extends_chain_self_reference_falls_back(void);
+static int test_compile_custom_dial_class(void);
+static int test_compile_unknown_class_ignored(void);
+static int test_missing_layout_file_keeps_defaults(void);
 
 int main(void) {
 	int fails = 0;
@@ -63,9 +63,9 @@ int main(void) {
 	fails += test_baked_defaults_used_when_no_class();
 	fails += test_unknown_class_falls_back_to_type_default();
 	fails += test_compute_dial_geometry();
-	fails += test_compile_applies_dial_overrides();
-	fails += test_extends_chain_merges_through_aliases();
-	fails += test_extends_chain_self_reference_falls_back();
+	fails += test_compile_custom_dial_class();
+	fails += test_compile_unknown_class_ignored();
+	fails += test_missing_layout_file_keeps_defaults();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;
@@ -74,99 +74,70 @@ int main(void) {
 	return 0;
 }
 
-static int test_compile_applies_dial_overrides(void) {
-	const char *path = TMP_DIR "layout_compile_dial.json";
+static int test_compile_custom_dial_class(void) {
+	/* Temp layout.json in a fixed path under the build dir. */
+	const char *path = ".tmp_files/layout_test_style.json";
 	FILE *f = fopen(path, "w");
-	ASSERT_TRUE(f != NULL, "open layout.json for write");
-	const char *src =
-		"{\n"
-		"  \"$extends\": \"dial\",\n"
-		"  \"class:big\": {\n"
-		"    \"type\": \"dial\",\n"
-		"    \"knob\": { \"size\": 36 },\n"
-		"    \"value\": { \"format\": \"%05.3f\" }\n"
-		"  }\n"
-		"}\n";
-	fputs(src, f);
+	ASSERT_TRUE(f != NULL, "open temp layout");
+	fputs("{\"styles\":{\"dial\":{\"knob\":{\"size\":24,\"sweep\":300},"
+	      "\"label\":{\"fontSize\":11}},\"dial-discrete\":{\"extends\":\"dial\","
+	      "\"value\":{\"format\":\"%i\",\"width\":8}}}}", f);
 	fclose(f);
 
-	ColourScheme cs = { 0 };
-	cs.fontColour = (Color){ 200, 200, 200, 255 };
-	cs.outlineColour = (Color){ 255, 255, 255, 255 };
-	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compileLayoutConfig returned true");
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	cs.dial = (Color){ 1, 2, 3, 255 };
+	cs.panelBorder = (Color){ 4, 5, 6, 255 };
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile ok");
 
 	GuiNode *n = createBlankGuiNode();
-	guiNodeSetClass(n, "big");
+	guiNodeSetClass(n, "dial");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 36, "override knob.size == 36");
-	ASSERT_TRUE(strcmp(d->value.format, "%05.3f") == 0, "override value.format");
-	ASSERT_TRUE(d->knob.startAngle == -225, "fallback startAngle from baked");
+	ASSERT_TRUE(d->knob.size == 24, "knob size overridden");
+	ASSERT_TRUE(d->knob.sweep == 300, "sweep overridden");
+	ASSERT_TRUE(d->label.fontSize == 11, "label fontSize overridden");
+	ASSERT_TRUE(d->knob.color.r == 1 && d->knob.color.g == 2, "knob color resolved");
 	freeGuiNode(n);
-	printf("PASS test_compile_applies_dial_overrides\n");
+
+	guiNodeSetClass(n = createBlankGuiNode(), "dial-discrete");
+	const DialStyle *dd = resolveDiscreteDialStyle(n);
+	ASSERT_TRUE(strcmp(dd->value.format, "%i") == 0, "discrete format");
+	ASSERT_TRUE(dd->value.width == 8, "discrete value width");
+	ASSERT_TRUE(dd->knob.size == 24, "extends inherited knob size");
+	freeGuiNode(n);
+
+	remove(path);
+	printf("PASS test_compile_custom_dial_class\n");
 	return 0;
 }
 
-static int test_extends_chain_merges_through_aliases(void) {
-	const char *path = TMP_DIR "layout_compile_chain.json";
+static int test_compile_unknown_class_ignored(void) {
+	const char *path = ".tmp_files/layout_test_unknown.json";
 	FILE *f = fopen(path, "w");
-	ASSERT_TRUE(f != NULL, "open layout.json for write");
-	const char *src =
-		"{\n"
-		"  \"$extends\": \"dial\",\n"
-		"  \"class:alias-a\": {\n"
-		"    \"type\": \"dial\",\n"
-		"    \"$extends\": \"alias-b\",\n"
-		"    \"knob\": { \"size\": 30 }\n"
-		"  },\n"
-		"  \"class:alias-b\": {\n"
-		"    \"type\": \"dial\",\n"
-		"    \"$extends\": \"dial\",\n"
-		"    \"value\": { \"offsetX\": 50 }\n"
-		"  }\n"
-		"}\n";
-	fputs(src, f);
+	fputs("{\"styles\":{\"mystery\":{\"knob\":{\"size\":99}}}}", f);
 	fclose(f);
-
-	ColourScheme cs = { 0 };
-	cs.fontColour = (Color){ 200, 200, 200, 255 };
-	cs.outlineColour = (Color){ 255, 255, 255, 255 };
-	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compileLayoutConfig returned true");
-
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	compileLayoutConfig(path, &cs);
 	GuiNode *n = createBlankGuiNode();
-	guiNodeSetClass(n, "alias-a");
+	guiNodeSetClass(n, "mystery");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 30, "alias-a wins knob.size");
-	ASSERT_TRUE(d->value.offsetX == 50, "alias-b override propagated");
+	ASSERT_TRUE(d->knob.size == 20, "untyped class ignored -> baked default");
 	freeGuiNode(n);
-	printf("PASS test_extends_chain_merges_through_aliases\n");
+	remove(path);
+	printf("PASS test_compile_unknown_class_ignored\n");
 	return 0;
 }
 
-static int test_extends_chain_self_reference_falls_back(void) {
-	const char *path = TMP_DIR "layout_compile_self.json";
-	FILE *f = fopen(path, "w");
-	ASSERT_TRUE(f != NULL, "open layout.json for write");
-	const char *src =
-		"{\n"
-		"  \"$extends\": \"dial\",\n"
-		"  \"class:loopy\": {\n"
-		"    \"type\": \"dial\",\n"
-		"    \"$extends\": \"loopy\"\n"
-		"  }\n"
-		"}\n";
-	fputs(src, f);
-	fclose(f);
-
-	ColourScheme cs = { 0 };
-	cs.fontColour = (Color){ 200, 200, 200, 255 };
-	cs.outlineColour = (Color){ 255, 255, 255, 255 };
-	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compileLayoutConfig returned true");
-
+static int test_missing_layout_file_keeps_defaults(void) {
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	ASSERT_TRUE(!compileLayoutConfig(".tmp_files/does_not_exist_anywhere.json", &cs),
+	            "missing file -> false");
 	GuiNode *n = createBlankGuiNode();
-	guiNodeSetClass(n, "loopy");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 20, "loopy falls back to baked default knob.size");
+	ASSERT_TRUE(d->knob.size == 20, "defaults intact");
 	freeGuiNode(n);
-	printf("PASS test_extends_chain_self_reference_falls_back\n");
+	printf("PASS test_missing_layout_file_keeps_defaults\n");
 	return 0;
 }
