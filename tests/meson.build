@@ -10,6 +10,7 @@ test_names = [
   'test_graph_nav',
   'test_cfg',
   'test_input',
+  'test_layout',
 ]
 
 # Task 3: gui.c hosts the instrument chip node + creator + recogniser.

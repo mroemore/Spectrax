@@ -16,6 +16,7 @@ core_sources = files(
   'notes.c',
   'sample.c',
   'graph_gui.c',
+  'gui_style.c',
   'io.c',
   'io/gui_io.c',
   'io/preset_io.c',
