@@ -281,7 +281,9 @@ static int collectChain(cJSON *styles, const char *name, cJSON *obj, cJSON **out
 		const char *parent = e->valuestring;
 		obj = cJSON_GetObjectItemCaseSensitive(styles, parent);
 		if(!obj) {
-			return 0;
+			/* Parent named in extends isn't in this styles object; treat
+			 * baked default as implicit base. */
+			break;
 		}
 	}
 	if(n > maxN) n = maxN;

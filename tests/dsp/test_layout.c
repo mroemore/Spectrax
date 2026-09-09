@@ -56,6 +56,7 @@ static int test_compute_dial_geometry(void) {
 static int test_compile_custom_dial_class(void);
 static int test_compile_unknown_class_ignored(void);
 static int test_missing_layout_file_keeps_defaults(void);
+static int test_custom_class_geometry(void);
 
 int main(void) {
 	int fails = 0;
@@ -66,11 +67,40 @@ int main(void) {
 	fails += test_compile_custom_dial_class();
 	fails += test_compile_unknown_class_ignored();
 	fails += test_missing_layout_file_keeps_defaults();
+	fails += test_custom_class_geometry();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;
 	}
 	printf("ALL layout tests passed\n");
+	return 0;
+}
+
+static int test_custom_class_geometry(void) {
+	const char *path = ".tmp_files/layout_test_geom.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{\"big-dial\":{\"extends\":\"dial\","
+	      "\"knob\":{\"size\":30},\"value\":{\"offsetX\":40,\"offsetY\":6},"
+	      "\"label\":{\"offsetX\":-40,\"offsetY\":24}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	compileLayoutConfig(path, &cs);
+
+	GuiNode *n = createGuiNode(100, 200, 80, 40, 4, na_horizontal, "g", 1, 0);
+	guiNodeSetClass(n, "big-dial");
+	const DialStyle *d = resolveDialStyle(n);
+	ASSERT_TRUE(d->knob.size == 30, "knob size");
+	DialGeometry g;
+	computeDialGeometry(n, d, &g);
+	ASSERT_TRUE(g.knobW == 30, "geometry knobW");
+	ASSERT_TRUE(g.valueX == 106 + 40, "geometry valueX with offset");
+	ASSERT_TRUE(g.valueY == 204 + 6, "geometry valueY");
+	ASSERT_TRUE(g.labelX == 104 - 40, "geometry labelX");
+	ASSERT_TRUE(g.labelY == 204 + 24, "geometry labelY");
+	freeGuiNode(n);
+	remove(path);
+	printf("PASS test_custom_class_geometry\n");
 	return 0;
 }
 

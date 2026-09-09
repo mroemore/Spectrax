@@ -17,8 +17,9 @@ extern Texture2D dial;
 
 /* core node helpers shared by the screen modules (defined in gui_core.c) */
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
+void drawPanelRect(int x, int y, int w, int h, float roundness, float line_w, bool highlighted, Color borderColour);
 void drawWrapperNode(void *self);
-void drawValueDisplay(int x, int y, int w, int h, char *text);
+void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour);
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, OnPressCallback cb, Parameter *p);
 GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);

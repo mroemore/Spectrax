@@ -15,6 +15,7 @@
 #include "io/preset_io.h"
 #include "io.h"
 #include "gui_internal.h"
+#include "gui_style.h"
 
 
 /* ---- module state (shared with the screen modules via gui_internal.h) ---- */
@@ -29,7 +30,7 @@ void drawColourRectangle(int x, int y, int w, int h, float roundness, float line
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 
-void drawValueDisplay(int x, int y, int w, int h, char *text);
+void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour);
 
 void drawWrapperNode(void *self);
 
@@ -217,26 +218,47 @@ void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int
 }
 
 
-void drawValueDisplay(int x, int y, int w, int h, char *text) {
+void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour) {
 	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
-	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, cs.valueText);
+	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, textColour);
 }
 
 
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
-	/* Square panel with a drop shadow (offset by the border width)
-	 * instead of the old rounded-rectangle border. The shadow is drawn
-	 * first so it reads as an edge behind the panel. */
+	/* Backwards-compatible wrapper: delegates to the colour-aware
+	 * drawPanelRect so every panel caller (action buttons, type labels,
+	 * etc.) reads its border from the theme by default. Dial callers go
+	 * through drawPanelRect directly to pass the resolved border colour
+	 * from the dial style. */
+	drawPanelRect(x, y, w, h, roundness, line_w, highlighted, cs.panelBorder);
+}
+
+
+/* Colour-aware panel (shadow + fill + border). drawColourRectangle
+ * keeps its callers by delegating with the theme's default border. */
+void drawPanelRect(int x, int y, int w, int h, float roundness, float line_w, bool highlighted, Color borderColour) {
 	(void)roundness;
 	int o = (int)line_w;
 	Color shadowColour = highlighted ? (Color){ 0, 0, 0, 200 } : (Color){ 0, 0, 0, 140 };
 	DrawRectangle(x + o, y + o, w, h, shadowColour);
 	DrawRectangle(x, y, w, h, cs.panel);
-	if(highlighted) {
-		DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, cs.highlightedCell);
-	} else {
-		DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, cs.panelBorder);
+	DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, highlighted ? cs.highlightedCell : borderColour);
+}
+
+
+/* Map a style's fontName (text/symbol/pixel) to the corresponding Font
+ * global. The two named fonts come from the GUI init; everything else
+ * (including the empty string) falls back to pixelFont. */
+Font *styleFont(const char *name) {
+	extern Font textFont;
+	extern Font symbolFont;
+	if(name && strcmp(name, "text") == 0) {
+		return &textFont;
 	}
+	if(name && strcmp(name, "symbol") == 0) {
+		return &symbolFont;
+	}
+	return &pixelFont;
 }
 
 
@@ -245,31 +267,34 @@ void drawDialGuiNode(void *self) {
 	if(!gn->p) {
 		return;
 	}
-	/* Use baseValue (unmodulated) so the dial reflects the user's actual
-	 * setting rather than the envelope-modulated currentValue. The dial
-	 * is a control surface; the modulated value is for the audio path. */
+	const DialStyle *st = resolveDialStyle(gn);
 	char paramValue[50];
-	snprintf(paramValue, 50, "%05.2f", gn->p->baseValue);
+	snprintf(paramValue, 50, st->value.format, gn->p->baseValue);
 	float range = gn->p->maxValue - gn->p->minValue;
 	float angle = 0.0f;
 	if(range > 0.0f) {
-		angle = (gn->p->baseValue - gn->p->minValue) / (range / 100) * 2.7;
+		float norm = (gn->p->baseValue - gn->p->minValue) / (range / 100.0f);
+		angle = norm * (st->knob.sweep / 100.0f);
 	}
-	int tmpx = gn->x;
-	int tmpy = gn->y;
-	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
-	tmpx += gn->padding + 2;
-	tmpy += gn->padding;
-	/* Compact geometry so the dial + value + label stack fits the
-	 * ~31px-tall cells the reflow gives the FM/envelope rows. The old
-	 * 24px dial + label at +30 overflowed the cell and clipped the
-	 * label into the row below (the reported unreadable control
-	 * labels). 20px dial, label right under it at +22 -> 31px total. */
-	drawRotatedDial(tmpx, tmpy, 20, 20, 10, -225, angle);
-	tmpx += 28;
-	tmpy += 2;
-	drawValueDisplay(tmpx, tmpy, 38, 14, paramValue);
-	DrawTextEx(pixelFont, gn->name, dialLabelPos(gn, -28, 18), 9, 1, gn->selected ? cs.labelSelected : cs.label);
+	DialGeometry g;
+	computeDialGeometry(gn, st, &g);
+
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
+		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
+		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
+	} else {
+		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
+		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
+		DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 },
+		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
+	}
+	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
+	Font *lf = styleFont(st->label.fontName);
+	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX, g.labelY }, st->label.fontSize, st->label.spacing,
+	           gn->selected ? st->label.colorSelected : st->label.color);
 }
 
 
@@ -349,27 +374,34 @@ void drawDiscreteDialGuiNode(void *self) {
 	if(!gn->p) {
 		return;
 	}
-	/* baseValue (unmodulated) -- see drawDialGuiNode comment. */
+	const DialStyle *st = resolveDiscreteDialStyle(gn);
 	char paramValue[50];
-	snprintf(paramValue, 50, "%i", (int)gn->p->baseValue);
+	snprintf(paramValue, 50, st->value.format, (int)gn->p->baseValue);
 	float range = gn->p->maxValue - gn->p->minValue;
 	float angle = 0.0f;
 	if(range > 0.0f) {
-		angle = (gn->p->baseValue - gn->p->minValue) / (range / 100) * 2.7;
+		float norm = (gn->p->baseValue - gn->p->minValue) / (range / 100.0f);
+		angle = norm * (st->knob.sweep / 100.0f);
 	}
-	int tmpx = gn->x;
-	int tmpy = gn->y;
+	DialGeometry g;
+	computeDialGeometry(gn, st, &g);
 
-	drawColourRectangle(tmpx, tmpy, gn->w, gn->h, 0.125, 2.0, gn->selected);
-	tmpx += gn->padding;
-	tmpy += gn->padding;
-	/* Compact geometry -- see drawDialGuiNode. */
-	drawRotatedDial(tmpx, tmpy, 20, 20, 10, -225, angle);
-	tmpx += 6;
-	tmpy += 5;
-	drawValueDisplay(tmpx, tmpy, 10, 14, paramValue);
-
-	DrawTextEx(pixelFont, gn->name, dialLabelPos(gn, 6, 21), 9, 1, gn->selected ? cs.labelSelected : cs.label);
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
+		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
+		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
+	} else {
+		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
+		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
+		DrawTexturePro(dial, (Rectangle){ 0, 0, 48, 48 },
+		               (Rectangle){ g.knobX, g.knobY, g.knobW, g.knobH },
+		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
+	}
+	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
+	Font *lf = styleFont(st->label.fontName);
+	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX, g.labelY }, st->label.fontSize, st->label.spacing,
+	           gn->selected ? st->label.colorSelected : st->label.color);
 }
 
 
