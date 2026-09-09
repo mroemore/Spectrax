@@ -4,7 +4,7 @@
             "knob":  { "size": 20, "radius": 10, "startAngle": -225, "sweep": 270, "color": "dial" },
             "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "panelBorder" },
             "value": { "format": "%05.2f", "width": 38, "height": 14, "offsetX": 28, "offsetY": 2, "color": "valueText" },
-            "label": { "fontName": "pixel", "fontSize": 9, "spacing": 1, "offsetX": -28, "offsetY": 18, "color": "label", "colorSelected": "labelSelected" }
+            "label": { "font": "pixel", "fontSize": 9, "spacing": 1, "offsetX": -28, "offsetY": 18, "color": "label", "colorSelected": "labelSelected" }
         },
         "dial-discrete": {
             "extends": "dial",
@@ -13,10 +13,10 @@
         },
         "btn": {
             "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "panelBorder" },
-            "label": { "fontName": "pixel", "fontSize": 10, "spacing": 1, "offsetX": 4, "offsetY": 4, "color": "label", "colorSelected": "labelSelected" }
+            "label": { "font": "pixel", "fontSize": 10, "spacing": 1, "offsetX": 4, "offsetY": 4, "color": "label", "colorSelected": "labelSelected" }
         },
         "type-label": {
-            "label": { "fontName": "pixel", "fontSize": 10, "spacing": 1, "color": "label", "colorSelected": "labelSelected" },
+            "label": { "font": "pixel", "fontSize": 10, "spacing": 1, "color": "label", "colorSelected": "labelSelected" },
             "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "outlineColour" }
         }
     },
