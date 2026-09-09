@@ -44,10 +44,15 @@ static int test_compute_dial_geometry(void) {
 	const DialStyle *d = resolveDialStyle(n);
 	DialGeometry g;
 	computeDialGeometry(n, d, &g);
-	ASSERT_TRUE(g.knobX == 106, "knobX = x+padding+2");
-	ASSERT_TRUE(g.knobY == 204, "knobY = y+padding");
-	ASSERT_TRUE(g.valueX == 106 + 28, "valueX");
-	ASSERT_TRUE(g.labelX == 104 - 28, "labelX = content origin + offset");
+	/* contentW = 80-8 = 72 < groupW 86 -> classic horizontal inset cx+2 */
+	ASSERT_TRUE(g.knobX == 106, "narrow cell keeps horizontal inset");
+	/* contentH = 40-8 = 32 > knob 20 -> knob centers vertically */
+	ASSERT_TRUE(g.knobY == 204 + (32 - 20) / 2, "knob centers vertically");
+	/* value follows the knob; label centres in the cell below the knob */
+	ASSERT_TRUE(g.valueX == g.knobX + 28, "valueX is knob-relative");
+	ASSERT_TRUE(g.valueY == g.knobY + 2, "valueY is knob-relative");
+	ASSERT_TRUE(g.labelX == 104 + 36, "labelX centres in the cell");
+	ASSERT_TRUE(g.labelY == g.knobY + 18, "labelY sits below the knob");
 	freeGuiNode(n);
 	printf("PASS test_compute_dial_geometry\n");
 	return 0;
@@ -109,13 +114,19 @@ static int test_reflow_fills_weighted_column(void) {
 }
 
 static int test_dial_geometry_centers_in_wide_cell(void) {
-	/* wide cell: knob+value group centers; narrow cell: classic inset */
+	/* wide cell: knob centers on both axes, value + label follow the
+	 * knob (knob-relative); narrow cell: classic left/top inset. */
 	GuiNode *wide = createGuiNode(100, 200, 113, 35, 1, na_horizontal, "w", 1, 0);
 	const DialStyle *d = resolveDialStyle(wide);
 	DialGeometry g;
 	computeDialGeometry(wide, d, &g);
-	/* contentW = 113-2 = 111; groupW = 20+28+38 = 86; slack 25; startX = cx+12 */
-	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob");
+	/* contentW = 113-2 = 111; groupW = 20+28+38 = 86; slack 25; knobX = cx+12 */
+	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob horizontally");
+	/* contentH = 33; knob 20; slack 13; knobY = cy+6 */
+	ASSERT_TRUE(g.knobY == 200 + 1 + 6, "wide cell centers knob vertically");
+	/* value follows the knob; label centres in the cell */
+	ASSERT_TRUE(g.valueX == g.knobX + 28, "value is knob-relative");
+	ASSERT_TRUE(g.labelX == 100 + 1 + 55, "label centres in the wide cell");
 	freeGuiNode(wide);
 
 	GuiNode *narrow = createGuiNode(100, 200, 58, 35, 2, na_horizontal, "n", 1, 0);
@@ -123,7 +134,8 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 	DialGeometry gn;
 	computeDialGeometry(narrow, dn, &gn);
 	/* contentW = 58-4 = 54 < 86 -> classic inset cx+2 = 104 */
-	ASSERT_TRUE(gn.knobX == 100 + 2 + 2, "narrow cell keeps classic inset");
+	ASSERT_TRUE(gn.knobX == 100 + 2 + 2, "narrow cell keeps classic horizontal inset");
+	ASSERT_TRUE(gn.labelX == 100 + 2 + 27, "narrow cell label centres too");
 	freeGuiNode(narrow);
 	printf("PASS test_dial_geometry_centers_in_wide_cell\n");
 	return 0;
@@ -196,10 +208,12 @@ static int test_custom_class_geometry(void) {
 	DialGeometry g;
 	computeDialGeometry(n, d, &g);
 	ASSERT_TRUE(g.knobW == 30, "geometry knobW");
-	ASSERT_TRUE(g.valueX == 106 + 40, "geometry valueX with offset");
-	ASSERT_TRUE(g.valueY == 204 + 6, "geometry valueY");
-	ASSERT_TRUE(g.labelX == 104 - 40, "geometry labelX");
-	ASSERT_TRUE(g.labelY == 204 + 24, "geometry labelY");
+	ASSERT_TRUE(g.knobX == 106, "geometry knobX keeps inset");
+	ASSERT_TRUE(g.knobY == 205, "geometry knobY centers vertically");
+	ASSERT_TRUE(g.valueX == g.knobX + 40, "geometry valueX with offset");
+	ASSERT_TRUE(g.valueY == g.knobY + 6, "geometry valueY");
+	ASSERT_TRUE(g.labelX == 140 - 40, "geometry labelX centres + offset");
+	ASSERT_TRUE(g.labelY == g.knobY + 24, "geometry labelY");
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_custom_class_geometry\n");

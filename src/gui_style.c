@@ -60,7 +60,7 @@ static DialStyle g_defaultDial = {
 	.knob   = { 20, 10, -225, 270, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 	.value  = { "%05.2f", 38, 14, 28, 2, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 9, 1, -28, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static DialStyle g_defaultDialDiscrete = {
@@ -182,26 +182,27 @@ void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *o
 	int cx = gn->x + gn->padding;
 	int cy = gn->y + gn->padding;
 	int contentW = (int)gn->w - 2 * (int)gn->padding;
-	/* Center the knob + value group in the cell when the cell is wider
-	 * than the group; otherwise keep the classic left-anchored inset so
-	 * narrow cells (env rows) render exactly as before. */
+	int contentH = (int)gn->h - 2 * (int)gn->padding;
+	/* Mini-layout: the trio [knob, value, label] is a composition
+	 * anchored on the knob. The knob centers in the cell on both axes
+	 * when there is slack; value + label follow the knob (their
+	 * offsets are knob-relative), so the whole unit moves as one. */
 	int groupW = st->knob.size + st->value.offsetX + st->value.width;
-	int startX;
-	if(groupW < contentW) {
-		startX = cx + (contentW - groupW) / 2;
-	} else {
-		startX = cx + 2;
-	}
-	out->knobX = startX;
-	out->knobY = cy;
+	int knobX = (groupW < contentW) ? (cx + (contentW - groupW) / 2) : (cx + 2);
+	int knobY = (st->knob.size < contentH) ? (cy + (contentH - st->knob.size) / 2) : cy;
+	out->knobX = knobX;
+	out->knobY = knobY;
 	out->knobW = st->knob.size;
 	out->knobH = st->knob.size;
-	out->valueX = startX + st->value.offsetX;
-	out->valueY = cy + st->value.offsetY;
+	out->valueX = knobX + st->value.offsetX;
+	out->valueY = knobY + st->value.offsetY;
 	out->valueW = st->value.width;
 	out->valueH = st->value.height;
-	out->labelX = cx + st->label.offsetX;
-	out->labelY = cy + st->label.offsetY;
+	/* The label is the dial's caption: it centres in the cell (offsetX
+	 * is a fine-tune from the cell centre) and sits below the knob
+	 * (offsetY relative to the knob top). */
+	out->labelX = cx + contentW / 2 + st->label.offsetX;
+	out->labelY = knobY + st->label.offsetY;
 }
 
 /* --- layout.json compile ---------------------------------------------- */

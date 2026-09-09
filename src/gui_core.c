@@ -293,7 +293,10 @@ void drawDialGuiNode(void *self) {
 	}
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
 	Font *lf = styleFont(st->label.fontName);
-	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX, g.labelY }, st->label.fontSize, st->label.spacing,
+	/* labelX is the label's centre (cell-centred caption); centre the
+	 * text on it. */
+	float lw = MeasureTextEx(*lf, gn->name, st->label.fontSize, st->label.spacing).x;
+	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX - lw * 0.5f, g.labelY }, st->label.fontSize, st->label.spacing,
 	           gn->selected ? st->label.colorSelected : st->label.color);
 }
 
@@ -404,7 +407,10 @@ void drawDiscreteDialGuiNode(void *self) {
 	}
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
 	Font *lf = styleFont(st->label.fontName);
-	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX, g.labelY }, st->label.fontSize, st->label.spacing,
+	/* labelX is the label's centre (cell-centred caption); centre the
+	 * text on it. */
+	float lw = MeasureTextEx(*lf, gn->name, st->label.fontSize, st->label.spacing).x;
+	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX - lw * 0.5f, g.labelY }, st->label.fontSize, st->label.spacing,
 	           gn->selected ? st->label.colorSelected : st->label.color);
 }
 
