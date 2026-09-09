@@ -57,6 +57,7 @@ static int test_compile_custom_dial_class(void);
 static int test_compile_unknown_class_ignored(void);
 static int test_missing_layout_file_keeps_defaults(void);
 static int test_custom_class_geometry(void);
+static int test_btn_and_typelabel_styles(void);
 
 int main(void) {
 	int fails = 0;
@@ -68,11 +69,38 @@ int main(void) {
 	fails += test_compile_unknown_class_ignored();
 	fails += test_missing_layout_file_keeps_defaults();
 	fails += test_custom_class_geometry();
+	fails += test_btn_and_typelabel_styles();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;
 	}
 	printf("ALL layout tests passed\n");
+	return 0;
+}
+
+static int test_btn_and_typelabel_styles(void) {
+	const char *path = ".tmp_files/layout_test_btn.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{\"btn\":{\"label\":{\"fontSize\":13,\"offsetX\":6}},"
+	      "\"type-label\":{\"label\":{\"fontSize\":12}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	compileLayoutConfig(path, &cs);
+
+	GuiNode *n = createBlankGuiNode();
+	guiNodeSetClass(n, "btn");
+	const BtnStyle *b = resolveBtnStyle(n);
+	ASSERT_TRUE(b->label.fontSize == 13, "btn fontSize");
+	ASSERT_TRUE(b->label.offsetX == 6, "btn offsetX");
+	freeGuiNode(n);
+
+	guiNodeSetClass(n = createBlankGuiNode(), "type-label");
+	const TypeLabelStyle *t = resolveTypeLabelStyle(n);
+	ASSERT_TRUE(t->label.fontSize == 12, "type-label fontSize");
+	freeGuiNode(n);
+	remove(path);
+	printf("PASS test_btn_and_typelabel_styles\n");
 	return 0;
 }
 

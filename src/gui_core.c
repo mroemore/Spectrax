@@ -341,9 +341,13 @@ GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAli
 
 void drawActionBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
-	drawColourRectangle(gn->x, gn->y, gn->w, gn->h, 0.125, 2.0, gn->selected);
-	Color labelColour = gn->selected ? cs.labelSelected : cs.label;
-	DrawTextEx(pixelFont, gn->name, (Vector2){ gn->x + gn->padding + 4, gn->y + gn->padding + 4 }, 10, 1, labelColour);
+	const BtnStyle *st = resolveBtnStyle(gn);
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	Font *lf = styleFont(st->label.fontName);
+	DrawTextEx(*lf, gn->name,
+	           (Vector2){ gn->x + gn->padding + st->label.offsetX, gn->y + gn->padding + st->label.offsetY },
+	           st->label.fontSize, st->label.spacing,
+	           gn->selected ? st->label.colorSelected : st->label.color);
 }
 
 /* Spec #1: route-picker destination cell. Replaces the standard action

@@ -77,6 +77,8 @@ const DialStyle *resolveDiscreteDialStyle(const GuiNode *gn);
 const BtnStyle *resolveBtnStyle(const GuiNode *gn);
 const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn);
 
+Font *styleFont(const char *name);
+
 typedef struct {
 	int knobX, knobY, knobW, knobH;
 	int valueX, valueY, valueW, valueH;

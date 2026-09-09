@@ -18,6 +18,7 @@
 #include "gui_internal.h"
 #include "gui_inst_internal.h"
 #include "gui_layer.h"
+#include "gui_style.h"
 
 static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst, VoiceManager *vm, int channel, int weight, bool selected);
 static void cbOpenLoadList(void *ctx);
@@ -759,12 +760,18 @@ static void cbTypeNext(void *ctx) {
 
 static void drawTypeLabelGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
+	const TypeLabelStyle *st = resolveTypeLabelStyle(gn);
 	/* the current tag comes from the selected instrument's voiceType */
 	Instrument *inst = getSelectedInstInstrument();
 	const char *tag = inst ? voiceTypeTag(inst->voiceType) : "--";
-	int tw = MeasureText(tag, 10);
-	DrawTextEx(pixelFont, tag, (Vector2){ gn->x + (gn->w - tw) / 2, gn->y + (gn->h - 10) / 2 }, 10, 1, cs.label);
-	if(gn->selected) DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, cs.outlineColour);
+	Font *lf = styleFont(st->label.fontName);
+	int tw = MeasureText(tag, st->label.fontSize);
+	DrawTextEx(*lf, tag,
+	           (Vector2){ gn->x + (gn->w - tw) / 2 + st->label.offsetX, gn->y + (gn->h - st->label.fontSize) / 2 + st->label.offsetY },
+	           st->label.fontSize, st->label.spacing, cs.label);
+	if(gn->selected) {
+		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, st->border.borderWidth, st->border.color);
+	}
 }
 
 /* Task 4: number of valid cursor slots for the preset name node. name[33]
