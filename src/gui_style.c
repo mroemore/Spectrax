@@ -5,6 +5,55 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* Layout storage — named LayoutDef + childClasses buffer. The
+ * childClasses table points into g_childClassBuf so the strings survive
+ * until the next compileLayoutConfig call. */
+#define MAX_LAYOUTS 32
+
+static LayoutDef g_layouts[MAX_LAYOUTS];
+static int g_layoutCount = 0;
+static char g_layoutNames[MAX_LAYOUTS][64];
+static char g_childClassBuf[MAX_LAYOUTS][MAX_NODE_CHILDREN][64];
+
+const LayoutDef *layoutByName(const char *name) {
+	if(!name) {
+		return NULL;
+	}
+	for(int i = 0; i < g_layoutCount; i++) {
+		if(strcmp(g_layoutNames[i], name) == 0) {
+			return &g_layouts[i];
+		}
+	}
+	return NULL;
+}
+
+void applyLayout(GuiNode *container, const char *name) {
+	const LayoutDef *ld = layoutByName(name);
+	if(!ld || !container) {
+		return;
+	}
+	container->nodeAlignment = (uint8_t)ld->orientation;
+	container->padding = (uint16_t)ld->padding;
+
+	int total = 0;
+	ListElement *wcur = container->itemWeights ? container->itemWeights->head : NULL;
+	ListElement *ccur = container->items ? container->items->head : NULL;
+	for(int i = 0; i < container->itemCount && wcur && ccur; i++, wcur = wcur->next, ccur = ccur->next) {
+		int w = (i < ld->weightCount) ? ld->weights[i] : 1;
+		if(w < 1) {
+			w = 1;
+		}
+		*(int *)wcur->data = w;
+		total += w;
+		if(i < ld->childClassCount && ld->childClasses[i]) {
+			GuiNode *child = *(GuiNode **)ccur->data;
+			guiNodeSetClass(child, ld->childClasses[i]);
+		}
+	}
+	container->totalItemWeights = (uint32_t)total;
+	reflowCoordinates(container);
+}
+
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
@@ -419,6 +468,60 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 			}
 		}
 	}
+	cJSON *layouts = cJSON_GetObjectItemCaseSensitive(doc, "layouts");
+	if(cJSON_IsObject(layouts)) {
+		cJSON *item = NULL;
+		cJSON_ArrayForEach(item, layouts) {
+			if(g_layoutCount >= MAX_LAYOUTS) {
+				break;
+			}
+			const char *name = item->string;
+			cJSON *orient = cJSON_GetObjectItemCaseSensitive(item, "orientation");
+			const char *orientStr = cJSON_IsString(orient) ? orient->valuestring : "horizontal";
+			int orientVal = (strcmp(orientStr, "vertical") == 0) ? na_vertical : na_horizontal;
+
+			LayoutDef *ld = &g_layouts[g_layoutCount];
+			memset(ld, 0, sizeof(*ld));
+			ld->orientation = orientVal;
+			ld->padding = jsonInt(item, "padding", 0);
+
+			cJSON *weights = cJSON_GetObjectItemCaseSensitive(item, "weights");
+			if(cJSON_IsArray(weights)) {
+				int n = cJSON_GetArraySize(weights);
+				if(n > MAX_NODE_CHILDREN) n = MAX_NODE_CHILDREN;
+				for(int i = 0; i < n; i++) {
+					cJSON *w = cJSON_GetArrayItem(weights, i);
+					if(cJSON_IsNumber(w)) {
+						ld->weights[ld->weightCount++] = w->valueint > 0 ? w->valueint : 1;
+					}
+				}
+			}
+
+			cJSON *cc = cJSON_GetObjectItemCaseSensitive(item, "childClasses");
+			if(cJSON_IsArray(cc)) {
+				int n = cJSON_GetArraySize(cc);
+				if(n > MAX_NODE_CHILDREN) n = MAX_NODE_CHILDREN;
+				for(int i = 0; i < n; i++) {
+					cJSON *e = cJSON_GetArrayItem(cc, i);
+					if(cJSON_IsString(e) && e->valuestring[0]) {
+						strncpy(g_childClassBuf[g_layoutCount][ld->childClassCount],
+						        e->valuestring, 63);
+						g_childClassBuf[g_layoutCount][ld->childClassCount][63] = '\0';
+						ld->childClasses[ld->childClassCount] =
+						  g_childClassBuf[g_layoutCount][ld->childClassCount];
+						ld->childClassCount++;
+					} else {
+						ld->childClasses[ld->childClassCount++] = NULL;
+					}
+				}
+			}
+
+			strncpy(g_layoutNames[g_layoutCount], name, 63);
+			g_layoutNames[g_layoutCount][63] = '\0';
+			g_layoutCount++;
+		}
+	}
+
 	cJSON_Delete(doc);
 	return true;
 }

@@ -20,5 +20,12 @@
             "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "outlineColour" }
         }
     },
-    "layouts": {}
+    "layouts": {
+        "env-row": {
+            "orientation": "horizontal",
+            "padding": 4,
+            "weights": [1, 2, 1],
+            "childClasses": ["", "big-dial", ""]
+        }
+    }
 }

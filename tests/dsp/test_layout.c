@@ -58,6 +58,7 @@ static int test_compile_unknown_class_ignored(void);
 static int test_missing_layout_file_keeps_defaults(void);
 static int test_custom_class_geometry(void);
 static int test_btn_and_typelabel_styles(void);
+static int test_apply_layout_weights_and_classes(void);
 
 int main(void) {
 	int fails = 0;
@@ -70,6 +71,7 @@ int main(void) {
 	fails += test_missing_layout_file_keeps_defaults();
 	fails += test_custom_class_geometry();
 	fails += test_btn_and_typelabel_styles();
+	fails += test_apply_layout_weights_and_classes();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;
@@ -197,5 +199,40 @@ static int test_missing_layout_file_keeps_defaults(void) {
 	ASSERT_TRUE(d->knob.size == 20, "defaults intact");
 	freeGuiNode(n);
 	printf("PASS test_missing_layout_file_keeps_defaults\n");
+	return 0;
+}
+
+static int test_apply_layout_weights_and_classes(void) {
+	const char *path = ".tmp_files/layout_test_layouts.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"layouts\":{\"env-row\":{\"orientation\":\"horizontal\",\"padding\":4,"
+	      "\"weights\":[1,2,1],\"childClasses\":[\"\",\"big-dial\",\"\"]}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	compileLayoutConfig(path, &cs);
+
+	GuiNode *row = createGuiNode(0, 0, 300, 40, 0, na_vertical, "row", 0, 0);
+	GuiNode *c0 = createBlankGuiNode();
+	GuiNode *c1 = createBlankGuiNode();
+	GuiNode *c2 = createBlankGuiNode();
+	appendItem(row, c0, 1);
+	appendItem(row, c1, 1);
+	appendItem(row, c2, 1);
+
+	applyLayout(row, "env-row");
+
+	ASSERT_TRUE(row->nodeAlignment == na_horizontal, "orientation applied");
+	ASSERT_TRUE(row->padding == 4, "padding applied");
+	ASSERT_TRUE(row->totalItemWeights == 4, "weights recomputed (1+2+1)");
+	ASSERT_TRUE(c1->className && strcmp(c1->className, "big-dial") == 0, "child class bound");
+	ASSERT_TRUE(c0->className == NULL, "empty class slot leaves code class alone");
+
+	const LayoutDef *ld = layoutByName("does-not-exist");
+	ASSERT_TRUE(ld == NULL, "unknown layout -> NULL");
+
+	freeGuiNode(row);
+	remove(path);
+	printf("PASS test_apply_layout_weights_and_classes\n");
 	return 0;
 }
