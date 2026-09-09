@@ -89,6 +89,11 @@ typedef struct {
 
 void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *out);
 
+/* The dial component's natural content height: the lowest extent of
+ * knob, value and label (all anchored at the knob top). Does not
+ * include cell padding — add 2 * gn->padding for the full cell. */
+int dialComponentHeight(const DialStyle *st);
+
 bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs);
 void finalizeStyles(void);
 

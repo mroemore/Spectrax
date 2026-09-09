@@ -178,6 +178,22 @@ const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn) {
 	return &g_defaultTypeLabel;
 }
 
+int dialComponentHeight(const DialStyle *st) {
+	if(!st) {
+		return 0;
+	}
+	int h = st->knob.size;
+	int v = st->value.offsetY + st->value.height;
+	int l = st->label.offsetY + st->label.fontSize;
+	if(v > h) {
+		h = v;
+	}
+	if(l > h) {
+		h = l;
+	}
+	return h;
+}
+
 void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *out) {
 	int cx = gn->x + gn->padding;
 	int cy = gn->y + gn->padding;

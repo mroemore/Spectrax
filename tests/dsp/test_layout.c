@@ -141,6 +141,23 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 	return 0;
 }
 
+static int test_dial_component_height(void) {
+	/* default dial: max(knob 20, value 2+14=16, label 18+9=27) = 27 */
+	GuiNode *n = createGuiNode(0, 0, 100, 35, 2, na_horizontal, "g", 1, 0);
+	const DialStyle *d = resolveDialStyle(n);
+	ASSERT_TRUE(dialComponentHeight(d) == 27, "default dial content height");
+	/* discrete: label 21+9=30 -> 30 */
+	GuiNode *dn = createGuiNode(0, 0, 100, 35, 2, na_horizontal, "g", 1, 0);
+	const DialStyle *dd = resolveDiscreteDialStyle(dn);
+	ASSERT_TRUE(dialComponentHeight(dd) == 30, "discrete dial content height");
+	/* a custom class's height follows its style */
+	ASSERT_TRUE(dialComponentHeight(d) + 2 * 2 == 31, "full cell = content + padding");
+	freeGuiNode(n);
+	freeGuiNode(dn);
+	printf("PASS test_dial_component_height\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
@@ -156,6 +173,7 @@ int main(void) {
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_fills_weighted_column();
 	fails += test_dial_geometry_centers_in_wide_cell();
+	fails += test_dial_component_height();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;
