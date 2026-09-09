@@ -41,7 +41,14 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 	fwrite(&arranger->tempoSettings.loop, sizeof(int), 1, file);
 	int bpm = getParameterValueAsInt(arranger->tempoSettings.bpm);
 	fwrite(&bpm, sizeof(int), 1, file);
-	fwrite(&arranger->playing, sizeof(int), 1, file);
+	/* Songs always persist in a non-playing state: playback position is
+	 * owned by the live session, and restoring playing=1 from the file
+	 * made the arranger highlight the last row while createSequencer had
+	 * already seeded the sequencer at row 0 — audio played the first
+	 * pattern while the UI showed the last. The field stays in the layout
+	 * for backward compatibility; it is written 0 and clamped on read. */
+	int playing = 0;
+	fwrite(&playing, sizeof(int), 1, file);
 	// fwrite(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file);
 	// V2: song block written first, then per-channel preset slot index after song.
 	fwrite(arranger->song, sizeof(int), MAX_SEQUENCER_CHANNELS * MAX_SONG_LENGTH, file);
@@ -164,6 +171,10 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 		printf("error ply\n");
 		return SEQ_ERROR_READ;
 	}
+	/* Load non-playing (policy): the saved playing flag is ignored so a
+	 * song never auto-plays at boot. Playback resumes from selected_y via
+	 * startPlaying when the user presses play. */
+	arranger->playing = 0;
 	// if(fread(arranger->voiceTypes, sizeof(int), MAX_SEQUENCER_CHANNELS, file) != MAX_SEQUENCER_CHANNELS) {
 	// 	fclose(file);
 	// 	printf("error voicetypes\n");

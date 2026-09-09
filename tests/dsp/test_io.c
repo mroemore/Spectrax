@@ -443,7 +443,10 @@ static int test_sequencer_roundtrip(void) {
     ASSERT_EQ(dst.arranger->selected_y, src.arranger->selected_y);
     ASSERT_EQ((int)dst.arranger->tempoSettings.loop,
               (int)src.arranger->tempoSettings.loop);
-    ASSERT_EQ(dst.arranger->playing, src.arranger->playing);
+    /* Songs load non-playing (policy): even though src saved playing=1,
+     * the loaded arranger must be stopped. */
+    ASSERT_EQ(dst.arranger->playing, 0);
+    ASSERT_EQ(src.arranger->playing, 1);
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
         ASSERT_EQ(dst.arranger->playhead_indices[i],
                   src.arranger->playhead_indices[i]);
