@@ -197,7 +197,7 @@ void guiNodeSetClass(GuiNode *gn, const char *className) {
 	}
 	free(gn->className);
 	gn->className = NULL;
-	if(className) {
+	if(className && className[0]) {
 		size_t len = strlen(className);
 		gn->className = malloc(len + 1);
 		if(!gn->className) {
