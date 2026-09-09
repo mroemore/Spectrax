@@ -675,10 +675,7 @@ static void overlayValue(cJSON *o, const ColourScheme *cs, ValueStyle *v) {
 	jsonColor(o, "color", cs, &v->color);
 }
 static void overlayLabel(cJSON *o, const ColourScheme *cs, LabelStyle *l) {
-	cJSON *fn = cJSON_GetObjectItemCaseSensitive(o, "font");
-	if(fn && cJSON_IsString(fn)) {
-		l->fontName = fn->valuestring;
-	}
+	jsonStr(o, "font", l->fontName, sizeof(l->fontName));
 	l->fontSize = jsonInt(o, "fontSize", l->fontSize);
 	l->spacing = jsonInt(o, "spacing", l->spacing);
 	l->offsetX = jsonInt(o, "offsetX", l->offsetX);
