@@ -491,6 +491,25 @@ static int test_init_gui_node_null_callback(void) {
     return 0;
 }
 
+/* ----- Task 1 (layout-config): GuiNode.className + guiNodeSetClass -----
+ *
+ * The optional class-name field lets later tasks' style resolvers look up
+ * per-class overrides without walking the layout-config tree. Setter
+ * takes an owned copy (NULL clears). */
+static int test_node_class_name(void) {
+    GuiNode *n = createBlankGuiNode();
+    ASSERT_TRUE(n != NULL, "create");
+    ASSERT_TRUE(n->className == NULL, "className zeroed by init");
+    guiNodeSetClass(n, "env-attack");
+    ASSERT_TRUE(n->className != NULL, "class set");
+    ASSERT_TRUE(strcmp(n->className, "env-attack") == 0, "class value");
+    guiNodeSetClass(n, NULL);
+    ASSERT_TRUE(n->className == NULL, "class cleared");
+    freeGuiNode(n);
+    printf("PASS test_node_class_name\n");
+    return 0;
+}
+
 /* ----- Task 2 (arranger window rework): scrollArrangerWindow ----- *
  *
  * Pure-state test: scrollArrangerWindow operates on `arranger->visibleStart`
@@ -1047,6 +1066,7 @@ int main(void) {
     fails += test_chip_row_nav();
     fails += test_chip_node_is_drawable();
     fails += test_init_gui_node_null_callback();
+    fails += test_node_class_name();
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
     fails += test_scroll_container_to_visible();

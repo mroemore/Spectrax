@@ -47,6 +47,7 @@ struct GuiNode {
 	ListElement *itemListRef;
 	uint32_t totalItemWeights;
 	char *name;
+	char *className;
 	bool selectable;
 	bool hasSelectableItems;
 	bool selected;
@@ -96,6 +97,8 @@ GuiNode *createBlankGuiNode();
 GuiNode *createNamedBlankGuiNode(char *name);
 void freeGuiNode(GuiNode *gn);
 void printGraph(GuiNode *root, int depth);
+
+void guiNodeSetClass(GuiNode *gn, const char *className);
 
 void reflowCoordinates(GuiNode *n);
 void appendItem(GuiNode *parent, GuiNode *child, int weight);

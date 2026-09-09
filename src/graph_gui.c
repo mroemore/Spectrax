@@ -28,6 +28,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	strcpy(gn->name, actualName);
 	// printf("creation name: %s\n", gn->name);
 
+	gn->className = NULL;
 	gn->padding = padding;
 	gn->weightRef = NULL;
 	gn->selected = selected;
@@ -186,7 +187,24 @@ void freeGuiNode(GuiNode *gn) {
 	freeList(gn->items);
 	freeList(gn->itemWeights);
 	free(gn->name);
+	free(gn->className);
 	free(gn);
+}
+
+void guiNodeSetClass(GuiNode *gn, const char *className) {
+	if(!gn) {
+		return;
+	}
+	free(gn->className);
+	gn->className = NULL;
+	if(className) {
+		size_t len = strlen(className);
+		gn->className = malloc(len + 1);
+		if(!gn->className) {
+			return;
+		}
+		memcpy(gn->className, className, len + 1);
+	}
 }
 
 void printGraph(GuiNode *root, int depth) {
