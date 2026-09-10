@@ -50,6 +50,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 	gn->nodeAlignment = na;
 	gn->customNav = NULL;
 	gn->scrollable = false;
+	gn->gap = 0;
 	return success;
 }
 
@@ -288,10 +289,14 @@ void reflowCoordinates(GuiNode *n) {
 	 * truncated to 0 for any row whose weights summed above the
 	 * container width (e.g. FM op rows at weight 60 x5 + blank), which
 	 * silently collapsed such rows to near-zero scaling and left the
-	 * container mostly empty. */
+	 * container mostly empty.
+	 *
+	 * Inter-child `gap` reserves `gap*(n-1)` pixels from the content
+	 * dimension before weight distribution. The remainder still goes
+	 * to the last child so the row/column fills exactly; gap=0 is
+	 * byte-identical to the pre-gap reflow. */
 	int totalW = n->totalItemWeights > 0 ? n->totalItemWeights : 1;
 	int contentDim = 0;
-	int accum = 0;
 	if(n->nodeAlignment == na_horizontal) {
 		contentDim = (int)n->w - 2 * (int)n->padding;
 	} else {
@@ -300,6 +305,14 @@ void reflowCoordinates(GuiNode *n) {
 	if(contentDim < 0) {
 		contentDim = 0;
 	}
+	int gap = (int)n->gap;
+	int gaps = gap * (n->itemCount - 1);
+	if(gaps > contentDim) {
+		gaps = contentDim;
+	}
+	int availDim = contentDim - gaps;
+	int pos = 0;
+	int used = 0;
 
 	ListElement *current = n->items->head;
 	for(int i = 0; i < n->itemCount; i++) {
@@ -312,32 +325,31 @@ void reflowCoordinates(GuiNode *n) {
 
 		switch(n->nodeAlignment) {
 			case na_vertical: {
-				int ch = (i == n->itemCount - 1)
-				           ? contentDim - accum
-				           : (*(int *)cn->weightRef->data * contentDim) / totalW;
+				int ch = (i == n->itemCount - 1) ? availDim - used
+				           : (*(int *)cn->weightRef->data * availDim) / totalW;
 				int minH = (int)cn->padding * 2 + 4;
 				if(ch < minH) {
 					ch = minH;
 				}
-				cn->y = n->y + n->padding + accum;
+				cn->y = n->y + n->padding + pos;
 				cn->h = (uint16_t)ch;
 				break;
 			}
 			case na_horizontal: {
-				int cw = (i == n->itemCount - 1)
-				           ? contentDim - accum
-				           : (*(int *)cn->weightRef->data * contentDim) / totalW;
+				int cw = (i == n->itemCount - 1) ? availDim - used
+				           : (*(int *)cn->weightRef->data * availDim) / totalW;
 				int minW = (int)cn->padding * 2 + 4;
 				if(cw < minW) {
 					cw = minW;
 				}
-				cn->x = n->x + n->padding + accum;
+				cn->x = n->x + n->padding + pos;
 				cn->w = (uint16_t)cw;
 				break;
 			}
 		}
 
-		accum += (int)((n->nodeAlignment == na_horizontal) ? cn->w : cn->h);
+		pos += (int)((n->nodeAlignment == na_horizontal) ? cn->w : cn->h) + gap;
+		used += (int)((n->nodeAlignment == na_horizontal) ? cn->w : cn->h);
 		reflowCoordinates(cn);
 		current = current->next;
 	}

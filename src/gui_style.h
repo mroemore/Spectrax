@@ -100,6 +100,7 @@ void finalizeStyles(void);
 typedef struct {
 	int orientation;
 	int padding;
+	int gap;
 	int weightCount;
 	int weights[MAX_NODE_CHILDREN];
 	int childClassCount;

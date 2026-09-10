@@ -34,6 +34,7 @@ void applyLayout(GuiNode *container, const char *name) {
 	}
 	container->nodeAlignment = (uint8_t)ld->orientation;
 	container->padding = (uint16_t)ld->padding;
+	container->gap = (uint16_t)ld->gap;
 
 	int total = 0;
 	ListElement *wcur = container->itemWeights ? container->itemWeights->head : NULL;
@@ -514,6 +515,7 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 			memset(ld, 0, sizeof(*ld));
 			ld->orientation = orientVal;
 			ld->padding = jsonInt(item, "padding", 0);
+			ld->gap = jsonInt(item, "gap", 0);
 
 			cJSON *weights = cJSON_GetObjectItemCaseSensitive(item, "weights");
 			if(cJSON_IsArray(weights)) {

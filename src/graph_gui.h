@@ -66,6 +66,7 @@ struct GuiNode {
 	uint16_t w;
 	uint16_t h;
 	uint16_t padding;
+	uint16_t gap;
 	CustomNavFunc customNav;
 };
 
