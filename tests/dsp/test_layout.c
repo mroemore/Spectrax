@@ -94,6 +94,49 @@ static int test_reflow_fills_weighted_row(void) {
 	return 0;
 }
 
+static int test_reflow_gap_distribution(void) {
+	/* [1,1,1] in a 100px row, padding 0, gap 4:
+	 * availDim = 100 - 8 = 92; shares 30,30,32; positions 0,34,68. */
+	GuiNode *row = createGuiNode(0, 0, 100, 20, 0, na_horizontal, "row", 0, 0);
+	GuiNode *c[3];
+	for(int i = 0; i < 3; i++) {
+		c[i] = createBlankGuiNode();
+		appendItem(row, c[i], 1);
+	}
+	row->gap = 4;
+	reflowCoordinates(row);
+	ASSERT_TRUE(c[0]->x == 0 && c[0]->w == 30, "child 0 at 0, w 30");
+	ASSERT_TRUE(c[1]->x == 34 && c[1]->w == 30, "child 1 at 34 (30+gap 4)");
+	ASSERT_TRUE(c[2]->x == 68 && c[2]->w == 32, "child 2 at 68, absorbs remainder");
+	ASSERT_TRUE(c[2]->x + c[2]->w == 100, "row fills exactly");
+	freeGuiNode(row);
+	printf("PASS test_reflow_gap_distribution\n");
+	return 0;
+}
+
+static int test_reflow_gap_zero_matches_pinned(void) {
+	/* Verify gap == 0 reproduces the proportional reflow of T2 (the
+	 * pinned width from test_reflow_fills_weighted_row). */
+	GuiNode *row = createGuiNode(0, 0, 566, 35, 1, na_horizontal, "row", 0, 0);
+	GuiNode *c[6];
+	for(int i = 0; i < 5; i++) {
+		c[i] = createBlankGuiNode();
+		appendItem(row, c[i], 60);
+	}
+	c[5] = createBlankGuiNode();
+	appendItem(row, c[5], 4);
+	/* gap defaults to 0 */
+	ASSERT_TRUE(c[0]->w >= 90, "dial wide enough for its internals (gap 0 unchanged)");
+	int total = 0;
+	for(int i = 0; i < 6; i++) {
+		total += c[i]->w;
+	}
+	ASSERT_TRUE(total == 564, "gap 0 reflow still fills the row exactly");
+	freeGuiNode(row);
+	printf("PASS test_reflow_gap_zero_matches_pinned\n");
+	return 0;
+}
+
 static int test_reflow_fills_weighted_column(void) {
 	GuiNode *col = createGuiNode(0, 0, 200, 400, 2, na_vertical, "col", 0, 0);
 	GuiNode *c0 = createBlankGuiNode();
@@ -171,6 +214,8 @@ int main(void) {
 	fails += test_btn_and_typelabel_styles();
 	fails += test_apply_layout_weights_and_classes();
 	fails += test_reflow_fills_weighted_row();
+	fails += test_reflow_gap_distribution();
+	fails += test_reflow_gap_zero_matches_pinned();
 	fails += test_reflow_fills_weighted_column();
 	fails += test_dial_geometry_centers_in_wide_cell();
 	fails += test_dial_component_height();
