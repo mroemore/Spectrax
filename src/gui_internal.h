@@ -30,11 +30,6 @@ const char *voiceTypeTag(VoiceType t);
 /* shared screen state (owners noted) */
 extern Arranger *g_arranger;        /* gui_arranger.c */
 extern MixRing *arrangerMixRing;    /* gui_instrument.c */
-extern const Color chipPalette[8];  /* gui_arranger.c — removed in T5; chip
-   palette now lives in the ColourScheme (chipPalette0..7) and reaches
-   the draw via ChipStyle.palette[]. Kept commented for one release
-   in case other source files still reference it. */
-// extern const Color chipPalette[8];  /* removed in Task 5 — see ChipStyle */
 void drawSampleWaveLinesNode(void *self);       /* gui_inst_sample.c */
 void drawSampleWavePolylineNode(void *self);    /* gui_inst_sample.c */
 
