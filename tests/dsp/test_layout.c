@@ -69,6 +69,7 @@ static int test_step_cell_style_resolves_and_draws(void);
 static int test_dest_style_resolves_and_colours(void);
 static int test_chip_style_resolves_and_geometry(void);
 static int test_chip_palette_resolved_from_theme(void);
+static int test_mod_source_row_layout_gap(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -222,6 +223,7 @@ int main(void) {
 	fails += test_dest_style_resolves_and_colours();
 	fails += test_chip_style_resolves_and_geometry();
 	fails += test_chip_palette_resolved_from_theme();
+	fails += test_mod_source_row_layout_gap();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -551,5 +553,42 @@ static int test_chip_palette_resolved_from_theme(void) {
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_chip_palette_resolved_from_theme\n");
+	return 0;
+}
+
+static int test_mod_source_row_layout_gap(void) {
+	/* T6: compile a temp layout containing "mod-source-row" (orientation,
+	 * padding, gap, weights), apply it to a row, assert gap + orientation
+	 * land on the container. */
+	const char *path = ".tmp_files/layout_test_msr.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"layouts\":{\"mod-source-row\":{\"orientation\":\"horizontal\","
+	      "\"padding\":2,\"gap\":2,\"weights\":[3,4,4,4,4,3,2,1]}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile msr layout");
+
+	GuiNode *row = createGuiNode(0, 0, 566, 40, 0, na_horizontal, "row", 0, 0);
+	GuiNode *c[3];
+	for(int i = 0; i < 3; i++) {
+		c[i] = createBlankGuiNode();
+		appendItem(row, c[i], 1);
+	}
+	applyLayout(row, "mod-source-row");
+	ASSERT_TRUE(row->gap == 2, "layout gap applied to container");
+	ASSERT_TRUE(row->padding == 2, "layout padding applied to container");
+	ASSERT_TRUE(row->nodeAlignment == na_horizontal, "orientation applied");
+
+	/* confirm reflow distributes weights with the gap reserved:
+	 * availDim = (566 - 2*2) - 2*2*gap = 562 - 4 = 558; weights 1+1+1 = 3,
+	 * each child gets 558/3 = 186 except the last which absorbs remainder. */
+	ASSERT_TRUE(c[0]->x == 2, "first child after padding");
+	ASSERT_TRUE(c[1]->x - c[0]->x == c[0]->w + 2, "gap between children");
+	ASSERT_TRUE(c[2]->x + c[2]->w == 564, "row fills container minus padding");
+
+	freeGuiNode(row);
+	remove(path);
+	printf("PASS test_mod_source_row_layout_gap\n");
 	return 0;
 }

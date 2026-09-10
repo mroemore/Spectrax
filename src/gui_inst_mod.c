@@ -7,6 +7,7 @@
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
+#include "gui_style.h"
 #include "graph_gui.h"
 #include "input.h"
 #include "modsystem.h"
@@ -1898,6 +1899,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DEL", 0, cbDeleteSource, &g_sourceCtx[idx]), 2);
 	}
 	appendItem(wrap, createBlankGuiNode(), 1);
+	applyLayout(wrap, "mod-source-row");
 	appendItem(container, wrap, weight);
 	(void)g;
 }
