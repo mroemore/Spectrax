@@ -30,6 +30,11 @@ test_cfg_extra = test_graph_nav_extra
 # test that includes gui.h has to link the same surface as test_graph_nav.
 test_mod_voice_extra = files('../src/gui_core.c', '../src/gui_arranger.c', '../src/gui_pattern.c', '../src/gui_instrument.c', '../src/gui_inst_fm.c', '../src/gui_inst_sample.c', '../src/gui_inst_mod.c', '../src/gui_inst_blep.c', '../src/gui_layer.c')
 
+# Task 3: test_layout's step-cell test calls initDefaultColourScheme to
+# populate a real ColourScheme for the baked-default assertions; that
+# symbol lives in gui_core.c. Same link surface as test_cfg / test_graph_nav.
+test_layout_extra = test_graph_nav_extra
+
 foreach name : test_names
   extra_srcs = []
   link_libs = [core_lib]
@@ -43,6 +48,9 @@ foreach name : test_names
     link_libs = [core_lib, seq_lib]
   elif name == 'test_cfg'
     extra_srcs = test_cfg_extra
+    link_libs = [core_lib, seq_lib, vizfx_lib]
+  elif name == 'test_layout'
+    extra_srcs = test_layout_extra
     link_libs = [core_lib, seq_lib, vizfx_lib]
   endif
   exe = executable(name,

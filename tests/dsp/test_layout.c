@@ -6,6 +6,7 @@
 #include "graph_gui.h"
 #include "cJSON.h"
 #include "theme.h"
+#include "gui.h"  /* initDefaultColourScheme (Task 3 step-cell baked-default test) */
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 #define TMP_DIR ".tmp_files/"
@@ -64,6 +65,7 @@ static int test_missing_layout_file_keeps_defaults(void);
 static int test_custom_class_geometry(void);
 static int test_btn_and_typelabel_styles(void);
 static int test_apply_layout_weights_and_classes(void);
+static int test_step_cell_style_resolves_and_draws(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -213,6 +215,7 @@ int main(void) {
 	fails += test_custom_class_geometry();
 	fails += test_btn_and_typelabel_styles();
 	fails += test_apply_layout_weights_and_classes();
+	fails += test_step_cell_style_resolves_and_draws();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -383,5 +386,93 @@ static int test_apply_layout_weights_and_classes(void) {
 	freeGuiNode(row);
 	remove(path);
 	printf("PASS test_apply_layout_weights_and_classes\n");
+	return 0;
+}
+
+static int test_step_cell_style_resolves_and_draws(void) {
+	/* Three things verified in one test:
+	 *   1) Without a class, the resolver returns the baked default (which
+	 *      is populated from a fresh ColourScheme by compileLayoutConfig).
+	 *   2) compileLayoutConfig maps the "step-cell" class name to
+	 *      STYLE_STEP_CELL and lets us override bgEmpty / bgPlaying /
+	 *      borderSelected / note (LabelStyle subset).
+	 *   3) After compile, the default StepCellStyle's baked colours match
+	 *      the values baked from a real ColourScheme.  The baked defaults
+	 *      mirror what drawStepGuiNode used to hardcode so the no-class
+	 *      layout.json render stays byte-for-byte identical.
+	 */
+	const char *path = ".tmp_files/layout_test_step_cell.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{\"step-cell\":{\"bgEmpty\":\"selectedCell\","
+	      "\"bgPlaying\":\"reddish\","
+	      "\"borderSelected\":\"background\","
+	      "\"note\":{\"fontSize\":11,\"offsetX\":4,\"offsetY\":4}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	initDefaultColourScheme(&cs);
+	compileLayoutConfig(path, &cs);
+
+	/* Resolution: a classless node returns the baked default. */
+	GuiNode *plain = createBlankGuiNode();
+	const StepCellStyle *st = resolveStepCellStyle(plain);
+	ASSERT_TRUE(st != NULL, "resolver returns baked default for classless node");
+	/* Baked defaults populated from initDefaultColourScheme's
+	 * defaultCell = {148,68,16,255}; highlight = {214,60,17,255};
+	 * outlineColour = {219,148,103,255}; fontColour = {99,17,0,255}. */
+	ASSERT_TRUE(st->bgEmpty.r == 148 && st->bgEmpty.g == 68 &&
+	            st->bgEmpty.b == 16 && st->bgEmpty.a == 255,
+	            "baked bgEmpty == defaultCell");
+	ASSERT_TRUE(st->bgPlaying.r == 214 && st->bgPlaying.g == 60 &&
+	            st->bgPlaying.b == 17 && st->bgPlaying.a == 255,
+	            "baked bgPlaying == highlightedCell");
+	ASSERT_TRUE(st->borderSelected.r == 219 && st->borderSelected.a == 255,
+	            "baked borderSelected == outlineColour");
+	ASSERT_TRUE(st->note.color.r == 99 && st->note.color.g == 17 &&
+	            st->note.color.b == 0 && st->note.color.a == 255,
+	            "baked note.color == fontColour");
+	/* The note LabelStyle's fontName must map (via styleFont) to textFont. */
+	ASSERT_TRUE(st->note.fontName && strcmp(st->note.fontName, "text") == 0,
+	            "note fontName references text font slot");
+	/* Baked default keeps fontSize at 0 so drawStepGuiNode's ternary
+	 * falls through to textFont.baseSize — byte-for-byte the same size
+	 * the pre-StepCellStyle drawStepGuiNode used. */
+	ASSERT_TRUE(st->note.fontSize == 0,
+	            "baked note.fontSize == 0 (fall through to textFont.baseSize)");
+	freeGuiNode(plain);
+
+	/* Unknown class falls back to the baked default (same pointer). */
+	GuiNode *u = createBlankGuiNode();
+	guiNodeSetClass(u, "no-such-step-cell-class");
+	const StepCellStyle *fb = resolveStepCellStyle(u);
+	ASSERT_TRUE(fb == st, "unknown class returns the same baked default");
+	freeGuiNode(u);
+
+	/* Custom class wins: a node classed "step-cell" gets its overrides.
+	 * "selectedCell"/"reddish"/"background" are theme field names chosen
+	 * to differ from defaultCell / highlightedCell / outlineColour so we
+	 * can be sure the override went through. */
+	GuiNode *cn = createBlankGuiNode();
+	guiNodeSetClass(cn, "step-cell");
+	const StepCellStyle *custom = resolveStepCellStyle(cn);
+	ASSERT_TRUE(custom != st, "class match returns a custom entry");
+	ASSERT_TRUE(custom->bgEmpty.r == cs.selectedCell.r &&
+	            custom->bgEmpty.g == cs.selectedCell.g &&
+	            custom->bgEmpty.b == cs.selectedCell.b,
+	            "custom bgEmpty == cs.selectedCell");
+	ASSERT_TRUE(custom->bgPlaying.r == cs.reddish.r &&
+	            custom->bgPlaying.g == cs.reddish.g &&
+	            custom->bgPlaying.b == cs.reddish.b,
+	            "custom bgPlaying == cs.reddish");
+	ASSERT_TRUE(custom->borderSelected.r == cs.backgroundColor.r &&
+	            custom->borderSelected.g == cs.backgroundColor.g &&
+	            custom->borderSelected.b == cs.backgroundColor.b,
+	            "custom borderSelected == cs.backgroundColor");
+	ASSERT_TRUE(custom->note.fontSize == 11, "custom note.fontSize");
+	ASSERT_TRUE(custom->note.offsetX == 4, "custom note.offsetX");
+	ASSERT_TRUE(custom->note.offsetY == 4, "custom note.offsetY");
+	freeGuiNode(cn);
+
+	remove(path);
+	printf("PASS test_step_cell_style_resolves_and_draws\n");
 	return 0;
 }

@@ -64,11 +64,26 @@ typedef struct {
 	BorderStyle border;
 } TypeLabelStyle;
 
+/* Pattern-screen step cell (one of MAX_SEQUENCER_STEPS in a single
+ * channel row). State-variant background colour is the cell's defining
+ * trait: bgEmpty when no note is set, bgPlaying when the playhead is
+ * hitting this step. borderSelected is drawn as the surround when the
+ * cell is the selected step in the pattern editor. The note LabelStyle
+ * is the pitch letter rendered at the cell centre; it uses the named
+ * "text" font slot so it shares the global textFont. */
+typedef struct {
+	Color bgEmpty;
+	Color bgPlaying;
+	Color borderSelected;
+	LabelStyle note;
+} StepCellStyle;
+
 typedef enum {
 	STYLE_DIAL,
 	STYLE_DIAL_DISCRETE,
 	STYLE_BTN,
 	STYLE_TYPE_LABEL,
+	STYLE_STEP_CELL,
 	STYLE_COUNT
 } StyleType;
 
@@ -78,6 +93,7 @@ const DialStyle *resolveDialStyle(const GuiNode *gn);
 const DialStyle *resolveDiscreteDialStyle(const GuiNode *gn);
 const BtnStyle *resolveBtnStyle(const GuiNode *gn);
 const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn);
+const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 
 Font *styleFont(const char *name);
 

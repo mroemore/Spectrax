@@ -81,6 +81,13 @@ static TypeLabelStyle g_defaultTypeLabel = {
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 };
 
+static StepCellStyle g_defaultStepCell = {
+	.bgEmpty = { 0, 0, 0, 0 },
+	.bgPlaying = { 0, 0, 0, 0 },
+	.borderSelected = { 0, 0, 0, 0 },
+	.note = { "text", 10, 4, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+};
+
 /* Colour defaults are resolved against the theme at compile time; the
  * zeroed colors here get replaced by resolveDefaultColours() below. */
 static void resolveDefaultColours(const ColourScheme *cs) {
@@ -100,6 +107,17 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	g_defaultTypeLabel.label.color = cs->label;
 	g_defaultTypeLabel.label.colorSelected = cs->labelSelected;
 	g_defaultTypeLabel.border.color = cs->outlineColour;
+	g_defaultStepCell.bgEmpty = cs->defaultCell;
+	g_defaultStepCell.bgPlaying = cs->highlightedCell;
+	g_defaultStepCell.borderSelected = cs->outlineColour;
+	g_defaultStepCell.note.color = cs->fontColour;
+	g_defaultStepCell.note.offsetX = 4;
+	g_defaultStepCell.note.offsetY = 4;
+	strcpy(g_defaultStepCell.note.fontName, "text");
+	g_defaultStepCell.note.spacing = 4;
+	/* fontSize stays 0 so drawStepGuiNode's ternary falls through to
+	 * textFont.baseSize — matches the pre-StepCellStyle literal. */
+	g_defaultStepCell.note.fontSize = 0;
 }
 
 /* Class registry: class name -> (type, index into per-type array). */
@@ -119,6 +137,7 @@ static DialStyle g_dialClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static DialStyle g_discreteDialClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static BtnStyle g_btnClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static TypeLabelStyle g_typeLabelClasses[MAX_CLASS_ENTRIES_PER_TYPE];
+static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
 /* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
  * "type-label" defaults themselves as the first entry so custom classes
@@ -127,6 +146,7 @@ static int g_dialClassCount = 0;
 static int g_discreteDialClassCount = 0;
 static int g_btnClassCount = 0;
 static int g_typeLabelClassCount = 0;
+static int g_stepCellClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -134,6 +154,7 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_DIAL_DISCRETE: return "dial-discrete";
 		case STYLE_BTN:           return "btn";
 		case STYLE_TYPE_LABEL:    return "type-label";
+		case STYLE_STEP_CELL:     return "step-cell";
 		default:                  return NULL;
 	}
 }
@@ -177,6 +198,14 @@ const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn) {
 		if(idx >= 0) return &g_typeLabelClasses[g_classMap[idx].index];
 	}
 	return &g_defaultTypeLabel;
+}
+
+const StepCellStyle *resolveStepCellStyle(const GuiNode *gn) {
+	if(gn && gn->className) {
+		int idx = findClass(gn->className, STYLE_STEP_CELL);
+		if(idx >= 0) return &g_stepCellClasses[g_classMap[idx].index];
+	}
+	return &g_defaultStepCell;
 }
 
 int dialComponentHeight(const DialStyle *st) {
@@ -308,6 +337,13 @@ static void overlayTypeLabel(cJSON *o, const ColourScheme *cs, TypeLabelStyle *t
 	if(cJSON_IsObject(label)) overlayLabel(label, cs, &t->label);
 	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");
 	if(cJSON_IsObject(border)) overlayBorder(border, cs, &t->border);
+}
+static void overlayStepCell(cJSON *o, const ColourScheme *cs, StepCellStyle *s) {
+	jsonColor(o, "bgEmpty", cs, &s->bgEmpty);
+	jsonColor(o, "bgPlaying", cs, &s->bgPlaying);
+	jsonColor(o, "borderSelected", cs, &s->borderSelected);
+	cJSON *note = cJSON_GetObjectItemCaseSensitive(o, "note");
+	if(cJSON_IsObject(note)) overlayLabel(note, cs, &s->note);
 }
 
 static StyleType typeDefaultForName(const char *name) {
@@ -490,6 +526,23 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_TYPE_LABEL;
+					g_classMap[g_classCount].index = idx;
+					g_classCount++;
+					break;
+				}
+				case STYLE_STEP_CELL: {
+					StepCellStyle merged = g_defaultStepCell;
+					for(int i = 0; i < n; i++) {
+						overlayStepCell(chain[i], cs, &merged);
+					}
+					int idx = g_stepCellClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_stepCellClassCount++ : -1;
+					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
+						continue;
+					}
+					g_stepCellClasses[idx] = merged;
+					strncpy(g_classMap[g_classCount].name, name, 63);
+					g_classMap[g_classCount].name[63] = '\0';
+					g_classMap[g_classCount].type = STYLE_STEP_CELL;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;

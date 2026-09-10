@@ -7,6 +7,7 @@
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
+#include "gui_style.h"
 #include "graph_gui.h"
 #include "input.h"
 #include "modsystem.h"
@@ -94,6 +95,7 @@ static GuiNode *createStepNode(PatternList *pl, Sequencer *seq, int patternIndex
 void drawStepGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	StepNodeData *d = (StepNodeData *)gn->p;
+	const StepCellStyle *st = resolveStepCellStyle(gn);
 	int currentlyPlaying = -1;
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
 		if(d->seq->pattern_index[i] == d->patternIndex) {
@@ -103,16 +105,18 @@ void drawStepGuiNode(void *self) {
 	}
 	Rectangle cell = (Rectangle){ gn->x, gn->y, gn->w, gn->h };
 	if(*d->selectedStepPtr == d->stepIndex) {
-		DrawRectangle(gn->x - 3, gn->y - 3, gn->w + 6, gn->h + 6, cs.outlineColour);
+		DrawRectangle(gn->x - 3, gn->y - 3, gn->w + 6, gn->h + 6, st->borderSelected);
 	}
 	if(currentlyPlaying > -1 && d->seq->running[currentlyPlaying] && d->seq->playhead_index[currentlyPlaying] == d->stepIndex) {
-		DrawRectangleRec(cell, cs.highlightedCell);
+		DrawRectangleRec(cell, st->bgPlaying);
 	} else {
-		DrawRectangleRec(cell, cs.defaultCell);
+		DrawRectangleRec(cell, st->bgEmpty);
 	}
 	int *note = getStep(d->pl, d->patternIndex, d->stepIndex);
 	char *noteString = getNoteString(note[0], note[1]);
-	DrawTextEx(textFont, noteString, (Vector2){ gn->x + 4, gn->y + 4 }, textFont.baseSize, 4, cs.fontColour);
+	Font *font = styleFont(st->note.fontName);
+	float fontSize = st->note.fontSize ? (float)st->note.fontSize : (float)textFont.baseSize;
+	DrawTextEx(*font, noteString, (Vector2){ gn->x + st->note.offsetX, gn->y + st->note.offsetY }, fontSize, (float)st->note.spacing, st->note.color);
 }
 
 
