@@ -67,6 +67,8 @@ static int test_btn_and_typelabel_styles(void);
 static int test_apply_layout_weights_and_classes(void);
 static int test_step_cell_style_resolves_and_draws(void);
 static int test_dest_style_resolves_and_colours(void);
+static int test_chip_style_resolves_and_geometry(void);
+static int test_chip_palette_resolved_from_theme(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -218,6 +220,8 @@ int main(void) {
 	fails += test_apply_layout_weights_and_classes();
 	fails += test_step_cell_style_resolves_and_draws();
 	fails += test_dest_style_resolves_and_colours();
+	fails += test_chip_style_resolves_and_geometry();
+	fails += test_chip_palette_resolved_from_theme();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -504,5 +508,48 @@ static int test_dest_style_resolves_and_colours(void) {
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_dest_style_resolves_and_colours\n");
+	return 0;
+}
+
+static int test_chip_style_resolves_and_geometry(void) {
+	GuiNode *n = createGuiNode(0, 0, 120, 30, 0, na_horizontal, "chip", 1, 0);
+	const ChipStyle *st = resolveChipStyle(n);
+	ASSERT_TRUE(st != NULL, "chip style resolves");
+	ASSERT_TRUE(st->border.borderWidth == 2.0f, "chip border width 2");
+	ASSERT_TRUE(st->dots.size == 4 && st->dots.gap == 2, "chip dots defaults");
+	ASSERT_TRUE(chipComponentHeight(st) == 24,
+	            "chip intrinsic height (label 12 + patch 8 + dots 4)");
+
+	ChipGeometry g;
+	computeChipGeometry(n, st, "FM", "chan", &g);
+	ASSERT_TRUE(g.voiceCountY == 2, "voice count top at +2");
+	/* label centred: (h - fontSize)/2 + offsetY = (30-12)/2 + 0 = 9 */
+	ASSERT_TRUE(g.labelY == 9, "label vertically centred");
+	/* patchName bottom: y + h + offsetY = 0 + 30 + -11 = 19 */
+	ASSERT_TRUE(g.patchNameY == 19, "patch name at bottom (offsetY -11)");
+	freeGuiNode(n);
+	printf("PASS test_chip_style_resolves_and_geometry\n");
+	return 0;
+}
+
+static int test_chip_palette_resolved_from_theme(void) {
+	const char *path = ".tmp_files/layout_test_chip.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{\"chip\":{\"palette\":[\"chipPalette0\",\"chipPalette3\"]}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	initDefaultColourScheme(&cs);
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile chip layout");
+
+	GuiNode *n = createGuiNode(0, 0, 120, 30, 0, na_horizontal, "chip", 1, 0);
+	guiNodeSetClass(n, "chip");
+	const ChipStyle *st = resolveChipStyle(n);
+	/* chipPalette0 default = steel-blue (70,130,180) */
+	ASSERT_TRUE(st->palette[0].r == 70, "palette[0] resolved chipPalette0 (steel-blue)");
+	/* chipPalette3 default = mulberry (170,80,130) */
+	ASSERT_TRUE(st->palette[3].r == 170, "palette[3] resolved chipPalette3 (mulberry)");
+	freeGuiNode(n);
+	remove(path);
+	printf("PASS test_chip_palette_resolved_from_theme\n");
 	return 0;
 }

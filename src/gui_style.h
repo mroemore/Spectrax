@@ -69,6 +69,31 @@ typedef struct {
 	BorderStyle border;
 } DestStyle;
 
+typedef struct {
+	int size;
+	int gap;
+	Color colour;
+	Color colourActive;
+} DotsStyle;
+
+typedef struct {
+	BorderStyle border;
+	Color palette[8];
+	LabelStyle voiceCount;
+	LabelStyle typeTag;
+	LabelStyle label;
+	LabelStyle patchName;
+	DotsStyle dots;
+} ChipStyle;
+
+typedef struct {
+	int voiceCountX, voiceCountY;
+	int typeTagX, typeTagY;
+	int labelX, labelY;
+	int patchNameX, patchNameY;
+	int dotsX, dotsY;
+} ChipGeometry;
+
 /* Pattern-screen step cell (one of MAX_SEQUENCER_STEPS in a single
  * channel row). State-variant background colour is the cell's defining
  * trait: bgEmpty when no note is set, bgPlaying when the playhead is
@@ -90,6 +115,7 @@ typedef enum {
 	STYLE_TYPE_LABEL,
 	STYLE_STEP_CELL,
 	STYLE_DEST,
+	STYLE_CHIP,
 	STYLE_COUNT
 } StyleType;
 
@@ -101,6 +127,11 @@ const BtnStyle *resolveBtnStyle(const GuiNode *gn);
 const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn);
 const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 const DestStyle *resolveDestStyle(const GuiNode *gn);
+const ChipStyle *resolveChipStyle(const GuiNode *gn);
+int chipComponentHeight(const ChipStyle *st);
+void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
+                         const char *typeTag, const char *label,
+                         ChipGeometry *out);
 
 Font *styleFont(const char *name);
 

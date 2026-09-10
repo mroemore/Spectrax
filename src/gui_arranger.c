@@ -7,6 +7,7 @@
 #include "dstruct.h"
 #include "raylib.h"
 #include "gui.h"
+#include "gui_style.h"
 #include "graph_gui.h"
 #include "input.h"
 #include "modsystem.h"
@@ -43,16 +44,10 @@ Arranger *g_arranger;
 
 
 /* Chip label colour swatches (shared with the inst chip editor). */
-const Color chipPalette[8] = {
-	{ 70, 130, 180, 255 }, /* steel-blue   */
-	{ 200, 120, 60, 255 }, /* amber        */
-	{ 90, 160, 90, 255 },  /* moss         */
-	{ 170, 80, 130, 255 }, /* mulberry     */
-	{ 210, 180, 70, 255 }, /* gold         */
-	{ 110, 90, 170, 255 }, /* violet       */
-	{ 80, 160, 160, 255 }, /* teal         */
-	{ 180, 90, 90, 255 },  /* brick        */
-};
+/* The chip palette now lives in the ColourScheme (chipPalette0..7),
+ * resolved through the theme + wired into ChipStyle.palette by
+ * resolveDefaultColours. The old chipPalette[8] global is gone — it's
+ * drawn via resolveChipStyle(gn)->palette[idx] in drawInstChipGuiNode. */
 
 
 
@@ -244,30 +239,44 @@ void drawInstChipGuiNode(void *self) {
 	if(!inst) return;
 
 	GuiNode *gn = &chip->base;
+	const ChipStyle *st = resolveChipStyle(gn);
+
 	int paletteIdx = chip->arranger->labelColourIdx[chip->channel];
 	if(paletteIdx < 0) paletteIdx = 0;
 	if(paletteIdx >= 8) paletteIdx = paletteIdx % 8;
-	Color bg = chipPalette[paletteIdx];
+	Color bg = st->palette[paletteIdx];
 	DrawRectangle(gn->x, gn->y, gn->w, gn->h, bg);
-	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, gn->selected ? cs.outlineColour : cs.wrapperBorder);
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h },
+	                     st->border.borderWidth,
+	                     gn->selected ? st->border.colorSelected : st->border.color);
+
+	/* Build the per-region geometry (positions computed from style). */
+	const char *tag = voiceTypeTag(inst->voiceType);
+	const char *lbl = chip->arranger->label[chip->channel];
+	ChipGeometry g;
+	computeChipGeometry(gn, st, tag, lbl, &g);
+
+	Font *fvc = styleFont(st->voiceCount.fontName);
+	Font *ftt = styleFont(st->typeTag.fontName);
+	Font *flb = styleFont(st->label.fontName);
+	Font *fpn = styleFont(st->patchName.fontName);
 
 	/* top-left: voice count */
 	char vbuf[16];
 	snprintf(vbuf, sizeof(vbuf), "V:%d", chip->vm->voiceCount[chip->channel]);
-	DrawTextEx(pixelFont, vbuf, (Vector2){ gn->x + 4, gn->y + 2 }, 9, 1, cs.label);
+	DrawTextEx(*fvc, vbuf, (Vector2){ g.voiceCountX, g.voiceCountY },
+	           st->voiceCount.fontSize, st->voiceCount.spacing, st->voiceCount.color);
 
-	/* top-right: type tag */
-	const char *tag = voiceTypeTag(inst->voiceType);
-	int tagW = MeasureText(tag, 9);
-	DrawTextEx(pixelFont, tag, (Vector2){ gn->x + gn->w - tagW - 4, gn->y + 2 }, 9, 1, cs.label);
+	/* top-right: type tag (computeChipGeometry right-aligned via -offset) */
+	DrawTextEx(*ftt, tag, (Vector2){ g.typeTagX, g.typeTagY },
+	           st->typeTag.fontSize, st->typeTag.spacing, st->typeTag.color);
 
-	/* centre: 8-char channel label */
-	const char *lbl = chip->arranger->label[chip->channel];
+	/* centre: 8-char channel label, capped at 8 chars */
 	char lblBuf[9];
 	strncpy(lblBuf, lbl, 8);
 	lblBuf[8] = '\0';
-	int lblW = MeasureText(lblBuf, 12);
-	DrawTextEx(pixelFont, lblBuf, (Vector2){ gn->x + (gn->w - lblW) / 2, gn->y + (gn->h - 12) / 2 }, 12, 1, cs.label);
+	DrawTextEx(*flb, lblBuf, (Vector2){ g.labelX, g.labelY },
+	           st->label.fontSize, st->label.spacing, st->label.color);
 
 	/* bottom-left: patch name (inst->loaded.name) */
 	const char *patch = inst->loaded.name;
@@ -275,18 +284,19 @@ void drawInstChipGuiNode(void *self) {
 	char patchBuf[32];
 	strncpy(patchBuf, patch, sizeof(patchBuf) - 1);
 	patchBuf[sizeof(patchBuf) - 1] = '\0';
-	DrawTextEx(pixelFont, patchBuf, (Vector2){ gn->x + 4, gn->y + gn->h - 11 }, 8, 1, cs.label);
+	DrawTextEx(*fpn, patchBuf, (Vector2){ g.patchNameX, g.patchNameY },
+	           st->patchName.fontSize, st->patchName.spacing, st->patchName.color);
 
 	/* bottom-right: voice-active light per voice */
 	int n = chip->vm->voiceCount[chip->channel];
-	int dotSize = 4;
-	int dotGap = 2;
+	int dotSize = st->dots.size;
+	int dotGap = st->dots.gap;
 	int rowW = n * dotSize + (n > 0 ? (n - 1) * dotGap : 0);
 	int startX = gn->x + gn->w - rowW - 3;
-	int dotY = gn->y + gn->h - dotSize - 3;
+	int dotY = g.dotsY;
 	for(int i = 0; i < n; i++) {
 		Voice *v = chip->vm->voicePools[chip->channel][i];
-		Color c = (v && v->active) ? cs.outlineColour : cs.wrapperBorder;
+		Color c = (v && v->active) ? st->dots.colourActive : st->dots.colour;
 		DrawRectangle(startX + i * (dotSize + dotGap), dotY, dotSize, dotSize, c);
 	}
 
@@ -308,13 +318,13 @@ void drawInstChipGuiNode(void *self) {
 	int swW = gn->w / 8;
 	for(int i = 0; i < 8; i++) {
 		int sx = gn->x + i * swW;
-		DrawRectangle(sx, stripTopY, swW, swatchH, chipPalette[i]);
+		DrawRectangle(sx, stripTopY, swW, swatchH, st->palette[i]);
 		if(i == chip->swatchFocus) {
 			/* inverted cursor block + outline so the focused swatch is
 			 * obvious even when its colour is the same as the chip's bg */
-			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 2.0f, cs.outlineColour);
+			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 2.0f, st->border.colorSelected);
 		} else {
-			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 1.0f, cs.wrapperBorder);
+			DrawRectangleLinesEx((Rectangle){ sx, stripTopY, swW, swatchH }, 1.0f, st->border.color);
 		}
 	}
 

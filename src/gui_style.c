@@ -85,6 +85,17 @@ static DestStyle g_defaultDest = {
 	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
+static ChipStyle g_defaultChip = {
+	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.palette = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 },
+	             { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.voiceCount = { "pixel", 9, 1, 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.typeTag    = { "pixel", 9, 1, -4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.label      = { "pixel", 12, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.patchName  = { "pixel", 8, 1, 4, -11, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.dots = { 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+};
+
 static StepCellStyle g_defaultStepCell = {
 	.bgEmpty = { 0, 0, 0, 0 },
 	.bgPlaying = { 0, 0, 0, 0 },
@@ -124,6 +135,17 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	/* fontSize stays 0 so drawStepGuiNode's ternary falls through to
 	 * textFont.baseSize — matches the pre-StepCellStyle literal. */
 	g_defaultStepCell.note.fontSize = 0;
+	g_defaultChip.border.color = cs->wrapperBorder;
+	g_defaultChip.border.colorSelected = cs->outlineColour;
+	for(int i = 0; i < 8; i++) {
+		g_defaultChip.palette[i] = (&cs->chipPalette0)[i];
+	}
+	g_defaultChip.voiceCount.color = cs->label;
+	g_defaultChip.typeTag.color = cs->label;
+	g_defaultChip.label.color = cs->label;
+	g_defaultChip.patchName.color = cs->label;
+	g_defaultChip.dots.colour = cs->wrapperBorder;
+	g_defaultChip.dots.colourActive = cs->outlineColour;
 }
 
 /* Class registry: class name -> (type, index into per-type array). */
@@ -145,6 +167,7 @@ static BtnStyle g_btnClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static TypeLabelStyle g_typeLabelClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static DestStyle g_destClasses[MAX_CLASS_ENTRIES_PER_TYPE];
+static ChipStyle g_chipClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
 /* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
  * "type-label" defaults themselves as the first entry so custom classes
@@ -155,6 +178,7 @@ static int g_btnClassCount = 0;
 static int g_typeLabelClassCount = 0;
 static int g_stepCellClassCount = 0;
 static int g_destClassCount = 0;
+static int g_chipClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -164,6 +188,7 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_TYPE_LABEL:    return "type-label";
 		case STYLE_STEP_CELL:     return "step-cell";
 		case STYLE_DEST:          return "route-dest";
+		case STYLE_CHIP:          return "chip";
 		default:                  return NULL;
 	}
 }
@@ -223,6 +248,44 @@ const DestStyle *resolveDestStyle(const GuiNode *gn) {
 		if(idx >= 0) return &g_destClasses[g_classMap[idx].index];
 	}
 	return &g_defaultDest;
+}
+
+const ChipStyle *resolveChipStyle(const GuiNode *gn) {
+	if(gn && gn->className) {
+		int idx = findClass(gn->className, STYLE_CHIP);
+		if(idx >= 0) return &g_chipClasses[g_classMap[idx].index];
+	}
+	return &g_defaultChip;
+}
+
+int chipComponentHeight(const ChipStyle *st) {
+	if(!st) return 0;
+	/* The chip's natural height = the centred label band +
+	 * the bottom strip (patch name + active dots, which must
+	 * not overlap). The voiceCount/typeTag sit at the top and
+	 * ride on the same band as the label. */
+	return st->label.fontSize + st->patchName.fontSize + st->dots.size;
+}
+
+void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
+                         const char *typeTag, const char *label,
+                         ChipGeometry *out) {
+	if(!gn || !st || !out) return;
+	out->voiceCountX = gn->x + st->voiceCount.offsetX;
+	out->voiceCountY = gn->y + st->voiceCount.offsetY;
+	int tagW = MeasureText(typeTag ? typeTag : "", st->typeTag.fontSize);
+	out->typeTagX = gn->x + gn->w - tagW + st->typeTag.offsetX;
+	out->typeTagY = gn->y + st->typeTag.offsetY;
+	const char *lbl = label ? label : "";
+	int lblW = MeasureText(lbl, st->label.fontSize);
+	out->labelX = gn->x + (gn->w - lblW) / 2 + st->label.offsetX;
+	out->labelY = gn->y + (gn->h - st->label.fontSize) / 2 + st->label.offsetY;
+	out->patchNameX = gn->x + st->patchName.offsetX;
+	/* patchName uses a negative offsetY so the region is anchored to
+	 * the cell bottom: y = gn->y + gn->h + offsetY (offsetY < 0). */
+	out->patchNameY = gn->y + gn->h + st->patchName.offsetY;
+	out->dotsX = -1;          /* computed in draw (depends on voice count) */
+	out->dotsY = gn->y + gn->h - st->dots.size - 3;
 }
 
 int dialComponentHeight(const DialStyle *st) {
@@ -360,6 +423,42 @@ static void overlayTypeLabel(cJSON *o, const ColourScheme *cs, TypeLabelStyle *t
 static void overlayDest(cJSON *o, const ColourScheme *cs, DestStyle *d) {
 	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");
 	if(cJSON_IsObject(border)) overlayBorder(border, cs, &d->border);
+}
+
+static void overlayDots(cJSON *o, const ColourScheme *cs, DotsStyle *d) {
+	d->size = jsonInt(o, "size", d->size);
+	d->gap = jsonInt(o, "gap", d->gap);
+	jsonColor(o, "colour", cs, &d->colour);
+	jsonColor(o, "colourActive", cs, &d->colourActive);
+}
+
+static void overlayChip(cJSON *o, const ColourScheme *cs, ChipStyle *ch) {
+	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");
+	cJSON *voiceCount = cJSON_GetObjectItemCaseSensitive(o, "voiceCount");
+	cJSON *typeTag = cJSON_GetObjectItemCaseSensitive(o, "typeTag");
+	cJSON *label = cJSON_GetObjectItemCaseSensitive(o, "label");
+	cJSON *patchName = cJSON_GetObjectItemCaseSensitive(o, "patchName");
+	cJSON *dots = cJSON_GetObjectItemCaseSensitive(o, "dots");
+	cJSON *palette = cJSON_GetObjectItemCaseSensitive(o, "palette");
+	if(cJSON_IsObject(border)) overlayBorder(border, cs, &ch->border);
+	if(cJSON_IsObject(voiceCount)) overlayLabel(voiceCount, cs, &ch->voiceCount);
+	if(cJSON_IsObject(typeTag)) overlayLabel(typeTag, cs, &ch->typeTag);
+	if(cJSON_IsObject(label)) overlayLabel(label, cs, &ch->label);
+	if(cJSON_IsObject(patchName)) overlayLabel(patchName, cs, &ch->patchName);
+	if(cJSON_IsObject(dots)) overlayDots(dots, cs, &ch->dots);
+	if(cJSON_IsArray(palette)) {
+		int n = cJSON_GetArraySize(palette);
+		if(n > 8) n = 8;
+		for(int i = 0; i < n; i++) {
+			cJSON *e = cJSON_GetArrayItem(palette, i);
+			if(cJSON_IsString(e)) {
+				Color *c = themeFieldByName((ColourScheme *)cs, e->valuestring);
+				if(c) {
+					ch->palette[i] = *c;
+				}
+			}
+		}
+	}
 }
 static void overlayStepCell(cJSON *o, const ColourScheme *cs, StepCellStyle *s) {
 	jsonColor(o, "bgEmpty", cs, &s->bgEmpty);
@@ -583,6 +682,23 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_DEST;
+					g_classMap[g_classCount].index = idx;
+					g_classCount++;
+					break;
+				}
+				case STYLE_CHIP: {
+					ChipStyle merged = g_defaultChip;
+					for(int i = 0; i < n; i++) {
+						overlayChip(chain[i], cs, &merged);
+					}
+					int idx = g_chipClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_chipClassCount++ : -1;
+					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
+						continue;
+					}
+					g_chipClasses[idx] = merged;
+					strncpy(g_classMap[g_classCount].name, name, 63);
+					g_classMap[g_classCount].name[63] = '\0';
+					g_classMap[g_classCount].type = STYLE_CHIP;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;
