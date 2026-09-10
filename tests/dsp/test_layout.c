@@ -66,6 +66,7 @@ static int test_custom_class_geometry(void);
 static int test_btn_and_typelabel_styles(void);
 static int test_apply_layout_weights_and_classes(void);
 static int test_step_cell_style_resolves_and_draws(void);
+static int test_dest_style_resolves_and_colours(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -216,6 +217,7 @@ int main(void) {
 	fails += test_btn_and_typelabel_styles();
 	fails += test_apply_layout_weights_and_classes();
 	fails += test_step_cell_style_resolves_and_draws();
+	fails += test_dest_style_resolves_and_colours();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -474,5 +476,33 @@ static int test_step_cell_style_resolves_and_draws(void) {
 
 	remove(path);
 	printf("PASS test_step_cell_style_resolves_and_draws\n");
+	return 0;
+}
+
+static int test_dest_style_resolves_and_colours(void) {
+	/* Task 4: DestStyle carries the route-dest outline. The baked default
+	 * must mirror what drawRouteDestGuiNode used to hardcode (borderWidth
+	 * 2, border.color from cs.routeAdd, border.colorSelected from
+	 * cs.labelSelected) so the no-class layout.json render stays
+	 * byte-for-byte identical. We don't assert exact RGB triples here —
+	 * those are theme-defined — only that the colour sources are non-zero.
+	 */
+	const char *path = ".tmp_files/layout_test_dest.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{}}", f);
+	fclose(f);
+	ColourScheme cs;
+	initDefaultColourScheme(&cs);
+	compileLayoutConfig(path, &cs);
+
+	GuiNode *n = createGuiNode(0, 0, 40, 30, 0, na_horizontal, "dest", 1, 0);
+	const DestStyle *st = resolveDestStyle(n);
+	ASSERT_TRUE(st != NULL, "route-dest style resolves");
+	ASSERT_TRUE(st->border.borderWidth == 2, "dest border width 2");
+	ASSERT_TRUE(st->border.color.r > 0, "dest border colour non-zero (routeAdd)");
+	ASSERT_TRUE(st->border.colorSelected.g > 0, "dest selected colour non-zero (labelSelected)");
+	freeGuiNode(n);
+	remove(path);
+	printf("PASS test_dest_style_resolves_and_colours\n");
 	return 0;
 }

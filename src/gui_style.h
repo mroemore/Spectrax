@@ -26,6 +26,7 @@ typedef struct {
 	float roundness;
 	float borderWidth;
 	Color color;
+	Color colorSelected;
 } BorderStyle;
 
 typedef struct {
@@ -64,6 +65,10 @@ typedef struct {
 	BorderStyle border;
 } TypeLabelStyle;
 
+typedef struct {
+	BorderStyle border;
+} DestStyle;
+
 /* Pattern-screen step cell (one of MAX_SEQUENCER_STEPS in a single
  * channel row). State-variant background colour is the cell's defining
  * trait: bgEmpty when no note is set, bgPlaying when the playhead is
@@ -84,6 +89,7 @@ typedef enum {
 	STYLE_BTN,
 	STYLE_TYPE_LABEL,
 	STYLE_STEP_CELL,
+	STYLE_DEST,
 	STYLE_COUNT
 } StyleType;
 
@@ -94,6 +100,7 @@ const DialStyle *resolveDiscreteDialStyle(const GuiNode *gn);
 const BtnStyle *resolveBtnStyle(const GuiNode *gn);
 const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn);
 const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
+const DestStyle *resolveDestStyle(const GuiNode *gn);
 
 Font *styleFont(const char *name);
 

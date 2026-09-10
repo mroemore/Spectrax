@@ -374,13 +374,10 @@ void drawActionBtnGuiNode(void *self) {
  * the cell so 31px and 35px dial cells both get a chunky 2px ring. */
 void drawRouteDestGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
-	Color outline = cs.routeAdd;
-	if(gn->selected) {
-		/* Push the selected outline toward the labelSelected tint so it
-		 * matches the overlay label drawn on top (cs.labelSelected). */
-		outline = cs.labelSelected;
-	}
-	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0, outline);
+	const DestStyle *st = resolveDestStyle(gn);
+	Color outline = gn->selected ? st->border.colorSelected : st->border.color;
+	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h },
+	                     st->border.borderWidth, outline);
 }
 
 /* Task 6: route-destination picker node. Same rect as a dial, but with

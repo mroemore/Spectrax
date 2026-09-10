@@ -81,6 +81,10 @@ static TypeLabelStyle g_defaultTypeLabel = {
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 };
 
+static DestStyle g_defaultDest = {
+	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+};
+
 static StepCellStyle g_defaultStepCell = {
 	.bgEmpty = { 0, 0, 0, 0 },
 	.bgPlaying = { 0, 0, 0, 0 },
@@ -107,6 +111,8 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	g_defaultTypeLabel.label.color = cs->label;
 	g_defaultTypeLabel.label.colorSelected = cs->labelSelected;
 	g_defaultTypeLabel.border.color = cs->outlineColour;
+	g_defaultDest.border.color = cs->routeAdd;
+	g_defaultDest.border.colorSelected = cs->labelSelected;
 	g_defaultStepCell.bgEmpty = cs->defaultCell;
 	g_defaultStepCell.bgPlaying = cs->highlightedCell;
 	g_defaultStepCell.borderSelected = cs->outlineColour;
@@ -138,6 +144,7 @@ static DialStyle g_discreteDialClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static BtnStyle g_btnClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static TypeLabelStyle g_typeLabelClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
+static DestStyle g_destClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
 /* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
  * "type-label" defaults themselves as the first entry so custom classes
@@ -147,6 +154,7 @@ static int g_discreteDialClassCount = 0;
 static int g_btnClassCount = 0;
 static int g_typeLabelClassCount = 0;
 static int g_stepCellClassCount = 0;
+static int g_destClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -155,6 +163,7 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_BTN:           return "btn";
 		case STYLE_TYPE_LABEL:    return "type-label";
 		case STYLE_STEP_CELL:     return "step-cell";
+		case STYLE_DEST:          return "route-dest";
 		default:                  return NULL;
 	}
 }
@@ -206,6 +215,14 @@ const StepCellStyle *resolveStepCellStyle(const GuiNode *gn) {
 		if(idx >= 0) return &g_stepCellClasses[g_classMap[idx].index];
 	}
 	return &g_defaultStepCell;
+}
+
+const DestStyle *resolveDestStyle(const GuiNode *gn) {
+	if(gn && gn->className) {
+		int idx = findClass(gn->className, STYLE_DEST);
+		if(idx >= 0) return &g_destClasses[g_classMap[idx].index];
+	}
+	return &g_defaultDest;
 }
 
 int dialComponentHeight(const DialStyle *st) {
@@ -297,6 +314,7 @@ static void overlayBorder(cJSON *o, const ColourScheme *cs, BorderStyle *b) {
 	b->roundness = jsonFloat(o, "roundness", b->roundness);
 	b->borderWidth = jsonFloat(o, "borderWidth", b->borderWidth);
 	jsonColor(o, "color", cs, &b->color);
+	jsonColor(o, "colorSelected", cs, &b->colorSelected);
 }
 static void overlayValue(cJSON *o, const ColourScheme *cs, ValueStyle *v) {
 	jsonStr(o, "format", v->format, sizeof(v->format));
@@ -334,9 +352,14 @@ static void overlayBtn(cJSON *o, const ColourScheme *cs, BtnStyle *b) {
 }
 static void overlayTypeLabel(cJSON *o, const ColourScheme *cs, TypeLabelStyle *t) {
 	cJSON *label = cJSON_GetObjectItemCaseSensitive(o, "label");
-	if(cJSON_IsObject(label)) overlayLabel(label, cs, &t->label);
 	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");
+	if(cJSON_IsObject(label)) overlayLabel(label, cs, &t->label);
 	if(cJSON_IsObject(border)) overlayBorder(border, cs, &t->border);
+}
+
+static void overlayDest(cJSON *o, const ColourScheme *cs, DestStyle *d) {
+	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");
+	if(cJSON_IsObject(border)) overlayBorder(border, cs, &d->border);
 }
 static void overlayStepCell(cJSON *o, const ColourScheme *cs, StepCellStyle *s) {
 	jsonColor(o, "bgEmpty", cs, &s->bgEmpty);
@@ -543,6 +566,23 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_STEP_CELL;
+					g_classMap[g_classCount].index = idx;
+					g_classCount++;
+					break;
+				}
+				case STYLE_DEST: {
+					DestStyle merged = g_defaultDest;
+					for(int i = 0; i < n; i++) {
+						overlayDest(chain[i], cs, &merged);
+					}
+					int idx = g_destClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_destClassCount++ : -1;
+					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
+						continue;
+					}
+					g_destClasses[idx] = merged;
+					strncpy(g_classMap[g_classCount].name, name, 63);
+					g_classMap[g_classCount].name[63] = '\0';
+					g_classMap[g_classCount].type = STYLE_DEST;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;
