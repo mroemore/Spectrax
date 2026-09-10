@@ -98,6 +98,14 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->spectrogramPlayhead = (Color){ 255, 0, 0, 255 };
 	colourScheme->routeAdd = (Color){ 255, 120, 80, 255 };
 	colourScheme->routeMul = (Color){ 120, 200, 255, 255 };
+	colourScheme->chipPalette0 = (Color){ 70, 130, 180, 255 };
+	colourScheme->chipPalette1 = (Color){ 200, 120, 60, 255 };
+	colourScheme->chipPalette2 = (Color){ 90, 160, 90, 255 };
+	colourScheme->chipPalette3 = (Color){ 170, 80, 130, 255 };
+	colourScheme->chipPalette4 = (Color){ 210, 180, 70, 255 };
+	colourScheme->chipPalette5 = (Color){ 110, 90, 170, 255 };
+	colourScheme->chipPalette6 = (Color){ 80, 160, 160, 255 };
+	colourScheme->chipPalette7 = (Color){ 180, 90, 90, 255 };
 }
 
 

@@ -42,6 +42,14 @@ typedef struct {
 	Color spectrogramPlayhead;
 	Color routeAdd;
 	Color routeMul;
+	Color chipPalette0;
+	Color chipPalette1;
+	Color chipPalette2;
+	Color chipPalette3;
+	Color chipPalette4;
+	Color chipPalette5;
+	Color chipPalette6;
+	Color chipPalette7;
 } ColourScheme;
 
 typedef struct {

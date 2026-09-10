@@ -42,6 +42,14 @@
 		"layerDim": "#000000AA",
 		"spectrogramPlayhead": "#FF0000FF",
 		"routeAdd": "#FF7850FF",
-		"routeMul": "#78C8FFFF"
+		"routeMul": "#78C8FFFF",
+		"chipPalette0": "#4682B4FF",
+		"chipPalette1": "#C8783CFF",
+		"chipPalette2": "#5AA05AFF",
+		"chipPalette3": "#AA5082FF",
+		"chipPalette4": "#D2B446FF",
+		"chipPalette5": "#6E5AAAFF",
+		"chipPalette6": "#50A0A0FF",
+		"chipPalette7": "#B45A5AFF"
 	}
 }

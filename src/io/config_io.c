@@ -80,6 +80,14 @@ Color *themeFieldByName(ColourScheme *cs, const char *name) {
 	if(!strcmp(name, "spectrogramPlayhead")) return &cs->spectrogramPlayhead;
 	if(!strcmp(name, "routeAdd")) return &cs->routeAdd;
 	if(!strcmp(name, "routeMul")) return &cs->routeMul;
+	if(!strcmp(name, "chipPalette0")) return &cs->chipPalette0;
+	if(!strcmp(name, "chipPalette1")) return &cs->chipPalette1;
+	if(!strcmp(name, "chipPalette2")) return &cs->chipPalette2;
+	if(!strcmp(name, "chipPalette3")) return &cs->chipPalette3;
+	if(!strcmp(name, "chipPalette4")) return &cs->chipPalette4;
+	if(!strcmp(name, "chipPalette5")) return &cs->chipPalette5;
+	if(!strcmp(name, "chipPalette6")) return &cs->chipPalette6;
+	if(!strcmp(name, "chipPalette7")) return &cs->chipPalette7;
 	return NULL;
 }
 
@@ -153,7 +161,9 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 		"arrangerPlayhead", "arrangerCellText", "wrapperBorder",
 		"modStripLfo", "modStripEnv", "modStripRnd", "modStripOfs",
 		"modStripDefault", "layerDim", "spectrogramPlayhead",
-		"routeAdd", "routeMul" };
+		"routeAdd", "routeMul",
+		"chipPalette0", "chipPalette1", "chipPalette2", "chipPalette3",
+		"chipPalette4", "chipPalette5", "chipPalette6", "chipPalette7" };
 	size_t n = sizeof(names) / sizeof(names[0]);
 	for(size_t i = 0; i < n; i++) {
 		/* Cast away const for the lookup helper (it only dereferences for read,

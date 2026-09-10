@@ -18,6 +18,11 @@ test_names = [
 # + gui_layer.o (which gui.c references). Other tests don't need this.
 test_graph_nav_extra = files('../src/gui_core.c', '../src/gui_arranger.c', '../src/gui_pattern.c', '../src/gui_instrument.c', '../src/gui_inst_fm.c', '../src/gui_inst_sample.c', '../src/gui_inst_mod.c', '../src/gui_inst_blep.c', '../src/gui_layer.c')
 
+# Task 2 (chip-palette theme keys): test_cfg's test_chip_palette_theme_roundtrip
+# calls initDefaultColourScheme, which lives in gui_core.c (not part of core_lib).
+# gui.h pulls in the same surface as test_graph_nav, so link the same gui sources.
+test_cfg_extra = test_graph_nav_extra
+
 # Task 5: test_mod_voice covers the chip label-edit char-cycle + cursor
 # pure helpers in gui.c (chipLabelCycleCharAt / chipLabelCursorMove /
 # chipLabelCharIndex). It needs gui.o + system_deps (raylib, etc.) for
@@ -36,6 +41,9 @@ foreach name : test_names
     link_libs = [core_lib, seq_lib, vizfx_lib]
   elif name == 'test_voice'
     link_libs = [core_lib, seq_lib]
+  elif name == 'test_cfg'
+    extra_srcs = test_cfg_extra
+    link_libs = [core_lib, seq_lib, vizfx_lib]
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),

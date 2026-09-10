@@ -8,6 +8,11 @@
 #include "paths.h"
 #include "settings.h"
 #include "theme.h"
+#include "gui.h"  /* initDefaultColourScheme (Task 2 chip-palette test) */
+
+#define ASSERT_TRUE(cond, msg) do { \
+	if(!(cond)) { printf("FAIL %s\n", msg); return 1; } \
+} while(0)
 
 /* Local copy of test_io.c's ensure_tmp_dirs() — creates .tmp_files/ if
  * missing. test_cfg.c doesn't share a translation unit with test_io.c,
@@ -536,6 +541,18 @@ static int test_settings_roundtrip(void) {
 	return 0;
 }
 
+static int test_chip_palette_theme_roundtrip(void) {
+	/* themeFieldByName must resolve the 8 palette names */
+	ColourScheme cs;
+	initDefaultColourScheme(&cs);
+	ASSERT_TRUE(themeFieldByName(&cs, "chipPalette0") != NULL, "chipPalette0 field exists");
+	ASSERT_TRUE(themeFieldByName(&cs, "chipPalette7") != NULL, "chipPalette7 field exists");
+	ASSERT_TRUE(themeFieldByName(&cs, "chipPalette0")->r == 70, "chipPalette0 default is steel-blue");
+	ASSERT_TRUE(themeFieldByName(&cs, "chipPalette7")->r == 180, "chipPalette7 default is brick");
+	printf("PASS test_chip_palette_theme_roundtrip\n");
+	return 0;
+}
+
 int main(void) {
 	int failed = 0;
 	failed |= test_cjson_parse_smoke();
@@ -557,6 +574,7 @@ int main(void) {
 	failed |= test_settings_partial();
 	failed |= test_settings_missing();
 	failed |= test_settings_roundtrip();
+	failed |= test_chip_palette_theme_roundtrip();
 	if(failed) {
 		printf("test_cfg: FAILURES\n");
 		return 1;
