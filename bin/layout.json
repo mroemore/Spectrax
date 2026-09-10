@@ -1,23 +1,81 @@
 {
     "styles": {
         "dial": {
-            "knob":  { "size": 20, "radius": 10, "startAngle": -225, "sweep": 270, "offsetX": 0, "offsetY": 0, "asset": "resources/images/dial2.png", "color": "dial" },
-            "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "panelBorder" },
-            "value": { "format": "%05.2f", "width": 38, "height": 14, "offsetX": 28, "offsetY": 2, "color": "valueText" },
-            "label": { "font": "pixel", "fontSize": 9, "spacing": 1, "offsetX": 0, "offsetY": 18, "color": "label", "colorSelected": "labelSelected" }
+            "knob": {
+                "size": 20,
+                "radius": 10,
+                "startAngle": -225,
+                "sweep": 270,
+                "offsetX": 0,
+                "offsetY": 0,
+                "asset": "resources/images/dial2.png",
+                "color": "dial"
+            },
+            "border": {
+                "roundness": 0.125,
+                "borderWidth": 2.0,
+                "color": "panelBorder"
+            },
+            "value": {
+                "format": "%05.2f",
+                "width": 38,
+                "height": 14,
+                "offsetX": 28,
+                "offsetY": 2,
+                "color": "valueText"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 18,
+                "color": "label",
+                "colorSelected": "labelSelected"
+            }
         },
         "dial-discrete": {
             "extends": "dial",
-            "value": { "format": "%i", "width": 10, "offsetX": 6, "offsetY": 5 },
-            "label": { "offsetX": 6, "offsetY": 21 }
+            "value": {
+                "format": "%i",
+                "width": 10,
+                "offsetX": 6,
+                "offsetY": 5
+            },
+            "label": {
+                "offsetX": 6,
+                "offsetY": 21
+            }
         },
         "btn": {
-            "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "panelBorder" },
-            "label": { "font": "pixel", "fontSize": 10, "spacing": 1, "offsetX": 4, "offsetY": 4, "color": "label", "colorSelected": "labelSelected" }
+            "border": {
+                "roundness": 0.125,
+                "borderWidth": 2.0,
+                "color": "panelBorder"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 10,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": 4,
+                "color": "label",
+                "colorSelected": "labelSelected"
+            }
         },
         "type-label": {
-            "label": { "font": "pixel", "fontSize": 10, "spacing": 1, "color": "label", "colorSelected": "labelSelected" },
-            "border": { "roundness": 0.125, "borderWidth": 2.0, "color": "outlineColour" }
+            "label": {
+                "font": "pixel",
+                "fontSize": 10,
+                "spacing": 1,
+                "color": "label",
+                "colorSelected": "labelSelected"
+            },
+            "border": {
+                "roundness": 0.125,
+                "borderWidth": 2.0,
+                "color": "outlineColour"
+            }
         }
     },
     "layouts": {
@@ -25,18 +83,41 @@
             "orientation": "horizontal",
             "padding": 2,
             "gap": 2,
-            "weights": [3, 4, 4, 4, 4, 3, 2, 1]
+            "weights": [
+                3,
+                4,
+                4,
+                4,
+                4,
+                3,
+                2,
+                1
+            ]
         },
         "env-row": {
             "orientation": "horizontal",
             "padding": 4,
-            "weights": [1, 2, 1],
-            "childClasses": ["", "big-dial", ""]
+            "weights": [
+                1,
+                2,
+                1
+            ],
+            "childClasses": [
+                "",
+                "big-dial",
+                ""
+            ]
         },
         "fm-op-row": {
             "orientation": "horizontal",
             "padding": 1,
-            "weights": [1, 1, 1, 1, 1]
+            "weights": [
+                1,
+                1,
+                1,
+                1,
+                1
+            ]
         }
     }
 }

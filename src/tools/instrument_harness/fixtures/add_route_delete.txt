@@ -9,7 +9,7 @@
 # plus the DELETE_NO cancel path and the DELETE_YES confirm path.
 # N1/N2 (user reports): after a route the rebuild reselects the source's
 # ROUTE button; opening the picker lands on the CLOSEST dest (env[4]'s
-# own es_Curve dial); JUMPTL jumps within the picker layer.
+# own curve dial); JUMPTL jumps within the picker layer.
 
 FRAMES 1
 ASSERT selected==RATIO1
@@ -48,7 +48,7 @@ DOWN
 ASSERT selected==ENV
 
 # ROUTE opens the destination-picking layer. N2 lands the cursor on the
-# CLOSEST dest to the source's ROUTE button (env[4]'s es_Curve), not the
+# CLOSEST dest to the source's ROUTE button (env[4]'s curve), not the
 # top of the screen.
 RIGHT
 RIGHT
@@ -57,7 +57,7 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==es_Curve
+ASSERT topLayerSelected==curve
 JUMPTL feedback
 ASSERT topLayerSelected==feedback
 # EDIT routes the runtime source to op0 feedback.

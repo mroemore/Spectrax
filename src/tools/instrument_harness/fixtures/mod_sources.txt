@@ -74,7 +74,7 @@ ASSERT selected==ENV
 
 # --- Route the source to op0 feedback via the picking layer ----------------
 # RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; N2 lands the
-# cursor on the CLOSEST dest (env[4]'s own decay-curve dial, es_Curve).
+# cursor on the CLOSEST dest (env[4]'s own decay-curve dial, "curve").
 # JUMPTL reaches the first "feedback" dest (op0) directly.
 RIGHT
 RIGHT
@@ -83,7 +83,7 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==es_Curve
+ASSERT topLayerSelected==curve
 JUMPTL feedback
 ASSERT topLayerSelected==feedback
 EDIT
@@ -143,7 +143,7 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==es_Curve
+ASSERT topLayerSelected==curve
 JUMPTL gain
 ASSERT topLayerSelected==gain
 EDIT
