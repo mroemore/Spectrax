@@ -14,45 +14,72 @@ button, delete button — and are assignable to any dialed destination.
 
 ## A. PatternMod data model
 
-New `MT_PATTERN` mod type:
+New `MT_PATTERN` mod type (rev 2: adapted to the union'd Mod + per-voice
+clone architecture from the unified mod/voice rework, 2026-09-06):
 
 ```c
 #define MAX_PATTERN_STEPS 16
 
 typedef struct {
-    Mod base;
     Parameter *length;    // 1..16 (int param)
     Parameter *shape;     // SH_HOLD / SH_LINEAR / SH_SLEW / SH_CURVE
     Parameter *slew;      // glide time, 0..1 (SLEW mode)
     Parameter *polarity;  // PP_UNIPOLAR (0..1) / PP_BIPOLAR (-1..1)
     float steps[MAX_PATTERN_STEPS];   // stored 0..1
-    int stepCount;
+    int stepCount;        // 1..length
+    int channel;          // which channel's playhead clocks this source
+    /* per-voice running state (cloned independently per voice) */
     int currentStep;
     float currentValue;   // the output value
     float stepProgress;   // 0..1 within the current song step
-    const int *stepPtr;   // -> arranger->playhead_indices[channel]
-    const float *stepDurationPtr; // -> current step duration in samples
-} PatternMod;
+    float startValue;     // the value at the start of the current step
+    int lastPlayhead;     // boundary detection
+} PatternState;
 ```
 
+- `PatternState` is a new member of `Mod.data`'s union (alongside
+  `env`/`lfo`/`rnd`/`atten`). `Mod.type == MT_PATTERN` selects it. The old
+  spec's `PatternMod { Mod base; ... }` is obsolete — the union refactor
+  removed the base-embedding style.
 - Steps are stored 0..1 internally; the output is scaled by polarity
   (unipolar: the raw step; bipolar: `step * 2 - 1`).
-- The mod's base `output` Parameter is created like other sources.
+- The mod's `output` Parameter is created like other sources (via
+  `initMod`).
 
-### Clock — tempo-synced 1:1
+### Clock — tempo-synced 1:1 (global clock)
 
-- `stepPtr` points at the channel's `arranger->playhead_indices[channel]`
-  (read-only; the audio thread already reads these). Wired at source
-  creation.
-- Advance (per-buffer, in the mod system's advance pass):
-  - If `*stepPtr != lastStep` a step boundary was crossed: capture the new
-    target (`steps[currentStep]`), reset `stepProgress = 0`, remember the
-    previous output value as the shape's starting point.
-  - `currentStep = (*stepPtr) % stepCount`; `stepProgress += deltaTime /
-    *stepDurationPtr` (clamped to 1.0). When the song is stopped the
-    playhead holds, so the pattern holds its output.
-- The step duration pointer is the channel's current even/odd step duration
-  (swing-aware) as the audio callback computes it; read-only.
+- A single global clock struct is written by main.c's audio callback each
+  buffer and read-only by the mod system:
+
+  ```c
+  /* modsystem.h */
+  typedef struct {
+      int playhead[MAX_SEQUENCER_CHANNELS]; /* sequencer->playhead_index[ch] */
+      int stepDuration;  /* current step duration in samples (swing-aware) */
+  } PatternClock;
+  extern PatternClock g_patternClock;
+  ```
+
+  The callback already computes the step duration (`stepSamples = swingStep ?
+  samplesPerOddStep : samplesPerEvenStep`); it copies the per-channel
+  pattern-step playhead (`data->sequencer->playhead_index[ch]`) + that
+  duration into `g_patternClock` each buffer, under `g_audioLock`.
+- `channel` is resolved once at source creation (from the instrument's
+  `metaChannel`); `updateMod`'s MT_PATTERN case reads
+  `g_patternClock.playhead[pattern->channel]`.
+- Advance (per-sample, in `updateMod`'s MT_PATTERN case):
+  - If `playhead != lastPlayhead` a step boundary was crossed: capture the
+    new target (`steps[currentStep]`), reset `stepProgress = 0`, remember
+    `startValue = currentValue` as the shape's starting point.
+  - `currentStep = playhead % stepCount`;
+    `stepProgress += deltaTime / stepDuration` (clamped to 1.0). When the
+    song is stopped the playhead holds, so the pattern holds its output.
+- Per-voice clones: each voice's `cloneMod` copies `PatternState` (steps,
+  stepCount, channel, currentStep/currentValue/stepProgress/startValue/
+  lastPlayhead) into the clone's `data.pattern` — running state is per-note
+  independent, but all clones read the same `g_patternClock` (shared
+  read-only). `syncModValues` copies the param pointers' values (length,
+  shape, slew, polarity) from the instrument source into each clone.
 
 ### Shaping
 
@@ -97,15 +124,18 @@ The pattern entry row shows, after the type selector:
 
 - `tests/dsp/test_modsystem.c`: `MT_PATTERN` — boundary detect advances
   `currentStep` on a playhead change; hold/linear/curve/slew produce the
-  expected outputs (drive `*stepPtr` + `*stepDurationPtr` directly);
-  polarity scaling (unipolar keeps 0..1, bipolar maps to −1..1); length
-  wraps (`step % length`); `changeModType` PTN→ENV→LFO keeps routes.
+  expected outputs (drive `g_patternClock.playhead[channel]` +
+  `g_patternClock.stepDuration` directly — the global clock is testable
+  since it is plain state); polarity scaling (unipolar keeps 0..1, bipolar
+  maps to −1..1); length wraps (`step % length`); `changeModType`
+  PTN→ENV→LFO keeps routes.
 - `tests/dsp/test_mod_voice.c`: `addRuntimePattern` on a live instrument +
-  delete round-trip.
+  delete round-trip; per-voice clone of `PatternState` is independent
+  (two voices at different stepProgress don't interfere).
 - Harness scripted fixture: add a pattern source; set length/shape/polarity;
   edit step values; route it to a destination dial; verify the audio-path
   route + the grid highlight + the source entry rendering.
-- Gate: `ninja` clean, `meson test` 8/8, both existing fixtures PASS, app
+- Gate: `ninja` clean, `meson test` green, both existing fixtures PASS, app
   boots.
 
 ## E. Out of scope
