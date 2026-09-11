@@ -375,6 +375,15 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 				}
 			}
 			advanceSequencerStep(data->sequencer, data->patternList, data->arranger, triggerSequencerNote, data->voiceManager);
+			/* Pattern clock: tempo-synced mod sources read the per-channel
+			 * pattern-step playhead + swing-aware step duration. Written
+			 * here (inside the playing guard) so the playhead matches the
+			 * just-advanced step and stopped playback leaves the clock
+			 * frozen at its last value. */
+			for(int ch = 0; ch < data->arranger->enabledChannels; ch++) {
+				g_patternClock.playhead[ch] = data->sequencer->playhead_index[ch];
+			}
+			g_patternClock.stepDuration = stepSamples;
 		}
 	}
 
