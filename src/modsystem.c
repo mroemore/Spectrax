@@ -1304,6 +1304,11 @@ Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src) {
 		case MT_PATTERN: {
 			PatternState *p = &c->data.pattern;
 			const PatternState *sp = &src->data.pattern;
+			/* Mirror the instrument source's widened output range so
+			 * PP_BIPOLAR's negative remap survives the clone's clamp
+			 * (initMod created the clone output as [0,1]). */
+			c->output->minValue = src->output->minValue;
+			c->output->maxValue = src->output->maxValue;
 			p->stepCount = sp->stepCount;
 			p->channel = sp->channel;
 			p->currentStep = sp->currentStep;

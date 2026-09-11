@@ -1410,6 +1410,9 @@ static int test_pattern_clone_and_retype(void) {
 	ASSERT_TRUE(c->data.pattern.channel == 1, "clone keeps channel");
 	ASSERT_TRUE(c->data.pattern.stepCount == 2, "clone keeps stepCount");
 	ASSERT_TRUE(fabsf(c->data.pattern.steps[0] - 0.9f) < 0.001f, "clone keeps steps");
+	/* The clone must mirror the source's widened [-1,1] output range or
+	 * PP_BIPOLAR's negative remap clamps to 0 on voices. */
+	ASSERT_TRUE(c->output->minValue <= -1.0f, "clone output range mirrors source (bipolar-safe)");
 
 	/* changeModType PTN -> ENV keeps routes/output */
 	ModConnection *conn = (ModConnection *)calloc(1, sizeof(ModConnection));
