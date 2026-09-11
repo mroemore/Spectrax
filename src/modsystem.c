@@ -825,6 +825,78 @@ Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate,
 	return rnd;
 }
 
+void initPatternDefaults(Mod *mod, ParamList *paramList, int channel) {
+	/* initMod sets up the base Mod fields (type, output param, name,
+	 * generate stub, dependency tracking). The test exercises
+	 * mod->output (e.g. getParameterValue(p->output)) and
+	 * generatePattern reads mod->output, so this must run before the
+	 * payload params are created. initMod is idempotent for the fields
+	 * we care about here (it overwrites output / type / generate). */
+	initMod(mod, paramList, "pattern", MT_PATTERN, generatePattern);
+	/* initMod created the output param with [0,1] range. The pattern
+	 * source can output bipolar values in [-1, 1] (PP_BIPOLAR maps 0.5
+	 * to 0.0 and the extremes to ±1.0), so widen the output's range to
+	 * accommodate that. setParameterMinValue's constraint is
+	 * `min < maxValue` and maxValue is already 1.0, so -1.0 passes. */
+	setParameterMinValue(mod->output, -1.0f);
+	PatternState *p = &mod->data.pattern;
+	p->length = createParameter(paramList, "PTN len", 16.0f, 1.0f, (float)MAX_PATTERN_STEPS);
+	p->shape = createParameter(paramList, "PTN shape", 0.0f, 0.0f, (float)(SH_COUNT - 1));
+	p->slew = createParameter(paramList, "PTN slew", 0.2f, 0.0f, 1.0f);
+	p->polarity = createParameter(paramList, "PTN pol", 0.0f, 0.0f, (float)(PP_COUNT - 1));
+	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
+		p->steps[i] = 0.5f;
+	}
+	p->stepCount = MAX_PATTERN_STEPS;
+	p->channel = channel;
+	p->currentStep = 0;
+	p->currentValue = 0.5f;
+	p->stepProgress = 0.0f;
+	p->startValue = 0.5f;
+	p->lastPlayhead = g_patternClock.playhead[channel];
+	mod->generate = generatePattern;
+}
+
+void generatePattern(void *self) {
+	Mod *mod = (Mod *)self;
+	PatternState *p = &mod->data.pattern;
+	if(!p || !p->shape || !p->slew || !p->polarity) {
+		return;
+	}
+	float target = p->steps[p->currentStep];
+	int shape = getParameterValueAsInt(p->shape);
+	switch(shape) {
+		case SH_HOLD:
+			p->currentValue = target;
+			break;
+		case SH_LINEAR:
+			p->currentValue = p->startValue + (target - p->startValue) * p->stepProgress;
+			break;
+		case SH_CURVE: {
+			/* smoothstep */
+			float t = p->stepProgress;
+			float e = t * t * (3.0f - 2.0f * t);
+			p->currentValue = p->startValue + (target - p->startValue) * e;
+			break;
+		}
+		case SH_SLEW: {
+			/* one-pole glide: time constant from the slew param (0..1).
+			 * slews toward target independently of stepProgress. */
+			float tc = 1.0f - getParameterValue(p->slew);
+			tc = (tc < 0.01f) ? 0.01f : tc;
+			p->currentValue += (target - p->currentValue) * (1.0f - expf(-1.0f / tc));
+			break;
+		}
+		default:
+			break;
+	}
+	float out = (getParameterValueAsInt(p->polarity) == PP_BIPOLAR)
+		? p->currentValue * 2.0f - 1.0f
+		: p->currentValue;
+	setParameterBaseValue(mod->output, out);
+	setParameterValue(mod->output, out);
+}
+
 void cbLfoShapeOnChange(void *data) {
 	Mod *lfo = (Mod *)data;
 	if(!lfo) {
@@ -975,6 +1047,25 @@ void updateMod(Mod *mod, float deltaTime) {
 		case MT_ATTEN:
 			// Stateless: generate handles the passthrough, nothing to advance
 			break;
+		case MT_PATTERN: {
+			PatternState *p = &mod->data.pattern;
+			int playhead = (p->channel >= 0 && p->channel < MAX_SEQUENCER_CHANNELS)
+				? g_patternClock.playhead[p->channel] : 0;
+			if(playhead != p->lastPlayhead) {
+				/* step boundary: capture new target + reset progress */
+				p->currentStep = playhead % p->stepCount;
+				p->lastPlayhead = playhead;
+				p->startValue = p->currentValue;
+				p->stepProgress = 0.0f;
+			}
+			if(g_patternClock.stepDuration > 0) {
+				p->stepProgress += deltaTime / (float)g_patternClock.stepDuration;
+				if(p->stepProgress > 1.0f) {
+					p->stepProgress = 1.0f;
+				}
+			}
+			break;
+		}
 		default:
 			break;
 	}

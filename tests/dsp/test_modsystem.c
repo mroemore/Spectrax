@@ -1296,6 +1296,91 @@ static int test_pattern_clock_global(void) {
 	return 0;
 }
 
+static int test_pattern_boundary_advances_step(void) {
+	extern PatternClock g_patternClock;
+	ParamList *pl = createParamList();
+	ModList *ml = createModList();
+	Mod *p = (Mod *)calloc(1, sizeof(Mod));
+	initPatternDefaults(p, pl, 2);
+	addToModList(ml, p);
+	/* length 4, all steps 0.5 except step1 = 0.8 */
+	setParameterValue(p->data.pattern.length, 4.0f);
+	setParameterBaseValue(p->data.pattern.length, 4.0f);
+	p->data.pattern.steps[0] = 0.5f;
+	p->data.pattern.steps[1] = 0.8f;
+	p->data.pattern.steps[2] = 0.5f;
+	p->data.pattern.steps[3] = 0.5f;
+	p->data.pattern.stepCount = 4;
+
+	g_patternClock.playhead[2] = 0;
+	g_patternClock.stepDuration = 100;
+	p->data.pattern.lastPlayhead = 0;
+
+	/* playhead moves to step 1 -> boundary -> currentStep advances */
+	g_patternClock.playhead[2] = 1;
+	updateMod(p, 0.005f);
+	ASSERT_TRUE(p->data.pattern.currentStep == 1, "currentStep follows playhead");
+	ASSERT_TRUE(p->data.pattern.stepProgress > 0.0f, "stepProgress advances");
+
+	freeModList(ml);
+	freeParamList(pl);
+	printf("PASS test_pattern_boundary_advances_step\n");
+	return 0;
+}
+
+static int test_pattern_shapes(void) {
+	extern PatternClock g_patternClock;
+	ParamList *pl = createParamList();
+	Mod *p = (Mod *)calloc(1, sizeof(Mod));
+	initPatternDefaults(p, pl, 0);
+	p->data.pattern.steps[0] = 1.0f;
+	p->data.pattern.stepCount = 1;
+	g_patternClock.playhead[0] = 0;
+	g_patternClock.stepDuration = 100;
+	p->data.pattern.lastPlayhead = 0;
+
+	/* HOLD: output = target */
+	p->data.pattern.currentStep = 0;
+	p->data.pattern.stepProgress = 0.5f;
+	p->data.pattern.startValue = 0.0f;
+	p->data.pattern.shape->baseValue = (float)SH_HOLD;
+	p->data.pattern.shape->currentValue = (float)SH_HOLD;
+	generatePattern(p);
+	ASSERT_TRUE(getParameterValue(p->output) == 1.0f, "HOLD outputs target");
+
+	/* LINEAR: output = mix(start, target, progress) */
+	p->data.pattern.shape->baseValue = (float)SH_LINEAR;
+	p->data.pattern.shape->currentValue = (float)SH_LINEAR;
+	p->data.pattern.stepProgress = 0.5f;
+	generatePattern(p);
+	ASSERT_TRUE(fabsf(getParameterValue(p->output) - 0.5f) < 0.001f, "LINEAR mixes by progress");
+
+	/* BIPOLAR: output = value*2 - 1 */
+	p->data.pattern.polarity->baseValue = (float)PP_BIPOLAR;
+	p->data.pattern.polarity->currentValue = (float)PP_BIPOLAR;
+	p->data.pattern.shape->baseValue = (float)SH_HOLD;
+	p->data.pattern.shape->currentValue = (float)SH_HOLD;
+	p->data.pattern.steps[0] = 1.0f;
+	p->data.pattern.currentValue = 1.0f;
+	generatePattern(p);
+	ASSERT_TRUE(fabsf(getParameterValue(p->output) - 1.0f) < 0.001f, "BIPOLAR maps 1.0 to 1.0");
+	p->data.pattern.steps[0] = 0.0f;
+	generatePattern(p);
+	ASSERT_TRUE(fabsf(getParameterValue(p->output) - (-1.0f)) < 0.001f, "BIPOLAR maps 0.0 to -1.0");
+
+	/* length wraps: step % stepCount */
+	p->data.pattern.stepCount = 4;
+	p->data.pattern.lastPlayhead = 3;
+	g_patternClock.playhead[0] = 4; /* step 4 of a 4-step seq wraps to 0 */
+	updateMod(p, 0.001f);
+	ASSERT_TRUE(p->data.pattern.currentStep == 0, "length wraps (step % stepCount)");
+
+	freeParamList(pl);
+	free(p);
+	printf("PASS test_pattern_shapes\n");
+	return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1338,6 +1423,8 @@ int main(void) {
     fails += test_rand_shape_param();
     fails += test_mod_union_payload();
     fails += test_pattern_clock_global();
+    fails += test_pattern_boundary_advances_step();
+    fails += test_pattern_shapes();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;

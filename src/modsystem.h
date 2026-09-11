@@ -268,6 +268,8 @@ void initLfoDefaults(Mod *lfo, ParamList *paramList, float rate, int shape);
 Mod *createLFO(ParamList *paramList, ModList *modList, int index, float rate, int shape, const char *name);
 void initRandDefaults(Mod *rnd, ParamList *paramList, float rate, RandomType type);
 Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate, RandomType type, char *name);
+void initPatternDefaults(Mod *mod, ParamList *paramList, int channel);
+void generatePattern(void *self);
 void initEnvelopeDefaults(Mod *env);
 Mod *createEnvelope(ParamList *paramList, ModList *modList, const char *name);
 Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, const char *name);
