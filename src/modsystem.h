@@ -40,6 +40,7 @@ typedef enum {
 	MT_RND, // Random
 	MT_OFS, // Constant Offset
 	MT_ATTEN, // Attenuator (per-connection, inserted by addModulation)
+	MT_PATTERN, // Tempo-synced step-sequencer
 	MT_COUNT
 } ModType;
 
@@ -122,6 +123,49 @@ typedef struct {
 	Parameter *playMode;
 } RndState;
 
+/* Shape modes for a PatternState. */
+typedef enum {
+	SH_HOLD = 0,
+	SH_LINEAR,
+	SH_SLEW,
+	SH_CURVE,
+	SH_COUNT
+} PatternShape;
+
+/* Polarity modes for a PatternState. */
+typedef enum {
+	PP_UNIPOLAR = 0,
+	PP_BIPOLAR,
+	PP_COUNT
+} PatternPolarity;
+
+#define MAX_PATTERN_STEPS 16
+/* MAX_SEQUENCER_CHANNELS comes from settings.h (already included). */
+
+/* The tempo-synced pattern clock. Written by main.c's audio callback each
+ * buffer; read-only by the mod system's updateMod MT_PATTERN case. */
+typedef struct {
+	int playhead[MAX_SEQUENCER_CHANNELS]; /* sequencer->playhead_index[ch] */
+	int stepDuration;                     /* current step duration in samples */
+} PatternClock;
+extern PatternClock g_patternClock;
+
+typedef struct {
+	Parameter *length;    /* 1..16 (int param) */
+	Parameter *shape;     /* PatternShape (SH_HOLD/LINEAR/SLEW/CURVE) */
+	Parameter *slew;      /* glide time, 0..1 (SLEW mode) */
+	Parameter *polarity;  /* PatternPolarity (PP_UNIPOLAR/BIPOLAR) */
+	float steps[MAX_PATTERN_STEPS]; /* stored 0..1 */
+	int stepCount;        /* 1..length */
+	int channel;          /* which channel's playhead clocks this source */
+	/* per-voice running state (cloned independently per voice) */
+	int currentStep;
+	float currentValue;   /* the output value */
+	float stepProgress;   /* 0..1 within the current song step */
+	float startValue;     /* the value at the start of the current step */
+	int lastPlayhead;     /* boundary detection */
+} PatternState;
+
 typedef struct Mod {
 	ModType type;
 	Parameter *output;
@@ -135,6 +179,7 @@ typedef struct Mod {
 		LfoState lfo;
 		RndState rnd;
 		AttenState atten;
+		PatternState pattern;
 	} data;
 } Mod;
 

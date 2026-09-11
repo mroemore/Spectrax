@@ -7,6 +7,11 @@
 
 WavetablePool *envTables;
 
+/* Defined here so that the MT_PATTERN mod type's audio callback can update
+ * the global playhead each buffer; the MT_PATTERN case in updateMod reads
+ * it to clock the step boundary. Tests read/write it directly. */
+PatternClock g_patternClock = { .stepDuration = 0 };
+
 static float _clampValue(float value, float min, float max) {
 	if(value < min) return min;
 	if(value > max) return max;

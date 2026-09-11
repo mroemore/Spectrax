@@ -1284,6 +1284,18 @@ static int test_mod_union_payload(void) {
     return 0;
 }
 
+static int test_pattern_clock_global(void) {
+	extern PatternClock g_patternClock;
+	/* Global clock is plain writable state (not const — the audio
+	 * callback writes it each buffer, tests drive it directly). */
+	g_patternClock.playhead[0] = 3;
+	g_patternClock.stepDuration = 7603;
+	ASSERT_TRUE(g_patternClock.playhead[0] == 3, "clock playhead writable");
+	ASSERT_TRUE(g_patternClock.stepDuration == 7603, "clock step duration writable");
+	printf("PASS test_pattern_clock_global\n");
+	return 0;
+}
+
 int main(void) {
     initModSystem();
     int fails = 0;
@@ -1325,6 +1337,7 @@ int main(void) {
     fails += test_lfo_shape_param();
     fails += test_rand_shape_param();
     fails += test_mod_union_payload();
+    fails += test_pattern_clock_global();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);
         return 1;
