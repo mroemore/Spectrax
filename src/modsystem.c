@@ -581,6 +581,14 @@ bool removeMod(ModList *modList, ParamList *paramList, Mod *mod) {
 			}
 			break;
 		}
+		case MT_PATTERN: {
+			PatternState *p = &mod->data.pattern;
+			if(p->length) removeFromParamList(paramList, p->length);
+			if(p->shape) removeFromParamList(paramList, p->shape);
+			if(p->slew) removeFromParamList(paramList, p->slew);
+			if(p->polarity) removeFromParamList(paramList, p->polarity);
+			break;
+		}
 		case MT_ATTEN: {
 			/* The atten's own params are list-owned too. */
 			if(mod->data.atten.attenAmount) removeFromParamList(paramList, mod->data.atten.attenAmount);
@@ -695,7 +703,7 @@ bool changeModType(ModList *modList, Mod *mod, ModType newType, ParamList *param
 	if(!modList || !mod || !paramList) {
 		return false;
 	}
-if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
+if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND && newType != MT_PATTERN) {
 		return false;
 	}
 	if(mod->type == newType) {
@@ -744,6 +752,14 @@ if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
 			}
 			break;
 		}
+		case MT_PATTERN: {
+			PatternState *p = &mod->data.pattern;
+			if(p->length) removeFromParamList(paramList, p->length);
+			if(p->shape) removeFromParamList(paramList, p->shape);
+			if(p->slew) removeFromParamList(paramList, p->slew);
+			if(p->polarity) removeFromParamList(paramList, p->polarity);
+			break;
+		}
 		default:
 			break;
 	}
@@ -770,6 +786,10 @@ if(newType != MT_ENV && newType != MT_LFO && newType != MT_RND) {
 			addEnvelopeStage(paramList, mod, true, 0.25f, 1.0f, 0.95f, "A");
 			addEnvelopeStage(paramList, mod, false, 4.25f, 0.0f, 0.1f, "D");
 			mod->generate = generateEnvelope;
+			break;
+		case MT_PATTERN:
+			mod->type = MT_PATTERN;
+			initPatternDefaults(mod, paramList, 0);
 			break;
 		default:
 			return false;
@@ -1281,6 +1301,35 @@ Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src) {
 			a->input = NULL; /* caller resolves to the voice's source clone */
 			break;
 		}
+		case MT_PATTERN: {
+			PatternState *p = &c->data.pattern;
+			const PatternState *sp = &src->data.pattern;
+			p->stepCount = sp->stepCount;
+			p->channel = sp->channel;
+			p->currentStep = sp->currentStep;
+			p->currentValue = sp->currentValue;
+			p->stepProgress = sp->stepProgress;
+			p->startValue = sp->startValue;
+			p->lastPlayhead = sp->lastPlayhead;
+			memcpy(p->steps, sp->steps, sizeof(p->steps));
+			if(sp->length) {
+				p->length = createParameter(voicePl, sp->length->name,
+					sp->length->baseValue, sp->length->minValue, sp->length->maxValue);
+			}
+			if(sp->shape) {
+				p->shape = createParameter(voicePl, sp->shape->name,
+					sp->shape->baseValue, sp->shape->minValue, sp->shape->maxValue);
+			}
+			if(sp->slew) {
+				p->slew = createParameter(voicePl, sp->slew->name,
+					sp->slew->baseValue, sp->slew->minValue, sp->slew->maxValue);
+			}
+			if(sp->polarity) {
+				p->polarity = createParameter(voicePl, sp->polarity->name,
+					sp->polarity->baseValue, sp->polarity->minValue, sp->polarity->maxValue);
+			}
+			break;
+		}
 		default:
 			break;
 	}
@@ -1359,6 +1408,17 @@ void syncModValues(Mod *c, const Mod *src) {
 			if(a->attenCurve && sa->attenCurve) {
 				setParameterBaseValue(a->attenCurve, sa->attenCurve->baseValue);
 			}
+			break;
+		}
+		case MT_PATTERN: {
+			PatternState *p = &c->data.pattern;
+			const PatternState *sp = &src->data.pattern;
+			if(p->length && sp->length) setParameterBaseValue(p->length, sp->length->baseValue);
+			if(p->shape && sp->shape) setParameterBaseValue(p->shape, sp->shape->baseValue);
+			if(p->slew && sp->slew) setParameterBaseValue(p->slew, sp->slew->baseValue);
+			if(p->polarity && sp->polarity) setParameterBaseValue(p->polarity, sp->polarity->baseValue);
+			p->stepCount = sp->stepCount;
+			memcpy(p->steps, sp->steps, sizeof(p->steps));
 			break;
 		}
 		default:
