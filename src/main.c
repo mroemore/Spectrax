@@ -379,11 +379,18 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 			 * pattern-step playhead + swing-aware step duration. Written
 			 * here (inside the playing guard) so the playhead matches the
 			 * just-advanced step and stopped playback leaves the clock
-			 * frozen at its last value. */
+			 * frozen at its last value. The step duration must be derived
+			 * AFTER the advance: incrementSequencer toggles swingStep
+			 * inside, so swingStep now describes the step that just
+			 * STARTED — reading the pre-advance stepSamples would give the
+			 * mod the previous step's duration and skew LINEAR/CURVE
+			 * progress under swing. */
 			for(int ch = 0; ch < data->arranger->enabledChannels; ch++) {
 				g_patternClock.playhead[ch] = data->sequencer->playhead_index[ch];
 			}
-			g_patternClock.stepDuration = stepSamples;
+			g_patternClock.stepDuration = data->arranger->tempoSettings.swingStep
+				? data->arranger->tempoSettings.samplesPerOddStep
+				: data->arranger->tempoSettings.samplesPerEvenStep;
 		}
 	}
 
