@@ -85,8 +85,53 @@ UP
 RIGHT
 ASSERT selected==STEPS
 EDIT
-# Back on the TYPE button (LEFT x5) and cycle PTN -> ENV so the routing
-# section below sees the ENV row's N2 anchor.
+# --- T7: pattern dial-edit + route FROM the PTN source ---------------------
+# Standing on STEPS (grid edit disarmed). LEFT x4 back to the LEN dial.
+LEFT
+LEFT
+LEFT
+LEFT
+ASSERT selected==LEN
+# Dial-edit the LEN parameter: KM_EDIT held + UP must be consumed by the
+# generic dial gesture (selection stays put; the instrument is marked dirty).
+EDIT UP
+EDIT UP
+ASSERT selected==LEN
+# Grid gesture still works after the LEN change: arrows consumed, no nav.
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==STEPS
+EDIT
+UP
+LEFT
+ASSERT selected==STEPS
+EDIT
+# Route the pattern itself to op0 feedback. RIGHT from STEPS reaches the
+# row's ROUTE button. The picker's N2 anchor lands on the own-row POL dest
+# (name "PTN pol", two tokens — not assertable), so jump straight to the
+# unique "feedback" dest, same as the ENV section below.
+RIGHT
+ASSERT selected==ROUTE
+EDIT
+JUMPTL feedback
+ASSERT topLayerSelected==feedback
+EDIT
+ASSERT modulators==(0,0,1)
+# Unroute: reopen the picker on the already-routed dest and confirm the
+# deferred remove clears it.
+EDIT
+JUMPTL feedback
+ASSERT topLayerSelected==feedback
+EDIT
+FRAMES 30
+ASSERT modulators==(0,0,0)
+
+# --- Cycle back to ENV for the generic routing section ---------------------
+# The unroute N1 reselects env[4]'s ROUTE button; LEFT x6 back to the TYPE
+# button, cycle PTN -> ENV, re-navigate.
+LEFT
 LEFT
 LEFT
 LEFT
