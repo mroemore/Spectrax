@@ -149,6 +149,35 @@ static int test_runtime_source_lifecycle(void) {
     return 0;
 }
 
+/* Pattern plan Task 5: addRuntimePattern — mirrors addRuntimeSource but
+ * creates an MT_PATTERN source bound to the given channel. The source is
+ * appendable, resolvable by source position, its PatternState is writable,
+ * and removeSource tears it back out cleanly. */
+static int test_add_runtime_pattern(void) {
+    SamplePool *sp = createSamplePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_FM, sp, &pb);
+    ASSERT_TRUE(inst != NULL, "init_instrument FM");
+    int before = modSourceCount(inst->modList);
+
+    addRuntimePattern(inst, 2);
+    ASSERT_TRUE(modSourceCount(inst->modList) == before + 1, "pattern source added");
+    int mi = modIndexAt(inst->modList, before);
+    ASSERT_TRUE(mi >= 0 && inst->modList->mods[mi]->type == MT_PATTERN, "source is MT_PATTERN");
+    ASSERT_TRUE(inst->modList->mods[mi]->data.pattern.channel == 2, "channel resolved");
+    inst->modList->mods[mi]->data.pattern.steps[0] = 0.75f;
+
+    ASSERT_TRUE(removeSource(inst, before), "remove pattern source ok");
+    ASSERT_TRUE(modSourceCount(inst->modList) == before, "source count restored");
+
+    free(inst);
+    freeSamplePool(sp);
+    printf("PASS test_add_runtime_pattern\n");
+    return 0;
+}
+
 /* Task 9: clearParamList must free its contents (not just zero the
  * count), and the list must remain usable for re-insertion. Before
  * the fix, clearParamList only zeroed count while leaking every
@@ -1386,6 +1415,9 @@ int main(void) {
     fails += test_core_envelope_delete_rejected();
     fails += test_remove_mod_primitively_accepts_core();
     fails += test_runtime_envelope_add_does_not_rebuild_voices();
+
+    /* Pattern plan Task 5 — addRuntimePattern source creation */
+    fails += test_add_runtime_pattern();
 
     /* Task 6 — LoadedPreset snapshot + dirty tracking */
     fails += test_loaded_preset_clean_after_load();

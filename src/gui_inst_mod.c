@@ -276,19 +276,45 @@ void addRuntimeSource(Instrument *inst) {
 }
 
 
-void removeSource(Instrument *inst, int srcIndex) {
-	if(!inst || !inst->modList) {
+void addRuntimePattern(Instrument *inst, int channel) {
+	if(!inst || !inst->modList || modSourceCount(inst->modList) >= MAX_ENVELOPES) {
 		return;
+	}
+	/* Mirrors addRuntimeSource but creates an MT_PATTERN source bound to
+	 * the instrument's channel. Same lock/rebuilding discipline: the audio
+	 * thread iterates the lists every buffer, and rebuildInstrumentGraph
+	 * may deref inst->envelopes[], so mirror the new mod in before
+	 * syncing envelopeCount. */
+	pthread_mutex_lock(&g_audioLock);
+	inst->rebuilding = true;
+	Mod *p = createPattern(inst->paramList, inst->modList, channel, "PTN");
+	if(p && inst->envelopeCount < MAX_ENVELOPES) {
+		inst->envelopes[inst->envelopeCount] = p;
+	}
+	inst->envelopeCount = modSourceCount(inst->modList);
+	if(inst->vm) {
+		rebuildVoicesForInstrument(inst->vm, inst);
+	}
+	rebuildInstrumentGraph();
+	inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+}
+
+
+bool removeSource(Instrument *inst, int srcIndex) {
+	if(!inst || !inst->modList) {
+		return false;
 	}
 	/* `srcIndex` is a SOURCE position (0-based over non-atten mods). Core
 	 * sources (0..coreEnvelopeCount-1) are protected; runtime sources can
-	 * be removed. Resolve to the modList index (attenuators interleave). */
+	 * be removed. Resolve to the modList index (attenuators interleave).
+	 * Returns true only when a mod was actually removed. */
 	if(srcIndex < inst->coreEnvelopeCount || srcIndex >= modSourceCount(inst->modList)) {
-		return;
+		return false;
 	}
 	int mi = modIndexAt(inst->modList, srcIndex);
 	if(mi < 0) {
-		return;
+		return false;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate + free from the
 	 * modList/paramList the audio thread iterates. The audio lock
@@ -311,6 +337,7 @@ void removeSource(Instrument *inst, int srcIndex) {
 	rebuildInstrumentGraph();
 	inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
+	return true;
 }
 
 

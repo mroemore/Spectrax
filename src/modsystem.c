@@ -845,6 +845,22 @@ Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate,
 	return rnd;
 }
 
+Mod *createPattern(ParamList *paramList, ModList *modList, int channel, const char *name) {
+	Mod *p = (Mod *)calloc(1, sizeof(Mod));
+	if(!p) {
+		return NULL;
+	}
+	/* initPatternDefaults runs initMod itself (hardcoded name "pattern"),
+	 * so the display name is restored afterwards rather than pre-set —
+	 * a second initMod call would leak an extra "output" param. */
+	initPatternDefaults(p, paramList, channel);
+	strncpy(p->name, name, MAX_NAME_LEN);
+	if(modList) {
+		addToModList(modList, p);
+	}
+	return p;
+}
+
 void initPatternDefaults(Mod *mod, ParamList *paramList, int channel) {
 	/* initMod sets up the base Mod fields (type, output param, name,
 	 * generate stub, dependency tracking). The test exercises
