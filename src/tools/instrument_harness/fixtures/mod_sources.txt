@@ -15,7 +15,7 @@ ASSERT selected==MODS_ADD
 EDIT
 ASSERT envcount==5
 
-# --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
+# --- 4-way type cycle on the new source (ENV -> LFO -> RND -> PTN -> ENV) -
 # After ADD selection reset to RATIO1; DOWN x10 reaches env[4]'s
 # TYPE button: RATIO2 -> RATIO3 -> RATIO4 -> ALG -> MODS_ADD -> ATTACK(env0)
 # -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT
@@ -59,7 +59,41 @@ DOWN
 DOWN
 ASSERT selected==RND
 EDIT
-# Back to ENV.
+# Now PTN (the pattern source row: TYPE LEN SHAPE SLEW POL STEPS ROUTE DEL).
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==PTN
+# Walk RIGHT across the row: LEN SHAPE SLEW POL STEPS.
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==STEPS
+# Grid edit gesture: EDIT arms edit mode; UP/RIGHT adjust the selected
+# step (and move the step cursor) instead of moving the graph selection.
+EDIT
+UP
+RIGHT
+ASSERT selected==STEPS
+EDIT
+# Back on the TYPE button (LEFT x5) and cycle PTN -> ENV so the routing
+# section below sees the ENV row's N2 anchor.
+LEFT
+LEFT
+LEFT
+LEFT
+LEFT
+ASSERT selected==PTN
+EDIT
 DOWN
 DOWN
 DOWN

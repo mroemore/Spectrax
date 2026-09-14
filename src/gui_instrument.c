@@ -994,6 +994,13 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 			return true;
 		}
 	}
+	/* Pattern step grid: the node has no actionCb, so the generic dispatch
+	 * above is a no-op for it. KM_EDIT toggles its edit mode; while
+	 * editing, arrows move/adjust the selected step. Both the app (main.c)
+	 * and the harness reach the grid through this handler. */
+	if(sel && isPatternGridNode(sel)) {
+		return handlePatternGridInput(sel, is);
+	}
 	/* Task 4: edit mode is no longer auto-armed by a fresh selection. The
 	 * user must press KM_EDIT to enter, and KM_EDIT/KM_SELECT to exit.
 	 * Arrows cycle chars / move the cursor only while editing; when not

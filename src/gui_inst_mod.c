@@ -1820,6 +1820,7 @@ static void cbCycleSourceType(void *ctx) {
 	switch(mod->type) {
 		case MT_ENV: next = MT_LFO; break;
 		case MT_LFO: next = MT_RND; break;
+		case MT_RND: next = MT_PATTERN; break;
 		default:     next = MT_ENV; break;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate the lists the audio
@@ -1843,9 +1844,127 @@ static const char *modTypeTag(ModType t) {
 	switch(t) {
 		case MT_LFO: return "LFO";
 		case MT_RND: return "RND";
+		case MT_PATTERN: return "PTN";
 		case MT_ATTEN: return "ATTN";
 		default:     return "ENV";
 	}
+}
+
+
+/* Pattern step grid: one selectable node rendering the source's 16-step
+ * strip as a bar chart from PatternState.steps. Input (handlePatternGridInput):
+ * KM_EDIT toggles edit mode; while editing LEFT/RIGHT moves the selected
+ * step and UP/DOWN changes its value in 1/16 steps (matching the visual
+ * cell height). Mirrors the preset-name node's edit-mode gesture.
+ * The GuiNode is embedded as the first member (ModStripGuiNode pattern):
+ * extra fields ride in the same allocation, so freeGuiNode's free() covers
+ * them and no destructor is needed. */
+typedef struct {
+	GuiNode node;
+	PatternState *pattern;
+	Instrument *inst;
+	int selectedStep;
+	bool editing;
+} PatternGridNode;
+
+static void drawPatternGridNode(void *self) {
+	PatternGridNode *d = (PatternGridNode *)self;
+	GuiNode *gn = &d->node;
+	PatternState *p = d->pattern;
+	if(!p) {
+		return;
+	}
+	float cellW = (float)gn->w / (float)MAX_PATTERN_STEPS;
+	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
+		float cx = gn->x + i * cellW;
+		float h = (i < p->stepCount) ? p->steps[i] * (float)gn->h : 2.0f;
+		Color col = (i == p->currentStep && p->currentStep < p->stepCount) ? cs.highlightedCell
+			: (i == d->selectedStep) ? cs.outlineColour : cs.defaultCell;
+		DrawRectangle((int)cx, (int)(gn->y + gn->h - h), (int)cellW - 1, (int)h, col);
+	}
+}
+
+bool isPatternGridNode(const GuiNode *n) {
+	return n && n->draw == drawPatternGridNode;
+}
+
+bool handlePatternGridInput(GuiNode *gn, InputState *is) {
+	if(!isPatternGridNode(gn)) {
+		return false;
+	}
+	PatternGridNode *d = (PatternGridNode *)gn;
+	if(!d->pattern) {
+		return false;
+	}
+	if(!d->editing) {
+		/* Selected but not editing: KM_EDIT enters edit mode; arrows fall
+		 * through to normal graph navigation. */
+		if(isKeyJustPressed(is, KM_EDIT)) {
+			d->editing = true;
+			return true;
+		}
+		return false;
+	}
+	/* Editing: clamp the cursor if LEN shrank below it, then LEFT/RIGHT
+	 * move the cursor and UP/DOWN adjust the step value. */
+	int count = d->pattern->stepCount;
+	if(count < 1) {
+		count = 1;
+	}
+	if(d->selectedStep >= count) {
+		d->selectedStep = count - 1;
+	}
+	if(isKeyJustPressed(is, KM_LEFT)) {
+		if(d->selectedStep > 0) {
+			d->selectedStep--;
+		}
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_RIGHT)) {
+		if(d->selectedStep < count - 1) {
+			d->selectedStep++;
+		}
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_UP)) {
+		d->pattern->steps[d->selectedStep] += 1.0f / 16.0f;
+		if(d->pattern->steps[d->selectedStep] > 1.0f) {
+			d->pattern->steps[d->selectedStep] = 1.0f;
+		}
+		if(d->inst) {
+			d->inst->loaded.dirty = true;
+		}
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_DOWN)) {
+		d->pattern->steps[d->selectedStep] -= 1.0f / 16.0f;
+		if(d->pattern->steps[d->selectedStep] < 0.0f) {
+			d->pattern->steps[d->selectedStep] = 0.0f;
+		}
+		if(d->inst) {
+			d->inst->loaded.dirty = true;
+		}
+		return true;
+	}
+	if(isKeyJustPressed(is, KM_EDIT) || isKeyJustPressed(is, KM_SELECT)) {
+		d->editing = false;
+		return true;
+	}
+	return false;
+}
+
+static GuiNode *createPatternGridNode(PatternState *pattern, Instrument *inst) {
+	PatternGridNode *pgn = (PatternGridNode *)calloc(1, sizeof(PatternGridNode));
+	GuiNode *gn = (GuiNode *)pgn;
+	if(!pgn || !initGuiNode(gn, 0, 0, 100, 100, 2, na_horizontal, "STEPS", 1, 0)) {
+		free(pgn);
+		return NULL;
+	}
+	pgn->pattern = pattern;
+	pgn->inst = inst;
+	gn->drawable = true;
+	gn->draw = drawPatternGridNode;
+	return gn;
 }
 
 
@@ -1908,6 +2027,15 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			if(r->shape) {
 				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, r->shape), 4);
 			}
+			break;
+		}
+		case MT_PATTERN: {
+			PatternState *p = &mod->data.pattern;
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEN", selected, incParameterBaseValue, p->length), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, p->shape), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SLEW", 0, incParameterBaseValue, p->slew), 4);
+			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "POL", 0, incParameterBaseValue, p->polarity), 4);
+			appendItem(wrap, createPatternGridNode(p, inst), 12);
 			break;
 		}
 		default:
