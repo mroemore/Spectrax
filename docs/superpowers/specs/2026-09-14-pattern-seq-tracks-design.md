@@ -57,8 +57,10 @@ typedef struct {
 
 `PatternState` keeps its `Parameter *length/shape/slew/polarity` (the mod
 system edits them through the normal dial path) plus `steps[]`,
-`stepCount`, `channel`, and per-voice running state. `PatternTrackData` is
-the persistent/on-disk form.
+`stepCount`, `channel`, and per-voice running state. It gains
+`int track` (0..`PATTERN_TRACKS-1`), set at creation, so an edit can
+mirror back into `inst->patternTracks[track]` and the grouped row can
+order its buttons. `PatternTrackData` is the persistent/on-disk form.
 
 Conversion helpers (`src/modsystem.c`):
 
