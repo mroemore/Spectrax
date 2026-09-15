@@ -21,7 +21,7 @@
 
 ---
 
-### Task A1: PatternTrackData + conversion helpers
+### Task 1 (A1): PatternTrackData + conversion helpers
 
 **Files:**
 - Modify: `src/modsystem.h`
@@ -201,7 +201,7 @@ git commit -m "feat(mod): PatternTrackData + state<->track conversion helpers"
 
 ---
 
-### Task A2: MAX_MOD_SOURCES + Instrument.patternTracks + core reseed
+### Task 2 (A2): MAX_MOD_SOURCES + Instrument.patternTracks + core reseed
 
 **Files:**
 - Modify: `src/voice.h`
@@ -541,7 +541,7 @@ git commit -m "feat(voice): fixed core pattern tracks from Instrument.patternTra
 
 ---
 
-### Task B1: `PTRK` song-file chunk
+### Task 3 (B1): `PTRK` song-file chunk
 
 **Files:**
 - Modify: `src/io.h`
@@ -697,7 +697,7 @@ git commit -m "feat(io): optional PTRK song chunk for per-channel pattern tracks
 
 ---
 
-### Task B2: Wire pattern tracks through save/load
+### Task 4 (B2): Wire pattern tracks through save/load
 
 **Files:**
 - Modify: `src/main.c`
@@ -761,7 +761,7 @@ git commit -m "feat(app): persist pattern tracks through the song save/load path
 
 ---
 
-### Task C1: `patternPage` application state
+### Task 5 (C1): `patternPage` application state
 
 **Files:**
 - Modify: `src/appstate.h`
@@ -824,7 +824,7 @@ git commit -m "feat(pattern): patternPage state + clamping"
 
 ---
 
-### Task C2: Pattern-screen track pages (indicator + dial strip + grid)
+### Task 6 (C2): Pattern-screen track pages (indicator + dial strip + grid)
 
 **Files:**
 - Modify: `src/gui_pattern.c`
@@ -1065,7 +1065,7 @@ git commit -m "feat(pattern): track pages — indicator, dial strip, step grid, 
 
 ---
 
-### Task C3: `SCENE_PATTERN` input for page switching + track editing
+### Task 7 (C3): `SCENE_PATTERN` input for page switching + track editing
 
 **Files:**
 - Modify: `src/main.c`
@@ -1133,7 +1133,7 @@ git commit -m "feat(input): pattern-screen page switching + track editing"
 
 ---
 
-### Task C4: Track-page graph-nav unit test
+### Task 8 (C4): Track-page graph-nav unit test
 
 **Files:**
 - Test: `tests/dsp/test_graph_nav.c`
@@ -1169,7 +1169,7 @@ git commit -m "test(graph): pattern track-page node layout"
 
 ---
 
-### Task D1: Grouped `PTN` instrument row
+### Task 9 (D1): Grouped `PTN` instrument row
 
 **Files:**
 - Modify: `src/gui_instrument.c`
@@ -1244,7 +1244,7 @@ git commit -m "feat(gui): single grouped PTN row with four route buttons; drop i
 
 ---
 
-### Task D2: Grouped-row readout
+### Task 10 (D2): Grouped-row readout
 
 **Files:**
 - Modify: `src/gui_inst_mod.c`
@@ -1282,7 +1282,7 @@ git commit -m "feat(gui): PTN grouped-row readout"
 
 ---
 
-### Task E1: Fixture + full-suite migration and gate
+### Task 11 (E1): Fixture + full-suite migration and gate
 
 **Files:**
 - Modify: `src/tools/instrument_harness/fixtures/*.txt` (count/layout-sensitive fixtures)
