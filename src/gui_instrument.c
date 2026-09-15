@@ -994,13 +994,6 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 			return true;
 		}
 	}
-	/* Pattern step grid: the node has no actionCb, so the generic dispatch
-	 * above is a no-op for it. KM_EDIT toggles its edit mode; while
-	 * editing, arrows move/adjust the selected step. Both the app (main.c)
-	 * and the harness reach the grid through this handler. */
-	if(sel && isPatternGridNode(sel)) {
-		return handlePatternGridInput(sel, is);
-	}
 	/* Task 4: edit mode is no longer auto-armed by a fresh selection. The
 	 * user must press KM_EDIT to enter, and KM_EDIT/KM_SELECT to exit.
 	 * Arrows cycle chars / move the cursor only while editing; when not
@@ -1414,11 +1407,13 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	appendItem(modHdr, modAdd, 1);
 	appendItem(modHdr, modLabel, 4);
 	appendItem(instwrap, modHdr, 2);
-	int nRows = modSourceCount(inst->modList) + 1; /* rows + 1 trailing blank */
+	int srcCount = modSourceCount(inst->modList);
+	/* The four pattern sources collapse into one grouped PTN row. */
+	int patternRows = (srcCount >= PATTERN_TRACKS) ? (PATTERN_TRACKS - 1) : 0;
+	int nRows = srcCount - patternRows + 1; /* rows + 1 trailing blank */
 	int modRowH = 40;
 	int modH = modRowH * nRows;
 	GuiNode *modwrap = createScrollContainer(0, 0, 100, modH, modRowH, "mod_wrap");
-	int srcCount = modSourceCount(inst->modList);
 	for(int i = 0; i < srcCount; i++) {
 		appendModSourceEntry(instGraph, modwrap, inst, i, 1, false);
 	}

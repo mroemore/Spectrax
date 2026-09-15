@@ -1795,7 +1795,7 @@ static void cbCycleSourceType(void *ctx) {
 	switch(mod->type) {
 		case MT_ENV: next = MT_LFO; break;
 		case MT_LFO: next = MT_RND; break;
-		case MT_RND: next = MT_PATTERN; break;
+		case MT_RND: next = MT_ENV; break;
 		default:     next = MT_ENV; break;
 	}
 	/* Task 8: hold the rebuilding flag while we mutate the lists the audio
@@ -1826,120 +1826,48 @@ static const char *modTypeTag(ModType t) {
 }
 
 
-/* Pattern step grid: one selectable node rendering the source's 16-step
- * strip as a bar chart from PatternState.steps. Input (handlePatternGridInput):
- * KM_EDIT toggles edit mode; while editing LEFT/RIGHT moves the selected
- * step and UP/DOWN changes its value in 1/16 steps (matching the visual
- * cell height). Mirrors the preset-name node's edit-mode gesture.
- * The GuiNode is embedded as the first member (ModStripGuiNode pattern):
- * extra fields ride in the same allocation, so freeGuiNode's free() covers
- * them and no destructor is needed. */
-typedef struct {
-	GuiNode node;
-	PatternState *pattern;
-	Instrument *inst;
-	int selectedStep;
-	bool editing;
-} PatternGridNode;
 
-static void drawPatternGridNode(void *self) {
-	PatternGridNode *d = (PatternGridNode *)self;
-	GuiNode *gn = &d->node;
-	PatternState *p = d->pattern;
-	if(!p) {
+/* Grouped PTN row readout: one line summarising the four pattern tracks
+ * (shape + length). Non-interactive; routing lives on the row's four
+ * buttons. `actionCtx` holds the owning Instrument (p is unused for
+ * non-dial nodes). */
+static const char *patternShapeAbbrev(int shape) {
+	switch(shape) {
+		case SH_HOLD:   return "HLD";
+		case SH_LINEAR: return "LIN";
+		case SH_SLEW:   return "SLEW";
+		case SH_CURVE:  return "CUR";
+		default:        return "?";
+	}
+}
+
+static void drawPatternReadoutNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	Instrument *inst = (Instrument *)gn->actionCtx;
+	if(!inst || !inst->modList) {
 		return;
 	}
-	float cellW = (float)gn->w / (float)MAX_PATTERN_STEPS;
-	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
-		float cx = gn->x + i * cellW;
-		float h = (i < p->stepCount) ? p->steps[i] * (float)gn->h : 2.0f;
-		Color col = (i == p->currentStep && p->currentStep < p->stepCount) ? cs.highlightedCell
-			: (i == d->selectedStep) ? cs.outlineColour : cs.defaultCell;
-		DrawRectangle((int)cx, (int)(gn->y + gn->h - h), (int)cellW - 1, (int)h, col);
-	}
-}
-
-bool isPatternGridNode(const GuiNode *n) {
-	return n && n->draw == drawPatternGridNode;
-}
-
-bool handlePatternGridInput(GuiNode *gn, InputState *is) {
-	if(!isPatternGridNode(gn)) {
-		return false;
-	}
-	PatternGridNode *d = (PatternGridNode *)gn;
-	if(!d->pattern) {
-		return false;
-	}
-	if(!d->editing) {
-		/* Selected but not editing: KM_EDIT enters edit mode; arrows fall
-		 * through to normal graph navigation. */
-		if(isKeyJustPressed(is, KM_EDIT)) {
-			d->editing = true;
-			return true;
+	int firstPat = inst->coreEnvelopeCount - PATTERN_TRACKS;
+	char buf[128];
+	int off = 0;
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		int mi = modIndexAt(inst->modList, firstPat + t);
+		if(mi < 0) {
+			continue;
 		}
-		return false;
-	}
-	/* Editing: clamp the cursor if LEN shrank below it, then LEFT/RIGHT
-	 * move the cursor and UP/DOWN adjust the step value. */
-	int count = d->pattern->stepCount;
-	if(count < 1) {
-		count = 1;
-	}
-	if(d->selectedStep >= count) {
-		d->selectedStep = count - 1;
-	}
-	if(isKeyJustPressed(is, KM_LEFT)) {
-		if(d->selectedStep > 0) {
-			d->selectedStep--;
+		Mod *m = inst->modList->mods[mi];
+		if(!m || m->type != MT_PATTERN) {
+			continue;
 		}
-		return true;
-	}
-	if(isKeyJustPressed(is, KM_RIGHT)) {
-		if(d->selectedStep < count - 1) {
-			d->selectedStep++;
+		PatternState *p = &m->data.pattern;
+		int len = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
+		int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
+		off += snprintf(buf + off, sizeof(buf) - off, "%d:L%d %s  ", t + 1, len, patternShapeAbbrev(shape));
+		if(off >= (int)sizeof(buf) - 1) {
+			break;
 		}
-		return true;
 	}
-	if(isKeyJustPressed(is, KM_UP)) {
-		d->pattern->steps[d->selectedStep] += 1.0f / 16.0f;
-		if(d->pattern->steps[d->selectedStep] > 1.0f) {
-			d->pattern->steps[d->selectedStep] = 1.0f;
-		}
-		if(d->inst) {
-			d->inst->loaded.dirty = true;
-		}
-		return true;
-	}
-	if(isKeyJustPressed(is, KM_DOWN)) {
-		d->pattern->steps[d->selectedStep] -= 1.0f / 16.0f;
-		if(d->pattern->steps[d->selectedStep] < 0.0f) {
-			d->pattern->steps[d->selectedStep] = 0.0f;
-		}
-		if(d->inst) {
-			d->inst->loaded.dirty = true;
-		}
-		return true;
-	}
-	if(isKeyJustPressed(is, KM_EDIT) || isKeyJustPressed(is, KM_SELECT)) {
-		d->editing = false;
-		return true;
-	}
-	return false;
-}
-
-static GuiNode *createPatternGridNode(PatternState *pattern, Instrument *inst) {
-	PatternGridNode *pgn = (PatternGridNode *)calloc(1, sizeof(PatternGridNode));
-	GuiNode *gn = (GuiNode *)pgn;
-	if(!pgn || !initGuiNode(gn, 0, 0, 100, 100, 2, na_horizontal, "STEPS", 1, 0)) {
-		free(pgn);
-		return NULL;
-	}
-	pgn->pattern = pattern;
-	pgn->inst = inst;
-	gn->drawable = true;
-	gn->draw = drawPatternGridNode;
-	return gn;
+	DrawText(buf, gn->x + 2, gn->y + gn->h / 2 - 6, 12, cs.secondaryFontColour);
 }
 
 
@@ -1966,6 +1894,35 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 		if(ig && inst == ig->vm->instruments[*ig->selectedInstrument]) {
 			refreshSourceCtx(inst);
 		}
+	}
+	if(mod->type == MT_PATTERN) {
+		/* Grouped PTN row: the four fixed pattern tracks render as one
+		 * row (label + readout + four ROUTE buttons). Only the first
+		 * pattern source builds it; the rest share it. */
+		int firstPat = inst->coreEnvelopeCount - PATTERN_TRACKS;
+		if(idx != firstPat) {
+			return;
+		}
+		GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
+		wrap->drawable = true;
+		wrap->draw = drawWrapperNode;
+		GuiNode *label = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN", 0, 0);
+		appendItem(wrap, label, 2);
+		GuiNode *readout = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN_READ", 0, 0);
+		readout->drawable = true;
+		readout->draw = drawPatternReadoutNode;
+		readout->actionCtx = inst;
+		appendItem(wrap, readout, 3);
+		for(int t = 0; t < PATTERN_TRACKS; t++) {
+			char tag[8];
+			snprintf(tag, sizeof(tag), "%d", t + 1);
+			GuiNode *route = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
+			                                        tag, 0, cbOpenRouteLayer, &g_sourceCtx[firstPat + t]);
+			appendItem(wrap, route, 2);
+		}
+		applyLayout(wrap, "mod-source-row");
+		appendItem(container, wrap, weight);
+		return;
 	}
 	bool core = idx < inst->coreEnvelopeCount;
 	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
@@ -2002,15 +1959,6 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			if(r->shape) {
 				appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, r->shape), 4);
 			}
-			break;
-		}
-		case MT_PATTERN: {
-			PatternState *p = &mod->data.pattern;
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEN", selected, incParameterBaseValue, p->length), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, p->shape), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SLEW", 0, incParameterBaseValue, p->slew), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "POL", 0, incParameterBaseValue, p->polarity), 4);
-			appendItem(wrap, createPatternGridNode(p, inst), 12);
 			break;
 		}
 		default:

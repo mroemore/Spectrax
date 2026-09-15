@@ -18,12 +18,6 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 /* mod-source container + strip (gui_inst_mod) */
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected);
-/* Pattern step-grid node (a selectable leaf inside a pattern source row):
- * isPatternGridNode guards the downcast; handlePatternGridInput drives the
- * KM_EDIT edit-mode gesture (arrows move/adjust the selected step).
- * Returns true when the event was consumed. */
-bool isPatternGridNode(const GuiNode *n);
-bool handlePatternGridInput(GuiNode *n, InputState *is);
 void syncModWrapScroll(void);
 void syncPickerDestRects(void);
 void syncPickerBaseScroll(void);
