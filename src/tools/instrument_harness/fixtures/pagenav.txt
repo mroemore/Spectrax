@@ -20,12 +20,13 @@ RELEASE
 FRAMES 2
 ASSERT selected==MODS_ADD
 
-# FUNCTION+DOWN again -> modulators group's lowest (env3's ATTACK).
+# FUNCTION+DOWN again -> modulators group's lowest (the grouped PTN row's
+# first route button, track 1).
 HOLD FUNCTION
 DOWN
 RELEASE
 FRAMES 2
-ASSERT selected==ATTACK
+ASSERT selected==1
 
 # FUNCTION+UP -> back to the modulators top.
 HOLD FUNCTION

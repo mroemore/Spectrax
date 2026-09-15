@@ -103,6 +103,10 @@ typedef enum {
 	SOP_ASSERT_PRESETCOUNT, /* presetBank->presetCount == N */
 	SOP_ASSERT_ALGO,     /* FM selectedAlgorithm baseValue (as int) == N */
 	SOP_ASSERT_RATIO1,   /* FM op0 ratio baseValue (as int) == N */
+	SOP_ASSERT_PATPAGE,  /* getPatternPage() == N */
+	SOP_ASSERT_PTNROWS,  /* number of grouped PTN rows in the inst graph == N */
+	SOP_ASSERT_TRACKSTEP,/* pattern track <trk> step <step> value*100 == <pct> */
+	SOP_ASSERT_TRACKSHAPE,/* pattern track <trk> shape == N */
 	SOP_ASSERT_LOADLISTACTIVE, /* g_loadListActive (guiIsLoadListActive) == N */
 	SOP_ASSERT_SAVEDFLASH,     /* Task 5: selected PresetNameGuiNode's savedFlashUntil
 	                            * is strictly in the future (currentFrameIndex() < it).
@@ -398,9 +402,11 @@ static void parseScript(const char *path) {
 				target = SCENE_ARRANGER;
 			} else if(n == 1) {
 				target = SCENE_INSTRUMENT;
+			} else if(n == 2) {
+				target = SCENE_PATTERN;
 			} else {
 				fclose(fp);
-				failScript(lineno, "SCENE N must be 0 (ARRANGER) or 1 (INSTRUMENT)");
+				failScript(lineno, "SCENE N must be 0 (ARRANGER), 1 (INSTRUMENT) or 2 (PATTERN)");
 				return;
 			}
 			s->op = SOP_SET_SCENE; s->b.n = (int)target; s->frames = 1;
@@ -575,6 +581,47 @@ static void parseScript(const char *path) {
 				}
 				s->op = SOP_ASSERT_RATIO1;
 				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "patpage") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT patpage==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_PATPAGE;
+				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "ptnrows") == 0) {
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT ptnrows==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_PTNROWS;
+				s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "trackstep") == 0) {
+				/* ASSERT trackstep==(<trk>,<step>,<pct>) */
+				if(nt < 10 || strcmp(tokens[2], "==") != 0 ||
+				   strcmp(tokens[3], "(") != 0 || strcmp(tokens[5], ",") != 0 ||
+				   strcmp(tokens[7], ",") != 0 || strcmp(tokens[9], ")") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT trackstep==(<trk>,<step>,<pct>)");
+					return;
+				}
+				s->op = SOP_ASSERT_TRACKSTEP;
+				s->opIdx = atoi(tokens[4]);
+				s->kind = atoi(tokens[6]);
+				s->a.n = atoi(tokens[8]);
+			} else if(strcmp(tokens[1], "patshape") == 0) {
+				/* ASSERT patshape==(<trk>,<N>) */
+				if(nt < 8 || strcmp(tokens[2], "==") != 0 ||
+				   strcmp(tokens[3], "(") != 0 || strcmp(tokens[5], ",") != 0 ||
+				   strcmp(tokens[7], ")") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT patshape==(<trk>,<N>)");
+					return;
+				}
+				s->op = SOP_ASSERT_TRACKSHAPE;
+				s->opIdx = atoi(tokens[4]);
+				s->a.n = atoi(tokens[6]);
 			} else if(strcmp(tokens[1], "loadListActive") == 0) {
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
 					fclose(fp);
@@ -883,6 +930,78 @@ static void runAssertRatio1(int lineno, int expected) {
 	}
 }
 
+/* --- Pattern-track asserts (grouped PTN row + track pages) --------------- */
+static Mod *patternTrackMod(int trk) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || !inst->modList || trk < 0 || trk >= PATTERN_TRACKS) {
+		return NULL;
+	}
+	int src = inst->coreEnvelopeCount - PATTERN_TRACKS + trk;
+	if(src < 0) {
+		return NULL;
+	}
+	int mi = modIndexAt(inst->modList, src);
+	if(mi < 0) {
+		return NULL;
+	}
+	Mod *m = inst->modList->mods[mi];
+	return (m && m->type == MT_PATTERN) ? m : NULL;
+}
+
+static void runAssertPatpage(int lineno, int expected) {
+	int got = getPatternPage();
+	if(got != expected) {
+		failScript(lineno, "ASSERT patpage==%d failed: got %d", expected, got);
+	}
+}
+
+static int countNodesNamed(GuiNode *n, const char *name) {
+	if(!n) {
+		return 0;
+	}
+	int c = (n->name && strcmp(n->name, name) == 0) ? 1 : 0;
+	if(n->itemCount > 0 && n->items) {
+		ListElement *cur = n->items->head;
+		for(int i = 0; i < n->itemCount; i++) {
+			c += countNodesNamed(*(GuiNode **)cur->data, name);
+			cur = cur->next;
+		}
+	}
+	return c;
+}
+
+static void runAssertPtnrows(int lineno, int expected) {
+	Graph *g = getSelectedInstGraph();
+	int got = g ? countNodesNamed(g->root, "PTN_READ") : -1;
+	if(got != expected) {
+		failScript(lineno, "ASSERT ptnrows==%d failed: got %d", expected, got);
+	}
+}
+
+static void runAssertTrackstep(int lineno, int trk, int step, int pct) {
+	Mod *m = patternTrackMod(trk);
+	if(!m || step < 0 || step >= MAX_PATTERN_STEPS) {
+		failScript(lineno, "ASSERT trackstep: no pattern track %d", trk);
+		return;
+	}
+	int got = (int)(m->data.pattern.steps[step] * 100.0f);
+	if(got != pct) {
+		failScript(lineno, "ASSERT trackstep==(%d,%d,%d) failed: got %d", trk, step, pct, got);
+	}
+}
+
+static void runAssertTrackshape(int lineno, int trk, int expected) {
+	Mod *m = patternTrackMod(trk);
+	if(!m || !m->data.pattern.shape) {
+		failScript(lineno, "ASSERT patshape: no pattern track %d", trk);
+		return;
+	}
+	int got = getParameterValueAsInt(m->data.pattern.shape);
+	if(got != expected) {
+		failScript(lineno, "ASSERT patshape==(%d,%d) failed: got %d", trk, expected, got);
+	}
+}
+
 /* Task 5: assert that the selected PresetNameGuiNode's saved flash is
  * active (==1) or inactive (==0). Drives through the public
  * presetNameGuiNodeSavedFlashActive getter so the harness doesn't reach
@@ -1121,6 +1240,10 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 		case SOP_ASSERT_PRESETCOUNT:
 		case SOP_ASSERT_ALGO:
 		case SOP_ASSERT_RATIO1:
+		case SOP_ASSERT_PATPAGE:
+		case SOP_ASSERT_PTNROWS:
+		case SOP_ASSERT_TRACKSTEP:
+		case SOP_ASSERT_TRACKSHAPE:
 		case SOP_ASSERT_LOADLISTACTIVE:
 		case SOP_ASSERT_SAVEDFLASH:
 		case SOP_ASSERT_SCENE:
@@ -1180,6 +1303,18 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_RATIO1:
 			runAssertRatio1(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_PATPAGE:
+			runAssertPatpage(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_PTNROWS:
+			runAssertPtnrows(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_TRACKSTEP:
+			runAssertTrackstep(s->lineno, s->opIdx, s->kind, s->a.n);
+			break;
+		case SOP_ASSERT_TRACKSHAPE:
+			runAssertTrackshape(s->lineno, s->opIdx, s->a.n);
 			break;
 		case SOP_ASSERT_LOADLISTACTIVE:
 			runAssertLoadListActive(s->lineno, s->a.n);

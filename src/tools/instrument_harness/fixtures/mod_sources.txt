@@ -13,9 +13,9 @@ DOWN
 DOWN
 ASSERT selected==MODS_ADD
 EDIT
-ASSERT envcount==5
+ASSERT envcount==9
 
-# --- 4-way type cycle on the new source (ENV -> LFO -> RND -> PTN -> ENV) -
+# --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
 # After ADD selection reset to RATIO1; DOWN x10 reaches env[4]'s
 # TYPE button: RATIO2 -> RATIO3 -> RATIO4 -> ALG -> MODS_ADD -> ATTACK(env0)
 # -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT
@@ -32,7 +32,7 @@ DOWN
 DOWN
 ASSERT selected==ENV
 EDIT
-ASSERT envcount==5
+ASSERT envcount==9
 # Rebuild reset selection to RATIO1; re-navigate to the type button (now LFO).
 DOWN
 DOWN
@@ -59,86 +59,7 @@ DOWN
 DOWN
 ASSERT selected==RND
 EDIT
-# Now PTN (the pattern source row: TYPE LEN SHAPE SLEW POL STEPS ROUTE DEL).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==PTN
-# Walk RIGHT across the row: LEN SHAPE SLEW POL STEPS.
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==STEPS
-# Grid edit gesture: EDIT arms edit mode; UP/RIGHT adjust the selected
-# step (and move the step cursor) instead of moving the graph selection.
-EDIT
-UP
-RIGHT
-ASSERT selected==STEPS
-EDIT
-# --- T7: pattern dial-edit + route FROM the PTN source ---------------------
-# Standing on STEPS (grid edit disarmed). LEFT x4 back to the LEN dial.
-LEFT
-LEFT
-LEFT
-LEFT
-ASSERT selected==LEN
-# Dial-edit the LEN parameter: KM_EDIT held + UP must be consumed by the
-# generic dial gesture (selection stays put; the instrument is marked dirty).
-EDIT UP
-EDIT UP
-ASSERT selected==LEN
-# Grid gesture still works after the LEN change: arrows consumed, no nav.
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==STEPS
-EDIT
-UP
-LEFT
-ASSERT selected==STEPS
-EDIT
-# Route the pattern itself to op0 feedback. RIGHT from STEPS reaches the
-# row's ROUTE button. The picker's N2 anchor lands on the own-row POL dest
-# (name "PTN pol", two tokens — not assertable), so jump straight to the
-# unique "feedback" dest, same as the ENV section below.
-RIGHT
-ASSERT selected==ROUTE
-EDIT
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
-EDIT
-ASSERT modulators==(0,0,1)
-# Unroute: reopen the picker on the already-routed dest and confirm the
-# deferred remove clears it.
-EDIT
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
-EDIT
-FRAMES 30
-ASSERT modulators==(0,0,0)
-
-# --- Cycle back to ENV for the generic routing section ---------------------
-# The unroute N1 reselects env[4]'s ROUTE button; LEFT x6 back to the TYPE
-# button, cycle PTN -> ENV, re-navigate.
-LEFT
-LEFT
-LEFT
-LEFT
-LEFT
-LEFT
-ASSERT selected==PTN
-EDIT
+# RND wraps back to ENV (MT_PATTERN is no longer in the type cycle).
 DOWN
 DOWN
 DOWN
@@ -184,16 +105,16 @@ RIGHT
 ASSERT selected==DEL
 EDIT
 ASSERT topLayerSelected==DELETE_NO
-# EDIT on NO cancels: envcount stays 5.
+# EDIT on NO cancels: envcount stays 9.
 EDIT
-ASSERT envcount==5
-# Re-open + confirm YES: envcount drops to 4 (core only).
+ASSERT envcount==9
+# Re-open + confirm YES: envcount drops to 8 (core only incl. 4 patterns).
 EDIT
 ASSERT topLayerSelected==DELETE_NO
 RIGHT
 ASSERT topLayerSelected==DELETE_YES
 EDIT
-ASSERT envcount==4
+ASSERT envcount==8
 
 # --- Task 3.1: no-dial dests join the picker ------------------------------
 # Re-add a runtime source; open its picker; the `gain` dest (unique name,

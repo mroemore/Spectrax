@@ -1,0 +1,55 @@
+# pattern_screen.txt - pattern-screen pages: the note page plus the four
+# per-channel pattern-sequence tracks.
+#
+# SELECT+UP/DOWN cycles pages (0 = notes, 1..4 = tracks). A track page
+# has an indicator, a LEN/SHAPE/SLEW/POL dial strip and a 4x4 step grid.
+# Selection starts on the LEN dial; RIGHT moves across the strip; DOWN
+# drops into the grid. EDIT+UP on a dial bumps its value, EDIT+UP on a
+# step raises that step. The instrument mod list shows exactly one
+# grouped PTN row (four route buttons).
+
+SCENE 2
+FRAMES 3
+ASSERT scene==2
+ASSERT patpage==0
+ASSERT ptnrows==1
+
+# SELECT+UP -> track 1 page.
+HOLD SELECT
+UP
+RELEASE
+FRAMES 3
+ASSERT patpage==1
+
+# Selection starts on LEN; RIGHT -> SHAPE. EDIT+UP bumps it HOLD(0) -> LINEAR(1).
+RIGHT
+EDIT UP
+ASSERT patshape==(0,1)
+
+# DOWN -> grid step 0 (from the dial strip). EDIT+UP raises 0.5 -> 0.5625 (~56).
+DOWN
+EDIT UP
+ASSERT trackstep==(0,0,56)
+
+# SELECT+UP -> track 2 page; its shape is still the HOLD default.
+HOLD SELECT
+UP
+RELEASE
+FRAMES 3
+ASSERT patpage==2
+ASSERT patshape==(1,0)
+ASSERT trackstep==(1,0,50)
+
+# SELECT+DOWN wraps back: 2 -> 1 -> notes.
+HOLD SELECT
+DOWN
+RELEASE
+FRAMES 3
+ASSERT patpage==1
+HOLD SELECT
+DOWN
+RELEASE
+FRAMES 3
+ASSERT patpage==0
+
+QUIT

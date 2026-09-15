@@ -29,7 +29,7 @@ ASSERT selected==MODS_ADD
 # EDIT fires cbAddModSource: appends a runtime env, rebuilds the graph,
 # cursor lands on RATIO1.
 EDIT
-ASSERT envcount==5
+ASSERT envcount==9
 
 # Re-navigate to the new runtime entry's ENV type button. From RATIO1,
 # 10 DOWNs reach the new entry's ENV action button: RATIO2 -> RATIO3 ->
@@ -86,7 +86,7 @@ ASSERT selected==ENV
 # EDIT cycles ENV -> LFO. The rebuild resets selection to RATIO1; 10
 # DOWNs re-reach the (now LFO) runtime row.
 EDIT
-ASSERT envcount==5
+ASSERT envcount==9
 DOWN
 DOWN
 DOWN
@@ -100,9 +100,8 @@ DOWN
 ASSERT selected==LFO
 
 # Walk RIGHT through the entry to the DEL button.
-# Layout: TYPE (3) | RATE (4) | ROUTE (3) | DEL (2) — RIGHT x5 from TYPE
-# lands on DEL via geometric nav.
-RIGHT
+# Layout: TYPE (3) | RATE (4) | ROUTE (3) | DEL (2) — RIGHT x4 from TYPE
+# lands on DEL via geometric nav (a 5th would fall into the grouped PTN row).
 RIGHT
 RIGHT
 RIGHT
@@ -115,9 +114,9 @@ EDIT
 ASSERT topLayerSelected==DELETE_NO
 
 # EDIT on DELETE_NO fires cbDeleteCancel (pops layer, no source removed).
-# envcount stays at 5 — the runtime entry survives the cancelled delete.
+# envcount stays at 9 — the runtime entry survives the cancelled delete.
 EDIT
-ASSERT envcount==5
+ASSERT envcount==9
 
 # The pop left the base graph's selection unchanged (still on DEL).
 # EDIT again opens the confirm layer for the same runtime entry.
@@ -129,8 +128,9 @@ RIGHT
 ASSERT topLayerSelected==DELETE_YES
 
 # EDIT on DELETE_YES fires cbDeleteConfirmYes which pops the layer THEN
-# calls removeSource(inst, idx), dropping envcount back to 4.
+# calls removeSource(inst, idx), dropping envcount back to 8 (core: 4 env
+# + 4 pattern tracks).
 EDIT
-ASSERT envcount==4
+ASSERT envcount==8
 
 QUIT
