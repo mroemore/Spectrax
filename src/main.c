@@ -1034,7 +1034,12 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 	UnloadRenderTexture(gfx);
 	freeBufferScroller(&data.bufferScroller);
 	CloseWindow();
-	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList, NULL);
+	for(int ch = 0; ch < data.voiceManager->enabledChannels; ch++) {
+		capturePatternTracksToInstrument(data.voiceManager->instruments[ch]);
+	}
+	PatternTrackSet trackSet;
+	capturePatternTrackSet(data.voiceManager, &trackSet);
+	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList, &trackSet);
 	if(data.settings) {
 		/* Reconstruct absolute cfg.json + clr.json paths under the
 		 * config dir resolved at startup (cwd is now the data dir). */
@@ -1144,7 +1149,9 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("arranger creation failed.\n");
 		return;
 	}
-	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList, NULL);
+	PatternTrackSet trackSet;
+	capturePatternTrackSet(data->voiceManager, &trackSet);
+	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList, &trackSet);
 	printf("arranger/pattern load result: %i\n", loadstate);
 	/* loadSequencerState restores arranger->selected_x/selected_y but
 	 * never touches appState->selectedArrangerCell — that copy is only
@@ -1172,6 +1179,12 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 				rebuildVoicesForInstrument(vm, vm->instruments[ch]);
 			}
 		}
+	}
+	/* Pattern tracks are song-level: apply the (possibly PTRK-loaded) set
+	 * to the live instruments now that presets are restored. An absent
+	 * PTRK chunk left the pre-fill (current live values) intact. */
+	if(loadstate == SEQ_OK) {
+		applyPatternTrackSetToInstruments(data->voiceManager, &trackSet);
 	}
 	/* Seed selectedPattern from the arranger's restored selection so Shift+Right
 	 * reaches the pattern screen immediately at startup. loadSequencerState
