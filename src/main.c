@@ -835,6 +835,35 @@ int main(int argc, char **argv) {
 				}
 				break;
 			case SCENE_PATTERN:
+				if(isKeyHeld(appState->inputState, KM_SELECT)) {
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						appState->patternPage = (appState->patternPage + 1) % (PATTERN_TRACKS + 1);
+						clampPatternPage(appState);
+						setPatternPage(appState->patternPage);
+						rebuildPatternGraph();
+					} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						appState->patternPage = (appState->patternPage + PATTERN_TRACKS) % (PATTERN_TRACKS + 1);
+						clampPatternPage(appState);
+						setPatternPage(appState->patternPage);
+						rebuildPatternGraph();
+					}
+					break;
+				}
+				if(appState->patternPage > 0) {
+					if(isKeyHeld(appState->inputState, KM_EDIT)) {
+						if(isKeyJustPressed(appState->inputState, KM_UP)) {
+							handlePatternTrackEdit(KM_UP);
+						} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+							handlePatternTrackEdit(KM_DOWN);
+						}
+					} else {
+						if(isKeyJustPressed(appState->inputState, KM_LEFT))  navigatePatternGraph(KM_LEFT);
+						if(isKeyJustPressed(appState->inputState, KM_RIGHT)) navigatePatternGraph(KM_RIGHT);
+						if(isKeyJustPressed(appState->inputState, KM_UP))    navigatePatternGraph(KM_UP);
+						if(isKeyJustPressed(appState->inputState, KM_DOWN))  navigatePatternGraph(KM_DOWN);
+					}
+					break;
+				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
 						/* CUT: copy the step's note into the clipboard

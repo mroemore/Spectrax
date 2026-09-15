@@ -1449,11 +1449,73 @@ static void handleArrangerInput(paTestData *data, ApplicationState *appState) {
 	}
 }
 
+static void handlePatternInput(paTestData *data, ApplicationState *appState) {
+	/* Mirrors main.c's SCENE_PATTERN branch: SELECT+UP/DOWN cycles the
+	 * note/track pages; on a track page EDIT+UP/DOWN edits the selected
+	 * step or dial, otherwise the arrows navigate. */
+	if(isKeyHeld(appState->inputState, KM_SELECT)) {
+		if(isKeyJustPressed(appState->inputState, KM_UP)) {
+			appState->patternPage = (appState->patternPage + 1) % (PATTERN_TRACKS + 1);
+			clampPatternPage(appState);
+			setPatternPage(appState->patternPage);
+			rebuildPatternGraph();
+		} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+			appState->patternPage = (appState->patternPage + PATTERN_TRACKS) % (PATTERN_TRACKS + 1);
+			clampPatternPage(appState);
+			setPatternPage(appState->patternPage);
+			rebuildPatternGraph();
+		}
+		return;
+	}
+	if(appState->patternPage > 0) {
+		if(isKeyHeld(appState->inputState, KM_EDIT)) {
+			if(isKeyJustPressed(appState->inputState, KM_UP)) {
+				handlePatternTrackEdit(KM_UP);
+			} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+				handlePatternTrackEdit(KM_DOWN);
+			}
+		} else {
+			if(isKeyJustPressed(appState->inputState, KM_LEFT))  navigatePatternGraph(KM_LEFT);
+			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) navigatePatternGraph(KM_RIGHT);
+			if(isKeyJustPressed(appState->inputState, KM_UP))    navigatePatternGraph(KM_UP);
+			if(isKeyJustPressed(appState->inputState, KM_DOWN))  navigatePatternGraph(KM_DOWN);
+		}
+		return;
+	}
+	if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
+		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+			selectArrangerCell(data->arranger, 1, -1, 0);
+			appState->selectedPattern = data->arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+		}
+		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+			selectArrangerCell(data->arranger, 1, 1, 0);
+			appState->selectedPattern = data->arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+		}
+		if(isKeyJustPressed(appState->inputState, KM_UP)) {
+			selectArrangerCell(data->arranger, 1, 0, -1);
+			appState->selectedPattern = data->arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+		}
+		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+			selectArrangerCell(data->arranger, 1, 0, 1);
+			appState->selectedPattern = data->arranger->song[appState->selectedArrangerCell[0]][appState->selectedArrangerCell[1]];
+		}
+	} else {
+		if(isKeyJustPressed(appState->inputState, KM_LEFT))  navigatePatternGraph(KM_LEFT);
+		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) navigatePatternGraph(KM_RIGHT);
+		if(isKeyJustPressed(appState->inputState, KM_UP))    navigatePatternGraph(KM_UP);
+		if(isKeyJustPressed(appState->inputState, KM_DOWN))  navigatePatternGraph(KM_DOWN);
+	}
+}
+
 static void handleInstrumentInput(paTestData *data, ApplicationState *appState) {
 	/* Task 7: scene dispatch. Chip/meta row lives in SCENE_ARRANGER;
 	 * the instrument page lives in SCENE_INSTRUMENT. */
 	if(appState->currentScene == SCENE_ARRANGER) {
 		handleArrangerInput(data, appState);
+		return;
+	}
+	if(appState->currentScene == SCENE_PATTERN) {
+		handlePatternInput(data, appState);
 		return;
 	}
 
