@@ -22,6 +22,10 @@
 static Graph *patternGraph;
 static SongMinimapGui *smgui;
 static BufferScroller *patternBufferScroller;
+static int patternPage = 0;
+
+void setPatternPage(int page) { patternPage = page; }
+int getPatternPage(void) { return patternPage; }
 
 static void drawSongMinimapGui(void *self);
 

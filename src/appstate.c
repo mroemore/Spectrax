@@ -12,6 +12,7 @@ ApplicationState *createApplicationState() {
 	as->selectedArrangerCell[0] = 0;
 	as->selectedArrangerCell[1] = 0;
 	as->selectedStep = 0;
+	as->patternPage = 0;
 	as->currentScene = SCENE_ARRANGER;
 	as->lastUsedNote[0] = C;
 	as->lastUsedNote[1] = 3;
@@ -46,7 +47,20 @@ void setCurrentPattern(void *self, void *patternID) {
 void setSelectedPattern(void *self, void *patternID) {
 	ApplicationState *as = (ApplicationState *)self;
 	as->selectedPattern = *(int *)patternID;
+	clampPatternPage(as);
 	rebuildPatternGraph();
+}
+
+void clampPatternPage(ApplicationState *as) {
+	if(!as) {
+		return;
+	}
+	if(as->patternPage < 0) {
+		as->patternPage = 0;
+	}
+	if(as->patternPage > PATTERN_TRACKS) {
+		as->patternPage = PATTERN_TRACKS;
+	}
 }
 void setSelectedStep(void *self, void *step) {
 	ApplicationState *as = (ApplicationState *)self;

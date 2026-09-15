@@ -62,6 +62,8 @@ void arrangerGraphControlInput(int keymapping);
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep);
 void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
+void setPatternPage(int page);
+int getPatternPage(void);
 void setSongMinimapGui(SongMinimapGui *smg);
 void setPatternBufferScroller(BufferScroller *bs);
 void setArrangerMixRing(MixRing *r);

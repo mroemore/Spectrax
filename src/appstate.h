@@ -4,11 +4,13 @@
 #include "input.h"
 #include "settings.h"
 #include "notes.h"
+#include "modsystem.h"
 
 typedef struct {
 	int currentPattern;
 	int selectedPattern;
 	int selectedStep;
+	int patternPage;
 	int selectedArrangerCell[2];
 	Scene currentScene;
 	int lastUsedNote[NOTE_INFO_SIZE];
@@ -20,6 +22,7 @@ ApplicationState *createApplicationState();
 
 void incrementScene(ApplicationState *appState);
 void decrementScene(ApplicationState *appState);
+void clampPatternPage(ApplicationState *as);
 
 void setCurrentPattern(void *self, void *patternID);
 void setSelectedPattern(void *self, void *patternID);
