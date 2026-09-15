@@ -10,6 +10,7 @@ tests/test_mod_voice
 tests/test_graph_nav
 tests/test_sequencer
 tests/test_vizfx
+tests/.tmp_files/
 .tmp_files/
 .tmp_files/
 third_party/
@@ -19,6 +20,9 @@ rg35xx-copy.sh
 TODO.md
 compile_commands.json
 build/
+builddir/
+build-cov/
+build-gc/
 meson-private/
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o
@@ -35,3 +39,12 @@ bin/sample_project.json
 bin/smoke_viz.c
 bin/smoke_viz.frag
 vizulobe_smoke.png
+
+# misc agentic junk and other jank
+.tmp_files/
+spectrax
+.superpowers/
+.cortexkit/
+docs/*
+.cache/
+
