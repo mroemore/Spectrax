@@ -18,6 +18,7 @@ void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int wei
 
 /* mod-source container + strip (gui_inst_mod) */
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected);
+void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight);
 void syncModWrapScroll(void);
 void syncPickerDestRects(void);
 void syncPickerBaseScroll(void);

@@ -1417,6 +1417,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	for(int i = 0; i < srcCount; i++) {
 		appendModSourceEntry(instGraph, modwrap, inst, i, 1, false);
 	}
+	appendPatternTrackRow(modwrap, inst, 1);
 	appendBlankNode(modwrap, 1);
 	appendItem(instwrap, modwrap, 24);
 

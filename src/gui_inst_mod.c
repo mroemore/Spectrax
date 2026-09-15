@@ -1896,32 +1896,9 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 		}
 	}
 	if(mod->type == MT_PATTERN) {
-		/* Grouped PTN row: the four fixed pattern tracks render as one
-		 * row (label + readout + four ROUTE buttons). Only the first
-		 * pattern source builds it; the rest share it. */
-		int firstPat = inst->coreEnvelopeCount - PATTERN_TRACKS;
-		if(idx != firstPat) {
-			return;
-		}
-		GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
-		wrap->drawable = true;
-		wrap->draw = drawWrapperNode;
-		GuiNode *label = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN", 0, 0);
-		appendItem(wrap, label, 2);
-		GuiNode *readout = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN_READ", 0, 0);
-		readout->drawable = true;
-		readout->draw = drawPatternReadoutNode;
-		readout->actionCtx = inst;
-		appendItem(wrap, readout, 3);
-		for(int t = 0; t < PATTERN_TRACKS; t++) {
-			char tag[8];
-			snprintf(tag, sizeof(tag), "%d", t + 1);
-			GuiNode *route = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
-			                                        tag, 0, cbOpenRouteLayer, &g_sourceCtx[firstPat + t]);
-			appendItem(wrap, route, 2);
-		}
-		applyLayout(wrap, "mod-source-row");
-		appendItem(container, wrap, weight);
+		/* The four fixed pattern tracks render as one grouped row,
+		 * appended once at the end of the mod list (see
+		 * appendPatternTrackRow). Individual pattern sources get no row. */
 		return;
 	}
 	bool core = idx < inst->coreEnvelopeCount;
@@ -1980,6 +1957,39 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 	applyLayout(wrap, "mod-source-row");
 	appendItem(container, wrap, weight);
 	(void)g;
+}
+
+/* Grouped PTN row: one row for the four fixed pattern tracks (label +
+ * readout + four ROUTE buttons). Appended once, at the end of the mod
+ * list, so runtime source rows keep their positions. g_sourceCtx must
+ * already be refreshed for `inst` (appendModSourceEntry does that). */
+void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight) {
+	if(!inst || !inst->modList) {
+		return;
+	}
+	int firstPat = inst->coreEnvelopeCount - PATTERN_TRACKS;
+	if(firstPat < 0 || modIndexAt(inst->modList, firstPat) < 0) {
+		return;
+	}
+	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
+	wrap->drawable = true;
+	wrap->draw = drawWrapperNode;
+	GuiNode *label = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN", 0, 0);
+	appendItem(wrap, label, 2);
+	GuiNode *readout = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN_READ", 0, 0);
+	readout->drawable = true;
+	readout->draw = drawPatternReadoutNode;
+	readout->actionCtx = inst;
+	appendItem(wrap, readout, 3);
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		char tag[8];
+		snprintf(tag, sizeof(tag), "%d", t + 1);
+		GuiNode *route = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
+		                                        tag, 0, cbOpenRouteLayer, &g_sourceCtx[firstPat + t]);
+		appendItem(wrap, route, 2);
+	}
+	applyLayout(wrap, "mod-source-row");
+	appendItem(container, wrap, weight);
 }
 
 

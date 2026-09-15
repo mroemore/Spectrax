@@ -876,10 +876,10 @@ void initPatternDefaults(Mod *mod, ParamList *paramList, int channel) {
 	 * `min < maxValue` and maxValue is already 1.0, so -1.0 passes. */
 	setParameterMinValue(mod->output, -1.0f);
 	PatternState *p = &mod->data.pattern;
-	p->length = createParameter(paramList, "PTN len", 16.0f, 1.0f, (float)MAX_PATTERN_STEPS);
-	p->shape = createParameter(paramList, "PTN shape", 0.0f, 0.0f, (float)(SH_COUNT - 1));
-	p->slew = createParameter(paramList, "PTN slew", 0.2f, 0.0f, 1.0f);
-	p->polarity = createParameter(paramList, "PTN pol", 0.0f, 0.0f, (float)(PP_COUNT - 1));
+	p->length = createParameterEx(paramList, "PTN len", 16.0f, 1.0f, (float)MAX_PATTERN_STEPS, 1.0f, 1.0f);
+	p->shape = createParameterEx(paramList, "PTN shape", 0.0f, 0.0f, (float)(SH_COUNT - 1), 1.0f, 1.0f);
+	p->slew = createParameterEx(paramList, "PTN slew", 0.2f, 0.0f, 1.0f, 0.05f, 0.1f);
+	p->polarity = createParameterEx(paramList, "PTN pol", 0.0f, 0.0f, (float)(PP_COUNT - 1), 1.0f, 1.0f);
 	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
 		p->steps[i] = 0.5f;
 	}
