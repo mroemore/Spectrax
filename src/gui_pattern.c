@@ -46,6 +46,24 @@ static Sequencer *patternSeq;
 static int *patternSelectedPatternPtr;
 static int *patternSelectedStepPtr;
 
+/* ---- track-page state (patternPage > 0) ---- */
+typedef struct {
+	int stepIndex;
+	PatternState *pattern;
+	Instrument *inst;
+	int *selectedStepPtr;
+} TrackStepData;
+
+static GuiNode *trackDialStrip = NULL;
+static GuiNode *trackDialNodes[PATTERN_TRACKS] = {0};
+static GuiNode *trackStepNodes[MAX_PATTERN_STEPS] = {0};
+static TrackStepData trackStepData[MAX_PATTERN_STEPS];
+static PatternState *trackPagePattern = NULL;
+
+static void drawPatternIndicatorNode(void *self);
+static void drawTrackStepNode(void *self);
+static GuiNode *createTrackStepNode(PatternState *pattern, Instrument *inst, int stepIndex, int *selectedStepPtr);
+
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y) {
 	SongMinimapGui *minimapGui = (SongMinimapGui *)malloc(sizeof(SongMinimapGui));
 	minimapGui->base.draw = drawSongMinimapGui;
@@ -124,6 +142,89 @@ void drawStepGuiNode(void *self) {
 }
 
 
+static const char *PTN_SHAPE_NAMES[] = { "HOLD", "LINEAR", "SLEW", "CURVE" };
+static const char *PTN_POL_NAMES[] = { "UNI", "BI" };
+
+static bool isDialStripSelected(const GuiNode *n) {
+	if(!n) {
+		return false;
+	}
+	for(int i = 0; i < PATTERN_TRACKS; i++) {
+		if(n == trackDialNodes[i]) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static GuiNode *firstDialNode(void) {
+	return trackDialNodes[0];
+}
+
+static int selectedStepIndex(void) {
+	if(patternSelectedStepPtr) {
+		int s = *patternSelectedStepPtr;
+		if(s < 0) s = 0;
+		if(s >= MAX_PATTERN_STEPS) s = MAX_PATTERN_STEPS - 1;
+		return s;
+	}
+	return 0;
+}
+
+static void drawPatternIndicatorNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	Rectangle r = (Rectangle){ gn->x, gn->y, gn->w, gn->h };
+	DrawRectangleRec(r, cs.panel);
+	DrawRectangleLinesEx(r, 1, cs.panelBorder);
+	char title[32];
+	snprintf(title, sizeof(title), "PTN %d/%d", patternPage, PATTERN_TRACKS);
+	DrawText(title, gn->x + 6, gn->y + 6, 20, cs.fontColour);
+	if(trackPagePattern) {
+		int len = getParameterValueAsInt(trackPagePattern->length);
+		int shape = getParameterValueAsInt(trackPagePattern->shape);
+		int pol = getParameterValueAsInt(trackPagePattern->polarity);
+		if(shape < 0 || shape >= SH_COUNT) shape = 0;
+		if(pol < 0 || pol >= PP_COUNT) pol = 0;
+		char detail[64];
+		snprintf(detail, sizeof(detail), "LEN %d  %s  %s", len, PTN_SHAPE_NAMES[shape], PTN_POL_NAMES[pol]);
+		DrawText(detail, gn->x + 6, gn->y + 30, 14, cs.secondaryFontColour);
+	}
+}
+
+static void drawTrackStepNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	TrackStepData *d = (TrackStepData *)gn->p;
+	if(!d || !d->pattern) {
+		return;
+	}
+	const StepCellStyle *st = resolveStepCellStyle(gn);
+	Rectangle cell = (Rectangle){ gn->x, gn->y, gn->w, gn->h };
+	if(d->selectedStepPtr && *d->selectedStepPtr == d->stepIndex) {
+		DrawRectangle(gn->x - 3, gn->y - 3, gn->w + 6, gn->h + 6, st->borderSelected);
+	}
+	bool inRange = (d->stepIndex < d->pattern->stepCount);
+	float frac = inRange ? d->pattern->steps[d->stepIndex] : 0.0f;
+	DrawRectangleRec(cell, st->bgEmpty);
+	int barH = (int)(frac * (float)gn->h);
+	DrawRectangle((int)gn->x, (int)(gn->y + gn->h - barH), gn->w, barH, st->bgPlaying);
+	char buf[8];
+	snprintf(buf, sizeof(buf), "%d", (int)(frac * 100.0f));
+	DrawText(buf, gn->x + 2, gn->y + 2, 10, st->note.color);
+}
+
+static GuiNode *createTrackStepNode(PatternState *pattern, Instrument *inst, int stepIndex, int *selectedStepPtr) {
+	GuiNode *n = createGuiNode(0, 0, 50, 50, 4, na_vertical, "step", 1, 0);
+	trackStepData[stepIndex].stepIndex = stepIndex;
+	trackStepData[stepIndex].pattern = pattern;
+	trackStepData[stepIndex].inst = inst;
+	trackStepData[stepIndex].selectedStepPtr = selectedStepPtr;
+	n->p = (Parameter *)&trackStepData[stepIndex];
+	n->drawable = true;
+	n->draw = drawTrackStepNode;
+	trackStepNodes[stepIndex] = n;
+	return n;
+}
+
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep) {
 	patternPl = pl;
 	patternSeq = sequencer;
@@ -131,6 +232,60 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 	patternSelectedStepPtr = selectedStep;
 
 	patternGraph = createGraph(na_vertical);
+	if(patternPage > 0) {
+		Instrument *inst = getSelectedInstInstrument();
+		Mod *pat = NULL;
+		PatternState *ps = NULL;
+		if(inst && inst->modList && patternPage - 1 < PATTERN_TRACKS) {
+			int mi = modIndexAt(inst->modList, inst->coreEnvelopeCount - PATTERN_TRACKS + (patternPage - 1));
+			if(mi >= 0) {
+				pat = inst->modList->mods[mi];
+			}
+		}
+		if(pat && pat->type == MT_PATTERN) {
+			ps = &pat->data.pattern;
+		}
+		trackPagePattern = ps;
+
+		GuiNode *indicator = createGuiNode(10, 10, 620, 40, 4, na_horizontal, "PTN_IND", 0, 0);
+		indicator->drawable = true;
+		indicator->draw = drawPatternIndicatorNode;
+		appendItem(patternGraph->root, indicator, 2);
+
+		if(ps) {
+			GuiNode *strip = createGuiNode(10, 60, 620, 60, 6, na_horizontal, "PTN_DIALS", 0, 0);
+			trackDialStrip = strip;
+			trackDialNodes[0] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "LEN", 1, incParameterBaseValue, ps->length);
+			trackDialNodes[1] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SHAPE", 0, incParameterBaseValue, ps->shape);
+			trackDialNodes[2] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "SLEW", 0, incParameterBaseValue, ps->slew);
+			trackDialNodes[3] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "POL", 0, incParameterBaseValue, ps->polarity);
+			for(int i = 0; i < PATTERN_TRACKS; i++) {
+				appendItem(strip, trackDialNodes[i], 1);
+			}
+			appendItem(patternGraph->root, strip, 6);
+
+			GuiNode *gridWrap = createGuiNode(10, 130, 230, 300, 6, na_vertical, "PTN_GRID", 0, 0);
+			for(int r = 0; r < 4; r++) {
+				GuiNode *row = createGuiNode(0, 0, 100, 50, 4, na_horizontal, "row", 0, 0);
+				for(int c = 0; c < 4; c++) {
+					int i = r * 4 + c;
+					appendItem(row, createTrackStepNode(ps, inst, i, selectedStep), 1);
+				}
+				appendItem(gridWrap, row, 1);
+			}
+			appendItem(patternGraph->root, gridWrap, 16);
+		}
+		patternGraph->selected = trackDialNodes[0];
+		return;
+	}
+	trackDialStrip = NULL;
+	for(int i = 0; i < PATTERN_TRACKS; i++) {
+		trackDialNodes[i] = NULL;
+	}
+	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
+		trackStepNodes[i] = NULL;
+	}
+	trackPagePattern = NULL;
 	int patternIndex = *selectedPattern;
 	int size = 0;
 	if(patternIndex >= 0 && patternIndex < pl->pattern_count) {
@@ -172,6 +327,52 @@ void navigatePatternGraph(int keymapping) {
 	if(!patternGraph || !patternGraph->selected) {
 		return;
 	}
+	if(patternPage > 0) {
+		if(isDialStripSelected(patternGraph->selected)) {
+			switch(keymapping) {
+				case KM_LEFT:
+					changeGraphSelection(patternGraph, selectAdjacent(patternGraph, patternGraph->selected, true));
+					return;
+				case KM_RIGHT:
+					changeGraphSelection(patternGraph, selectAdjacent(patternGraph, patternGraph->selected, false));
+					return;
+				case KM_DOWN:
+					changeGraphSelection(patternGraph, trackStepNodes[selectedStepIndex()]);
+					return;
+				default:
+					return;
+			}
+		}
+		TrackStepData *td = (TrackStepData *)patternGraph->selected->p;
+		if(!td) {
+			return;
+		}
+		int cur = *td->selectedStepPtr;
+		int next = cur;
+		switch(keymapping) {
+			case KM_LEFT:
+				if(cur % 4 > 0) next = cur - 1;
+				break;
+			case KM_RIGHT:
+				if(cur % 4 < 3) next = cur + 1;
+				break;
+			case KM_UP:
+				if(cur < 4) {
+					changeGraphSelection(patternGraph, firstDialNode());
+					return;
+				}
+				next = cur - 4;
+				break;
+			case KM_DOWN:
+				if(cur < 12) next = cur + 4;
+				break;
+			default:
+				return;
+		}
+		*td->selectedStepPtr = next;
+		changeGraphSelection(patternGraph, trackStepNodes[next]);
+		return;
+	}
 	StepNodeData *d = (StepNodeData *)patternGraph->selected->p;
 	int next = *d->selectedStepPtr;
 	switch(keymapping) {
@@ -194,6 +395,50 @@ void navigatePatternGraph(int keymapping) {
 	changeGraphSelection(patternGraph, stepNodes[next]);
 }
 
+
+bool handlePatternTrackEdit(int keymapping) {
+	if(patternPage == 0 || !patternGraph || !patternGraph->selected) {
+		return false;
+	}
+	GuiNode *sel = patternGraph->selected;
+	if(isDialStripSelected(sel)) {
+		if(!isSelectedDialNode(patternGraph) || !sel->callback) {
+			return false;
+		}
+		float delta = (keymapping == KM_UP) ? 0.05f
+		            : (keymapping == KM_DOWN) ? -0.05f
+		            : 0.0f;
+		if(delta == 0.0f) {
+			return false;
+		}
+		sel->callback((Parameter *)sel->p, delta);
+		Instrument *inst = getSelectedInstInstrument();
+		if(inst) {
+			inst->loaded.dirty = true;
+			capturePatternTracksToInstrument(inst);
+		}
+		return true;
+	}
+	TrackStepData *d = (TrackStepData *)sel->p;
+	if(!d || !d->pattern) {
+		return false;
+	}
+	float delta = (keymapping == KM_UP) ? (1.0f / 16.0f)
+	            : (keymapping == KM_DOWN) ? -(1.0f / 16.0f)
+	            : 0.0f;
+	if(delta == 0.0f) {
+		return false;
+	}
+	float v = d->pattern->steps[d->stepIndex] + delta;
+	if(v > 1.0f) v = 1.0f;
+	if(v < 0.0f) v = 0.0f;
+	d->pattern->steps[d->stepIndex] = v;
+	if(d->inst) {
+		d->inst->loaded.dirty = true;
+		capturePatternTracksToInstrument(d->inst);
+	}
+	return true;
+}
 
 void rebuildPatternGraph() {
 	if(!patternPl || !patternSeq || !patternGraph) {

@@ -64,6 +64,7 @@ void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setPatternPage(int page);
 int getPatternPage(void);
+bool handlePatternTrackEdit(int keymapping);
 void setSongMinimapGui(SongMinimapGui *smg);
 void setPatternBufferScroller(BufferScroller *bs);
 void setArrangerMixRing(MixRing *r);
