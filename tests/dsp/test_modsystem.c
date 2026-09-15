@@ -1328,6 +1328,51 @@ static int test_pattern_boundary_advances_step(void) {
 	return 0;
 }
 
+static int test_pattern_track_data_roundtrip(void) {
+	PatternTrackData t;
+	initPatternTrackData(&t);
+	ASSERT_EQ(t.length, MAX_PATTERN_STEPS, "default length 16");
+	ASSERT_EQ(t.shape, SH_HOLD, "default shape HOLD");
+	ASSERT_EQ(t.polarity, PP_UNIPOLAR, "default polarity unipolar");
+	ASSERT_NEAR(t.steps[0], 0.5f, 0.001f, "default step 0.5");
+
+	ParamList *pl = createParamList();
+	Mod *p = (Mod *)calloc(1, sizeof(Mod));
+	initPatternDefaults(p, pl, 2);
+	p->data.pattern.steps[0] = 0.9f;
+	p->data.pattern.steps[3] = 0.1f;
+	p->data.pattern.track = 2;
+	setParameterBaseValue(p->data.pattern.length, 4.0f);
+	setParameterBaseValue(p->data.pattern.shape, (float)SH_CURVE);
+	setParameterBaseValue(p->data.pattern.slew, 0.7f);
+	setParameterBaseValue(p->data.pattern.polarity, (float)PP_BIPOLAR);
+
+	PatternTrackData out;
+	patternStateToTrackData(&p->data.pattern, &out);
+	ASSERT_EQ(out.length, 4, "captured length");
+	ASSERT_EQ(out.shape, SH_CURVE, "captured shape");
+	ASSERT_NEAR(out.slew, 0.7f, 0.001f, "captured slew");
+	ASSERT_EQ(out.polarity, PP_BIPOLAR, "captured polarity");
+	ASSERT_NEAR(out.steps[0], 0.9f, 0.001f, "captured step 0");
+
+	/* wipe the source, then restore from the captured data */
+	p->data.pattern.steps[0] = 0.0f;
+	setParameterBaseValue(p->data.pattern.length, 16.0f);
+	setParameterBaseValue(p->data.pattern.shape, (float)SH_HOLD);
+	patternTrackDataToState(&p->data.pattern, &out);
+	ASSERT_EQ(p->data.pattern.stepCount, 4, "restored stepCount");
+	ASSERT_NEAR(p->data.pattern.steps[0], 0.9f, 0.001f, "restored step 0");
+	ASSERT_EQ(getParameterValueAsInt(p->data.pattern.length), 4, "restored length param");
+	ASSERT_EQ(getParameterValueAsInt(p->data.pattern.shape), SH_CURVE, "restored shape param");
+	ASSERT_NEAR(getParameterValue(p->data.pattern.slew), 0.7f, 0.001f, "restored slew param");
+	ASSERT_EQ(getParameterValueAsInt(p->data.pattern.polarity), PP_BIPOLAR, "restored polarity param");
+
+	freeParamList(pl);
+	free(p);
+	printf("PASS test_pattern_track_data_roundtrip\n");
+	return 0;
+}
+
 static int test_pattern_shapes(void) {
 	extern PatternClock g_patternClock;
 	ParamList *pl = createParamList();
@@ -1483,6 +1528,7 @@ int main(void) {
     fails += test_pattern_clock_global();
     fails += test_pattern_boundary_advances_step();
     fails += test_pattern_shapes();
+    fails += test_pattern_track_data_roundtrip();
     fails += test_pattern_clone_and_retype();
     if (fails) {
         fprintf(stderr, "%d modsystem test(s) failed\n", fails);

@@ -158,6 +158,7 @@ typedef struct {
 	float steps[MAX_PATTERN_STEPS]; /* stored 0..1 */
 	int stepCount;        /* 1..length */
 	int channel;          /* which channel's playhead clocks this source */
+	int track;            /* 0..PATTERN_TRACKS-1 (which UI track this is) */
 	/* per-voice running state (cloned independently per voice) */
 	int currentStep;
 	float currentValue;   /* the output value */
@@ -165,6 +166,19 @@ typedef struct {
 	float startValue;     /* the value at the start of the current step */
 	int lastPlayhead;     /* boundary detection */
 } PatternState;
+
+#define PATTERN_TRACKS 4
+
+/* Persistent form of one pattern track (the Instrument.patternTracks[]
+ * and song-file payload). PatternState holds the live Parameter pointers
+ * + running state; this is the plain-data mirror. */
+typedef struct {
+	float steps[MAX_PATTERN_STEPS]; /* stored 0..1 */
+	int length;                     /* 1..MAX_PATTERN_STEPS */
+	int shape;                      /* PatternShape */
+	float slew;                     /* 0..1 */
+	int polarity;                   /* PatternPolarity */
+} PatternTrackData;
 
 typedef struct Mod {
 	ModType type;
@@ -271,6 +285,9 @@ Mod *createRandom(ParamList *paramList, ModList *modList, int index, float rate,
 Mod *createPattern(ParamList *paramList, ModList *modList, int channel, const char *name);
 void initPatternDefaults(Mod *mod, ParamList *paramList, int channel);
 void generatePattern(void *self);
+void initPatternTrackData(PatternTrackData *t);
+void patternStateToTrackData(const PatternState *p, PatternTrackData *t);
+void patternTrackDataToState(PatternState *p, const PatternTrackData *t);
 void initEnvelopeDefaults(Mod *env);
 Mod *createEnvelope(ParamList *paramList, ModList *modList, const char *name);
 Mod *createAttenuatorMod(ParamList *paramList, ModList *modList, Mod *source, const char *name);

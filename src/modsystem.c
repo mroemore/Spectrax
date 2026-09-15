@@ -893,6 +893,49 @@ void initPatternDefaults(Mod *mod, ParamList *paramList, int channel) {
 	mod->generate = generatePattern;
 }
 
+void initPatternTrackData(PatternTrackData *t) {
+	if(!t) {
+		return;
+	}
+	for(int i = 0; i < MAX_PATTERN_STEPS; i++) {
+		t->steps[i] = 0.5f;
+	}
+	t->length = MAX_PATTERN_STEPS;
+	t->shape = SH_HOLD;
+	t->slew = 0.2f;
+	t->polarity = PP_UNIPOLAR;
+}
+
+void patternStateToTrackData(const PatternState *p, PatternTrackData *t) {
+	if(!p || !t) {
+		return;
+	}
+	memcpy(t->steps, p->steps, sizeof(t->steps));
+	t->length = (p->length) ? getParameterValueAsInt(p->length) : p->stepCount;
+	t->shape = (p->shape) ? getParameterValueAsInt(p->shape) : SH_HOLD;
+	t->slew = (p->slew) ? getParameterValue(p->slew) : 0.2f;
+	t->polarity = (p->polarity) ? getParameterValueAsInt(p->polarity) : PP_UNIPOLAR;
+}
+
+void patternTrackDataToState(PatternState *p, const PatternTrackData *t) {
+	if(!p || !t) {
+		return;
+	}
+	memcpy(p->steps, t->steps, sizeof(p->steps));
+	int len = t->length;
+	if(len < 1) {
+		len = 1;
+	}
+	if(len > MAX_PATTERN_STEPS) {
+		len = MAX_PATTERN_STEPS;
+	}
+	p->stepCount = len;
+	if(p->length) setParameterBaseValue(p->length, (float)len);
+	if(p->shape) setParameterBaseValue(p->shape, (float)t->shape);
+	if(p->slew) setParameterBaseValue(p->slew, t->slew);
+	if(p->polarity) setParameterBaseValue(p->polarity, (float)t->polarity);
+}
+
 void generatePattern(void *self) {
 	Mod *mod = (Mod *)self;
 	PatternState *p = &mod->data.pattern;
@@ -1327,6 +1370,7 @@ Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src) {
 			c->output->maxValue = src->output->maxValue;
 			p->stepCount = sp->stepCount;
 			p->channel = sp->channel;
+			p->track = sp->track;
 			p->currentStep = sp->currentStep;
 			p->currentValue = sp->currentValue;
 			p->stepProgress = sp->stepProgress;
