@@ -555,7 +555,7 @@ static int test_note_delete_autoload_song(void) {
     }
     fclose(probe);
 
-    SequencerFileResult r = loadSequencerState(song_path, arr, pl);
+    SequencerFileResult r = loadSequencerState(song_path, arr, pl, NULL);
     ASSERT_INT_EQ(r, SEQ_OK);
     ASSERT_TRUE(pl->pattern_count > 0, "song has patterns");
     arr->enabledChannels = e.settings.enabledChannels;

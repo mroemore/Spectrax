@@ -13,6 +13,7 @@
 #define PATTERN_SECTION "PATT"
 #define ARRANGER_SECTION "ARRG"
 #define CHIP_LABELS_SECTION "LABL"
+#define PATTERN_TRACKS_SECTION "PTRK"
 #define PRESET_MAGIC_HEADER "IPBH"
 #define PRESET_MAGIC_HEADER_V2 "IPB2"
 #define PRESET_MAGIC_HEADER_V3 "IPB3"
@@ -72,7 +73,7 @@ void load_wav_sample(const char *filename, SamplePool *sp);
  *         - SEQ_ERROR_OPEN if file cannot be opened
  *         - SEQ_ERROR_FORMAT if file format or section headers are invalid
  */
-SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns);
+SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns, const PatternTrackSet *tracks);
 /**
  * @brief Loads the complete sequencer state from a binary file
  * @param filename Path to the sequencer state file to load
@@ -82,7 +83,7 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
  *         - SEQ_ERROR_OPEN if file cannot be opened
  *         - SEQ_ERROR_FORMAT if file format or section headers are invalid
  */
-SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger, PatternList *patterns);
+SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger, PatternList *patterns, PatternTrackSet *tracks);
 /**
  * @brief Saves application settings to a binary file
  * @param filename Path to save the settings file

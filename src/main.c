@@ -1034,7 +1034,7 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 	UnloadRenderTexture(gfx);
 	freeBufferScroller(&data.bufferScroller);
 	CloseWindow();
-	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList);
+	int saveResult = saveSequencerState("s1.sng", data.arranger, data.patternList, NULL);
 	if(data.settings) {
 		/* Reconstruct absolute cfg.json + clr.json paths under the
 		 * config dir resolved at startup (cwd is now the data dir). */
@@ -1144,7 +1144,7 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		printf("arranger creation failed.\n");
 		return;
 	}
-	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList);
+	int loadstate = loadSequencerState("s1.sng", data->arranger, data->patternList, NULL);
 	printf("arranger/pattern load result: %i\n", loadstate);
 	/* loadSequencerState restores arranger->selected_x/selected_y but
 	 * never touches appState->selectedArrangerCell — that copy is only

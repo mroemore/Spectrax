@@ -1,6 +1,6 @@
 #include "sequencer_io.h"
 
-SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns) {
+SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger, PatternList *patterns, const PatternTrackSet *tracks) {
 	FILE *file = fopen(filename, "wb");
 	if(!file) return SEQ_ERROR_OPEN;
 
@@ -66,11 +66,24 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 	// fwrite calls and keeps the on-disk layout compact.
 	fwrite(arranger->label, sizeof(char), MAX_SEQUENCER_CHANNELS * 9, file);
 
+	/* PTRK: per-channel pattern-sequence tracks. Optional — skipped when
+	 * the caller passes NULL (arranger-only saves + legacy tests). */
+	if(tracks != NULL) {
+		if(!writeChunkHeader(file, PATTERN_TRACKS_SECTION)) {
+			fclose(file);
+			return SEQ_ERROR_WRITE;
+		}
+		if(fwrite(tracks->track, sizeof(tracks->track), 1, file) != 1) {
+			fclose(file);
+			return SEQ_ERROR_WRITE;
+		}
+	}
+
 	fclose(file);
 	return SEQ_OK;
 }
 
-SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger, PatternList *patterns) {
+SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger, PatternList *patterns, PatternTrackSet *tracks) {
 	FILE *file = fopen(filename, "rb");
 	if(!file) return SEQ_ERROR_OPEN;
 
@@ -231,6 +244,26 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 				arranger->labelColourIdx[i] = 0;
 				memset(arranger->label[i], 0, 9);
 			}
+		}
+		/* PTRK (pattern tracks) is OPTIONAL — older V2 files predate it.
+		 * Peek the magic; on match read the body, else rewind so any
+		 * future trailing chunk still reads from the right offset.
+		 * A NULL destination skips the body (stream stays in sync). */
+		long ptrkPos = ftell(file);
+		char ptrk_magic[4];
+		if(fread(ptrk_magic, 1, 4, file) == 4 && memcmp(ptrk_magic, PATTERN_TRACKS_SECTION, 4) == 0) {
+			long ptrkBytes = (long)(sizeof(PatternTrackData) * MAX_SEQUENCER_CHANNELS * PATTERN_TRACKS);
+			if(tracks != NULL) {
+				if(fread(tracks->track, sizeof(tracks->track), 1, file) != 1) {
+					fclose(file);
+					printf("error reading pattern tracks (PTRK)\n");
+					return SEQ_ERROR_READ;
+				}
+			} else {
+				fseek(file, ptrkBytes, SEEK_CUR);
+			}
+		} else {
+			fseek(file, ptrkPos, SEEK_SET);
 		}
 	} else {
 		// V1 / legacy file: no LABL chunk. Default every channel's chip

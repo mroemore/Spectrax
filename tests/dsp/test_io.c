@@ -368,7 +368,7 @@ static int test_save_sequencer_ok(void) {
     SeqEnv e;
     ASSERT_EQ(make_seq_env(&e, 120.0f, 1), 0);
 
-    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns), SEQ_OK);
+    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns, NULL), SEQ_OK);
 
     /* Magic headers: SEQ1 at 0, PATT at 4, ARRG after the pattern section. */
     char magic[4];
@@ -417,12 +417,12 @@ static int test_sequencer_roundtrip(void) {
 
     SeqEnv src;
     ASSERT_EQ(make_seq_env(&src, 137.0f, 2), 0);
-    ASSERT_EQ(saveSequencerState(path, src.arranger, src.patterns), SEQ_OK);
+    ASSERT_EQ(saveSequencerState(path, src.arranger, src.patterns, NULL), SEQ_OK);
 
     /* Load into a fresh environment (bpm param starts at 0). */
     SeqEnv dst;
     ASSERT_EQ(make_seq_env(&dst, 0.0f, 0), 0);
-    ASSERT_EQ(loadSequencerState(path, dst.arranger, dst.patterns), SEQ_OK);
+    ASSERT_EQ(loadSequencerState(path, dst.arranger, dst.patterns, NULL), SEQ_OK);
 
     /* Patterns */
     ASSERT_EQ(dst.patterns->pattern_count, 2);
@@ -471,7 +471,7 @@ static int test_load_sequencer_missing(void) {
     SeqEnv e;
     ASSERT_EQ(make_seq_env(&e, 120.0f, 0), 0);
     ASSERT_EQ(loadSequencerState(TMP_DIR "no_such_seq.sng",
-                                 e.arranger, e.patterns), SEQ_ERROR_OPEN);
+                                 e.arranger, e.patterns, NULL), SEQ_ERROR_OPEN);
     printf("PASS test_load_sequencer_missing\n");
     return 0;
 }
@@ -484,7 +484,7 @@ static int test_load_sequencer_bad_magic(void) {
 
     SeqEnv e;
     ASSERT_EQ(make_seq_env(&e, 120.0f, 0), 0);
-    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns),
+    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns, NULL),
               SEQ_ERROR_FORMAT);
     remove(path);
     printf("PASS test_load_sequencer_bad_magic\n");
@@ -508,7 +508,7 @@ static int test_load_sequencer_truncated(void) {
 
     SeqEnv e;
     ASSERT_EQ(make_seq_env(&e, 120.0f, 0), 0);
-    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns),
+    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns, NULL),
               SEQ_ERROR_READ);
     remove(path);
     printf("PASS test_load_sequencer_truncated\n");
@@ -530,7 +530,7 @@ static int test_seq_channel_slots_roundtrip(void) {
     e.arranger->channelSlots[3] = 1;
     const char *f = TMP_DIR "seqslot.sng";
     remove(f);
-    ASSERT_EQ(saveSequencerState(f, e.arranger, e.patterns), SEQ_OK);
+    ASSERT_EQ(saveSequencerState(f, e.arranger, e.patterns, NULL), SEQ_OK);
 
     Arranger arr2;
     PatternList pl2;
@@ -543,7 +543,7 @@ static int test_seq_channel_slots_roundtrip(void) {
     arr2.tempoSettings.bpm = dst.arranger->tempoSettings.bpm;
     pl2 = *dst.patterns; /* keep dst.patterns zeroed for the loader */
     memset(dst.arranger->channelSlots, 0x7F, sizeof(dst.arranger->channelSlots)); /* sentinel */
-    ASSERT_EQ(loadSequencerState(f, &arr2, &pl2), SEQ_OK);
+    ASSERT_EQ(loadSequencerState(f, &arr2, &pl2, NULL), SEQ_OK);
 
     ASSERT_EQ(arr2.channelSlots[0], 2);
     ASSERT_EQ(arr2.channelSlots[1], 5);
@@ -603,7 +603,7 @@ static int test_seq_v1_loads_with_zero_slots(void) {
     fclose(fp);
 
     /* Load — should succeed with SEQ_OK. */
-    ASSERT_EQ(loadSequencerState(path, &arr, &pat), SEQ_OK);
+    ASSERT_EQ(loadSequencerState(path, &arr, &pat, NULL), SEQ_OK);
 
     /* All channelSlots default to 0 under V1. */
     int any_nonzero = 0;
@@ -629,7 +629,7 @@ static int test_save_sequencer_seq2_magic(void) {
 
     SeqEnv e;
     ASSERT_EQ(make_seq_env(&e, 120.0f, 1), 0);
-    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns), SEQ_OK);
+    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns, NULL), SEQ_OK);
 
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
@@ -698,9 +698,9 @@ static int test_arranger_labels_roundtrip(void) {
 
     const char *f = TMP_DIR "arr_labels.sng";
     remove(f);
-    ASSERT_EQ(saveSequencerState(f, e1.arranger, NULL), SEQ_OK);
+    ASSERT_EQ(saveSequencerState(f, e1.arranger, NULL, NULL), SEQ_OK);
 
-    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL), SEQ_OK);
+    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL, NULL), SEQ_OK);
 
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
         ASSERT_EQ_MSG(e2.arranger->labelColourIdx[i], e1.arranger->labelColourIdx[i],
@@ -760,7 +760,7 @@ static int test_arranger_labels_old_file_defaults(void) {
     }
 
     /* patterns=NULL: the loader must skip the pattern block. */
-    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL), SEQ_OK);
+    ASSERT_EQ(loadSequencerState(f, e2.arranger, NULL, NULL), SEQ_OK);
 
     for (int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
         ASSERT_EQ_MSG(e2.arranger->labelColourIdx[i], 0, "default colour after old file load");
@@ -1196,6 +1196,61 @@ static int test_overwrite_replaces_file_and_bank(void) {
 	return 0;
 }
 
+static int test_sequencer_pattern_tracks_roundtrip(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_ptrk.sng";
+    remove(path);
+
+    SeqEnv e;
+    ASSERT_EQ(make_seq_env(&e, 120.0f, 1), 0);
+
+    PatternTrackSet src;
+    memset(&src, 0, sizeof(src));
+    for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+        for(int t = 0; t < PATTERN_TRACKS; t++) {
+            initPatternTrackData(&src.track[ch][t]);
+            src.track[ch][t].steps[t] = 0.25f * (float)(t + 1);
+            src.track[ch][t].length = 8 + t;
+            src.track[ch][t].shape = (t % 2) ? SH_LINEAR : SH_HOLD;
+        }
+    }
+    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns, &src), SEQ_OK);
+
+    PatternTrackSet dst;
+    memset(&dst, 0, sizeof(dst));
+    for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+        for(int t = 0; t < PATTERN_TRACKS; t++) {
+            initPatternTrackData(&dst.track[ch][t]);
+        }
+    }
+    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns, &dst), SEQ_OK);
+    for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch += 5) {
+        for(int t = 0; t < PATTERN_TRACKS; t++) {
+            ASSERT_EQ(dst.track[ch][t].length, src.track[ch][t].length);
+            ASSERT_EQ(dst.track[ch][t].shape, src.track[ch][t].shape);
+            ASSERT_EQ_MSG((int)(dst.track[ch][t].steps[t] * 100.0f),
+                          (int)(src.track[ch][t].steps[t] * 100.0f), "step value");
+        }
+    }
+
+    /* NULL tracks: no PTRK is written; a later load must leave the
+     * caller's pre-filled store untouched (defaults survive). */
+    ASSERT_EQ(saveSequencerState(path, e.arranger, e.patterns, NULL), SEQ_OK);
+    PatternTrackSet keep;
+    memset(&keep, 0, sizeof(keep));
+    for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+        for(int t = 0; t < PATTERN_TRACKS; t++) {
+            initPatternTrackData(&keep.track[ch][t]);
+        }
+    }
+    ASSERT_EQ(loadSequencerState(path, e.arranger, e.patterns, &keep), SEQ_OK);
+    ASSERT_EQ_MSG(keep.track[3][2].length, MAX_PATTERN_STEPS, "absent PTRK leaves store untouched");
+
+    remove(path);
+    printf("PASS test_sequencer_pattern_tracks_roundtrip\n");
+    return 0;
+}
+
 int main(void) {
     int failed = 0;
     failed |= test_save_preset_ok();
@@ -1220,6 +1275,7 @@ int main(void) {
     failed |= test_save_sequencer_seq2_magic();
     failed |= test_arranger_labels_roundtrip();
     failed |= test_arranger_labels_old_file_defaults();
+    failed |= test_sequencer_pattern_tracks_roundtrip();
     failed |= test_settings_roundtrip();
     failed |= test_settings_missing();
     failed |= test_sanitize_filename();
@@ -1229,6 +1285,6 @@ int main(void) {
     failed |= test_overwrite_replaces_file_and_bank();
 
     printf("\n%s (%d tests, %s)\n",
-           failed ? "FAILED" : "PASSED", 27, failed ? ">=1 failed" : "all passed");
+           failed ? "FAILED" : "PASSED", 28, failed ? ">=1 failed" : "all passed");
     return failed;
 }
