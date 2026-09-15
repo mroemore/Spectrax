@@ -15,6 +15,7 @@
 #include "graph_gui.h"
 #include "gui.h"  /* ARRANGER_WINDOW_ROWS, createArrangerCellGuiNode, etc. */
 #include "gui_inst_internal.h"  /* dialVisibleInViewport */
+#include "appstate.h"  /* ApplicationState, clampPatternPage, PATTERN_TRACKS */
 
 /* ArrangerCellGuiNode's struct layout lives in gui.c (not gui.h); mirror
  * it locally so the edge-scroll test can flip `row` on a cell to simulate
@@ -1049,8 +1050,38 @@ static int test_arranger_cell_fill(void) {
     return 0;
 }
 
+/* Pattern-seq tracks: the pattern screen's page index is clamped to
+ * [0, PATTERN_TRACKS] (0 = note page, 1..4 = modulation tracks), and the
+ * gui_pattern static mirrors the app state via setPatternPage. The graph
+ * itself needs an instrument + GL styles, so the build-time node layout is
+ * covered by the harness fixture; this pins the pure state contract. */
+static int test_pattern_page_clamp(void) {
+    ApplicationState as;
+    memset(&as, 0, sizeof(as));
+
+    as.patternPage = PATTERN_TRACKS + 5;
+    clampPatternPage(&as);
+    ASSERT_EQ(as.patternPage, PATTERN_TRACKS, "clamp above range");
+
+    as.patternPage = -3;
+    clampPatternPage(&as);
+    ASSERT_EQ(as.patternPage, 0, "clamp below range");
+
+    as.patternPage = PATTERN_TRACKS - 1;
+    clampPatternPage(&as);
+    ASSERT_EQ(as.patternPage, PATTERN_TRACKS - 1, "in-range value kept");
+
+    setPatternPage(2);
+    ASSERT_EQ(getPatternPage(), 2, "setPatternPage round-trip");
+    setPatternPage(0);
+
+    printf("PASS test_pattern_page_clamp\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
+    fails += test_pattern_page_clamp();
     fails += test_arranger_cell_fill();
     fails += test_window_scale_helpers();
     fails += test_trivial_rect_wiring();
