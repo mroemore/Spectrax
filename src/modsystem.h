@@ -180,6 +180,12 @@ typedef struct {
 	int polarity;                   /* PatternPolarity */
 } PatternTrackData;
 
+/* All channels' pattern tracks — the song-file payload. Indexed by
+ * channel then track. */
+typedef struct {
+	PatternTrackData track[MAX_SEQUENCER_CHANNELS][PATTERN_TRACKS];
+} PatternTrackSet;
+
 typedef struct Mod {
 	ModType type;
 	Parameter *output;

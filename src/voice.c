@@ -677,6 +677,92 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
  * applyInstrumentPreset (earlier in the file) can re-seed on load. */
 static void initVoiceDrivers(Instrument *inst);
 static void seedPitchVibrato(ParamList *pl, ModList *ml, Mod *src, Parameter *dest, float depthHz);
+static void seedPatternTracks(Instrument *inst);
+
+/* Create the four core MT_PATTERN sources from inst->patternTracks.
+ * Called from init_instrument + applyInstrumentPreset, so tracks survive
+ * every mod-list rebuild. */
+static void seedPatternTracks(Instrument *inst) {
+	if(!inst || !inst->modList || !inst->paramList) {
+		return;
+	}
+	int channel = (inst->metaChannel >= 0) ? inst->metaChannel : 0;
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		char name[MAX_NAME_LEN];
+		snprintf(name, sizeof(name), "PTN%d", t + 1);
+		Mod *p = createPattern(inst->paramList, inst->modList, channel, name);
+		if(!p) {
+			continue;
+		}
+		p->data.pattern.track = t;
+		patternTrackDataToState(&p->data.pattern, &inst->patternTracks[t]);
+	}
+}
+
+void applyPatternTracksToInstrument(Instrument *inst) {
+	seedPatternTracks(inst);
+}
+
+void capturePatternTracksToInstrument(Instrument *inst) {
+	if(!inst || !inst->modList) {
+		return;
+	}
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		int mi = modIndexAt(inst->modList, inst->coreEnvelopeCount - PATTERN_TRACKS + t);
+		if(mi < 0) {
+			continue;
+		}
+		Mod *m = inst->modList->mods[mi];
+		if(m && m->type == MT_PATTERN && m->data.pattern.track == t) {
+			patternStateToTrackData(&m->data.pattern, &inst->patternTracks[t]);
+		}
+	}
+}
+
+void syncPatternTracksToState(Instrument *inst) {
+	if(!inst || !inst->modList) {
+		return;
+	}
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		int mi = modIndexAt(inst->modList, inst->coreEnvelopeCount - PATTERN_TRACKS + t);
+		if(mi < 0) {
+			continue;
+		}
+		Mod *m = inst->modList->mods[mi];
+		if(m && m->type == MT_PATTERN) {
+			patternTrackDataToState(&m->data.pattern, &inst->patternTracks[t]);
+		}
+	}
+}
+
+void capturePatternTrackSet(VoiceManager *vm, PatternTrackSet *out) {
+	if(!vm || !out) {
+		return;
+	}
+	for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+		for(int t = 0; t < PATTERN_TRACKS; t++) {
+			if(vm->instruments[ch]) {
+				out->track[ch][t] = vm->instruments[ch]->patternTracks[t];
+			}
+		}
+	}
+}
+
+void applyPatternTrackSetToInstruments(VoiceManager *vm, const PatternTrackSet *in) {
+	if(!vm || !in) {
+		return;
+	}
+	for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS; ch++) {
+		Instrument *inst = vm->instruments[ch];
+		if(!inst) {
+			continue;
+		}
+		for(int t = 0; t < PATTERN_TRACKS; t++) {
+			inst->patternTracks[t] = in->track[ch][t];
+		}
+		syncPatternTracksToState(inst);
+	}
+}
 
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	/* Task 8: gate the audio thread out while we tear down + rebuild the
@@ -760,6 +846,9 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 				break;
 		}
 	}
+	/* Patterns are song-level: re-create the four core tracks from the
+	 * persistent store (never from the preset). */
+	seedPatternTracks(instrument);
 	/* coreEnvelopeCount locks in the post-preset SOURCE count so
 	 * rebuildVoicesForInstrument / downstream layout code can rely on
 	 * the same value the preset set up. Uses modSourceCount (not
@@ -885,31 +974,38 @@ Preset presetFromInstrument(Instrument *instrument) {
 		default:
 			break;
 	}
+	/* Patterns are song-level, so they are excluded from the patch:
+	 * compact every non-MT_PATTERN source into modSettings. */
 	int n = instrument->modList ? modSourceCount(instrument->modList) : 0;
-	if(n > MAX_ENVELOPES + MAX_LFOS) {
-		n = MAX_ENVELOPES + MAX_LFOS;
-	}
-	p.modSettingsCount = n;
+	p.modSettingsCount = 0;
 	for(int i = 0; i < n; i++) {
+		if(p.modSettingsCount >= MAX_ENVELOPES + MAX_LFOS) {
+			break;
+		}
 		int mi = modIndexAt(instrument->modList, i);
 		if(mi < 0) {
 			break;
 		}
 		Mod *mod = instrument->modList->mods[mi];
-		p.modSettings[i].type = mod->type;
+		if(mod->type == MT_PATTERN) {
+			continue;
+		}
+		ModPreset *mp = &p.modSettings[p.modSettingsCount];
+		mp->type = mod->type;
 		switch(mod->type) {
 			case MT_ENV:
-				saveEnvPreset(&p.modSettings[i].md.env, mod);
+				saveEnvPreset(&mp->md.env, mod);
 				break;
 			case MT_LFO:
-				saveLfoPreset(&p.modSettings[i].md.lfo, mod);
+				saveLfoPreset(&mp->md.lfo, mod);
 				break;
 			case MT_RND:
-				saveRandPreset(&p.modSettings[i].md.rand, mod);
+				saveRandPreset(&mp->md.rand, mod);
 				break;
 			default:
 				break;
 		}
+		p.modSettingsCount++;
 	}
 	if(instrument->selectedPresetIndex) {
 		/* p.name is deliberately left empty here — the save plumbing (Task 5)
@@ -1174,7 +1270,11 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	}
 
 	(*instrument)->voiceType = vt;
-	(*instrument)->coreEnvelopeCount = (*instrument)->envelopeCount;
+	for(int t = 0; t < PATTERN_TRACKS; t++) {
+		initPatternTrackData(&(*instrument)->patternTracks[t]);
+	}
+	seedPatternTracks(*instrument);
+	(*instrument)->coreEnvelopeCount = modSourceCount((*instrument)->modList);
 	initVoiceDrivers(*instrument);
 }
 

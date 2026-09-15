@@ -15,6 +15,7 @@
 
 #define MAX_LFOS 8
 #define MAX_ENVELOPES 6
+#define MAX_MOD_SOURCES 16
 #define MAX_FM_OPERATORS 4
 #define MAX_DETUNE 16
 #define MAX_PATCHES 255
@@ -178,11 +179,15 @@ typedef struct VoiceManager VoiceManager;
 typedef struct {
 	ModList *modList;
 	ParamList *paramList;
-	Mod *envelopes[MAX_ENVELOPES];
+	Mod *envelopes[MAX_MOD_SOURCES];
 	int envelopeCount;
 	int coreEnvelopeCount;
 	int lfoCount;
 	int patchIndex;
+	/* Four fixed pattern-sequence tracks (song-level, not preset-level).
+	 * Never cleared by applyInstrumentPreset: the four core MT_PATTERN
+	 * sources are re-created from this store on every rebuild. */
+	PatternTrackData patternTracks[PATTERN_TRACKS];
 	float volumeAttenuation;
 	VoiceType voiceType;
 	Parameter *detuneVoiceCount;
@@ -354,6 +359,13 @@ OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement
 void initDefaultFmPreset(Preset *p);
 void applyInstrumentPreset(Instrument *instrument, Preset p);
 Preset presetFromInstrument(Instrument *instrument);
+/* Pattern tracks: four fixed core MT_PATTERN sources per instrument,
+ * re-created from Instrument.patternTracks on every mod-list rebuild. */
+void applyPatternTracksToInstrument(Instrument *inst);
+void capturePatternTracksToInstrument(Instrument *inst);
+void syncPatternTracksToState(Instrument *inst);
+void capturePatternTrackSet(VoiceManager *vm, PatternTrackSet *out);
+void applyPatternTrackSetToInstruments(VoiceManager *vm, const PatternTrackSet *in);
 void cb_setInstrumentPreset(void *instrument);
 void initPresetBank(PresetBank *pb);
 void addPresetToBank(PresetBank *pb, Preset p);

@@ -149,32 +149,77 @@ static int test_runtime_source_lifecycle(void) {
     return 0;
 }
 
-/* Pattern plan Task 5: addRuntimePattern — mirrors addRuntimeSource but
- * creates an MT_PATTERN source bound to the given channel. The source is
- * appendable, resolvable by source position, its PatternState is writable,
- * and removeSource tears it back out cleanly. */
-static int test_add_runtime_pattern(void) {
+/* Pattern tracks — four fixed core MT_PATTERN sources, re-created from
+ * Instrument.patternTracks on every rebuild; capture/sync mirrors edits. */
+static int test_pattern_tracks_core_and_reseed(void) {
     SamplePool *sp = createSamplePool();
     PresetBank pb;
     initPresetBank(&pb);
     Instrument *inst = NULL;
     init_instrument(&inst, VOICE_TYPE_FM, sp, &pb);
     ASSERT_TRUE(inst != NULL, "init_instrument FM");
-    int before = modSourceCount(inst->modList);
 
-    addRuntimePattern(inst, 2);
-    ASSERT_TRUE(modSourceCount(inst->modList) == before + 1, "pattern source added");
-    int mi = modIndexAt(inst->modList, before);
-    ASSERT_TRUE(mi >= 0 && inst->modList->mods[mi]->type == MT_PATTERN, "source is MT_PATTERN");
-    ASSERT_TRUE(inst->modList->mods[mi]->data.pattern.channel == 2, "channel resolved");
-    inst->modList->mods[mi]->data.pattern.steps[0] = 0.75f;
+    /* four pattern sources exist and are core */
+    ASSERT_EQ(modSourceCount(inst->modList), 8, "4 AD + 4 pattern sources");
+    ASSERT_TRUE(inst->coreEnvelopeCount == 8, "patterns are core");
+    for(int t = 0; t < PATTERN_TRACKS; t++) {
+        ASSERT_TRUE(inst->patternTracks[t].length == MAX_PATTERN_STEPS, "default track length");
+    }
+    /* the last four sources are MT_PATTERN, ordered by track */
+    for(int t = 0; t < PATTERN_TRACKS; t++) {
+        int mi = modIndexAt(inst->modList, 4 + t);
+        ASSERT_TRUE(mi >= 0, "pattern source present");
+        ASSERT_TRUE(inst->modList->mods[mi]->type == MT_PATTERN, "source is MT_PATTERN");
+        ASSERT_EQ(inst->modList->mods[mi]->data.pattern.track, t, "track index set");
+    }
 
-    ASSERT_TRUE(removeSource(inst, before), "remove pattern source ok");
-    ASSERT_TRUE(modSourceCount(inst->modList) == before, "source count restored");
+    /* edit a track, capture, wipe, reseed */
+    inst->modList->mods[modIndexAt(inst->modList, 4)]->data.pattern.steps[0] = 0.9f;
+    capturePatternTracksToInstrument(inst);
+    ASSERT_NEAR(inst->patternTracks[0].steps[0], 0.9f, 0.001f);
+
+    /* re-apply wipes the source step back from patternTracks */
+    inst->modList->mods[modIndexAt(inst->modList, 4)]->data.pattern.steps[0] = 0.0f;
+    syncPatternTracksToState(inst);
+    ASSERT_NEAR(inst->modList->mods[modIndexAt(inst->modList, 4)]->data.pattern.steps[0], 0.9f, 0.001f);
 
     free(inst);
     freeSamplePool(sp);
-    printf("PASS test_add_runtime_pattern\n");
+    printf("PASS test_pattern_tracks_core_and_reseed\n");
+    return 0;
+}
+
+static int test_pattern_tracks_survive_preset(void) {
+    SamplePool *sp = createSamplePool();
+    PresetBank pb;
+    initPresetBank(&pb);
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_FM, sp, &pb);
+
+    /* user edits track 2 */
+    int mi = modIndexAt(inst->modList, 6);
+    ASSERT_TRUE(mi >= 0, "track 2 source present");
+    inst->modList->mods[mi]->data.pattern.steps[5] = 0.77f;
+    capturePatternTracksToInstrument(inst);
+
+    /* preset load clears + rebuilds the list */
+    Preset p = presetFromInstrument(inst);
+    applyInstrumentPreset(inst, p);
+
+    ASSERT_EQ(modSourceCount(inst->modList), 8, "patterns re-created after load");
+    mi = modIndexAt(inst->modList, 6);
+    ASSERT_TRUE(mi >= 0, "track 2 source re-created");
+    ASSERT_NEAR(inst->modList->mods[mi]->data.pattern.steps[5], 0.77f, 0.001f);
+
+    /* preset never carries patterns */
+    ASSERT_TRUE(p.modSettingsCount <= MAX_ENVELOPES + MAX_LFOS, "modSettings bounded");
+    for(int i = 0; i < p.modSettingsCount; i++) {
+        ASSERT_TRUE(p.modSettings[i].type != MT_PATTERN, "preset excludes MT_PATTERN");
+    }
+
+    free(inst);
+    freeSamplePool(sp);
+    printf("PASS test_pattern_tracks_survive_preset\n");
     return 0;
 }
 
@@ -604,8 +649,9 @@ static int test_core_envelope_delete_rejected(void) {
     Instrument *inst = e.vm->instruments[0];
     Mod *core = inst->envelopes[0];
     /* The default FM patch has 4 startup SOURCES (3 AD envs + 1 vibrato
-     * LFO); coreEnvelopeCount protects all of them. */
-    ASSERT_TRUE(inst->coreEnvelopeCount == 4,
+     * LFO) plus the 4 core pattern tracks; coreEnvelopeCount protects
+     * all 8. */
+    ASSERT_TRUE(inst->coreEnvelopeCount == 8,
                 "core count recorded at init");
     /* The UI guard fires when (idx < coreEnvelopeCount). Simulating
      * that guard: we do NOT call removeMod. Core envelope stays put. */
@@ -931,8 +977,8 @@ static int test_apply_preset_creates_lfo_mod(void) {
 
     applyInstrumentPreset(inst, p);
 
-    /* The preset (4 AD + 1 LFO) is applied fresh: 5 sources. */
-    ASSERT_EQ(modSourceCount(inst->modList), 5, "5 sources after apply");
+    /* The preset (4 AD + 1 LFO) is applied fresh: 9 sources (5 preset + 4 patterns). */
+    ASSERT_EQ(modSourceCount(inst->modList), 9, "9 sources after apply");
     int mi4 = modIndexAt(inst->modList, 4);
     ASSERT_TRUE(mi4 >= 0, "source 4 present");
     ASSERT_EQ((int)inst->modList->mods[mi4]->type, (int)MT_LFO);
@@ -1345,7 +1391,7 @@ static int test_default_fm_routing(void) {
         return 1;
     }
     Instrument *inst = e.vm->instruments[0];
-    ASSERT_EQ(modSourceCount(inst->modList), 4, "default FM has 4 sources");
+    ASSERT_EQ(modSourceCount(inst->modList), 8, "default FM has 8 sources");
     int mi3 = modIndexAt(inst->modList, 3);
     ASSERT_TRUE(mi3 >= 0, "source 3 present");
     ASSERT_EQ(inst->modList->mods[mi3]->type, MT_LFO, "source 3 is an LFO");
@@ -1416,8 +1462,9 @@ int main(void) {
     fails += test_remove_mod_primitively_accepts_core();
     fails += test_runtime_envelope_add_does_not_rebuild_voices();
 
-    /* Pattern plan Task 5 — addRuntimePattern source creation */
-    fails += test_add_runtime_pattern();
+    /* Pattern tracks — fixed core sources, song-level persistence */
+    fails += test_pattern_tracks_core_and_reseed();
+    fails += test_pattern_tracks_survive_preset();
 
     /* Task 6 — LoadedPreset snapshot + dirty tracking */
     fails += test_loaded_preset_clean_after_load();

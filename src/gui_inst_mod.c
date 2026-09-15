@@ -246,7 +246,7 @@ static void drawRouteDestNode(void *self) {
 
 
 void addRuntimeSource(Instrument *inst) {
-	if(!inst || !inst->modList || modSourceCount(inst->modList) >= MAX_ENVELOPES) {
+	if(!inst || !inst->modList || modSourceCount(inst->modList) >= MAX_MOD_SOURCES) {
 		return;
 	}
 	/* Task 8: the audio thread iterates inst->paramList/modList every
@@ -259,7 +259,7 @@ void addRuntimeSource(Instrument *inst) {
 	 * BEFORE syncing envelopeCount, so the old builder's rebuildInstrumentGraph
 	 * call below can dereference inst->envelopes[envIndex] safely. Task 4 will
 	 * replace this builder with a modList-based one and the mirror goes away. */
-	if(env && inst->envelopeCount < MAX_ENVELOPES) {
+	if(env && inst->envelopeCount < MAX_MOD_SOURCES) {
 		inst->envelopes[inst->envelopeCount] = env;
 	}
 	/* Task 3: envelopeCount tracks the SOURCE count (non-atten) so the
@@ -267,31 +267,6 @@ void addRuntimeSource(Instrument *inst) {
 	 * though the modList also holds connection attenuators. */
 	inst->envelopeCount = modSourceCount(inst->modList);
 	/* Task 2.4: structural mutations re-clone every voice's mod graph. */
-	if(inst->vm) {
-		rebuildVoicesForInstrument(inst->vm, inst);
-	}
-	rebuildInstrumentGraph();
-	inst->rebuilding = false;
-	pthread_mutex_unlock(&g_audioLock);
-}
-
-
-void addRuntimePattern(Instrument *inst, int channel) {
-	if(!inst || !inst->modList || modSourceCount(inst->modList) >= MAX_ENVELOPES) {
-		return;
-	}
-	/* Mirrors addRuntimeSource but creates an MT_PATTERN source bound to
-	 * the instrument's channel. Same lock/rebuilding discipline: the audio
-	 * thread iterates the lists every buffer, and rebuildInstrumentGraph
-	 * may deref inst->envelopes[], so mirror the new mod in before
-	 * syncing envelopeCount. */
-	pthread_mutex_lock(&g_audioLock);
-	inst->rebuilding = true;
-	Mod *p = createPattern(inst->paramList, inst->modList, channel, "PTN");
-	if(p && inst->envelopeCount < MAX_ENVELOPES) {
-		inst->envelopes[inst->envelopeCount] = p;
-	}
-	inst->envelopeCount = modSourceCount(inst->modList);
 	if(inst->vm) {
 		rebuildVoicesForInstrument(inst->vm, inst);
 	}
@@ -325,7 +300,7 @@ bool removeSource(Instrument *inst, int srcIndex) {
 	/* Task 3 fix: clear the mirror slot so the old builder's
 	 * rebuildInstrumentGraph does not deref a freed envelope. Task 4 will
 	 * remove the mirror entirely when it replaces the builder. */
-	if(mi < MAX_ENVELOPES) {
+	if(mi < MAX_MOD_SOURCES) {
 		inst->envelopes[mi] = NULL;
 	}
 	/* Task 3: keep envelopeCount synced with the source count. */
@@ -443,7 +418,7 @@ typedef struct {
 	int idx;
 } SourceCtx;
 
-static SourceCtx g_sourceCtx[MAX_ENVELOPES];
+static SourceCtx g_sourceCtx[MAX_MOD_SOURCES];
 
 /* g_destCtx and the picker's dest buttons are built in cbOpenRouteLayer
  * and read by cbRouteToDest + the probe helper. */
@@ -482,7 +457,7 @@ void cbOpenRouteLayer(void *ctx);
 __attribute__((weak)) bool isProbeRouteActive(void);
 
 static void refreshSourceCtx(Instrument *inst) {
-	for(int i = 0; i < MAX_ENVELOPES; i++) {
+	for(int i = 0; i < MAX_MOD_SOURCES; i++) {
 		g_sourceCtx[i].inst = inst;
 		g_sourceCtx[i].idx = i;
 	}

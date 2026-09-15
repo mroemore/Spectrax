@@ -318,7 +318,6 @@ Vector2 dialLabelPos(const GuiNode *gn, int offX, int offY);
  * highlighted-label overlay paints the focused cell's name on top. */
 void drawRouteDestGuiNode(void *self);
 void addRuntimeSource(Instrument *inst);
-void addRuntimePattern(Instrument *inst, int channel);
 bool removeSource(Instrument *inst, int srcIndex);
 void rebuildInstrumentGraph(void);
 void removeSelectedSource(void);
