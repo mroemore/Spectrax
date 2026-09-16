@@ -76,6 +76,17 @@
                 "borderWidth": 2.0,
                 "color": "outlineColour"
             }
+        },
+        "text": {
+            "font": "pixel",
+            "fontSize": 10,
+            "spacing": 1,
+            "offsetX": 0,
+            "offsetY": 0,
+            "hAlign": "left",
+            "vAlign": "top",
+            "color": "font",
+            "colorSelected": "font"
         }
     },
     "layouts": {

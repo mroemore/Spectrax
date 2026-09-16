@@ -70,6 +70,7 @@ static int test_dest_style_resolves_and_colours(void);
 static int test_chip_style_resolves_and_geometry(void);
 static int test_chip_palette_resolved_from_theme(void);
 static int test_mod_source_row_layout_gap(void);
+static int test_text_style_resolves(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -224,6 +225,7 @@ int main(void) {
 	fails += test_chip_style_resolves_and_geometry();
 	fails += test_chip_palette_resolved_from_theme();
 	fails += test_mod_source_row_layout_gap();
+	fails += test_text_style_resolves();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -590,5 +592,19 @@ static int test_mod_source_row_layout_gap(void) {
 	freeGuiNode(row);
 	remove(path);
 	printf("PASS test_mod_source_row_layout_gap\n");
+	return 0;
+}
+
+static int test_text_style_resolves(void) {
+	GuiNode *n = createGuiNode(0, 0, 40, 12, 0, na_horizontal, "T", 0, 0);
+	guiNodeSetClass(n, "text");
+	const TextStyle *st = resolveTextStyle(n);
+	if(!st) { printf("FAIL null\n"); return 1; }
+	if(st->fontSize <= 0) { printf("FAIL fontSize %d\n", st->fontSize); return 1; }
+	guiNodeSetClass(n, "no-such-class");
+	const TextStyle *fallback = resolveTextStyle(n);
+	if(!fallback) { printf("FAIL fallback null\n"); return 1; }
+	freeGuiNode(n);
+	printf("PASS test_text_style_resolves\n");
 	return 0;
 }

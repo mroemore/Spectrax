@@ -69,6 +69,27 @@ typedef struct {
 	BorderStyle border;
 } DestStyle;
 
+typedef enum {
+	TXT_ALIGN_LEFT = 0,
+	TXT_ALIGN_CENTER = 1,
+	TXT_ALIGN_RIGHT = 2,
+	TXT_ALIGN_TOP = 0,
+	TXT_ALIGN_MIDDLE = 1,
+	TXT_ALIGN_BOTTOM = 2
+} TextAlign;
+
+typedef struct {
+	char fontName[16];
+	int fontSize;
+	int spacing;
+	int offsetX;
+	int offsetY;
+	int hAlign;
+	int vAlign;
+	Color color;
+	Color colorSelected;
+} TextStyle;
+
 typedef struct {
 	int size;
 	int gap;
@@ -116,6 +137,7 @@ typedef enum {
 	STYLE_STEP_CELL,
 	STYLE_DEST,
 	STYLE_CHIP,
+	STYLE_TEXT,
 	STYLE_COUNT
 } StyleType;
 
@@ -128,6 +150,7 @@ const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn);
 const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 const DestStyle *resolveDestStyle(const GuiNode *gn);
 const ChipStyle *resolveChipStyle(const GuiNode *gn);
+const TextStyle *resolveTextStyle(const GuiNode *gn);
 int chipComponentHeight(const ChipStyle *st);
 void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
                          const char *typeTag, const char *label,

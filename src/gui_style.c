@@ -85,6 +85,18 @@ static DestStyle g_defaultDest = {
 	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
+static TextStyle g_defaultText = {
+	.fontName = "pixel",
+	.fontSize = 10,
+	.spacing = 1,
+	.offsetX = 0,
+	.offsetY = 0,
+	.hAlign = TXT_ALIGN_LEFT,
+	.vAlign = TXT_ALIGN_TOP,
+	.color = { 0, 0, 0, 0 },
+	.colorSelected = { 0, 0, 0, 0 },
+};
+
 static ChipStyle g_defaultChip = {
 	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.palette = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 },
@@ -124,6 +136,8 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	g_defaultTypeLabel.border.color = cs->outlineColour;
 	g_defaultDest.border.color = cs->routeAdd;
 	g_defaultDest.border.colorSelected = cs->labelSelected;
+	g_defaultText.color = cs->fontColour;
+	g_defaultText.colorSelected = cs->fontColour;
 	g_defaultStepCell.bgEmpty = cs->defaultCell;
 	g_defaultStepCell.bgPlaying = cs->highlightedCell;
 	g_defaultStepCell.borderSelected = cs->outlineColour;
@@ -168,6 +182,7 @@ static TypeLabelStyle g_typeLabelClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static DestStyle g_destClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static ChipStyle g_chipClasses[MAX_CLASS_ENTRIES_PER_TYPE];
+static TextStyle g_textClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
 /* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
  * "type-label" defaults themselves as the first entry so custom classes
@@ -179,6 +194,7 @@ static int g_typeLabelClassCount = 0;
 static int g_stepCellClassCount = 0;
 static int g_destClassCount = 0;
 static int g_chipClassCount = 0;
+static int g_textClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -189,6 +205,7 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_STEP_CELL:     return "step-cell";
 		case STYLE_DEST:          return "route-dest";
 		case STYLE_CHIP:          return "chip";
+		case STYLE_TEXT:          return "text";
 		default:                  return NULL;
 	}
 }
@@ -256,6 +273,14 @@ const ChipStyle *resolveChipStyle(const GuiNode *gn) {
 		if(idx >= 0) return &g_chipClasses[g_classMap[idx].index];
 	}
 	return &g_defaultChip;
+}
+
+const TextStyle *resolveTextStyle(const GuiNode *gn) {
+	if(gn && gn->className) {
+		int idx = findClass(gn->className, STYLE_TEXT);
+		if(idx >= 0) return &g_textClasses[g_classMap[idx].index];
+	}
+	return &g_defaultText;
 }
 
 int chipComponentHeight(const ChipStyle *st) {
@@ -466,6 +491,30 @@ static void overlayStepCell(cJSON *o, const ColourScheme *cs, StepCellStyle *s) 
 	jsonColor(o, "borderSelected", cs, &s->borderSelected);
 	cJSON *note = cJSON_GetObjectItemCaseSensitive(o, "note");
 	if(cJSON_IsObject(note)) overlayLabel(note, cs, &s->note);
+}
+
+static int parseAlign(cJSON *v, int def) {
+	if(v && cJSON_IsString(v)) {
+		const char *s = v->valuestring;
+		if(strcmp(s, "left") == 0 || strcmp(s, "top") == 0) return 0;
+		if(strcmp(s, "center") == 0 || strcmp(s, "middle") == 0) return 1;
+		if(strcmp(s, "right") == 0 || strcmp(s, "bottom") == 0) return 2;
+	}
+	return def;
+}
+
+static void overlayText(cJSON *o, const ColourScheme *cs, TextStyle *t) {
+	jsonStr(o, "font", t->fontName, sizeof(t->fontName));
+	t->fontSize = jsonInt(o, "fontSize", t->fontSize);
+	t->spacing = jsonInt(o, "spacing", t->spacing);
+	t->offsetX = jsonInt(o, "offsetX", t->offsetX);
+	t->offsetY = jsonInt(o, "offsetY", t->offsetY);
+	cJSON *hA = cJSON_GetObjectItemCaseSensitive(o, "hAlign");
+	cJSON *vA = cJSON_GetObjectItemCaseSensitive(o, "vAlign");
+	t->hAlign = parseAlign(hA, t->hAlign);
+	t->vAlign = parseAlign(vA, t->vAlign);
+	jsonColor(o, "color", cs, &t->color);
+	jsonColor(o, "colorSelected", cs, &t->colorSelected);
 }
 
 static StyleType typeDefaultForName(const char *name) {
@@ -699,6 +748,23 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_CHIP;
+					g_classMap[g_classCount].index = idx;
+					g_classCount++;
+					break;
+				}
+				case STYLE_TEXT: {
+					TextStyle merged = g_defaultText;
+					for(int i = 0; i < n; i++) {
+						overlayText(chain[i], cs, &merged);
+					}
+					int idx = g_textClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_textClassCount++ : -1;
+					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
+						continue;
+					}
+					g_textClasses[idx] = merged;
+					strncpy(g_classMap[g_classCount].name, name, 63);
+					g_classMap[g_classCount].name[63] = '\0';
+					g_classMap[g_classCount].type = STYLE_TEXT;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;
