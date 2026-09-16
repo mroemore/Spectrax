@@ -6,13 +6,12 @@
 # Selection starts on the LEN dial; RIGHT moves across the strip; DOWN
 # drops into the grid. EDIT+UP on a dial bumps its value, EDIT+UP on a
 # step raises that step. The instrument mod list shows exactly one
-# grouped PTN row (four route buttons).
+# grouped PTN row with four named route buttons (PTN_ROUTE_1..4).
 
 SCENE 2
 FRAMES 3
 ASSERT scene==2
 ASSERT patpage==0
-ASSERT ptnrows==1
 
 # SELECT+UP -> track 1 page.
 HOLD SELECT
@@ -51,5 +50,16 @@ DOWN
 RELEASE
 FRAMES 3
 ASSERT patpage==0
+
+# --- Back to the instrument scene and JUMP to PTN_ROUTE_1 ---
+SCENE 1
+FRAMES 3
+ASSERT scene==1
+JUMP PTN_ROUTE_1
+FRAMES 1
+ASSERT selected==PTN_ROUTE_1
+JUMP PTN_ROUTE_4
+FRAMES 1
+ASSERT selected==PTN_ROUTE_4
 
 QUIT

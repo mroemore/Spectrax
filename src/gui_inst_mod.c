@@ -1827,10 +1827,9 @@ static const char *modTypeTag(ModType t) {
 
 
 
-/* Grouped PTN row readout: one line summarising the four pattern tracks
- * (shape + length). Non-interactive; routing lives on the row's four
- * buttons. `actionCtx` holds the owning Instrument (p is unused for
- * non-dial nodes). */
+/* Grouped PTN row: shape abbreviation used by the per-button sublabel
+ * (length+shape summary). Kept short so it fits next to the ROUTE text
+ * without overflowing the cell. */
 static const char *patternShapeAbbrev(int shape) {
 	switch(shape) {
 		case SH_HOLD:   return "HLD";
@@ -1839,35 +1838,6 @@ static const char *patternShapeAbbrev(int shape) {
 		case SH_CURVE:  return "CUR";
 		default:        return "?";
 	}
-}
-
-static void drawPatternReadoutNode(void *self) {
-	GuiNode *gn = (GuiNode *)self;
-	Instrument *inst = (Instrument *)gn->actionCtx;
-	if(!inst || !inst->modList) {
-		return;
-	}
-	int firstPat = inst->coreEnvelopeCount - PATTERN_TRACKS;
-	char buf[128];
-	int off = 0;
-	for(int t = 0; t < PATTERN_TRACKS; t++) {
-		int mi = modIndexAt(inst->modList, firstPat + t);
-		if(mi < 0) {
-			continue;
-		}
-		Mod *m = inst->modList->mods[mi];
-		if(!m || m->type != MT_PATTERN) {
-			continue;
-		}
-		PatternState *p = &m->data.pattern;
-		int len = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
-		int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
-		off += snprintf(buf + off, sizeof(buf) - off, "%d:L%d %s  ", t + 1, len, patternShapeAbbrev(shape));
-		if(off >= (int)sizeof(buf) - 1) {
-			break;
-		}
-	}
-	DrawText(buf, gn->x + 2, gn->y + gn->h / 2 - 6, 12, cs.secondaryFontColour);
 }
 
 
@@ -1959,10 +1929,11 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 	(void)g;
 }
 
-/* Grouped PTN row: one row for the four fixed pattern tracks (label +
- * readout + four ROUTE buttons). Appended once, at the end of the mod
- * list, so runtime source rows keep their positions. g_sourceCtx must
- * already be refreshed for `inst` (appendModSourceEntry does that). */
+/* Grouped PTN row: one row for the four fixed pattern tracks. Each
+ * route button shows the ROUTE label plus an L<len> <SHAPE> sublabel
+ * (or -- if the track has no pattern mod). Appended once, at the end of
+ * the mod list, so runtime source rows keep their positions. g_sourceCtx
+ * must already be refreshed for `inst` (appendModSourceEntry does that). */
 void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight) {
 	if(!inst || !inst->modList) {
 		return;
@@ -1976,17 +1947,27 @@ void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight) {
 	wrap->draw = drawWrapperNode;
 	GuiNode *label = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN", 0, 0);
 	appendItem(wrap, label, 2);
-	GuiNode *readout = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "PTN_READ", 0, 0);
-	readout->drawable = true;
-	readout->draw = drawPatternReadoutNode;
-	readout->actionCtx = inst;
-	appendItem(wrap, readout, 3);
 	for(int t = 0; t < PATTERN_TRACKS; t++) {
-		char tag[8];
-		snprintf(tag, sizeof(tag), "%d", t + 1);
+		char tag[16];
+		snprintf(tag, sizeof(tag), "PTN_ROUTE_%d", t + 1);
 		GuiNode *route = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
-		                                        tag, 0, cbOpenRouteLayer, &g_sourceCtx[firstPat + t]);
-		appendItem(wrap, route, 2);
+		                                        "ROUTE", 0, cbOpenRouteLayer, &g_sourceCtx[firstPat + t]);
+		free(route->name);
+		route->name = strdup(tag);
+		guiNodeSetText(route, "ROUTE");
+		char sub[24];
+		int mi = modIndexAt(inst->modList, firstPat + t);
+		Mod *m = (mi >= 0) ? inst->modList->mods[mi] : NULL;
+		if(m && m->type == MT_PATTERN) {
+			PatternState *p = &m->data.pattern;
+			int len = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
+			int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
+			snprintf(sub, sizeof(sub), "L%d %s", len, patternShapeAbbrev(shape));
+		} else {
+			snprintf(sub, sizeof(sub), "--");
+		}
+		guiNodeSetSublabel(route, sub);
+		appendItem(wrap, route, 3);
 	}
 	applyLayout(wrap, "mod-source-row");
 	appendItem(container, wrap, weight);
