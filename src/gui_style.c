@@ -60,14 +60,14 @@ void applyLayout(GuiNode *container, const char *name) {
 static DialStyle g_defaultDial = {
 	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
-	.value  = { "%05.2f", 38, 14, 28, 2, { 0, 0, 0, 0 } },
+	.value  = { "%05.2f", 38, 14, 28, 2, 9, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static DialStyle g_defaultDialDiscrete = {
 	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
-	.value  = { "%i", 10, 14, 6, 5, { 0, 0, 0, 0 } },
+	.value  = { "%i", 10, 14, 6, 5, 9, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
