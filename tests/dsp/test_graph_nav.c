@@ -511,6 +511,28 @@ static int test_node_class_name(void) {
     return 0;
 }
 
+/* ----- Task 1 (UI/theme polish): GuiNode.text + guiNodeSetText -----
+ *
+ * Per-instance display label, separate from `name` (the stable
+ * identifier). Setter takes an owned copy; NULL clears. freeGuiNode
+ * must release the buffer so it is safe to skip the setter and just
+ * freeGuiNode the node. */
+static int test_guinode_text_lifecycle(void) {
+    GuiNode *n = createGuiNode(0, 0, 40, 12, 0, na_horizontal, "IDENT", 0, 0);
+    if(!n) { printf("FAIL alloc\n"); return 1; }
+    if(n->text != NULL) { printf("FAIL text not zero-inited\n"); return 1; }
+    guiNodeSetText(n, "hello");
+    if(!n->text || strcmp(n->text, "hello") != 0) { printf("FAIL set\n"); return 1; }
+    if(strcmp(n->name, "IDENT") != 0) { printf("FAIL name clobbered\n"); return 1; }
+    guiNodeSetText(n, "world");
+    if(strcmp(n->text, "world") != 0) { printf("FAIL reset\n"); return 1; }
+    guiNodeSetText(n, NULL);
+    if(n->text != NULL) { printf("FAIL clear\n"); return 1; }
+    freeGuiNode(n);
+    printf("PASS test_guinode_text_lifecycle\n");
+    return 0;
+}
+
 /* ----- Task 2 (arranger window rework): scrollArrangerWindow ----- *
  *
  * Pure-state test: scrollArrangerWindow operates on `arranger->visibleStart`
@@ -1098,6 +1120,7 @@ int main(void) {
     fails += test_chip_node_is_drawable();
     fails += test_init_gui_node_null_callback();
     fails += test_node_class_name();
+    fails += test_guinode_text_lifecycle();
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
     fails += test_scroll_container_to_visible();
