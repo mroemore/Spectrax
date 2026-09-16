@@ -72,8 +72,9 @@ static DialStyle g_defaultDialDiscrete = {
 };
 
 static BtnStyle g_defaultBtn = {
-	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 10, 1, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.border   = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
+	.label    = { "pixel", 10, 1, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.sublabel = { "pixel", 8, 0, 4, 12, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static TypeLabelStyle g_defaultTypeLabel = {
@@ -131,6 +132,8 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	g_defaultBtn.border.color = cs->panelBorder;
 	g_defaultBtn.label.color = cs->label;
 	g_defaultBtn.label.colorSelected = cs->labelSelected;
+	g_defaultBtn.sublabel.color = cs->label;
+	g_defaultBtn.sublabel.colorSelected = cs->labelSelected;
 	g_defaultTypeLabel.label.color = cs->label;
 	g_defaultTypeLabel.label.colorSelected = cs->labelSelected;
 	g_defaultTypeLabel.border.color = cs->outlineColour;
@@ -410,6 +413,7 @@ static void overlayValue(cJSON *o, const ColourScheme *cs, ValueStyle *v) {
 	v->height = jsonInt(o, "height", v->height);
 	v->offsetX = jsonInt(o, "offsetX", v->offsetX);
 	v->offsetY = jsonInt(o, "offsetY", v->offsetY);
+	v->fontSize = jsonInt(o, "fontSize", v->fontSize);
 	jsonColor(o, "color", cs, &v->color);
 }
 static void overlayLabel(cJSON *o, const ColourScheme *cs, LabelStyle *l) {
@@ -437,6 +441,8 @@ static void overlayBtn(cJSON *o, const ColourScheme *cs, BtnStyle *b) {
 	if(cJSON_IsObject(border)) overlayBorder(border, cs, &b->border);
 	cJSON *label = cJSON_GetObjectItemCaseSensitive(o, "label");
 	if(cJSON_IsObject(label)) overlayLabel(label, cs, &b->label);
+	cJSON *sublabel = cJSON_GetObjectItemCaseSensitive(o, "sublabel");
+	if(cJSON_IsObject(sublabel)) overlayLabel(sublabel, cs, &b->sublabel);
 }
 static void overlayTypeLabel(cJSON *o, const ColourScheme *cs, TypeLabelStyle *t) {
 	cJSON *label = cJSON_GetObjectItemCaseSensitive(o, "label");

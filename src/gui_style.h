@@ -35,6 +35,7 @@ typedef struct {
 	int height;
 	int offsetX;
 	int offsetY;
+	int fontSize;
 	Color color;
 } ValueStyle;
 
@@ -58,6 +59,7 @@ typedef struct {
 typedef struct {
 	BorderStyle border;
 	LabelStyle label;
+	LabelStyle sublabel;
 } BtnStyle;
 
 typedef struct {

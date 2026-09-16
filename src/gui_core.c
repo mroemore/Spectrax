@@ -30,7 +30,7 @@ void drawColourRectangle(int x, int y, int w, int h, float roundness, float line
 
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 
-void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour);
+void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, int fontSize);
 
 void drawWrapperNode(void *self);
 
@@ -226,9 +226,10 @@ void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int
 }
 
 
-void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour) {
+void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, int fontSize) {
 	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
-	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, 9, 1, textColour);
+	float sz = (float)(fontSize > 0 ? fontSize : 9);
+	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, sz, 1, textColour);
 }
 
 
@@ -303,7 +304,7 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
+	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
 	Font *lf = styleFont(st->label.fontName);
 	/* labelX is the label's centre (cell-centred caption); centre the
 	 * text on it. */
@@ -364,6 +365,15 @@ void drawActionBtnGuiNode(void *self) {
 	           (Vector2){ gn->x + gn->padding + st->label.offsetX, gn->y + gn->padding + st->label.offsetY },
 	           st->label.fontSize, st->label.spacing,
 	           gn->selected ? st->label.colorSelected : st->label.color);
+	if(st->sublabel.fontSize > 0 && gn->sublabel) {
+		Font *sf = styleFont(st->sublabel.fontName);
+		Vector2 m = MeasureTextEx(*sf, gn->sublabel, (float)st->sublabel.fontSize, (float)st->sublabel.spacing);
+		float sx = (float)gn->x + ((float)gn->w - m.x) * 0.5f;
+		float sy = (float)gn->y + st->sublabel.offsetY;
+		DrawTextEx(*sf, gn->sublabel, (Vector2){ sx, sy },
+		           (float)st->sublabel.fontSize, (float)st->sublabel.spacing,
+		           gn->selected ? st->sublabel.colorSelected : st->sublabel.color);
+	}
 }
 
 /* Spec #1: route-picker destination cell. Replaces the standard action
@@ -466,7 +476,7 @@ void drawDiscreteDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color);
+	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
 	Font *lf = styleFont(st->label.fontName);
 	/* labelX is the label's centre (cell-centred caption); centre the
 	 * text on it. */

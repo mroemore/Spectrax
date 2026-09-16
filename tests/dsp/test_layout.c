@@ -71,6 +71,7 @@ static int test_chip_style_resolves_and_geometry(void);
 static int test_chip_palette_resolved_from_theme(void);
 static int test_mod_source_row_layout_gap(void);
 static int test_text_style_resolves(void);
+static int test_btn_sublabel_resolves(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -226,6 +227,7 @@ int main(void) {
 	fails += test_chip_palette_resolved_from_theme();
 	fails += test_mod_source_row_layout_gap();
 	fails += test_text_style_resolves();
+	fails += test_btn_sublabel_resolves();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -606,5 +608,16 @@ static int test_text_style_resolves(void) {
 	if(!fallback) { printf("FAIL fallback null\n"); return 1; }
 	freeGuiNode(n);
 	printf("PASS test_text_style_resolves\n");
+	return 0;
+}
+
+static int test_btn_sublabel_resolves(void) {
+	GuiNode *n = createGuiNode(0, 0, 40, 20, 0, na_horizontal, "B", 0, 0);
+	guiNodeSetClass(n, "btn");
+	const BtnStyle *st = resolveBtnStyle(n);
+	if(!st) { printf("FAIL null\n"); return 1; }
+	(void)st->sublabel;
+	freeGuiNode(n);
+	printf("PASS test_btn_sublabel_resolves\n");
 	return 0;
 }

@@ -30,6 +30,7 @@ bool initGuiNode(GuiNode *gn, int x, int y, int w, int h, int padding, NodeAlign
 
 	gn->className = NULL;
 	gn->text = NULL;
+	gn->sublabel = NULL;
 	gn->padding = padding;
 	gn->weightRef = NULL;
 	gn->selected = selected;
@@ -191,6 +192,7 @@ void freeGuiNode(GuiNode *gn) {
 	free(gn->name);
 	free(gn->className);
 	free(gn->text);
+	free(gn->sublabel);
 	free(gn);
 }
 
@@ -216,6 +218,14 @@ void guiNodeSetText(GuiNode *gn, const char *text) {
 	}
 	free(gn->text);
 	gn->text = text ? strdup(text) : NULL;
+}
+
+void guiNodeSetSublabel(GuiNode *gn, const char *text) {
+	if(!gn) {
+		return;
+	}
+	free(gn->sublabel);
+	gn->sublabel = text ? strdup(text) : NULL;
 }
 
 void printGraph(GuiNode *root, int depth) {
