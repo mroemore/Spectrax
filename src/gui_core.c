@@ -359,7 +359,8 @@ void drawActionBtnGuiNode(void *self) {
 	const BtnStyle *st = resolveBtnStyle(gn);
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
 	Font *lf = styleFont(st->label.fontName);
-	DrawTextEx(*lf, gn->name,
+	const char *label = gn->text ? gn->text : gn->name;
+	DrawTextEx(*lf, label,
 	           (Vector2){ gn->x + gn->padding + st->label.offsetX, gn->y + gn->padding + st->label.offsetY },
 	           st->label.fontSize, st->label.spacing,
 	           gn->selected ? st->label.colorSelected : st->label.color);
@@ -378,6 +379,53 @@ void drawRouteDestGuiNode(void *self) {
 	Color outline = gn->selected ? st->border.colorSelected : st->border.color;
 	DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h },
 	                     st->border.borderWidth, outline);
+}
+
+/* Task 3 (UI/theme polish): text-only drawable GuiNode. Layout decisions
+ * (alignment, offset, font, colour) all live in the resolved TextStyle;
+ * the node itself only carries the text payload and the className used
+ * by the resolver. No fill / no border — text-only drawables should look
+ * like labels, not panels. Alignment is computed against the node's own
+ * (w, h) bounds so a text node dropped into a container sizes correctly
+ * to its parent. NULL text is treated as an empty string. */
+void drawTextGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	const TextStyle *st = resolveTextStyle(gn);
+	Font *lf = styleFont(st->fontName);
+	const char *txt = gn->text ? gn->text : "";
+	Vector2 m = MeasureTextEx(*lf, txt, (float)st->fontSize, (float)st->spacing);
+	float tx = (float)gn->x + st->offsetX;
+	float ty = (float)gn->y + st->offsetY;
+	if(st->hAlign == TXT_ALIGN_CENTER)      tx += ((float)gn->w - m.x) * 0.5f;
+	else if(st->hAlign == TXT_ALIGN_RIGHT)  tx += (float)gn->w - m.x;
+	if(st->vAlign == TXT_ALIGN_MIDDLE)      ty += ((float)gn->h - m.y) * 0.5f;
+	else if(st->vAlign == TXT_ALIGN_BOTTOM) ty += (float)gn->h - m.y;
+	DrawTextEx(*lf, txt, (Vector2){ tx, ty },
+	           (float)st->fontSize, (float)st->spacing,
+	           gn->selected ? st->colorSelected : st->color);
+}
+
+/* Task 3 (UI/theme polish): text-only drawable factory. Non-selectable
+ * (so nav skips it), drawable, draw=drawTextGuiNode. text is stored via
+ * guiNodeSetText (which handles NULL + strdup); className is stored via
+ * guiNodeSetClass (which handles NULL). Returns NULL if createGuiNode
+ * rejects the geometry — same failure contract as the other typed
+ * factories. */
+GuiNode *createTextGuiNode(int x, int y, int w, int h, const char *text, const char *className) {
+	GuiNode *gn = createGuiNode(x, y, w, h, 0, na_horizontal, NULL, 0, 0);
+	if(gn == NULL) {
+		printf("createTextGuiNode error, could not create.");
+		return NULL;
+	}
+	if(className) {
+		guiNodeSetClass(gn, className);
+	}
+	if(text) {
+		guiNodeSetText(gn, text);
+	}
+	gn->drawable = true;
+	gn->draw = drawTextGuiNode;
+	return gn;
 }
 
 /* Task 6: route-destination picker node. Same rect as a dial, but with

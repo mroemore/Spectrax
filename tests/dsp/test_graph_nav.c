@@ -73,6 +73,14 @@ void syncArrangerSelectionTo(Graph *g, Arranger *a);
  * no global file-statics needed. */
 void navigateArrangerGraphTo(Graph *g, Arranger *a, int keymapping);
 
+/* Task 3 (UI/theme polish): createTextGuiNode / drawTextGuiNode are the
+ * text-only drawable node pair. Forward-declared here so the test can
+ * reference them without dragging raylib/draw path into this TU (we
+ * only exercise the constructor + draw-wiring contract, never the
+ * actual draw call). */
+GuiNode *createTextGuiNode(int x, int y, int w, int h, const char *text, const char *className);
+void drawTextGuiNode(void *self);
+
 /* ASSERT_* macros — verbatim copy of the style used in
  * tests/dsp/test_modsystem.c (same arity-dispatch trick, same
  * `return 1` on failure so main can sum fails). */
@@ -1101,6 +1109,28 @@ static int test_pattern_page_clamp(void) {
     return 0;
 }
 
+/* Task 3 (UI/theme polish): createTextGuiNode + drawTextGuiNode. The
+ * text node is a non-selectable, drawable GuiNode whose draw fn is
+ * drawTextGuiNode. The constructor takes (x, y, w, h, text, className):
+ * it must wire the draw fn + drawable flag, store the text via
+ * guiNodeSetText, and tag the class via guiNodeSetClass.
+ *
+ * The test never invokes draw — we only verify the constructor wires
+ * the node correctly. raylib's font state is irrelevant here because
+ * the constructor doesn't touch the font; the draw path only does so
+ * when called. */
+static int test_text_node_ctor(void) {
+    GuiNode *n = createTextGuiNode(5, 6, 30, 10, "abc", "text");
+    if(!n) { printf("FAIL alloc\n"); return 1; }
+    if(n->selectable) { printf("FAIL selectable\n"); return 1; }
+    if(!n->drawable || n->draw != drawTextGuiNode) { printf("FAIL draw wiring\n"); return 1; }
+    if(!n->text || strcmp(n->text, "abc") != 0) { printf("FAIL text\n"); return 1; }
+    if(n->x != 5 || n->y != 6) { printf("FAIL pos\n"); return 1; }
+    freeGuiNode(n);
+    printf("PASS test_text_node_ctor\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_pattern_page_clamp();
@@ -1121,6 +1151,7 @@ int main(void) {
     fails += test_init_gui_node_null_callback();
     fails += test_node_class_name();
     fails += test_guinode_text_lifecycle();
+    fails += test_text_node_ctor();
     fails += test_scroll_arranger_window();
     fails += test_arranger_cell_node();
     fails += test_scroll_container_to_visible();

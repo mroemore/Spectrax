@@ -25,6 +25,7 @@ GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignmen
 GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAlignment na, const char *name, bool selected, ActionCallback cb, void *ctx);
 void drawActionBtnGuiNode(void *self);
 void drawDiscreteDialGuiNode(void *self);
+void drawTextGuiNode(void *self);
 const char *voiceTypeTag(VoiceType t);
 
 /* shared screen state (owners noted) */

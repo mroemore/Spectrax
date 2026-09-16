@@ -91,6 +91,14 @@ void markThemeLoaded(void);
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y);
 
+/* Task 3 (UI/theme polish): text-only drawable GuiNode. Non-selectable,
+ * drawable, draw=drawTextGuiNode. The text and className are optional;
+ * NULL text clears via guiNodeSetText, NULL className leaves the node
+ * with no className (the style resolver then falls back to the default
+ * TextStyle). Layout decisions (alignment, offset, font) live in the
+ * TextStyle, not the constructor. */
+GuiNode *createTextGuiNode(int x, int y, int w, int h, const char *text, const char *className);
+
 /* Task 3: per-instrument chip row above the arranger grid. Drawn for
  * each enabled channel; bg colour comes from the per-channel label
  * palette index, content shows the type tag, voice count, label, and
