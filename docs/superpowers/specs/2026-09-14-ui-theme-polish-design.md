@@ -1,7 +1,7 @@
 # UI / Theme Polish — Design
 
 **Date:** 2026-09-14
-**Status:** draft (awaiting user review)
+**Status:** approved (2026-09-14)
 **Scope:** five workstreams (A–E) of UI/theming/visual work on top of the
 pattern-seq tracks feature. Each workstream is independently
 implementable and testable.
@@ -145,7 +145,7 @@ instrument graph; the cursor warps to the top of the screen (`RATIO1`).
 ## WS-D — Multi-screen render mode (item 3)
 
 ### Design (hot-reload window, per the user's preference)
-- New CLI flag `--ui-panels` that boots the app in a **panel mode**
+- New CLI flag `--ui-preview` that boots the app in a **panel mode**
   window instead of the normal single-screen loop.
 - The window holds a grid of panels. Each panel renders a representative
   screen into its own `RenderTexture2D` (the existing `createPresentTarget`
@@ -170,8 +170,8 @@ instrument graph; the cursor warps to the top of the screen (`RATIO1`).
   dump, ship the PNG approach and say so (user's stated fallback).
 
 ### Testing
-- Boot under Xvfb with `--ui-panels`, confirm the window runs N frames
-  without crash, then exit. Add `--ui-panels-frames N` for scriptable
+- Boot under Xvfb with `--ui-preview`, confirm the window runs N frames
+  without crash, then exit. Add `--ui-preview-frames N` for scriptable
   auto-exit.
 - This mode is also the primary visual-verification aid for WS-A/B/E.
 
@@ -196,19 +196,52 @@ instrument graph; the cursor warps to the top of the screen (`RATIO1`).
   32-char field still fits. Consider sourcing the size from a style so it
   is themeable (flagged extension if so).
 
-### E.3 Pixel icon font / plug glyph (item 4)
+### E.3 Pixel icon font — pixelarticons (item 4)
+- **Source: pixelarticons** (`~/pixelarticons_pkg/pixelarticons/`), MIT
+  licensed (`Copyright (c) 2019 Gerrit Halfmann`). It ships a real icon
+  TTF (`fonts/pixelart-icons-font.ttf`, PUA codepoints) plus 24×24 SVGs.
+  Vendor `pixelart-icons-font.ttf` into `bin/resources/fonts/` and add the
+  MIT license text (e.g. `bin/resources/fonts/pixelarticons-LICENSE.txt`).
 - **Ignore the existing `iconzfin.png`/`iconz.png` placeholders** (user
   directive).
-- Evaluate freely-usable pixel icon assets. Preferred: a CC0/OFL pixel
-  **icon font** with a plug glyph; if no suitable font is found, fall back
-  to a CC0 **icon atlas** rendered by an icon element (same machinery as
-  the WS-B curve icons). Candidates to evaluate during planning:
-  VerzatileDev "Pixel UI Icons" (CC0), Nikoichu "1-bit Pixel Icons"
-  (CC0), pixelarticons (license to confirm).
+- Load once as the icon font (e.g. `alagard`-style slot / a new
+  `iconFont`), registered so `styleFont("icon")` resolves it. Icon element
+  draws the glyph for a name→codepoint mapping (from the shipped
+  `fonts/pixelart-icons-font.css`, `content: "\xxxx"`).
+- **Initial icon map** (name → pixelarticons glyph); the four names not in
+  the free set use the substitute shown:
+
+  | feature | pixelarticons icon |
+  |---|---|
+  | attack | `corner-right-up` |
+  | decay | `corner-down-right` |
+  | route | `plug` |
+  | prev / tprev | `chevron-left-2` |
+  | next / tnext | `chevron-right-2` |
+  | save | `save` |
+  | load | `upload` *(sub for `drive-upload`)* |
+  | fm inst | `algorithm` |
+  | sample inst | `waves` *(sub for `audio-lines`)* |
+  | blep inst | `audio-waveform` |
+  | voice (or `V`) | `volume-2` |
+  | bpm | `heart` *(sub for `heartbeat`)* |
+  | swing | `sunglasses` |
+  | pan (`L⟨icon⟩R`) | `thermometer` *(sub for `thermometer-ear`)* |
+  | loop | `infinity` |
+  | sample start | `align-horizontal-distribute-start` |
+  | sample end | `align-horizontal-distribute-end` |
+  | playback type | `settings-2` |
+  | voice polyphony | `sparkles` |
+  | blep shape | `shapes` |
+
 - Replace the `ROUTE` text on route buttons with the plug glyph; keep the
   accessible name/text for fixtures.
-- ⚠️ Exact asset + mechanism (font glyph vs atlas) confirmed with the user
-  once the license and glyph coverage are checked.
+- ⚠️ **Rendering mechanism is an open decision:** the glyphs are 24×24
+  pixel outlines, so drawing them far below native size risks blurring.
+  Options: (a) load the TTF and draw at native 24 / integer sizes, or
+  (b) pre-rasterize the used SVGs to a nearest-neighbour PNG atlas (same
+  icon-element machinery as the WS-B curve icons). Final call after a
+  size/crispness test; the icon element supports either.
 
 ---
 
