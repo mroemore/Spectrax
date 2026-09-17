@@ -50,6 +50,7 @@ app_only_sources = files(
   'gui_layer.c',
   'distortion.c',
   'dataviz.c',
+  'curve_icons.c',
 )
 
 # Buffer-scroller / mod-strip visualisations: used by the app (audio callback,

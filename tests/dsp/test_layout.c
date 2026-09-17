@@ -7,6 +7,7 @@
 #include "cJSON.h"
 #include "theme.h"
 #include "gui.h"  /* initDefaultColourScheme (Task 3 step-cell baked-default test) */
+#include "curve_icons.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 #define TMP_DIR ".tmp_files/"
@@ -72,6 +73,7 @@ static int test_chip_palette_resolved_from_theme(void);
 static int test_mod_source_row_layout_gap(void);
 static int test_text_style_resolves(void);
 static int test_btn_sublabel_resolves(void);
+static int test_curve_icon_index(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -228,6 +230,7 @@ int main(void) {
 	fails += test_mod_source_row_layout_gap();
 	fails += test_text_style_resolves();
 	fails += test_btn_sublabel_resolves();
+	fails += test_curve_icon_index();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -619,5 +622,13 @@ static int test_btn_sublabel_resolves(void) {
 	(void)st->sublabel;
 	freeGuiNode(n);
 	printf("PASS test_btn_sublabel_resolves\n");
+	return 0;
+}
+
+static int test_curve_icon_index(void) {
+	if(curveIconIndex(0.0f) != 0) { printf("FAIL lo\n"); return 1; }
+	if(curveIconIndex(1.0f) != CURVE_ICON_COUNT - 1) { printf("FAIL hi\n"); return 1; }
+	if(curveIconIndex(0.5f) != 15 && curveIconIndex(0.5f) != 16) { printf("FAIL mid %d\n", curveIconIndex(0.5f)); return 1; }
+	printf("PASS test_curve_icon_index\n");
 	return 0;
 }

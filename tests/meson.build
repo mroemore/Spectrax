@@ -33,7 +33,10 @@ test_mod_voice_extra = files('../src/gui_core.c', '../src/gui_arranger.c', '../s
 # Task 3: test_layout's step-cell test calls initDefaultColourScheme to
 # populate a real ColourScheme for the baked-default assertions; that
 # symbol lives in gui_core.c. Same link surface as test_cfg / test_graph_nav.
-test_layout_extra = test_graph_nav_extra
+# Task 6: curve_icons.c (the curve-icon atlas + index helper) is called
+# by test_layout's curveIconIndex assertion, so it must be linked here
+# (test_graph_nav doesn't use it; only test_layout does).
+test_layout_extra = test_graph_nav_extra + files('../src/curve_icons.c')
 
 foreach name : test_names
   extra_srcs = []
