@@ -16,6 +16,7 @@
 #include "io.h"
 #include "gui_internal.h"
 #include "gui_style.h"
+#include "curve_icons.h"
 
 
 /* ---- module state (shared with the screen modules via gui_internal.h) ---- */
@@ -47,6 +48,7 @@ static FontConfig gFontConfig;
 static bool gThemeLoaded;
 
 Texture2D dial;
+Texture2D curveIconsTexture;
 
 void initCustomFont(Font *f, char *path, int charCount, int width, int height) {
 	*f = LoadFontEx(path, width, NULL, charCount);
@@ -216,6 +218,7 @@ void InitGUI(void) {
 	Image dialimg = LoadImage("resources/images/dial2.png");
 	dial = LoadTextureFromImage(dialimg);
 	UnloadImage(dialimg);
+	curveIconsTexture = buildCurveIconTexture();
 	SetTargetFPS(60);
 }
 
@@ -304,7 +307,22 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
+	const CurveIconStyle *ci = resolveCurveIconStyle(gn);
+	if(ci->frameCount > 0 && g.valueW > 0) {
+		int idx = curveIconIndex(gn->p->baseValue);
+		if(idx < 0) {
+			idx = 0;
+		}
+		if(idx >= ci->frameCount) {
+			idx = ci->frameCount - 1;
+		}
+		DrawTexturePro(curveIconsTexture,
+		               (Rectangle){ idx * (float)CURVE_ICON_SIZE, 0, (float)CURVE_ICON_SIZE, (float)CURVE_ICON_SIZE },
+		               (Rectangle){ g.valueX + ci->offsetX, g.valueY + ci->offsetY, (float)ci->size, (float)ci->size },
+		               (Vector2){ 0, 0 }, 0.0f, ci->color);
+	} else if(g.valueW > 0 && g.valueH > 0) {
+		drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
+	}
 	Font *lf = styleFont(st->label.fontName);
 	/* labelX is the label's centre (cell-centred caption); centre the
 	 * text on it. */

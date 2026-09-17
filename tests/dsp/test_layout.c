@@ -74,6 +74,10 @@ static int test_mod_source_row_layout_gap(void);
 static int test_text_style_resolves(void);
 static int test_btn_sublabel_resolves(void);
 static int test_curve_icon_index(void);
+static int test_curve_icon_default_framecount_zero(void);
+static int test_curve_icon_style_resolves(void);
+static int test_stage_dial_styles_resolve(void);
+static int test_env_stage_layout(void);
 
 static int test_reflow_fills_weighted_row(void) {
 	/* FM op-row case: 5 dials at weight 60 + a blank at weight 4 in a
@@ -231,6 +235,10 @@ int main(void) {
 	fails += test_text_style_resolves();
 	fails += test_btn_sublabel_resolves();
 	fails += test_curve_icon_index();
+	fails += test_curve_icon_default_framecount_zero();
+	fails += test_curve_icon_style_resolves();
+	fails += test_stage_dial_styles_resolve();
+	fails += test_env_stage_layout();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();
@@ -630,5 +638,128 @@ static int test_curve_icon_index(void) {
 	if(curveIconIndex(1.0f) != CURVE_ICON_COUNT - 1) { printf("FAIL hi\n"); return 1; }
 	if(curveIconIndex(0.5f) != 15 && curveIconIndex(0.5f) != 16) { printf("FAIL mid %d\n", curveIconIndex(0.5f)); return 1; }
 	printf("PASS test_curve_icon_index\n");
+	return 0;
+}
+
+static int test_curve_icon_default_framecount_zero(void) {
+	/* Default (no class set) must have frameCount == 0 so ordinary
+	 * dials are unaffected: drawDialGuiNode only branches on
+	 * frameCount > 0 to draw the curve icon. */
+	GuiNode *n = createBlankGuiNode();
+	const CurveIconStyle *ci = resolveCurveIconStyle(n);
+	ASSERT_TRUE(ci != NULL, "resolveCurveIconStyle non-null");
+	ASSERT_TRUE(ci->frameCount == 0, "default curve-icon frameCount == 0");
+	freeGuiNode(n);
+	printf("PASS test_curve_icon_default_framecount_zero\n");
+	return 0;
+}
+
+static int test_curve_icon_style_resolves(void) {
+	/* Compile a temp layout with stage-curve-icon (32 frames at native
+	 * CURVE_ICON_SIZE pixel scale) and confirm a node with that class
+	 * resolves to those values. stage-curve-icon extends "curve-icon"
+	 * so classifyClass places it in the STYLE_CURVE_ICON table. */
+	const char *path = ".tmp_files/layout_test_ci.json";
+	FILE *f = fopen(path, "w");
+	ASSERT_TRUE(f != NULL, "open temp layout");
+	fputs("{\"styles\":{\"curve-icon\":{},"
+	      "\"stage-curve-icon\":{\"extends\":\"curve-icon\","
+	      "\"frameCount\":32,\"size\":16,\"offsetX\":2,\"offsetY\":2,"
+	      "\"color\":\"valueText\"}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	cs.valueText = (Color){ 200, 150, 100, 255 };
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile curve-icon layout");
+
+	GuiNode *n = createBlankGuiNode();
+	guiNodeSetClass(n, "stage-curve-icon");
+	const CurveIconStyle *ci = resolveCurveIconStyle(n);
+	ASSERT_TRUE(ci->frameCount == CURVE_ICON_COUNT, "frameCount == 32");
+	ASSERT_TRUE(ci->size == 16, "size 16");
+	ASSERT_TRUE(ci->offsetX == 2 && ci->offsetY == 2, "offsets");
+	ASSERT_TRUE(ci->color.r == 200 && ci->color.g == 150 && ci->color.b == 100,
+	            "color resolved from theme");
+	/* Unknown class falls back to default. */
+	guiNodeSetClass(n, "no-such-icon-class");
+	const CurveIconStyle *fb = resolveCurveIconStyle(n);
+	ASSERT_TRUE(fb->frameCount == 0, "unknown class fallback frameCount 0");
+	freeGuiNode(n);
+	remove(path);
+	printf("PASS test_curve_icon_style_resolves\n");
+	return 0;
+}
+
+static int test_stage_dial_styles_resolve(void) {
+	/* stage-curve: small knob + value hidden (width 0, height 0, fontSize 0).
+	 * stage-rate:  unchanged knob, value pushed down (offsetY 34, fontSize 7). */
+	const char *path = ".tmp_files/layout_test_stage.json";
+	FILE *f = fopen(path, "w");
+	ASSERT_TRUE(f != NULL, "open temp layout");
+	fputs("{\"styles\":{"
+	      "\"stage-curve\":{\"extends\":\"dial\","
+	      "\"knob\":{\"size\":13,\"radius\":7},"
+	      "\"value\":{\"width\":0,\"height\":0,\"fontSize\":0}},"
+	      "\"stage-rate\":{\"extends\":\"dial\","
+	      "\"value\":{\"offsetY\":34,\"fontSize\":7}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile stage layout");
+
+	GuiNode *nc = createBlankGuiNode();
+	guiNodeSetClass(nc, "stage-curve");
+	const DialStyle *sc = resolveDialStyle(nc);
+	ASSERT_TRUE(sc->knob.size == 13, "stage-curve knob.size 13");
+	ASSERT_TRUE(sc->knob.radius == 7, "stage-curve knob.radius 7");
+	ASSERT_TRUE(sc->value.width == 0, "stage-curve value.width 0");
+	ASSERT_TRUE(sc->value.height == 0, "stage-curve value.height 0");
+	ASSERT_TRUE(sc->value.fontSize == 0, "stage-curve value.fontSize 0");
+	freeGuiNode(nc);
+
+	GuiNode *nr = createBlankGuiNode();
+	guiNodeSetClass(nr, "stage-rate");
+	const DialStyle *sr = resolveDialStyle(nr);
+	ASSERT_TRUE(sr->knob.size == 20, "stage-rate inherits default knob.size 20");
+	ASSERT_TRUE(sr->value.offsetY == 34, "stage-rate value.offsetY 34");
+	ASSERT_TRUE(sr->value.fontSize == 7, "stage-rate value.fontSize 7");
+	freeGuiNode(nr);
+	remove(path);
+	printf("PASS test_stage_dial_styles_resolve\n");
+	return 0;
+}
+
+static int test_env_stage_layout(void) {
+	/* env-stage: horizontal weights [2,1] with childClasses
+	 * ["stage-rate","stage-curve"]; row gets 2/3 of width for the
+	 * rate dial and 1/3 for the curve dial. */
+	const char *path = ".tmp_files/layout_test_env_stage.json";
+	FILE *f = fopen(path, "w");
+	ASSERT_TRUE(f != NULL, "open temp layout");
+	fputs("{\"layouts\":{\"env-stage\":{\"orientation\":\"horizontal\","
+	      "\"padding\":2,\"weights\":[2,1],"
+	      "\"childClasses\":[\"stage-rate\",\"stage-curve\"]}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile env-stage layout");
+
+	GuiNode *row = createGuiNode(0, 0, 300, 40, 0, na_horizontal, "row", 0, 0);
+	GuiNode *c[2];
+	c[0] = createBlankGuiNode();
+	c[1] = createBlankGuiNode();
+	appendItem(row, c[0], 1);
+	appendItem(row, c[1], 1);
+	applyLayout(row, "env-stage");
+	ASSERT_TRUE(row->padding == 2, "env-stage padding");
+	ASSERT_TRUE(c[0]->w > c[1]->w, "rate child wider than curve child");
+	ASSERT_TRUE(c[0]->w == 197, "rate child width 197 (2/3 of 296 floor)");
+	ASSERT_TRUE(c[1]->w == 99, "curve child width 99 (remainder fills to 296)");
+	ASSERT_TRUE(c[0]->x == 2, "rate child after padding");
+	/* confirm the row assigned the configured class names to its children */
+	/* (applyLayout only sets className when the child has none) */
+	freeGuiNode(row);
+	remove(path);
+	printf("PASS test_env_stage_layout\n");
 	return 0;
 }

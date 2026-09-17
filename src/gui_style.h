@@ -131,6 +131,14 @@ typedef struct {
 	LabelStyle note;
 } StepCellStyle;
 
+typedef struct {
+	int frameCount;
+	int size;
+	int offsetX;
+	int offsetY;
+	Color color;
+} CurveIconStyle;
+
 typedef enum {
 	STYLE_DIAL,
 	STYLE_DIAL_DISCRETE,
@@ -140,6 +148,7 @@ typedef enum {
 	STYLE_DEST,
 	STYLE_CHIP,
 	STYLE_TEXT,
+	STYLE_CURVE_ICON,
 	STYLE_COUNT
 } StyleType;
 
@@ -153,6 +162,7 @@ const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 const DestStyle *resolveDestStyle(const GuiNode *gn);
 const ChipStyle *resolveChipStyle(const GuiNode *gn);
 const TextStyle *resolveTextStyle(const GuiNode *gn);
+const CurveIconStyle *resolveCurveIconStyle(const GuiNode *gn);
 int chipComponentHeight(const ChipStyle *st);
 void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
                          const char *typeTag, const char *label,

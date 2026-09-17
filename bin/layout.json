@@ -87,6 +87,37 @@
             "vAlign": "top",
             "color": "font",
             "colorSelected": "font"
+        },
+        "stage-curve-icon": {
+            "extends": "curve-icon",
+            "frameCount": 32,
+            "size": 16,
+            "offsetX": 2,
+            "offsetY": 2,
+            "color": "valueText"
+        },
+        "stage-rate": {
+            "extends": "dial",
+            "value": {
+                "format": "%04.1f",
+                "fontSize": 7,
+                "offsetX": 28,
+                "offsetY": 34,
+                "width": 38,
+                "height": 14
+            }
+        },
+        "stage-curve": {
+            "extends": "dial",
+            "knob": {
+                "size": 13,
+                "radius": 7
+            },
+            "value": {
+                "width": 0,
+                "height": 0,
+                "fontSize": 0
+            }
         }
     },
     "layouts": {
@@ -128,6 +159,18 @@
                 1,
                 1,
                 1
+            ]
+        },
+        "env-stage": {
+            "orientation": "horizontal",
+            "padding": 2,
+            "weights": [
+                2,
+                1
+            ],
+            "childClasses": [
+                "stage-rate",
+                "stage-curve"
             ]
         }
     }

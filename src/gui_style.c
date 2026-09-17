@@ -116,6 +116,17 @@ static StepCellStyle g_defaultStepCell = {
 	.note = { "text", 10, 4, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
+/* Default curve-icon: frameCount == 0 means "do not draw an icon —
+ * fall through to the dial's value text". The frameCount > 0 case is
+ * opt-in per node (only the configured class enables it). */
+static CurveIconStyle g_defaultCurveIcon = {
+	.frameCount = 0,
+	.size = 8,
+	.offsetX = 0,
+	.offsetY = 0,
+	.color = { 0, 0, 0, 0 },
+};
+
 /* Colour defaults are resolved against the theme at compile time; the
  * zeroed colors here get replaced by resolveDefaultColours() below. */
 static void resolveDefaultColours(const ColourScheme *cs) {
@@ -152,6 +163,7 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	/* fontSize stays 0 so drawStepGuiNode's ternary falls through to
 	 * textFont.baseSize — matches the pre-StepCellStyle literal. */
 	g_defaultStepCell.note.fontSize = 0;
+	g_defaultCurveIcon.color = cs->valueText;
 	g_defaultChip.border.color = cs->wrapperBorder;
 	g_defaultChip.border.colorSelected = cs->outlineColour;
 	for(int i = 0; i < 8; i++) {
@@ -186,6 +198,7 @@ static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static DestStyle g_destClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static ChipStyle g_chipClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static TextStyle g_textClasses[MAX_CLASS_ENTRIES_PER_TYPE];
+static CurveIconStyle g_curveIconClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
 /* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
  * "type-label" defaults themselves as the first entry so custom classes
@@ -198,6 +211,7 @@ static int g_stepCellClassCount = 0;
 static int g_destClassCount = 0;
 static int g_chipClassCount = 0;
 static int g_textClassCount = 0;
+static int g_curveIconClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -209,6 +223,7 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_DEST:          return "route-dest";
 		case STYLE_CHIP:          return "chip";
 		case STYLE_TEXT:          return "text";
+		case STYLE_CURVE_ICON:    return "curve-icon";
 		default:                  return NULL;
 	}
 }
@@ -284,6 +299,14 @@ const TextStyle *resolveTextStyle(const GuiNode *gn) {
 		if(idx >= 0) return &g_textClasses[g_classMap[idx].index];
 	}
 	return &g_defaultText;
+}
+
+const CurveIconStyle *resolveCurveIconStyle(const GuiNode *gn) {
+	if(gn && gn->className) {
+		int idx = findClass(gn->className, STYLE_CURVE_ICON);
+		if(idx >= 0) return &g_curveIconClasses[g_classMap[idx].index];
+	}
+	return &g_defaultCurveIcon;
 }
 
 int chipComponentHeight(const ChipStyle *st) {
@@ -521,6 +544,14 @@ static void overlayText(cJSON *o, const ColourScheme *cs, TextStyle *t) {
 	t->vAlign = parseAlign(vA, t->vAlign);
 	jsonColor(o, "color", cs, &t->color);
 	jsonColor(o, "colorSelected", cs, &t->colorSelected);
+}
+
+static void overlayCurveIcon(cJSON *o, const ColourScheme *cs, CurveIconStyle *c) {
+	c->frameCount = jsonInt(o, "frameCount", c->frameCount);
+	c->size = jsonInt(o, "size", c->size);
+	c->offsetX = jsonInt(o, "offsetX", c->offsetX);
+	c->offsetY = jsonInt(o, "offsetY", c->offsetY);
+	jsonColor(o, "color", cs, &c->color);
 }
 
 static StyleType typeDefaultForName(const char *name) {
@@ -771,6 +802,23 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_TEXT;
+					g_classMap[g_classCount].index = idx;
+					g_classCount++;
+					break;
+				}
+				case STYLE_CURVE_ICON: {
+					CurveIconStyle merged = g_defaultCurveIcon;
+					for(int i = 0; i < n; i++) {
+						overlayCurveIcon(chain[i], cs, &merged);
+					}
+					int idx = g_curveIconClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_curveIconClassCount++ : -1;
+					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
+						continue;
+					}
+					g_curveIconClasses[idx] = merged;
+					strncpy(g_classMap[g_classCount].name, name, 63);
+					g_classMap[g_classCount].name[63] = '\0';
+					g_classMap[g_classCount].type = STYLE_CURVE_ICON;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;

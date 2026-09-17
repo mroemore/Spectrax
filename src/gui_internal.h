@@ -14,6 +14,7 @@ extern Font pixelFont;
 extern Font symbolFont;
 extern Font textFont;
 extern Texture2D dial;
+extern Texture2D curveIconsTexture;
 
 /* core node helpers shared by the screen modules (defined in gui_core.c) */
 void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
