@@ -107,6 +107,9 @@ typedef enum {
 	SOP_ASSERT_PTNROWS,  /* number of grouped PTN rows in the inst graph == N */
 	SOP_ASSERT_TRACKSTEP,/* pattern track <trk> step <step> value*100 == <pct> */
 	SOP_ASSERT_TRACKSHAPE,/* pattern track <trk> shape == N */
+	SOP_ASSERT_TRACKSHAPE_NEXT,/* pattern track <trk> shape advanced by
+	                            * exactly 1 (mod SH_COUNT) since the last
+	                            * patshapewrapped check for that track */
 	SOP_ASSERT_LOADLISTACTIVE, /* g_loadListActive (guiIsLoadListActive) == N */
 	SOP_ASSERT_SAVEDFLASH,     /* Task 5: selected PresetNameGuiNode's savedFlashUntil
 	                            * is strictly in the future (currentFrameIndex() < it).
@@ -622,6 +625,21 @@ static void parseScript(const char *path) {
 				s->op = SOP_ASSERT_TRACKSHAPE;
 				s->opIdx = atoi(tokens[4]);
 				s->a.n = atoi(tokens[6]);
+			} else if(strcmp(tokens[1], "patshapewrapped") == 0) {
+				/* ASSERT patshapewrapped==(<trk>,<1|0>) :
+				 * 1 = shape advanced by exactly one since the last
+				 * patshapewrapped check on this track; 0 = unchanged.
+				 * Keeps fixtures independent of the loaded song's PTRK. */
+				if(nt < 8 || strcmp(tokens[2], "==") != 0 ||
+				   strcmp(tokens[3], "(") != 0 || strcmp(tokens[5], ",") != 0 ||
+				   strcmp(tokens[7], ")") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT patshapewrapped==(<trk>,<1|0>)");
+					return;
+				}
+				s->op = SOP_ASSERT_TRACKSHAPE_NEXT;
+				s->opIdx = atoi(tokens[4]);
+				s->a.n = atoi(tokens[6]);
 			} else if(strcmp(tokens[1], "loadListActive") == 0) {
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
 					fclose(fp);
@@ -1002,6 +1020,37 @@ static void runAssertTrackshape(int lineno, int trk, int expected) {
 	}
 }
 
+/* patshapewrapped: assert the track's shape advanced by exactly `expected`
+ * steps (mod SH_COUNT) since the previous patshapewrapped check on the same
+ * track. The first check on a track seeds the baseline and always passes,
+ * so a fixture must establish the baseline BEFORE the edit it wants to
+ * verify. Keeps the assertion independent of the loaded song's PTRK data. */
+static int g_trackShapeBaseline[PATTERN_TRACKS];
+static bool g_trackShapeBaselineSet[PATTERN_TRACKS];
+
+static void runAssertTrackshapeNext(int lineno, int trk, int expected) {
+	Mod *m = patternTrackMod(trk);
+	if(!m || !m->data.pattern.shape) {
+		failScript(lineno, "ASSERT patshapewrapped: no pattern track %d", trk);
+		return;
+	}
+	if(trk < 0 || trk >= PATTERN_TRACKS) {
+		failScript(lineno, "ASSERT patshapewrapped: track %d out of range", trk);
+		return;
+	}
+	int got = getParameterValueAsInt(m->data.pattern.shape);
+	if(!g_trackShapeBaselineSet[trk]) {
+		g_trackShapeBaseline[trk] = got;
+		g_trackShapeBaselineSet[trk] = true;
+		return;
+	}
+	int advanced = (got - g_trackShapeBaseline[trk] + SH_COUNT) % SH_COUNT;
+	g_trackShapeBaseline[trk] = got;
+	if(advanced != expected) {
+		failScript(lineno, "ASSERT patshapewrapped==(%d,%d) failed: got %d", trk, expected, advanced);
+	}
+}
+
 /* Task 5: assert that the selected PresetNameGuiNode's saved flash is
  * active (==1) or inactive (==0). Drives through the public
  * presetNameGuiNodeSavedFlashActive getter so the harness doesn't reach
@@ -1244,6 +1293,7 @@ static void applyScriptEventInjection(InputState *state, const ScriptStep *s, in
 		case SOP_ASSERT_PTNROWS:
 		case SOP_ASSERT_TRACKSTEP:
 		case SOP_ASSERT_TRACKSHAPE:
+		case SOP_ASSERT_TRACKSHAPE_NEXT:
 		case SOP_ASSERT_LOADLISTACTIVE:
 		case SOP_ASSERT_SAVEDFLASH:
 		case SOP_ASSERT_SCENE:
@@ -1315,6 +1365,9 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_TRACKSHAPE:
 			runAssertTrackshape(s->lineno, s->opIdx, s->a.n);
+			break;
+		case SOP_ASSERT_TRACKSHAPE_NEXT:
+			runAssertTrackshapeNext(s->lineno, s->opIdx, s->a.n);
 			break;
 		case SOP_ASSERT_LOADLISTACTIVE:
 			runAssertLoadListActive(s->lineno, s->a.n);

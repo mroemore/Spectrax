@@ -20,23 +20,25 @@ RELEASE
 FRAMES 3
 ASSERT patpage==1
 
-# Selection starts on LEN; RIGHT -> SHAPE. EDIT+UP bumps it HOLD(0) -> LINEAR(1).
+# Selection starts on LEN; RIGHT -> SHAPE. The starting shape depends on
+# the loaded song's PTRK data, so seed the baseline, then assert the edit
+# advanced exactly one step (independent of the absolute starting value).
 RIGHT
+ASSERT patshapewrapped==(0,1)
 EDIT UP
-ASSERT patshape==(0,1)
+ASSERT patshapewrapped==(0,1)
 
 # DOWN -> grid step 0 (from the dial strip). EDIT+UP raises 0.5 -> 0.5625 (~56).
 DOWN
 EDIT UP
 ASSERT trackstep==(0,0,56)
 
-# SELECT+UP -> track 2 page; its shape is still the HOLD default.
+# SELECT+UP -> track 2 page; its step 0 is still the 0.5 default.
 HOLD SELECT
 UP
 RELEASE
 FRAMES 3
 ASSERT patpage==2
-ASSERT patshape==(1,0)
 ASSERT trackstep==(1,0,50)
 
 # SELECT+DOWN wraps back: 2 -> 1 -> notes.
