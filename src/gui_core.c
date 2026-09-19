@@ -307,8 +307,8 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	const CurveIconStyle *ci = resolveCurveIconStyle(gn);
-	if(ci->frameCount > 0 && g.valueW > 0) {
+	const CurveIconStyle *ci = &st->curveIcon;
+	if(ci->frameCount > 0) {
 		int idx = curveIconIndex(gn->p->baseValue);
 		if(idx < 0) {
 			idx = 0;
@@ -316,19 +316,25 @@ void drawDialGuiNode(void *self) {
 		if(idx >= ci->frameCount) {
 			idx = ci->frameCount - 1;
 		}
+		/* The icon replaces the dial's value/numeric and is centred on
+		 * the knob; offsetX/offsetY nudge it from that centre. */
+		float iconX = g.knobX + (g.knobW - (float)ci->size) * 0.5f + (float)ci->offsetX;
+		float iconY = g.knobY + (g.knobH - (float)ci->size) * 0.5f + (float)ci->offsetY;
 		DrawTexturePro(curveIconsTexture,
 		               (Rectangle){ idx * (float)CURVE_ICON_SIZE, 0, (float)CURVE_ICON_SIZE, (float)CURVE_ICON_SIZE },
-		               (Rectangle){ g.valueX + ci->offsetX, g.valueY + ci->offsetY, (float)ci->size, (float)ci->size },
+		               (Rectangle){ iconX, iconY, (float)ci->size, (float)ci->size },
 		               (Vector2){ 0, 0 }, 0.0f, ci->color);
 	} else if(g.valueW > 0 && g.valueH > 0) {
 		drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
 	}
-	Font *lf = styleFont(st->label.fontName);
-	/* labelX is the label's centre (cell-centred caption); centre the
-	 * text on it. */
-	float lw = MeasureTextEx(*lf, gn->name, st->label.fontSize, st->label.spacing).x;
-	DrawTextEx(*lf, gn->name, (Vector2){ g.labelX - lw * 0.5f, g.labelY }, st->label.fontSize, st->label.spacing,
-	           gn->selected ? st->label.colorSelected : st->label.color);
+	if(st->label.fontSize > 0) {
+		Font *lf = styleFont(st->label.fontName);
+		/* labelX is the label's centre (cell-centred caption); centre the
+		 * text on it. */
+		float lw = MeasureTextEx(*lf, gn->name, st->label.fontSize, st->label.spacing).x;
+		DrawTextEx(*lf, gn->name, (Vector2){ g.labelX - lw * 0.5f, g.labelY }, st->label.fontSize, st->label.spacing,
+		           gn->selected ? st->label.colorSelected : st->label.color);
+	}
 }
 
 

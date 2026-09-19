@@ -39,9 +39,9 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 
-# --- Route op0 feedback (N2 lands the picker on curve; JUMPTL to fb) --
+# --- Route op0 feedback (N2 lands the picker on an env curvature dial; JUMPTL to fb) --
 EDIT
-ASSERT topLayerSelected==curve
+ASSERT topLayerSelected==es_Curve
 JUMPTL feedback
 ASSERT topLayerSelected==feedback
 EDIT

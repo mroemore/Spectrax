@@ -5,14 +5,14 @@ ASSERT selected==RATIO1
 # Route source 0 -> op0 feedback and source 1 -> op0 feedback so both
 # sources have active routes (per the user's repro). Then walk the ROUTE
 # buttons and assert the overlay ctx follows each hop.
-# From RATIO1: DOWN x5 -> MODS_ADD; DOWN -> ATTACK(env0); RIGHT x4 -> ROUTE(env0)
+# From RATIO1: DOWN x5 -> MODS_ADD; DOWN -> ATK(env0); RIGHT x4 -> ROUTE(env0)
 DOWN
 DOWN
 DOWN
 DOWN
 DOWN
 DOWN
-ASSERT selected==ATTACK
+ASSERT selected==ATK
 RIGHT
 RIGHT
 RIGHT
@@ -20,13 +20,9 @@ RIGHT
 ASSERT selected==ROUTE
 FRAMES 2
 ASSERT routelinesrc==0
-# DOWN -> env1 ATTACK; RIGHT x4 -> ROUTE(env1)
+# Geometric nav: the ROUTE column is vertically aligned, so DOWN from
+# env0 ROUTE lands directly on env1 ROUTE. The overlay ctx must follow.
 DOWN
-ASSERT selected==ATTACK
-RIGHT
-RIGHT
-RIGHT
-RIGHT
 ASSERT selected==ROUTE
 FRAMES 2
 ASSERT routelinesrc==1

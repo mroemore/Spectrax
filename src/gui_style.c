@@ -62,6 +62,8 @@ static DialStyle g_defaultDial = {
 	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
 	.value  = { "%05.2f", 38, 14, 28, 2, 9, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.curveIcon = { 0, 8, 0, 0, { 0, 0, 0, 0 } },
+	.vAlign = DIAL_VALIGN_CENTER,
 };
 
 static DialStyle g_defaultDialDiscrete = {
@@ -301,13 +303,10 @@ const TextStyle *resolveTextStyle(const GuiNode *gn) {
 	return &g_defaultText;
 }
 
-const CurveIconStyle *resolveCurveIconStyle(const GuiNode *gn) {
-	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_CURVE_ICON);
-		if(idx >= 0) return &g_curveIconClasses[g_classMap[idx].index];
-	}
-	return &g_defaultCurveIcon;
-}
+/* Curve-icon styling is now embedded in DialStyle (drawDialGuiNode reads
+ * &st->curveIcon directly). The standalone STYLE_CURVE_ICON class remains
+ * in the JSON schema for backwards compatibility but no longer drives
+ * per-node drawing — overlays happen on the dial's style. */
 
 int chipComponentHeight(const ChipStyle *st) {
 	if(!st) return 0;
@@ -366,7 +365,9 @@ void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *o
 	 * offsets are knob-relative), so the whole unit moves as one. */
 	int groupW = st->knob.size + st->value.offsetX + st->value.width;
 	int knobX = (groupW < contentW) ? (cx + (contentW - groupW) / 2) : (cx + 2);
-	int knobY = (st->knob.size < contentH) ? (cy + (contentH - st->knob.size) / 2) : cy;
+	int knobY = (st->vAlign == DIAL_VALIGN_TOP)
+	              ? cy
+	              : ((st->knob.size < contentH) ? (cy + (contentH - st->knob.size) / 2) : cy);
 	out->knobX = knobX;
 	out->knobY = knobY;
 	out->knobW = st->knob.size;
@@ -449,6 +450,8 @@ static void overlayLabel(cJSON *o, const ColourScheme *cs, LabelStyle *l) {
 	jsonColor(o, "colorSelected", cs, &l->colorSelected);
 }
 
+static void overlayCurveIcon(cJSON *o, const ColourScheme *cs, CurveIconStyle *c);
+
 static void overlayDial(cJSON *o, const ColourScheme *cs, DialStyle *d) {
 	cJSON *knob = cJSON_GetObjectItemCaseSensitive(o, "knob");
 	if(cJSON_IsObject(knob)) overlayKnob(knob, cs, &d->knob);
@@ -458,6 +461,12 @@ static void overlayDial(cJSON *o, const ColourScheme *cs, DialStyle *d) {
 	if(cJSON_IsObject(value)) overlayValue(value, cs, &d->value);
 	cJSON *label = cJSON_GetObjectItemCaseSensitive(o, "label");
 	if(cJSON_IsObject(label)) overlayLabel(label, cs, &d->label);
+	cJSON *curveIcon = cJSON_GetObjectItemCaseSensitive(o, "curveIcon");
+	if(cJSON_IsObject(curveIcon)) overlayCurveIcon(curveIcon, cs, &d->curveIcon);
+	cJSON *va = cJSON_GetObjectItemCaseSensitive(o, "vAlign");
+	if(cJSON_IsString(va) && va->valuestring) {
+		d->vAlign = (strcmp(va->valuestring, "top") == 0) ? DIAL_VALIGN_TOP : DIAL_VALIGN_CENTER;
+	}
 }
 static void overlayBtn(cJSON *o, const ColourScheme *cs, BtnStyle *b) {
 	cJSON *border = cJSON_GetObjectItemCaseSensitive(o, "border");

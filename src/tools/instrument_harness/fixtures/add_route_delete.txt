@@ -48,8 +48,8 @@ DOWN
 ASSERT selected==ENV
 
 # ROUTE opens the destination-picking layer. N2 lands the cursor on the
-# CLOSEST dest to the source's ROUTE button (env[4]'s curve), not the
-# top of the screen.
+# CLOSEST dest to the source's ROUTE button (an env curvature dial named
+# "es_Curve" for preset-loaded envelopes), not the top of the screen.
 RIGHT
 RIGHT
 RIGHT
@@ -57,7 +57,7 @@ RIGHT
 RIGHT
 ASSERT selected==ROUTE
 EDIT
-ASSERT topLayerSelected==curve
+ASSERT topLayerSelected==es_Curve
 JUMPTL feedback
 ASSERT topLayerSelected==feedback
 # EDIT routes the runtime source to op0 feedback.

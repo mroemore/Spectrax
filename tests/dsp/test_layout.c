@@ -646,26 +646,26 @@ static int test_curve_icon_default_framecount_zero(void) {
 	 * dials are unaffected: drawDialGuiNode only branches on
 	 * frameCount > 0 to draw the curve icon. */
 	GuiNode *n = createBlankGuiNode();
-	const CurveIconStyle *ci = resolveCurveIconStyle(n);
-	ASSERT_TRUE(ci != NULL, "resolveCurveIconStyle non-null");
-	ASSERT_TRUE(ci->frameCount == 0, "default curve-icon frameCount == 0");
+	const DialStyle *ds = resolveDialStyle(n);
+	ASSERT_TRUE(ds != NULL, "resolveDialStyle non-null");
+	ASSERT_TRUE(ds->curveIcon.frameCount == 0, "default dial curveIcon frameCount == 0");
 	freeGuiNode(n);
 	printf("PASS test_curve_icon_default_framecount_zero\n");
 	return 0;
 }
 
 static int test_curve_icon_style_resolves(void) {
-	/* Compile a temp layout with stage-curve-icon (32 frames at native
-	 * CURVE_ICON_SIZE pixel scale) and confirm a node with that class
-	 * resolves to those values. stage-curve-icon extends "curve-icon"
-	 * so classifyClass places it in the STYLE_CURVE_ICON table. */
+	/* Compile a temp layout where stage-curve-icon embeds a curveIcon
+	 * sub-object inside a dial. The old STYLE_CURVE_ICON class is gone;
+	 * the icon is now part of DialStyle and reached via
+	 * resolveDialStyle(n)->curveIcon. */
 	const char *path = ".tmp_files/layout_test_ci.json";
 	FILE *f = fopen(path, "w");
 	ASSERT_TRUE(f != NULL, "open temp layout");
-	fputs("{\"styles\":{\"curve-icon\":{},"
-	      "\"stage-curve-icon\":{\"extends\":\"curve-icon\","
-	      "\"frameCount\":32,\"size\":16,\"offsetX\":2,\"offsetY\":2,"
-	      "\"color\":\"valueText\"}}}", f);
+	fputs("{\"styles\":{\"dial\":{},"
+	      "\"stage-curve-icon\":{\"extends\":\"dial\","
+	      "\"curveIcon\":{\"frameCount\":32,\"size\":16,"
+	      "\"offsetX\":2,\"offsetY\":2,\"color\":\"valueText\"}}}}", f);
 	fclose(f);
 	ColourScheme cs;
 	memset(&cs, 0, sizeof(cs));
@@ -674,7 +674,8 @@ static int test_curve_icon_style_resolves(void) {
 
 	GuiNode *n = createBlankGuiNode();
 	guiNodeSetClass(n, "stage-curve-icon");
-	const CurveIconStyle *ci = resolveCurveIconStyle(n);
+	const DialStyle *ds = resolveDialStyle(n);
+	const CurveIconStyle *ci = &ds->curveIcon;
 	ASSERT_TRUE(ci->frameCount == CURVE_ICON_COUNT, "frameCount == 32");
 	ASSERT_TRUE(ci->size == 16, "size 16");
 	ASSERT_TRUE(ci->offsetX == 2 && ci->offsetY == 2, "offsets");
@@ -682,8 +683,8 @@ static int test_curve_icon_style_resolves(void) {
 	            "color resolved from theme");
 	/* Unknown class falls back to default. */
 	guiNodeSetClass(n, "no-such-icon-class");
-	const CurveIconStyle *fb = resolveCurveIconStyle(n);
-	ASSERT_TRUE(fb->frameCount == 0, "unknown class fallback frameCount 0");
+	const DialStyle *fbds = resolveDialStyle(n);
+	ASSERT_TRUE(fbds->curveIcon.frameCount == 0, "unknown class fallback frameCount 0");
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_curve_icon_style_resolves\n");

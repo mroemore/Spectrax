@@ -49,12 +49,32 @@ typedef struct {
 	Color colorSelected;
 } LabelStyle;
 
+/* Dial curve-icon overlay: per-style opt-in via frameCount > 0 (zero
+ * falls through to the dial's value text). Kept here (before DialStyle)
+ * so DialStyle can embed one and a single class can carry both the
+ * small-knob dial and the curve-icon behaviour. */
+typedef struct {
+	int frameCount;
+	int size;
+	int offsetX;
+	int offsetY;
+	Color color;
+} CurveIconStyle;
+
 typedef struct {
 	KnobStyle knob;
 	BorderStyle border;
 	ValueStyle value;
 	LabelStyle label;
+	CurveIconStyle curveIcon;
+	/* Dial vertical alignment of the [knob,value] unit: 0 centres the
+	 * knob in the cell, 1 top-aligns it (leaving room for a readout
+	 * below). Matches DIAL_VALIGN_*. */
+	int vAlign;
 } DialStyle;
+
+#define DIAL_VALIGN_CENTER 0
+#define DIAL_VALIGN_TOP    1
 
 typedef struct {
 	BorderStyle border;
@@ -131,14 +151,6 @@ typedef struct {
 	LabelStyle note;
 } StepCellStyle;
 
-typedef struct {
-	int frameCount;
-	int size;
-	int offsetX;
-	int offsetY;
-	Color color;
-} CurveIconStyle;
-
 typedef enum {
 	STYLE_DIAL,
 	STYLE_DIAL_DISCRETE,
@@ -162,7 +174,9 @@ const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 const DestStyle *resolveDestStyle(const GuiNode *gn);
 const ChipStyle *resolveChipStyle(const GuiNode *gn);
 const TextStyle *resolveTextStyle(const GuiNode *gn);
-const CurveIconStyle *resolveCurveIconStyle(const GuiNode *gn);
+/* Curve-icon styling lives on DialStyle (DialStyle.curveIcon). The
+ * legacy standalone STYLE_CURVE_ICON JSON class is still parsed but is
+ * no longer consulted at draw time. */
 int chipComponentHeight(const ChipStyle *st);
 void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
                          const char *typeTag, const char *label,

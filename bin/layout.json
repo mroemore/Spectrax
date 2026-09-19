@@ -88,23 +88,26 @@
             "color": "font",
             "colorSelected": "font"
         },
-        "stage-curve-icon": {
-            "extends": "curve-icon",
-            "frameCount": 32,
-            "size": 16,
-            "offsetX": 2,
-            "offsetY": 2,
-            "color": "valueText"
-        },
         "stage-rate": {
             "extends": "dial",
             "value": {
                 "format": "%04.1f",
                 "fontSize": 7,
-                "offsetX": 28,
-                "offsetY": 34,
+                "offsetX": -10,
+                "offsetY": 18,
                 "width": 38,
                 "height": 14
+            },
+            "label": {
+                "fontSize": 7,
+                "spacing": 1,
+                "offsetX": 140,
+                "offsetY": 0
+            },
+            "vAlign": "top",
+            "knob": {
+                "size": 18,
+                "radius": 9
             }
         },
         "stage-curve": {
@@ -117,6 +120,22 @@
                 "width": 0,
                 "height": 0,
                 "fontSize": 0
+            },
+            "label": {
+                "fontSize": 7,
+                "spacing": 1,
+                "offsetX": -19,
+                "offsetY": -9
+            }
+        },
+        "stage-curve-icon": {
+            "extends": "stage-curve",
+            "curveIcon": {
+                "frameCount": 32,
+                "size": 12,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "valueText"
             }
         }
     },
@@ -127,12 +146,21 @@
             "gap": 2,
             "weights": [
                 3,
-                4,
-                4,
-                4,
-                4,
+                8,
+                8,
                 3,
                 2,
+                1
+            ]
+        },
+        "mod-source-row-core": {
+            "orientation": "horizontal",
+            "padding": 2,
+            "gap": 2,
+            "weights": [
+                8,
+                8,
+                3,
                 1
             ]
         },
@@ -170,7 +198,7 @@
             ],
             "childClasses": [
                 "stage-rate",
-                "stage-curve"
+                "stage-curve-icon"
             ]
         }
     }

@@ -39,6 +39,7 @@
  */
 
 #include <ctype.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -126,6 +127,8 @@ typedef enum {
 	SOP_ASSERT_CHIP_COLOUR,   /* Task 7: arranger->labelColourIdx[CH] == N */
 	SOP_ASSERT_VOICE_TYPE,    /* Task 7: inst->voiceType == N (matches VOICE_TYPE_* enum) */
 	SOP_ASSERT_VOICE_COUNT,   /* Task 7: roundf(inst->voiceCountParam->baseValue) == N */
+	SOP_ASSERT_ENV_CURVATURE, /* Task 8: roundf(env[0]->stages[N].curvature->baseValue) == N */
+	SOP_ASSERT_ENV_CURVATURE_F, /* Task 8: float compare env[0]->stages[N].curvature->baseValue ~= F */
 	SOP_SHOT,          /* capture the window to a PNG (X11 XGetImage) */
 	SOP_REPORT,        /* Task 4: print a GuiNode's rect (x y w h) to stdout */
 	SOP_SHOWTL,        /* print the top non-passive layer's selected node name */
@@ -146,6 +149,7 @@ typedef struct {
 		int n;          /* for SOP_FRAMES, SOP_ASSERT_ENVCOUNT, SOP_ASSERT_PRESETCOUNT,
 		                 * SOP_ASSERT_ALGO, chipChannel, labelColourIdx, voiceType;
 		                 * and N for modulators */
+		float f;        /* for SOP_ASSERT_ENV_CURVATURE_F: expected float value */
 	} a;
 	union {
 		int n;          /* secondary int (modulator_count), voiceCount, expanded-flag 0|1, scene index */
@@ -188,15 +192,20 @@ static void normalizeDelimiters(char *line) {
 	size_t bi = 0;
 	for(size_t i = 0; i < n && bi + 3 < sizeof(buf); i++) {
 		char c = line[i];
-		if((c == '=' && i + 1 < n && line[i + 1] == '=') ||
-		   c == '(' || c == ')' || c == ',') {
+		bool eqEq = (c == '=' && i + 1 < n && line[i + 1] == '=');
+		bool notEq = (c == '!' && i + 1 < n && line[i + 1] == '=');
+		if(eqEq || notEq || c == '(' || c == ')' || c == ',') {
 			if(bi > 0 && buf[bi - 1] != ' ') {
 				buf[bi++] = ' ';
 			}
-			if(c == '=') {
+			if(eqEq) {
 				buf[bi++] = '=';
 				buf[bi++] = '=';
 				i++; /* consume the second '=' */
+			} else if(notEq) {
+				buf[bi++] = '!';
+				buf[bi++] = '=';
+				i++; /* consume the '=' */
 			} else {
 				buf[bi++] = c;
 			}
@@ -274,6 +283,7 @@ static int parseKeyName(const char *s, KeyMapping *out) {
  *   ASSERT presetCount==<N>         -- presetBank->presetCount == N
  *   ASSERT algo==<N>                -- FM selectedAlgorithm baseValue == N
  *   ASSERT ratio1==<N>              -- FM op0 ratio baseValue (as int)
+ *   ASSERT envCurvature<0|1>==<N>   -- env[0].stages[N].curvature baseValue (as int)
  *   ASSERT loadListActive==<0|1>
  *   ASSERT savedFlash==<0|1>
  *   ASSERT scene==<N>               -- appState->currentScene == N
@@ -584,6 +594,48 @@ static void parseScript(const char *path) {
 				}
 				s->op = SOP_ASSERT_RATIO1;
 				s->a.n = atoi(tokens[3]);
+			} else if(strncmp(tokens[1], "envCurvature", 12) == 0) {
+				/* ASSERT envCurvature<N>==<M>: env[0]'s stages[N].curvature
+				 * rounded to int == M. N=0 (attack) or N=1 (decay).
+				 * ASSERT envCurvature<N>f==<F> / !=<F>: float compare
+				 * baseValue ~= F (epsilon 0.005) so a coarse +0.10 nudge from
+				 * a 0.75 default reads cleanly (both round to 1). */
+				const char *idxStr = tokens[1] + 12;
+				/* envCurvature<N>f... — float compare form (trailing f) */
+				size_t idxLen = strlen(idxStr);
+				bool isFloat = idxLen > 1 && idxStr[idxLen - 1] == 'f';
+				if(isFloat) {
+					int stageIdx = atoi(idxStr);
+					if(stageIdx != 0 && stageIdx != 1) {
+						fclose(fp);
+						failScript(lineno, "ASSERT envCurvature%sf stage must be 0 or 1", idxStr);
+						return;
+					}
+					if(nt < 4 || (strcmp(tokens[2], "==") != 0 && strcmp(tokens[2], "!=") != 0)) {
+						fclose(fp);
+						failScript(lineno, "ASSERT envCurvature<0|1>f ==|!= <F>");
+						return;
+					}
+					s->op = SOP_ASSERT_ENV_CURVATURE_F;
+					s->a.f = strtof(tokens[3], NULL);
+					s->b.n = stageIdx;
+					s->kind = (strcmp(tokens[2], "==") == 0) ? 1 : 0;
+				} else {
+					if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+						fclose(fp);
+						failScript(lineno, "ASSERT envCurvature<0|1>==<N>");
+						return;
+					}
+					int stageIdx = atoi(idxStr);
+					if(stageIdx != 0 && stageIdx != 1) {
+						fclose(fp);
+						failScript(lineno, "ASSERT envCurvature%s stage must be 0 or 1", idxStr);
+						return;
+					}
+					s->op = SOP_ASSERT_ENV_CURVATURE;
+					s->a.n = atoi(tokens[3]);
+					s->b.n = stageIdx;
+				}
 			} else if(strcmp(tokens[1], "patpage") == 0) {
 				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
 					fclose(fp);
@@ -764,7 +816,7 @@ static void parseScript(const char *path) {
 				s->a.n = atoi(tokens[3]);
 			} else {
 				fclose(fp);
-				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|loadListActive|savedFlash|scene|chipExpanded|chipLabel|chipColour|voiceType|voiceCount)", tokens[1]);
+				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|envCurvature0|envCurvature1|loadListActive|savedFlash|scene|chipExpanded|chipLabel|chipColour|voiceType|voiceCount)", tokens[1]);
 				return;
 			}
 		} else if(strcmp(op, "QUIT") == 0) {
@@ -945,6 +997,58 @@ static void runAssertRatio1(int lineno, int expected) {
 	int got = (int)inst->id.fm.ops[0]->ratio->baseValue;
 	if(got != expected) {
 		failScript(lineno, "ASSERT ratio1==%d failed: got %d", expected, got);
+	}
+}
+
+/* Task 8: assert inst->envelopes[0]->data.env.stages[N].curvature->baseValue
+ * (rounded to int) == expected. N is 0 (attack) or 1 (decay). env[0] is
+ * the FM instrument's built-in ADSR envelope; the env-stage fixture uses
+ * this to confirm a stage-curve dial edit actually mutated the param. */
+static void runAssertEnvCurvature(int lineno, int stageIdx, int expected) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || !inst->envelopes[0]) {
+		failScript(lineno, "ASSERT envCurvature%d==%d: no instrument or env[0]", stageIdx, expected);
+		return;
+	}
+	Mod *m = inst->envelopes[0];
+	if(!m || m->type != MT_ENV || stageIdx < 0 || stageIdx >= 2) {
+		failScript(lineno, "ASSERT envCurvature%d==%d: not an env or bad stage", stageIdx, expected);
+		return;
+	}
+	Parameter *p = m->data.env.stages[stageIdx].curvature;
+	if(!p) {
+		failScript(lineno, "ASSERT envCurvature%d==%d: no curvature param", stageIdx, expected);
+		return;
+	}
+	int got = (int)roundf(p->baseValue);
+	if(got != expected) {
+		failScript(lineno, "ASSERT envCurvature%d==%d failed: got %d", stageIdx, expected, got);
+	}
+}
+
+/* Task 8: float compare env[0]->stages[N].curvature->baseValue against F.
+ * Epsilon 0.005 so a coarse +0.10 nudge from a 0.75 default reads cleanly. */
+static void runAssertEnvCurvatureF(int lineno, int stageIdx, float expected, bool wantEq) {
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst || !inst->envelopes[0]) {
+		failScript(lineno, "ASSERT envCurvature%df: no instrument or env[0]", stageIdx);
+		return;
+	}
+	Mod *m = inst->envelopes[0];
+	if(!m || m->type != MT_ENV || stageIdx < 0 || stageIdx >= 2) {
+		failScript(lineno, "ASSERT envCurvature%df: not an env or bad stage", stageIdx);
+		return;
+	}
+	Parameter *p = m->data.env.stages[stageIdx].curvature;
+	if(!p) {
+		failScript(lineno, "ASSERT envCurvature%df: no curvature param", stageIdx);
+		return;
+	}
+	float got = p->baseValue;
+	bool eq = fabsf(got - expected) < 0.005f;
+	if(wantEq ? !eq : eq) {
+		failScript(lineno, "ASSERT envCurvature%d %s %.3f failed: got %.3f", stageIdx,
+			wantEq ? "==" : "!=", expected, got);
 	}
 }
 
@@ -1353,6 +1457,12 @@ static void processScriptAssert(const ScriptStep *s) {
 			break;
 		case SOP_ASSERT_RATIO1:
 			runAssertRatio1(s->lineno, s->a.n);
+			break;
+		case SOP_ASSERT_ENV_CURVATURE:
+			runAssertEnvCurvature(s->lineno, s->b.n, s->a.n);
+			break;
+		case SOP_ASSERT_ENV_CURVATURE_F:
+			runAssertEnvCurvatureF(s->lineno, s->b.n, s->a.f, s->kind == 1);
 			break;
 		case SOP_ASSERT_PATPAGE:
 			runAssertPatpage(s->lineno, s->a.n);
@@ -1792,16 +1902,16 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		}
 	} else if(!isKeyHeld(appState->inputState, KM_FUNCTION) && !isKeyHeld(appState->inputState, KM_SELECT)) {
 		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
-			navigateGraph(currentGraph, KM_LEFT);
+			navigateGraphRefined(currentGraph, KM_LEFT);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
-			navigateGraph(currentGraph, KM_RIGHT);
+			navigateGraphRefined(currentGraph, KM_RIGHT);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_UP)) {
-			navigateGraph(currentGraph, KM_UP);
+			navigateGraphRefined(currentGraph, KM_UP);
 		}
 		if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
-			navigateGraph(currentGraph, KM_DOWN);
+			navigateGraphRefined(currentGraph, KM_DOWN);
 		}
 	}
 }

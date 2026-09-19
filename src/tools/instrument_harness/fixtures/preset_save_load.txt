@@ -19,19 +19,14 @@
 # horizontal navigation compresses to PRESET -> PRESET_NAME -> SAVE -> LOAD.
 
 # --- Navigate from RATIO1 to PRESET_NAME ---------------------------------
-# UP from a horizontal item walks the searchUpwardsByAlignment ladder to the
-# nearest vertical container's previous sibling. From btnrow1 -> btnwrap ->
-# instwrap, the previous item is presetWrap, and selectLeaf(g, presetWrap,
-# head=false) lands on the TAIL of PRESET_CONTROLS = NEXT (PREV / pad / NAME /
-# SAVE / LOAD / NEXT -- NEXT is the rightmost after the recent dial->button
-# migration).
+# Geometric nav (same as production): UP from RATIO1 picks the nearest
+# node above by centre distance, which is PREV (leftmost preset control,
+# directly above RATIO1). JUMP to the name field: geometric RIGHT from
+# PREV would drop into the FM row (FEEDBACK1) because the op row is only
+# ~20px below.
 UP
-ASSERT selected==NEXT
-
-# Three LEFTs slide NEXT -> LOAD -> SAVE -> PRESET_NAME.
-LEFT
-LEFT
-LEFT
+ASSERT selected==PREV
+JUMP PRESET_NAME
 ASSERT selected==PRESET_NAME
 
 # --- Edit the name: change only position 0 from 'f' to 'X' ---------------
@@ -111,15 +106,9 @@ ASSERT file==Xm1
 SELECT
 
 # --- Open the load list --------------------------------------------------
-# DOWN from PRESET_NAME drops out of btnwrap -> presetWrap -> FM instwrap,
-# and selectLeaf(g, FM instwrap, head=true) lands on RATIO1 (btnrow1 head).
-DOWN
-# UP from RATIO1 walks back the same ladder and lands on NEXT (tail of
-# PRESET_CONTROLS -- was LOAD before the dial->buttons migration).
-UP
-ASSERT selected==NEXT
-# LEFT to reach the LOAD button (the cbOpenLoadList action node).
-LEFT
+# Selection is still PRESET_NAME. JUMP to LOAD (the cbOpenLoadList action
+# node): geometric RIGHT would drop into the FM row's op dials.
+JUMP LOAD
 ASSERT selected==LOAD
 
 # KM_EDIT (z) at LOAD fires cbOpenLoadList, which now pushes a Layer onto
@@ -154,29 +143,20 @@ ASSERT loadListActive==0
 ASSERT file==Xm1
 
 # --- PREV/NEXT regression: action buttons fire on KM_EDIT -----------------
-# Selection is on the load-list layer's BACK (was navigated there). Pop the
-# layer (SELECT pops the top layer universally) so we can interact with
-# the instrument graph again.
-SELECT
-# After the load-list close, selection stays on whatever the instrument
-# graph had selected before LOAD was pressed: the LOAD button itself
-# (we left it on the load-list close). Walk back to PREV (LEFT) + NAME
-# (LEFT) + NEXT requires 5 LEFTs from LOAD to PREV (PREV / pad / NAME /
-# SAVE / LOAD / NEXT -> PREV is 5 lefts).
-LEFT
-LEFT
-LEFT
-LEFT
-LEFT
+# Applying the load-list pick rebuilds the instrument graph and leaves
+# selection on the FM row head (RATIO1). Geometric UP from RATIO1 lands on
+# PREV (the preset control directly above it).
+UP
 ASSERT selected==PREV
 
 # Capture the current preset index (after the load-list applied Xm1 it's
 # index 0). Fire PREV: it should clamp (no-op at index 0).
 EDIT
-# NEXT twice: should walk to Xm1+1 = fm1 (1), then fm2 (2).
-RIGHT
+# NEXT twice: should walk to Xm1+1 = fm1 (1), then fm2 (2). Reached by
+# JUMP because geometric RIGHT from PREV lands on the name field, not NEXT.
+JUMP NEXT
 EDIT
-RIGHT
+JUMP NEXT
 EDIT
 # The fixture can't directly read selectedPresetIndex; the assertion
 # below uses preset name presence in the bank. We've loaded Xm1, then
@@ -187,13 +167,11 @@ ASSERT file==Xm1
 # --- Blank-slot load flow (Task 8) ----------------------------------------
 # The bank presents PRESET_BANK_SLOTS=16 slots; slots >= presetCount (5)
 # hold a default FM patch. The previous block's preset applies rebuilt the
-# graph, so selection is on the FM row head (RATIO1). UP walks to the
-# PRESET controls row's tail (NEXT); LEFT reaches LOAD. EDIT opens the
-# load-list; EDIT on entry 0 (Xm1) loads it into the CURRENT slot
-# (cbLoadListPick writes patches[slot] = Xm1). loadListActive resets.
-UP
-ASSERT selected==NEXT
-LEFT
+# graph, so selection is on the FM row head (RATIO1). JUMP straight to the
+# LOAD button; EDIT opens the load-list; EDIT on entry 0 (Xm1) loads it into
+# the CURRENT slot (cbLoadListPick writes patches[slot] = Xm1).
+# loadListActive resets.
+JUMP LOAD
 ASSERT selected==LOAD
 EDIT
 ASSERT loadListActive==1

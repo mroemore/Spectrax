@@ -76,6 +76,67 @@
                 "borderWidth": 2.0,
                 "color": "outlineColour"
             }
+        },
+        "text": {
+            "font": "pixel",
+            "fontSize": 10,
+            "spacing": 1,
+            "offsetX": 0,
+            "offsetY": 0,
+            "hAlign": "left",
+            "vAlign": "top",
+            "color": "font",
+            "colorSelected": "font"
+        },
+        "stage-rate": {
+            "extends": "dial",
+            "value": {
+                "format": "%04.1f",
+                "fontSize": 7,
+                "offsetX": -10,
+                "offsetY": 18,
+                "width": 38,
+                "height": 14
+            },
+            "label": {
+                "fontSize": 7,
+                "spacing": 1,
+                "offsetX": 140,
+                "offsetY": 0
+            },
+            "vAlign": "top",
+            "knob": {
+                "size": 18,
+                "radius": 9
+            }
+        },
+        "stage-curve": {
+            "extends": "dial",
+            "knob": {
+                "size": 13,
+                "radius": 7
+            },
+            "value": {
+                "width": 0,
+                "height": 0,
+                "fontSize": 0
+            },
+            "label": {
+                "fontSize": 7,
+                "spacing": 1,
+                "offsetX": -19,
+                "offsetY": -9
+            }
+        },
+        "stage-curve-icon": {
+            "extends": "stage-curve",
+            "curveIcon": {
+                "frameCount": 32,
+                "size": 12,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "valueText"
+            }
         }
     },
     "layouts": {
@@ -85,12 +146,21 @@
             "gap": 2,
             "weights": [
                 3,
-                4,
-                4,
-                4,
-                4,
+                8,
+                8,
                 3,
                 2,
+                1
+            ]
+        },
+        "mod-source-row-core": {
+            "orientation": "horizontal",
+            "padding": 2,
+            "gap": 2,
+            "weights": [
+                8,
+                8,
+                3,
                 1
             ]
         },
@@ -117,6 +187,18 @@
                 1,
                 1,
                 1
+            ]
+        },
+        "env-stage": {
+            "orientation": "horizontal",
+            "padding": 2,
+            "weights": [
+                2,
+                1
+            ],
+            "childClasses": [
+                "stage-rate",
+                "stage-curve-icon"
             ]
         }
     }

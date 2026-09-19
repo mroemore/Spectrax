@@ -1,0 +1,28 @@
+# env_stage.txt - envelope stage box: rate/curve nav + curve edit (Task 8)
+# Default boot: SCENE_INSTRUMENT, selection = RATIO1 (FM channel 0).
+# Each FM channel has envelope mods; env[0] is the built-in ADSR-ish
+# envelope. Each stage renders as a box with a rate dial (ATK / DEC) and a
+# small curve dial (CRV) whose value slot paints the curvature glyph.
+FRAMES 4
+# Deterministic entry: jump straight to env[0] stage 0's rate dial.
+JUMP ATK
+ASSERT selected==ATK
+
+# Stage 0 box: ATK (rate) -> CRV (curve) are siblings, so RIGHT walks
+# from the rate dial into the curve dial.
+RIGHT
+ASSERT selected==CRV
+ASSERT envCurvature0f==0.75
+
+# EDIT+RIGHT nudges the curvature; the glyph index and the param move.
+EDIT RIGHT
+ASSERT envCurvature0f!=0.75
+
+# Stage 1 (decay) is a separate box; its curvature is independent of the
+# stage 0 edit.
+JUMP DEC
+ASSERT selected==DEC
+RIGHT
+ASSERT selected==CRV
+ASSERT envCurvature1f==0.75
+QUIT

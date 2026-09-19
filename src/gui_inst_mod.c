@@ -1875,6 +1875,10 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 	GuiNode *wrap = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODSRC", 0, 0);
 	wrap->drawable = true;
 	wrap->draw = drawWrapperNode;
+	/* mod-source-row's weights are positional (TYPE, box, box, ROUTE,
+	 * DEL, blank); a core env row has no TYPE/DEL child, so it needs the
+	 * two-box variant. */
+	const char *rowLayout = "mod-source-row";
 
 	if(!core) {
 		GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
@@ -1885,11 +1889,48 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 
 	switch(mod->type) {
 		case MT_ENV: {
+			/* Task 8: each env stage renders as a box holding a rate
+			 * dial ("ATK" / "DEC", class stage-rate) and a small curve
+			 * dial ("CRV", class stage-curve-icon). The box's two
+			 * captions are the dials' own labels, positioned by the
+			 * stage-rate / stage-curve label styles: ATK/DEC at the
+			 * top-right of the box and CRV centred above the small
+			 * knob. The curve dial paints the curvature glyph in place
+			 * of a numeric (DialStyle.curveIcon). */
 			EnvState *e = &mod->data.env;
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ATTACK", selected, incParameterBaseValue, e->stages[0].duration), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, e->stages[0].curvature), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "DECAY", 0, incParameterBaseValue, e->stages[1].duration), 4);
-			appendItem(wrap, createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "CURVE", 0, incParameterBaseValue, e->stages[1].curvature), 4);
+			static const struct {
+				const char *rateName;
+			} stageCfg[2] = {
+				{ "ATK" },
+				{ "DEC" },
+			};
+			for(int s = 0; s < 2; s++) {
+				GuiNode *stageBox = createGuiNode(0, 0, 100, 100, 0,
+				                                  na_horizontal, "ENV_STAGE", 0, 0);
+				stageBox->drawable = true;
+				stageBox->draw = drawWrapperNode;
+				GuiNode *rateDial = createDialGuiNode(0, 0, 100, 100, 0,
+				                                      na_horizontal,
+				                                      stageCfg[s].rateName,
+				                                      s == 0 ? selected : 0,
+				                                      incParameterBaseValue,
+				                                      e->stages[s].duration);
+				GuiNode *curveDial = createDialGuiNode(0, 0, 100, 100, 0,
+				                                       na_horizontal,
+				                                       "CRV", 0,
+				                                       incParameterBaseValue,
+				                                       e->stages[s].curvature);
+				appendItem(stageBox, rateDial, 2);
+				appendItem(stageBox, curveDial, 1);
+				applyLayout(stageBox, "env-stage");
+				appendItem(wrap, stageBox, 8);
+			}
+			/* A core env row has no TYPE selector / DEL button, so it
+			 * uses the two-box weights layout; a runtime env row keeps
+			 * the full positional mod-source-row weights. */
+			if(core) {
+				rowLayout = "mod-source-row-core";
+			}
 			break;
 		}
 		case MT_LFO: {
@@ -1924,7 +1965,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 		appendItem(wrap, createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "DEL", 0, cbDeleteSource, &g_sourceCtx[idx]), 2);
 	}
 	appendItem(wrap, createBlankGuiNode(), 1);
-	applyLayout(wrap, "mod-source-row");
+	applyLayout(wrap, rowLayout);
 	appendItem(container, wrap, weight);
 	(void)g;
 }
