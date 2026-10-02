@@ -23,7 +23,7 @@ meson test -C build-cov      # just the suite
 | P2 | Contract macros (`ALWAYS` / `NEVER` / `testcase`) + assert policy | done |
 | P3 | Branch closure + boundary tests + coverage gate | done (mechanism; modules close incrementally via the ratchet) |
 | P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done (OOM; I/O injection pending) |
-| P5 | Fuzzing (config/JSON, wavetable) + seed corpus | in progress |
+| P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
 | P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/`-ftrapv`) | todo |
 | P7 | Mutation testing | todo |
 | P8 | Process (regression-per-bug, release checklist) | todo |
@@ -76,6 +76,24 @@ what closes `wavetable.c` to 100% branch. The same harness is the plan for the
 
 Because the shims only intercept calls from linked objects (not libc internals)
 and are disabled before process exit, gcov profiling is unaffected.
+
+## Fuzzing (P5)
+
+`fuzz/` holds libFuzzer harnesses; `meson/fuzz.sh [target ...] [--time S]`
+builds and runs them with `-fsanitize=fuzzer,address,undefined`:
+
+- `wav` — `src/io.c:load_wav_sample` (untrusted WAV files)
+- `config` — `src/io/config_io.c` (settings / theme JSON)
+
+Fuzz input reaches the file-opening loaders through an anonymous memfd
+(`/proc/self/fd/N`), so nothing touches disk. Seeds and regression inputs live
+in `fuzz/corpus/<target>/`. `meson/fuzz.sh` probes for a clang that has the
+libFuzzer runtime; the Fil-C `clang` on this box does not ship compiler-rt, so
+it selects `/usr/lib/llvm/21/bin/clang`.
+
+The `wav` target immediately found four real defects (I13–I16). After fixing
+them, the corpus plus 150 s of fuzzing (100k+ executions) run clean, and the
+`config` target found nothing.
 
 ## Using the macros
 
@@ -212,6 +230,53 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: same lesson as I8, one level up — *any* assertion mechanism
   (assert, ALWAYS/NEVER) is a coverage liability when enabled. Pin coverage
   builds to the asserted-off configuration.
+
+### I13 — WAV loader read past the decoded buffer (heap-buffer-overflow)
+
+- Symptom: ASan aborts on the first corpus seed: `READ of size 4`,
+  heap-buffer-overflow, inside `load_wav_sample`.
+- Cause: a debug loop printed `data[0..9]` unconditionally, but `data` holds
+  `length` floats and `length` can be < 10.
+- Fix: removed the debug print loop (both the 8- and 16-bit branches). Fixed
+  by `meson/fuzz.sh wav`, regression input kept in `fuzz/corpus/wav/`.
+
+### I14 — WAV frame count wrong for non-stereo files (OOB read)
+
+- Symptom: fuzzer's next crash, `READ of size 2` (an int16 read) in the 16-bit
+  path, e.g. a header with `numChannels = 1537`.
+- Cause: `length = subchunk2Size / (bitsPerSample/4)` and the per-channel inner
+  loop indexed `pcm_data[i*numChannels + ch]`. That formula only happens to be
+  right for stereo; for any other channel count the loop read past `pcm_data`.
+- Fix: `length` is now the true interleaved frame count,
+  `subchunk2Size / (channels * bytesPerSample)`, and the index uses the
+  validated `channels`. Note the behaviour change: mono WAVs previously loaded
+  at half length; they are now correct.
+
+### I15 — `Sample.name` leaked on pool teardown
+
+- Symptom: LeakSanitizer: "16 byte(s) leaked in 1 allocation(s)" after a WAV
+  load.
+- Cause: `loadSample` mallocs `sample->name`, but `freeSamplePool` freed only
+  the `Sample` structs.
+- Fix: `freeSamplePool` now frees `samples[i]->name` before the struct.
+  (`Sample.data` points into the pool arena and must not be freed separately.)
+
+### I16 — untrusted `subchunk2Size` drove a multi-gigabyte malloc
+
+- Symptom: libFuzzer "out-of-memory (malloc(8523326992))".
+- Cause: the loader sized `data` from the file's header `subchunk2Size`
+  without bounding it.
+- Fix: reject a data chunk larger than `MAX_SAMPLE_POOL_BYTES` before any
+  allocation — nothing larger than the pool can be stored anyway. Mallocs of
+  `data`/`pcm_data` are also null-checked now (loop-until-clean applies here).
+
+### I17 — no clang with libFuzzer on PATH
+
+- Symptom: `-fsanitize=fuzzer,address` fails to link; the `clang` on PATH is
+  Fil-C 20 and ships no compiler-rt.
+- Cause: Fil-C is an instrumented clang without the `libclang_rt.*` archives.
+- Fix: `meson/fuzz.sh` probes candidates and picks
+  `/usr/lib/llvm/21/bin/clang` (LLVM 19 also present). Override with `FUZZ_CC`.
 
 ### I6 — `ALWAYS(x);` as a bare statement breaks `-Wunused-value`
 

@@ -21,6 +21,7 @@ compile_commands.json
 build/
 build-cov/
 build-gc/
+build-fuzz/
 meson-private/
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o

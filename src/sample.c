@@ -39,6 +39,9 @@ void freeSamplePool(SamplePool *sp) {
 	if(!sp) return;
 
 	for(size_t i = 0; i < sp->sampleCount; i++) {
+		/* Sample.data points into the pool arena (freed below); only the
+		 * separately-allocated name is owned here. */
+		free(sp->samples[i]->name);
 		free(sp->samples[i]);
 	}
 	free(sp->samples);
@@ -52,6 +55,12 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 		return;
 	}
 	size_t dataSize = length * sizeof(float);
+	/* The pool arena is a fixed MAX_SAMPLE_POOL_BYTES block; refuse a sample
+	 * that would run past the end instead of overflowing it. */
+	if(length < 0 || sp->memoryUsed + dataSize > (size_t)MAX_SAMPLE_POOL_BYTES) {
+		printf("Sample pool exhausted\n");
+		return;
+	}
 	float *sampleData = (float *)((char *)sp->sampleData + sp->memoryUsed);
 
 	memcpy(sampleData, data, dataSize);
@@ -62,6 +71,10 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 	sample->data = sampleData;
 
 	sample->name = (char *)malloc(strlen(name) + 1);
+	if(!sample->name) {
+		free(sample);
+		return;
+	}
 	strcpy(sample->name, name);
 	sample->bit = bit;
 	sample->length = length;
