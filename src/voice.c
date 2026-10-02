@@ -1250,8 +1250,10 @@ GranularProcessor *createGranularProcessor(Sample *s) {
 		gp->windowIndex[i] = 0;
 	}
 	for(int i = 0; i < GRAIN_COUNT; i++) {
-		float startPos = rand() * GRANULAR_BUFFER_SIZE / 4.0;
-		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", rand() * GRANULAR_BUFFER_SIZE / 4.0, 0.0f, (float)GRANULAR_BUFFER_SIZE);
+		/* Scale in floating point: rand() * GRANULAR_BUFFER_SIZE overflows
+		 * int (signed overflow, UB — caught by UBSan). */
+		float startPos = (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f;
+		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f, 0.0f, (float)GRANULAR_BUFFER_SIZE);
 		gp->grainReadPos[i] = startPos;
 	}
 

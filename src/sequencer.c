@@ -180,10 +180,21 @@ void addBlankIfEmpty(PatternList *patternList, Arranger *arranger, int sequencer
 
 int *getStep(PatternList *patternList, int patternIndex, int noteIndex) {
 	// printf("getstep\n");
+	if(!patternList || patternIndex < 0 || patternIndex >= MAX_PATTERNS
+	   || noteIndex < 0 || noteIndex >= MAX_SEQUENCE_LENGTH) {
+		return NULL;
+	}
 	return patternList->patterns[patternIndex].notes[noteIndex];
 }
 
 int *getCurrentStep(PatternList *patternList, int patternIndex, int noteIndex) {
+	/* patternIndex comes from the arranger, where -1 means "no pattern in
+	 * this cell"; enforce the array bounds rather than indexing patterns[-1]
+	 * (caught by UBSan). Callers must handle NULL. */
+	if(!patternList || patternIndex < 0 || patternIndex >= MAX_PATTERNS
+	   || noteIndex < 0 || noteIndex >= MAX_SEQUENCE_LENGTH) {
+		return NULL;
+	}
 	return patternList->patterns[patternIndex].notes[noteIndex];
 }
 
@@ -307,7 +318,7 @@ void advanceSequencerStep(Sequencer *sequencer, PatternList *patternList, Arrang
 	for(int c = 0; c < arranger->enabledChannels; c++) {
 		if(sequencer->running[c] && trigger) {
 			int *note = getCurrentStep(patternList, sequencer->pattern_index[c], sequencer->playhead_index[c]);
-			if(note[0] != OFF) {
+			if(note != NULL && note[0] != OFF) {
 				trigger(ctx, c, note);
 			}
 		}

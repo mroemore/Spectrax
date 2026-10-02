@@ -1233,9 +1233,11 @@ static int test_lfo_shape_param(void) {
     setParameterBaseValue(lfo->data.lfo.shape, 999.0f);
     ASSERT_EQ(getParameterValueAsInt(lfo->data.lfo.shape), LS_RMP, "out-of-range clamps to LS_RMP");
 
-    /* removeMod removes the shape param */
+    /* removeMod frees the LFO (and its shape Parameter), so capture the shape
+     * pointer *before* the call; dereferencing lfo afterwards is a UAF. */
+    Parameter *shape = lfo->data.lfo.shape;
     ASSERT_TRUE(removeMod(ml, pl, lfo), "removeMod removes the LFO");
-    ASSERT_TRUE(!paramRegistered(pl, lfo->data.lfo.shape), "shape param removed with the LFO");
+    ASSERT_TRUE(!paramRegistered(pl, shape), "shape param removed with the LFO");
 
     freeParamList(pl);
     freeModList(ml);

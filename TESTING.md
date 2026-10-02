@@ -24,7 +24,7 @@ meson test -C build-cov      # just the suite
 | P3 | Branch closure + boundary tests + coverage gate | done (mechanism; modules close incrementally via the ratchet) |
 | P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done (OOM; I/O injection pending) |
 | P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
-| P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/`-ftrapv`) | todo |
+| P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/-ftrapv, char signedness) | done |
 | P7 | Mutation testing | todo |
 | P8 | Process (regression-per-bug, release checklist) | todo |
 
@@ -94,6 +94,26 @@ it selects `/usr/lib/llvm/21/bin/clang`.
 The `wav` target immediately found four real defects (I13–I16). After fixing
 them, the corpus plus 150 s of fuzzing (100k+ executions) run clean, and the
 `config` target found nothing.
+
+## Dynamic-analysis matrix (P6)
+
+`meson/matrix.sh [config ...]` builds and runs the whole suite under each
+configuration; it exits non-zero if any gating config fails.
+
+| config | build | gates |
+|--------|-------|-------|
+| `asan` | clang `-fsanitize=address,undefined`, leaks off | yes |
+| `trapv` | gcc `-ftrapv` (signed-overflow traps) | yes |
+| `uchar` / `schar` | gcc `-funsigned-char` / `-fsigned-char` | yes |
+| `valgrind` | plain gcc build, every test under valgrind | report-only |
+| `m32` | gcc `-m32` | skipped (no multilib) |
+
+Current state: **asan / trapv / uchar / schar PASS**, valgrind REPORT, m32 SKIP.
+MSan is not viable here (needs an instrumented libc).
+
+The matrix found three real defects, all fixed (I20): a deref-after-free in
+`test_modsystem`, a signed-overflow in `voice.c` grain positions, and a
+`patterns[-1]` out-of-bounds in `sequencer.c` `getStep`/`getCurrentStep`.
 
 ## Using the macros
 
@@ -277,6 +297,55 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Cause: Fil-C is an instrumented clang without the `libclang_rt.*` archives.
 - Fix: `meson/fuzz.sh` probes candidates and picks
   `/usr/lib/llvm/21/bin/clang` (LLVM 19 also present). Override with `FUZZ_CC`.
+
+### I18 — gcc has no sanitizer runtime on this box
+
+- Symptom: `meson setup -Db_sanitize=address,undefined` fails the compiler
+  sanity check: `cannot find libasan_preinit.o / -lasan / -lubsan`. Also,
+  ccache-as-linker makes meson reject `b_sanitize` outright ("Linker ccache cc
+  does not support sanitizer arguments").
+- Cause: Void's gcc 14 ships no `libasan`/`libubsan`, and meson can't probe the
+  sanitizer through the ccache wrapper.
+- Fix: the matrix's `asan` config passes `-fsanitize=…` via `c_args`/`c_link_args`
+  (bypassing the `b_sanitize` probe) and builds with clang 21, which has
+  compiler-rt.
+- Takeaway: prefer explicit `c_args` over `b_sanitize` when a ccache-wrapped
+  compiler or a runtime-less gcc is in play.
+
+### I19 — valgrind is report-only for now
+
+- Symptom: 7/20 tests fail under `valgrind --leak-check=full`.
+- Cause: two distinct classes, neither a phase-blocking defect —
+  (a) un-freeable app singletons: `createApplicationState` allocates an
+  `InputState` and there is **no** `freeApplicationState`, so every test that
+  builds one leaks 512 B (and there is no `freeInputState`); and
+  (b) third-party noise: the OpenGL/raylib/portaudio-backed tests
+  (`vizulobe_*`, `test_mod_voice`) report invalid reads/writes and
+  uninitialised-value errors inside the libraries.
+- Fix: `matrix.sh` gates on asan/trapv/uchar/schar and reports valgrind
+  without failing on it. Leak triage (add `freeApplicationState` /
+  `freeInputState`, suppress third-party) is a backlog item.
+- Takeaway: a leak checker is only a gate once the third-party and
+  process-lifetime noise is seperated from first-party defects. First-party
+  leak coverage for the fuzzed paths still comes from libFuzzer's LSan (which
+  is how I15 surfaced).
+
+### I20 — three defects found and fixed by the matrix
+
+- **test UAF** (`test_modsystem.c`, `test_lfo_shape_param`): the test read
+  `lfo->data.lfo.shape` *after* `removeMod()` freed the LFO (ASan
+  heap-use-after-free, readable at +112 of a 952-byte region). Fix: capture the
+  shape pointer before `removeMod`.
+- **signed overflow** (`voice.c`, granular grain positions):
+  `rand() * GRANULAR_BUFFER_SIZE` overflows `int` (UBSan). Fix: scale in
+  floating point (`(float)rand() * …`). Behaviour note: the previous value was
+  UB anyway; grain start positions are now a well-defined (larger) float.
+- **negative array index** (`sequencer.c` `getStep` / `getCurrentStep`):
+  `patterns[patternIndex]` with `patternIndex == -1` (the arranger's "no
+  pattern" marker) → `index -1 out of bounds for type 'Pattern[255]'` (UBSan),
+  which aborted `test_voice`. Fix: bounds-guard both functions (return NULL on
+  out-of-range, incl. negative / `noteIndex` out of range) and null-check the
+  callers (`sequencer.c` trigger loop, `test_voice.c`).
 
 ### I6 — `ALWAYS(x);` as a bare statement breaks `-Wunused-value`
 

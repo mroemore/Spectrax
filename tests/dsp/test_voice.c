@@ -481,7 +481,7 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
         incrementSequencer(seq, pl, arr);
         if (seq->running[0]) {
             int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
-            if (note[0] != OFF) {
+            if (note != NULL && note[0] != OFF) {
                 Voice *v = getFreeVoice(e.vm, 0);
                 triggerVoice(v, note);
             }
@@ -576,7 +576,7 @@ static int test_note_delete_autoload_song(void) {
                 incrementSequencer(seq, pl, arr);
                 if (seq->running[0]) {
                     int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
-                    if (note[0] != OFF) {
+                    if (note != NULL && note[0] != OFF) {
                         Voice *v = getFreeVoice(e.vm, 0);
                         triggerVoice(v, note);
                     }
