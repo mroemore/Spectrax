@@ -79,3 +79,47 @@ exe = executable('test_vizfx',
   dependencies: system_deps,
 )
 test('test_vizfx', exe)
+
+# Contract-macro self-test (src/verify.h). Pure: links core_lib only for the
+# spxCoverage hook that testcase() references in coverage builds.
+exe = executable('test_verify',
+  files('dsp/test_verify.c'),
+  link_with: [core_lib],
+  include_directories: inc,
+  dependencies: [m],
+)
+test('test_verify', exe)
+
+# Pure-module boundary suites: notes (string formatting) and wavetable
+# (fixed-arena packing + capacity edges).
+exe = executable('test_notes',
+  files('dsp/test_notes.c'),
+  link_with: [core_lib],
+  include_directories: inc,
+  dependencies: [m],
+)
+test('test_notes', exe)
+
+exe = executable('test_wavetable',
+  files('dsp/test_wavetable.c'),
+  link_with: [core_lib],
+  include_directories: inc,
+  dependencies: [m],
+)
+test('test_wavetable', exe)
+
+# OOM fault injection: allocation calls in the linked object are redirected
+# through tests/support/faultinject.c via the linker's --wrap mechanism.
+exe = executable('test_wavetable_fault',
+  files('dsp/test_wavetable_fault.c', 'support/faultinject.c'),
+  link_with: [core_lib],
+  include_directories: [inc, include_directories('support')],
+  dependencies: [m],
+  link_args: [
+    '-Wl,--wrap=malloc',
+    '-Wl,--wrap=calloc',
+    '-Wl,--wrap=realloc',
+    '-Wl,--wrap=free',
+  ],
+)
+test('test_wavetable_fault', exe)

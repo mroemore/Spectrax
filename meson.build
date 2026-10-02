@@ -11,6 +11,14 @@ project('spectrax', 'c',
 
 cc = meson.get_compiler('c')
 
+# Coverage builds enable testcase() and disable assert()/ALWAYS()/NEVER()
+# assertions (via NDEBUG). Both would otherwise compile to decision edges no
+# test can take, i.e. uncoverable branches at every site. Run the suite under
+# a debug build to enforce the contracts, under a coverage build to measure.
+if get_option('b_coverage')
+  add_project_arguments('-DSPX_COVERAGE_TEST=1', '-DNDEBUG', language: 'c')
+endif
+
 # Bundled third-party libraries live in include/ (headers) and lib/linux
 # (static libs). raylib + kissfft are vendored; portaudio is a system dep.
 libdir = meson.current_source_dir() / 'lib' / 'linux'

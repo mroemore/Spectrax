@@ -19,6 +19,8 @@ rg35xx-copy.sh
 TODO.md
 compile_commands.json
 build/
+build-cov/
+build-gc/
 meson-private/
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o
