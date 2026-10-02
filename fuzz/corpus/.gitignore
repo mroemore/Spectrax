@@ -1,0 +1,8 @@
+# Only curated inputs are tracked: hand-written seeds (seed*) and inputs kept
+# for regression (regress*). libFuzzer's coverage-increasing units are
+# machine-generated and local-only.
+*
+!*/
+!seed*
+!regress*
+!.gitignore
