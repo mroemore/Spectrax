@@ -9,10 +9,11 @@
 #   trapv     gcc -ftrapv                          (signed-overflow traps)
 #   uchar     gcc -funsigned-char                  (char signedness)
 #   schar     gcc -fsigned-char
-#   valgrind  plain build, every test under valgrind (definite leaks only).
-#             REPORT-ONLY: it currently surfaces un-freeable app singletons
-#             (ApplicationState has no destructor) and third-party GL/raylib
-#             noise, so it does not gate. See TESTING.md I19.
+#   valgrind  plain build, every test under valgrind. Gates on memcheck errors
+#             (invalid read/write, use-after-free, uninitialised value); leaks
+#             are reported but not gated (test-harness cleanup backlog, see
+#             TESTING.md I19). --max-stackframe covers the suite's ~2.3 MB
+#             local TestEnv, which otherwise trips valgrind's stack heuristic.
 #   m32       gcc -m32                             (skipped without multilib)
 #
 # Not viable on a stock Void box (documented, skipped): MSan needs an
@@ -66,8 +67,8 @@ run_one() {
     valgrind)
       dir=build-matrix-valgrind
       setup_build "$dir" "" || rc=1
-      [ "$rc" = 0 ] && { meson test -C "$ROOT/$dir" \
-        --wrapper="valgrind --error-exitcode=1 --leak-check=full --errors-for-leak-kinds=definite --suppressions=$ROOT/valgrind.supp" \
+      [ "$rc" = 0 ] && { meson test -C "$ROOT/$dir" --timeout-multiplier=20 \
+        --wrapper="valgrind --error-exitcode=1 --leak-check=full --errors-for-leak-kinds=none --max-stackframe=8000000 --suppressions=$ROOT/valgrind.supp" \
         >/dev/null 2>&1 || rc=1; }
       ;;
     m32)
@@ -87,8 +88,6 @@ run_one() {
   esac
   if [ "$rc" = 0 ]; then
     SUMMARY+=("$(printf '%-9s PASS' "$cfg")")
-  elif [ "$cfg" = valgrind ]; then
-    SUMMARY+=("$(printf '%-9s REPORT (non-gating — see TESTING.md I19)' "$cfg")")
   else
     SUMMARY+=("$(printf '%-9s FAIL' "$cfg")")
   fi
@@ -97,12 +96,7 @@ run_one() {
 
 overall=0
 for cfg in "${CONFIGS[@]}"; do
-  run_one "$cfg"
-  rc=$?
-  # valgrind is report-only (see header); everything else gates.
-  if [ "$rc" != 0 ] && [ "$cfg" != valgrind ]; then
-    overall=1
-  fi
+  run_one "$cfg" || overall=1
 done
 
 echo

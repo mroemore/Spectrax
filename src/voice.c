@@ -39,12 +39,16 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 		 * can find the channel in vm->instruments[] on first edit. */
 		vm->instruments[i]->metaChannel = i;
 		/* Task 6: the boot preset is a stand-in for "no preset yet"
-		 * (presetBank starts empty — patches[0].name is uninitialised).
-		 * Zero the name so applyInstrumentPreset's trailing
-		 * markPresetLoaded call skips the snapshot capture and leaves
-		 * loaded.name empty (no baseline). */
+		 * (presetBank starts empty — patches[0] is uninitialised).
+		 * Zero the WHOLE patch, not just the name: applyInstrumentPreset
+		 * below switches on patches[0].voiceType, so reading an
+		 * uninitialised voiceType/patch is UB (valgrind:
+		 * "conditional jump depends on uninitialised value"). A zeroed
+		 * Preset is voiceType 0 (VOICE_TYPE_SAMPLE) with empty data — a
+		 * deterministic, silent default. The zeroed name also makes
+		 * markPresetLoaded skip the snapshot capture (no baseline). */
 		if(pb->presetCount == 0) {
-			pb->patches[0].name[0] = '\0';
+			memset(&pb->patches[0], 0, sizeof(Preset));
 		}
 		applyInstrumentPreset(vm->instruments[i], pb->patches[0]);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);

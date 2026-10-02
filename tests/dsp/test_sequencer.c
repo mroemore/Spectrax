@@ -71,8 +71,7 @@ static int test_increment_scene_requires_selected_pattern(void) {
     incrementScene(as);
     ASSERT_EQ(as->currentScene, SCENE_PATTERN,
               "scene advances once a pattern is selected");
-    free(as->inputState);
-    free(as);
+    freeApplicationState(as);
     printf("PASS test_increment_scene_requires_selected_pattern\n");
     return 0;
 }

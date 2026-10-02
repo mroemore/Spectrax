@@ -119,6 +119,7 @@ typedef struct {
 typedef void (*SceneInputHandler)(InputState *input, AppStateData *data);
 
 InputState *createInputState(InputDeviceType type);
+void freeInputState(InputState *state);
 bool isKeyHeld(InputState *state, KeyMapping keyCode);
 bool isKeyJustPressed(InputState *state, KeyMapping keyCode);
 void updateInputState(InputState *state);

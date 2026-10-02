@@ -105,15 +105,17 @@ configuration; it exits non-zero if any gating config fails.
 | `asan` | clang `-fsanitize=address,undefined`, leaks off | yes |
 | `trapv` | gcc `-ftrapv` (signed-overflow traps) | yes |
 | `uchar` / `schar` | gcc `-funsigned-char` / `-fsigned-char` | yes |
-| `valgrind` | plain gcc build, every test under valgrind | report-only |
+| `valgrind` | plain gcc build, every test under valgrind (gates on memcheck errors; leaks reported) | yes |
 | `m32` | gcc `-m32` | skipped (no multilib) |
 
-Current state: **asan / trapv / uchar / schar PASS**, valgrind REPORT, m32 SKIP.
+Current state: **asan / trapv / uchar / schar / valgrind PASS**, m32 SKIP.
 MSan is not viable here (needs an instrumented libc).
 
-The matrix found three real defects, all fixed (I20): a deref-after-free in
-`test_modsystem`, a signed-overflow in `voice.c` grain positions, and a
-`patterns[-1]` out-of-bounds in `sequencer.c` `getStep`/`getCurrentStep`.
+The matrix and valgrind found five real defects, all fixed (I20, I21): a
+deref-after-free in `test_modsystem`, a signed-overflow in `voice.c` grain
+positions, a `patterns[-1]` out-of-bounds in `sequencer.c`
+`getStep`/`getCurrentStep`, an uninitialised-`voiceType` read in
+`createVoiceManager`, and uninitialised FFT buffers read in `analysis`.
 
 ## Using the macros
 
@@ -312,23 +314,32 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: prefer explicit `c_args` over `b_sanitize` when a ccache-wrapped
   compiler or a runtime-less gcc is in play.
 
-### I19 — valgrind is report-only for now
+### I19 — making valgrind a gate
 
-- Symptom: 7/20 tests fail under `valgrind --leak-check=full`.
-- Cause: two distinct classes, neither a phase-blocking defect —
-  (a) un-freeable app singletons: `createApplicationState` allocates an
-  `InputState` and there is **no** `freeApplicationState`, so every test that
-  builds one leaks 512 B (and there is no `freeInputState`); and
-  (b) third-party noise: the OpenGL/raylib/portaudio-backed tests
-  (`vizulobe_*`, `test_mod_voice`) report invalid reads/writes and
-  uninitialised-value errors inside the libraries.
-- Fix: `matrix.sh` gates on asan/trapv/uchar/schar and reports valgrind
-  without failing on it. Leak triage (add `freeApplicationState` /
-  `freeInputState`, suppress third-party) is a backlog item.
-- Takeaway: a leak checker is only a gate once the third-party and
-  process-lifetime noise is seperated from first-party defects. First-party
-  leak coverage for the fuzzed paths still comes from libFuzzer's LSan (which
-  is how I15 surfaced).
+- Symptom: initially 7/20 tests failed under `valgrind --leak-check=full`,
+  with three unrelated-looking causes.
+- Cause + fix:
+  1. **Valgrind stack heuristic.** `make_env`'s `TestEnv` is ~2.3 MB on the
+     stack (over valgrind's 2 MB `--max-stackframe`), so valgrind reported
+     ~8 M bogus "invalid read" errors and "client switching stacks" warnings
+     in `test_voice`. Not a bug: pass `--max-stackframe=8000000`.
+  2. **Un-freeable app singletons.** `createApplicationState` allocated an
+     `InputState` with no `freeApplicationState`/`freeInputState`, so every
+     test that built one leaked. Fixed by adding both destructors (and freeing
+     `as` on the inputState-failure path).
+  3. **Two real uninitialised-value bugs** — see I21.
+- Result: valgrind now **gates** on memcheck errors (invalid read/write, UAF,
+  uninitialised value) via `--errors-for-leak-kinds=none`. The repo's
+  `valgrind.supp` already carries comprehensive third-party suppressions
+  (portaudio/ALSA/pipewire, gallium/GLX/glfw), so no extra signal suppression
+  was needed — the "noise" was one mis-sized stack frame plus real bugs.
+- Still reported, not gated: **leaks**. What remains is mostly *test-harness*
+  cleanup (tests build large `TestEnv`/param structures and don't free them),
+  not product leaks. Gating on leaks needs per-test teardown first (backlog).
+  First-party leak coverage for the fuzzed paths comes from libFuzzer's LSan
+  (which is how I15 surfaced).
+- Note: valgrind slows the suite a lot, so `matrix.sh` runs it with
+  `--timeout-multiplier=20` (the vizulobe GL tests otherwise time out).
 
 ### I20 — three defects found and fixed by the matrix
 
@@ -346,6 +357,20 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
   which aborted `test_voice`. Fix: bounds-guard both functions (return NULL on
   out-of-range, incl. negative / `noteIndex` out of range) and null-check the
   callers (`sequencer.c` trigger loop, `test_voice.c`).
+
+### I21 — two uninitialised-value bugs found by valgrind
+
+- **Uninitialised `voiceType`** (`voice.c`, `createVoiceManager`): when the
+  `presetBank` is empty the code zeroed only `patches[0].name`, then
+  `applyInstrumentPreset` switched on the still-uninitialised
+  `patches[0].voiceType` (valgrind: "conditional jump depends on uninitialised
+  value" — 16 898 errors in `test_mod_voice`). Fix: `memset` the whole
+  `patches[0]`; a zeroed Preset is a deterministic, silent default.
+- **Uninitialised FFT buffers** (`fft.c`, `initFFT`): `tbuf`/`fbuf`/`vals`/
+  `cpxvals` were `malloc`ed and then read by `processFFTData` before being
+  populated, so `analysis.c`'s `sqrtf` consumed garbage (valgrind: 4096 errors
+  in `test_analysis`; the test had even worked around the symptom via
+  `MALLOC_PERTURB_`). Fix: `calloc` the buffers.
 
 ### I6 — `ALWAYS(x);` as a bare statement breaks `-Wunused-value`
 
