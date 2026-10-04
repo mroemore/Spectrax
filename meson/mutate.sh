@@ -1,36 +1,38 @@
 #!/usr/bin/env bash
-# meson/mutate.sh [test-name ...] [--seed N] [--rate N]
+# meson/mutate.sh [test-name ...] [--quiet]
 #
-# Heuristic-free mutation testing. Builds the test binaries with the allocator
-# wrappers replaced by ones that flip a byte of allocated/freed memory on a
-# seeded schedule (-DSPX_MUTATE), then runs the suite N times with different
-# seeds. A run that CRASHES or FAILS proves the tests constrain the mutated
-# state ("killed"); a run that passes means the mutation survived that seed.
+# Deterministic, dependency-free mutation testing. Every listed target is a
+# self-contained input-mutation harness: it flips bits of the input the code
+# under test consumes, runs the loader/parser, and requires its own assertions
+# to notice. A survivor the target does not accept fails the target.
 #
-# This is the deterministic, dependency-free alternative to Mull: no clang
-# plugin, no colouring, no toolchain coupling. Full-strength mutation scores
-# need a real framework (and gcc here has no libasan, so a Mull toolchain is
-# not viable — see TESTING.md).
+# Mutation is over *input bytes*, not allocator bytes: an allocation-time flip
+# is overwritten by the very fread that fills the buffer, so it never reaches
+# an assertion (TESTING.md I23). Input bytes are what the asserted values are
+# derived from.
 #
-# Default: 5 seeds, rate 1 (mutate every allocation). Targets default to the
-# pure-module suites (no third-party allocator traffic to drown the signal).
+# Not Mull: there is no mutation tool on this box, gcc ships no sanitizer
+# runtime, and a Mull toolchain would pin the compiler. The seeded, exhaustive
+# harnesses run anywhere and need no plugin. They report a definite
+# killed/survived count, and `--verbose` (MUTATE_VERBOSE) lists survivors.
+#
+# Targets are deterministic (they sweep, they do not sample), so there is no
+# seed sweep here: MUTATE_SEED only matters when a harness chooses to sample.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIR="$ROOT/build-mutate"
-SEEDS=5
-RATE=1
+QUIET=0
 TARGETS=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --seed) SEEDS="$2"; shift 2 ;;
-    --rate) RATE="$2"; shift 2 ;;
+    --quiet) QUIET=1; shift ;;
     -*) echo "mutate.sh: unknown option: $1" >&2; exit 2 ;;
     *) TARGETS+=("$1"); shift ;;
   esac
 done
-[ "${#TARGETS[@]}" -eq 0 ] && TARGETS=(test_wavetable_fault test_io_fault)
+[ "${#TARGETS[@]}" -eq 0 ] && TARGETS=(test_mutate_input)
 
 echo ">> configuring $DIR (-DSPX_MUTATE)"
 CCACHE_DISABLE=1 meson setup --wipe "$DIR" "$ROOT" -Dc_args=-DSPX_MUTATE >/dev/null 2>&1 || {
@@ -38,8 +40,8 @@ CCACHE_DISABLE=1 meson setup --wipe "$DIR" "$ROOT" -Dc_args=-DSPX_MUTATE >/dev/n
 CCACHE_DISABLE=1 ninja -C "$DIR" >/dev/null 2>&1 || {
   echo "mutate.sh: build failed" >&2; exit 2; }
 
-killed=0
-survived=0
+passed=0
+failed=0
 missing=()
 for t in "${TARGETS[@]}"; do
   exe=""
@@ -50,25 +52,25 @@ for t in "${TARGETS[@]}"; do
     missing+=("$t")
     continue
   fi
-  for ((seed = 1; seed <= SEEDS; seed++)); do
-    out=$(MUTATE_SEED=$seed MUTATE_RATE=$RATE "$exe" 2>&1)
-    rc=$?
-    if [ "$rc" -eq 0 ]; then
-      survived=$((survived + 1))
-      printf '  %-20s seed=%-3d SURVIVED\n' "$t" "$seed"
-    else
-      killed=$((killed + 1))
-      printf '  %-20s seed=%-3d killed (rc=%d)\n' "$t" "$seed" "$rc"
-    fi
-  done
+  out=$(MUTATE_SEED="${MUTATE_SEED:-1}" "$exe" 2>&1)
+  rc=$?
+  if [ "$QUIET" = 0 ]; then
+    echo "$out" | grep -E "mutation target|killed=|data-chunk" | sed 's/^/  /'
+  fi
+  if [ "$rc" -eq 0 ]; then
+    passed=$((passed + 1))
+    printf '  %-20s PASS\n' "$t"
+  else
+    failed=$((failed + 1))
+    printf '  %-20s FAIL (rc=%d)\n' "$t" "$rc"
+  fi
 done
 
 echo
 echo "=== mutation summary ==="
 echo "targets: ${TARGETS[*]}"
-echo "seeds:   $SEEDS   rate: $RATE"
-echo "killed:  $killed   survived: $survived"
+echo "passed:  $passed   failed: $failed"
 if [ "${#missing[@]}" -gt 0 ]; then
   echo "missing: ${missing[*]}"
 fi
-[ "$survived" -eq 0 ] && exit 0 || exit 1
+[ "$failed" -eq 0 ]

@@ -108,10 +108,11 @@ exe = executable('test_wavetable',
 )
 test('test_wavetable', exe)
 
-# OOM fault injection: allocation calls in the linked object are redirected
-# through tests/support/faultinject.c via the linker's --wrap mechanism.
+# OOM + I/O fault injection: allocation and stdio calls in the linked object are
+# redirected through tests/support/faultinject.c via the linker's --wrap
+# mechanism. (Mutation testing is separate; see test_mutate_input below.)
 exe = executable('test_wavetable_fault',
-  files('dsp/test_wavetable_fault.c', 'support/faultinject.c', 'support/mutate.c'),
+  files('dsp/test_wavetable_fault.c', 'support/faultinject.c'),
   link_with: [core_lib],
   include_directories: [inc, include_directories('support')],
   dependencies: [m],
@@ -124,14 +125,13 @@ exe = executable('test_wavetable_fault',
     '-Wl,--wrap=fread',
     '-Wl,--wrap=fclose',
     '-Wl,--wrap=fopen64',
-
   ],
 )
 test('test_wavetable_fault', exe)
 
 # I/O + OOM fault injection for the WAV loader (fopen/fread and the allocator).
 exe = executable('test_io_fault',
-  files('dsp/test_io_fault.c', 'support/faultinject.c', 'support/mutate.c'),
+  files('dsp/test_io_fault.c', 'support/faultinject.c'),
   link_with: [core_lib],
   include_directories: [inc, include_directories('support')],
   dependencies: [m],
@@ -144,7 +144,18 @@ exe = executable('test_io_fault',
     '-Wl,--wrap=fread',
     '-Wl,--wrap=fclose',
     '-Wl,--wrap=fopen64',
-
   ],
 )
 test('test_io_fault', exe)
+
+# Input-byte mutation testing (P7): flips seeded bits of a valid WAV and
+# requires the loader's assertions to notice. No --wrap: it perturbs the file,
+# not the allocator.
+exe = executable('test_mutate_input',
+  files('dsp/test_mutate_input.c', 'support/mutate.c'),
+  link_with: [core_lib],
+  include_directories: [inc, include_directories('support')],
+  dependencies: [m],
+  c_args: ['-DSPX_MUTATE'],
+)
+test('test_mutate_input', exe)

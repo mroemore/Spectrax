@@ -62,9 +62,6 @@ void *__wrap_malloc(size_t size) {
 	void *p = __real_malloc(size);
 	if(p) {
 		g_live++;
-#ifdef SPX_MUTATE
-		mutate_alloc(p, size);
-#endif
 	}
 	return p;
 }
@@ -76,9 +73,6 @@ void *__wrap_calloc(size_t n, size_t size) {
 	void *p = __real_calloc(n, size);
 	if(p) {
 		g_live++;
-#ifdef SPX_MUTATE
-		mutate_alloc(p, n * size);
-#endif
 	}
 	return p;
 }
@@ -93,23 +87,10 @@ void *__wrap_realloc(void *ptr, size_t size) {
 	if(p && !ptr) {
 		g_live++;
 	}
-#ifdef SPX_MUTATE
-	if(p) {
-		mutate_alloc(p, size);
-	}
-#endif
 	return p;
 }
 
 void __wrap_free(void *ptr) {
-#ifdef SPX_MUTATE
-	if(ptr) {
-		/* Best-effort: malloc_usable_size needs <malloc.h>; mutate_alloc/
-		 * mutate_free tolerate a rough length. */
-		extern size_t malloc_usable_size(void *);
-		mutate_free(ptr, malloc_usable_size(ptr));
-	}
-#endif
 	if(ptr) {
 		g_live--;
 	}

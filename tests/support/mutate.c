@@ -2,21 +2,11 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
-/* Provided by the linker's --wrap mechanism (see tests/support/faultinject.c
- * for the matching __wrap_* shims; this file only implements the mutation
- * bookkeeping they call). */
-void *__real_malloc(size_t);
-void *__real_calloc(size_t, size_t);
-void *__real_realloc(void *, size_t);
-void  __real_free(void *);
-
-static uint32_t g_state = 0x9e3779b9u; /* xorshift32 state */
+static uint32_t g_state = 0x9e3779b9u;
 static unsigned int g_seed = 0x9e3779b9u;
 static unsigned int g_rate = 1;
-static unsigned int g_alloc_seen = 0;
-static unsigned int g_mutations = 0;
+static unsigned int g_steps = 0;
 static int g_last_index = 0;
 
 /* xorshift32: fast, deterministic, adequate for spreading the flip site. */
@@ -51,8 +41,7 @@ void mutate_reset(unsigned int seed, unsigned int rate) {
 	g_seed = seed ? seed : 0x9e3779b9u;
 	g_rate = rate > 0 ? rate : 1;
 	g_state = g_seed;
-	g_alloc_seen = 0;
-	g_mutations = 0;
+	g_steps = 0;
 	g_last_index = 0;
 }
 
@@ -70,40 +59,40 @@ int mutate_last_index(void) {
 	return g_last_index;
 }
 
-/* One byte of `base`+`len` is XORed with a random non-zero bit mask. Returns
- * the 1-based mutation index, or 0 if this allocation was not mutated. */
-int mutate_alloc(void *base, size_t len) {
+/* Decides whether this mutation step fires, and where. Returns a byte offset
+ * into [0,len) plus the bit to flip, or 0 if skipped. */
+static int mutate_step(size_t len, size_t *off, uint8_t *bit) {
 	configure_from_env();
-	if(base == NULL || len == 0) {
+	if(len == 0) {
 		return 0;
 	}
-	g_alloc_seen++;
-	if(g_rate > 1 && (g_alloc_seen % g_rate) != 0) {
+	g_steps++;
+	if(g_rate > 1 && (g_steps % g_rate) != 0) {
 		return 0;
 	}
 	uint32_t r = next_rand();
-	size_t off = r % len;
-	uint8_t bit = (uint8_t)(1u << ((r >> 16) & 7));
-	((uint8_t *)base)[off] ^= bit;
-	g_mutations++;
-	g_last_index = (int)g_mutations;
+	*off = r % len;
+	*bit = (uint8_t)(1u << ((r >> 16) & 7));
+	g_last_index = (int)(next_rand() & 0x7fffffff);
+	return 1;
+}
+
+int mutate_bytes(unsigned char *buf, size_t len) {
+	size_t off;
+	uint8_t bit;
+	if(buf == NULL || !mutate_step(len, &off, &bit)) {
+		return 0;
+	}
+	buf[off] ^= bit;
 	return g_last_index;
 }
 
-/* Same, applied just before a block is released. */
-int mutate_free(void *base, size_t len) {
-	configure_from_env();
-	if(base == NULL || len == 0) {
-		return 0;
+size_t mutate_pick_offset(size_t len) {
+	size_t off;
+	uint8_t bit;
+	(void)bit;
+	if(!mutate_step(len, &off, &bit)) {
+		return (size_t)-1;
 	}
-	if(g_rate > 1 && ((g_alloc_seen++) % g_rate) != 0) {
-		return 0;
-	}
-	uint32_t r = next_rand();
-	size_t off = r % len;
-	uint8_t bit = (uint8_t)(1u << ((r >> 16) & 7));
-	((uint8_t *)base)[off] ^= bit;
-	g_mutations++;
-	g_last_index = (int)g_mutations;
-	return g_last_index;
+	return off;
 }

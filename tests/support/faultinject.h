@@ -5,28 +5,20 @@
 #include <stdio.h>
 
 /*
- * Allocation- and I/O-failure injection, plus allocation-size lookup for the
- * mutation hooks, for tests.
+ * Allocation- and I/O-failure injection for tests.
  *
  * Build a test executable with
  *   -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -Wl,--wrap=free
- *   -Wl,--wrap=fopen -Wl,--wrap=fread -Wl,--wrap=fclose
+ *   -Wl,--wrap=fopen -Wl,--wrap=fread -Wl,--wrap=fclose -Wl,--wrap=fopen64
  * and link tests/support/faultinject.c into it. Calls from the linked objects
  * (i.e. the code under test) then route through the shims below. libc-internal
  * calls are unaffected.
  *
- * The shims also call mutate_alloc()/mutate_free() when -DSPX_MUTATE is set,
- * so the same support file powers P7's mutation runs (meson/mutate.sh).
+ * This file is injection only. Mutation testing is input-byte mutation and
+ * lives in tests/support/mutate.{h,c} (see meson/mutate.sh), deliberately
+ * separate: allocation-time flips are overwritten by the fread that fills the
+ * buffer, so they never reach an assertion (TESTING.md I23).
  */
-
-#ifdef SPX_MUTATE
-void *__real_malloc(size_t);
-void *__real_calloc(size_t, size_t);
-void *__real_realloc(void *, size_t);
-void  __real_free(void *);
-int mutate_alloc(void *base, size_t len);
-int mutate_free(void *base, size_t len);
-#endif
 
 /* Zero the counters and disable injection. Does NOT touch fi_live(). */
 void fi_reset(void);

@@ -25,7 +25,7 @@ meson test -C build-cov      # just the suite
 | P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done |
 | P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
 | P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/-ftrapv, char signedness) | done |
-| P7 | Mutation testing scaffold (seeded bit-flip runner) | tooling done; signal inconclusive — see I23 |
+| P7 | Mutation testing (input-byte, exhaustive) | done |
 | P8 | Process (regression-per-bug, release checklist, gates) | done |
 
 ## How to run — every gate
@@ -58,28 +58,34 @@ ln -sf ../../meson/pre-push .git/hooks/pre-push
 holds the release checklist. `docs/*` is gitignored in this project (I3), so the
 checklist is added with `git add -f docs/superpowers/plans/RELEASE-CHECKLIST.md`.)
 
-## Mutation testing scaffold (P7)
+## Mutation testing (P7)
 
-`tests/support/mutate.{h,c}` + `meson/mutate.sh` build a deterministic,
-dependency-free mutation runner. `mutate.sh` configures `build-mutate` with
-`-Dc_args=-DSPX_MUTATE`, so the fault-injection allocator shims flip one seeded
-byte of each allocated (and, on teardown, freed) block. The suite's own
-assertions are the oracle: a run that crashes or fails "kills" the mutant; a run
-that passes means that mutation survived. Seeds are reported, so any kill is
-reproducible (`MUTATE_SEED=N ./build-mutate/tests/<t>`).
+`tests/support/mutate.{h,c}` + `meson/mutate.sh` provide deterministic,
+dependency-free mutation testing. Each target is a self-contained
+**input-mutation harness**: it flips bits of the input the code under test
+consumes, runs the loader, and requires the harness's own assertions to notice.
+`tests/dsp/test_mutate_input.c` is the worked example — it sweeps every bit of a
+valid WAV (608 flips) and requires the loader to either refuse the image or
+decode a different PCM.
 
 ```sh
-./meson/mutate.sh                     # default targets, 5 seeds
-./meson/mutate.sh test_io_fault --seed 20 --rate 4
+./meson/mutate.sh                      # all targets (default: test_mutate_input)
+MUTATE_VERBOSE=1 ./build-mutate/tests/test_mutate_input   # list survivors
 ```
 
-Why not Mull: there is no mutation tool on this box, gcc ships no sanitizer
-runtime (I18), and a Mull toolchain would pin the compiler — the opposite of
-this portable stack. The seeded bit-flip runner is the trade-off we can run
-anywhere. **Its signal is currently inconclusive on the two targets** — every
-mutant survives, for reasons understood but not yet worth chasing (I23). The
-scaffold is in place so that a future pass can tune the mutation to genuinely
-reach the asserted data.
+Current result for the WAV loader: **killed 414, data-chunk survivors 0,
+ignored-header survivors 194.** The 194 are flips in header fields the loader
+does not read (`chunkSize`, `audioFormat`, `byteRate`, `blockAlign`, fmt size,
+…), so an unchanged decode is *correct*; those are reported, not gated. Only
+data-chunk survivors fail the target — a non-zero count there is a real gap
+(a flip in the audio that the loader silently accepted).
+
+Why input bytes and not allocator bytes: an allocation-time flip is overwritten
+by the very `fread` that fills the buffer, so it never reaches an assertion —
+the defeated first design, kept as I23 for the lesson. Why not Mull: there is no
+mutation tool on this box, gcc ships no sanitizer runtime (I18), and a Mull
+toolchain would pin the compiler. The exhaustive seeded harness is the trade-off
+that runs anywhere.
 
 ## Process (P8)
 
@@ -159,8 +165,8 @@ leaks nothing, leaves the target struct at a valid default).
 Because the shims only intercept calls from linked objects (not libc internals)
 and are disabled before process exit, gcov profiling is unaffected.
 
-**This harness powers P7 too**: when built with `-DSPX_MUTATE` the same shims
-call into `tests/support/mutate.c` (see I23).
+**This file powers P4 injection only.** Mutation testing is separate
+(input-byte mutation in `tests/support/mutate.{h,c}` — see I23).
 
 ## Fuzzing (P5)
 
@@ -470,29 +476,31 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
   must tolerate an environment, it should *skip loudly*, never swallow a real
   failure.
 
-### I23 — mutation runner is a scaffold; mutants survive
+### I23 — mutation over allocator bytes is inert (retargeted to input bytes)
 
-- Symptom: `./meson/mutate.sh` reports `killed: 0 survived: N` for both
-  default targets.
-- Cause (understood, not fully chased): the seeded bit-flip lands in heap
-  buffers whose flipped byte does not reach a value the test asserts on — the
-  loader copies PCM into a pool arena and the oracle compares the decoded
-  floats, and a flip in the small source buffer, a malloc header, or a
-  pointer-valued field does not change those floats. Nor can a flip reliably
-  corrupt control-flow allocations (flipping a fresh page of zeros only
-  sometimes yields an invalid pointer), so most mutants are behaviourally
-  inert.
-- Status: **scaffold complete and wired into `check.sh --full`; signal
-  inconclusive.** Deliberately not pursued further this cycle (user call:
-  "lets not investigate for now, just complete the test scaffolding").
-- Next step if picked up: make the mutation target asserted *data* rather than
-  every allocation — e.g. a `MUTATE_ONLY_SIZE=` filter, or have the allocator
-  hook flip a byte inside a named buffer the test passes in — so each flip is
-  guaranteed observable. A real mutation framework (Mull) remains the
-  full-strength option if the compiler can be pinned.
+- Symptom: the first mutation runner flipped a byte of every allocation and
+  reported `killed: 0 survived: N` for every seed, on every target.
+- Root cause (proven, not guessed): the loader's asserted values come from the
+  file, and the path is `malloc(pcm_data); fread(pcm_data, …)`. The
+  allocation-time flip is overwritten by `fread` before any assertion can see
+  it. Instrumenting the conversion loop and the post-`fread` buffer showed the
+  bytes byte-identical to the clean run across 200 seeds — the mutation never
+  survived to the value under test. A second flaw compounded it: the free-time
+  flip wrote to already-freed memory (useless, and a latent corruption risk).
+  The earlier "the mutation reaches the data" reading was wrong because the
+  verbose log printed the buffer *at allocation time*, before `fread` filled
+  it.
+- Fix: mutation is now **input-byte** mutation, which provably reaches the
+  asserted values. `mutate.{h,c}` expose `mutate_bytes()` over the input;
+  `test_mutate_input.c` sweeps every bit of a valid WAV and requires the loader
+  to notice. The allocator hooks were removed from
+  `tests/support/faultinject.c` (that file is injection only now).
+- Result: killed 414 / 608, data-chunk survivors 0. The 194 header-field
+  survivors (bytes the loader does not read) are reported but not gated.
 - Takeaway: mutation testing is only meaningful when the mutation provably
-  reaches an asserted value; "all mutants survive" usually means the mutations
-  miss, not that the suite is weak.
+  reaches an asserted value. "All mutants survive" almost always means the
+  mutations miss the asserted data, not that the suite is weak — verify the
+  mutation reaches the oracle before drawing any conclusion about coverage.
 
 ### I24 — sample table could be written out of bounds
 
