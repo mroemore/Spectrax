@@ -127,10 +127,37 @@ Pilot modules (pure logic, worst-covered first). Rates move as the ratchet in
 `meson/coverage-min.txt` closes each module:
 
 ```
-notes.c 100%  wavetable.c 100%  filters.c 27%   dstruct.c 25%   vizfx.c 26%
-io.c 25%      blit_synth.c 25%  sample.c 32%    sequencer.c 48% fft.c 51%
+notes.c 100%  wavetable.c 100%  filters.c 100%   dstruct.c 25%   vizfx.c 26%
+io.c 25%      blit_synth.c 25%  sample.c 32%     sequencer.c 48% fft.c 51%
 voice.c 54%   modsystem.c 61%
 ```
+
+### Worked module: `filters.c` to 100%
+
+`filters.c` was taken from **32.8% → 100% branch** as the first application
+module closed by this stack (the earlier 100% modules, `notes.c`/`wavetable.c`,
+are pure helpers; this one is real DSP with coefficient maths and an edge-case
+surface). What it took:
+
+1. `tests/dsp/test_filters.c` — drives every reachable branch: all four
+   `BiquadType`s through both the free functions and the dispatch pointer, both
+   `FilterType` coefficient generators over several frequencies, `secondOrderHPF`
+   as well as LPF, the `checkFLoatUnderflow` sign/range matrix (including exact
+   zero), the invalid-`FilterType` default, and behavioural checks (analytic DC
+   gain; the LPF settles to its realised gain, the HPF inverts DC).
+2. `tests/dsp/test_filters_fault.c` — the two allocation-failure branches
+   (`!bf`, `!flt`) via the `--wrap` harness. These are unreachable without
+   fault injection.
+3. `src/filters.c` — `createBiquadFilter` had **no `default` case**: an
+   out-of-range `BiquadType` left `processSample` pointing at uninitialised
+   memory. The switch's implied default branch was the last uncovered branch;
+   closing it meant fixing the latent bug (initialise `processSample = NULL`,
+   free and return NULL on an unknown type). This is the framework doing its
+   job — the missing branch *was* the missing guard.
+4. `meson/coverage-min.txt` — `src/filters.c 100`, so the floor is now a
+   ratchet.
+
+Verified: 24 suites pass; matrix asan + valgrind PASS; mutation still clean.
 
 `gui_*`, `graph_gui`, `dataviz`, and the `sample` audio-device paths are out
 of pure-unit scope: they need raylib/device context.
@@ -532,7 +559,18 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
 
-### I6 — `ALWAYS(x);` as a bare statement breaks `-Wunused-value`
+### I26 — `createBiquadFilter` had no `default` case
+
+- Symptom: `filters.c` stalled at 95.5% branch; the one uncovered branch was
+  the switch's implicit default in `createBiquadFilter` (line 13).
+- Cause: the `switch(type)` handled the four `BiquadType`s and had no `default`,
+  so an out-of-range type fell through with `bf->processSample` never assigned —
+  an uninitialised function pointer that a caller could invoke.
+- Fix: initialise `bf->processSample = NULL` before the switch and add a
+  `default:` that frees and returns NULL. The test
+  (`test_create_biquad_invalid_type`) drives `(BiquadType)99` through it.
+- Takeaway: an uncovered default branch on an enum switch is usually a missing
+  guard, not an unreachable edge. Chasing 100% surfaced a real latent bug.
 
 - Symptom: `(void)ALWAYS(note >= 0);` compiles; `ALWAYS(note >= 0);` warns
   (release expansion is just `(note >= 0);`, a no-effect statement).

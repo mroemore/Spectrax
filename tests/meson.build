@@ -11,6 +11,7 @@ test_names = [
   'test_cfg',
   'test_input',
   'test_layout',
+  'test_filters',
 ]
 
 # Task 3: gui.c hosts the instrument chip node + creator + recogniser.
@@ -159,3 +160,23 @@ exe = executable('test_mutate_input',
   c_args: ['-DSPX_MUTATE'],
 )
 test('test_mutate_input', exe)
+
+# Allocation-failure paths for filters.c (createBiquadFilter / createFilter)
+# via the same --wrap harness: the only way to reach the !bf / !flt branches.
+exe = executable('test_filters_fault',
+  files('dsp/test_filters_fault.c', 'support/faultinject.c'),
+  link_with: [core_lib],
+  include_directories: [inc, include_directories('support')],
+  dependencies: [m],
+  link_args: [
+    '-Wl,--wrap=malloc',
+    '-Wl,--wrap=calloc',
+    '-Wl,--wrap=realloc',
+    '-Wl,--wrap=free',
+    '-Wl,--wrap=fopen',
+    '-Wl,--wrap=fread',
+    '-Wl,--wrap=fclose',
+    '-Wl,--wrap=fopen64',
+  ],
+)
+test('test_filters_fault', exe)
