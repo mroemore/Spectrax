@@ -56,9 +56,15 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 	}
 	size_t dataSize = length * sizeof(float);
 	/* The pool arena is a fixed MAX_SAMPLE_POOL_BYTES block; refuse a sample
-	 * that would run past the end instead of overflowing it. */
+	 * that would run past the end instead of overflowing it. Also refuse once
+	 * the sample table is full — the previous code wrote samples[maxSamples]
+	 * out of bounds (found by P3 review). */
 	if(length < 0 || sp->memoryUsed + dataSize > (size_t)MAX_SAMPLE_POOL_BYTES) {
 		printf("Sample pool exhausted\n");
+		return;
+	}
+	if(sp->sampleCount >= sp->maxSamples) {
+		printf("Max sample count reached\n");
 		return;
 	}
 	float *sampleData = (float *)((char *)sp->sampleData + sp->memoryUsed);

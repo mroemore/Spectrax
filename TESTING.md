@@ -22,16 +22,94 @@ meson test -C build-cov      # just the suite
 | P1 | Coverage spine (build-integrated lcov, branch-aware) | done |
 | P2 | Contract macros (`ALWAYS` / `NEVER` / `testcase`) + assert policy | done |
 | P3 | Branch closure + boundary tests + coverage gate | done (mechanism; modules close incrementally via the ratchet) |
-| P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done (OOM; I/O injection pending) |
+| P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done |
 | P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
 | P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/-ftrapv, char signedness) | done |
-| P7 | Mutation testing | todo |
-| P8 | Process (regression-per-bug, release checklist) | todo |
+| P7 | Mutation testing scaffold (seeded bit-flip runner) | tooling done; signal inconclusive — see I23 |
+| P8 | Process (regression-per-bug, release checklist, gates) | done |
+
+## How to run — every gate
+
+`meson/check.sh` is the single entry point; tiers are ordered cheap-first and
+stop on the first failure.
+
+```sh
+./meson/check.sh          # fast tier (~1-2 min): coverage + gate
+./meson/check.sh --full   # everything: + matrix + fuzz smoke + mutation
+```
+
+Individual tools:
+
+```sh
+./meson/coverage.sh --gate           # suite + coverage floors
+./meson/matrix.sh                    # asan / trapv / uchar / schar / valgrind
+./meson/fuzz.sh wav config --time 60 # libFuzzer targets
+./meson/mutate.sh --seed 5           # seeded bit-flip mutation run
+```
+
+The `pre-push` hook (`meson/pre-push`) runs the fast tier and **fails closed**.
+Install it once per clone:
+
+```sh
+ln -sf ../../meson/pre-push .git/hooks/pre-push
+```
+
+(Directory layout: `TESTING.md` documents the stack; `docs/superpowers/plans/`
+holds the release checklist. `docs/*` is gitignored in this project (I3), so the
+checklist is added with `git add -f docs/superpowers/plans/RELEASE-CHECKLIST.md`.)
+
+## Mutation testing scaffold (P7)
+
+`tests/support/mutate.{h,c}` + `meson/mutate.sh` build a deterministic,
+dependency-free mutation runner. `mutate.sh` configures `build-mutate` with
+`-Dc_args=-DSPX_MUTATE`, so the fault-injection allocator shims flip one seeded
+byte of each allocated (and, on teardown, freed) block. The suite's own
+assertions are the oracle: a run that crashes or fails "kills" the mutant; a run
+that passes means that mutation survived. Seeds are reported, so any kill is
+reproducible (`MUTATE_SEED=N ./build-mutate/tests/<t>`).
+
+```sh
+./meson/mutate.sh                     # default targets, 5 seeds
+./meson/mutate.sh test_io_fault --seed 20 --rate 4
+```
+
+Why not Mull: there is no mutation tool on this box, gcc ships no sanitizer
+runtime (I18), and a Mull toolchain would pin the compiler — the opposite of
+this portable stack. The seeded bit-flip runner is the trade-off we can run
+anywhere. **Its signal is currently inconclusive on the two targets** — every
+mutant survives, for reasons understood but not yet worth chasing (I23). The
+scaffold is in place so that a future pass can tune the mutation to genuinely
+reach the asserted data.
+
+## Process (P8)
+
+The automated tiers prove the code is consistent with what the tests check; they
+cannot prove the feature is right. P8 is the human-in-the-loop wrapper:
+
+- **`meson/check.sh`** — one command, tiers ordered cheap-first, stops on first
+  failure. `--full` adds matrix + fuzz smoke + mutation. This is the single
+  definition of "gates pass".
+- **`meson/pre-push`** — fast tier, **fails closed** (the point of I22). Install
+  per clone: `ln -sf ../../meson/pre-push .git/hooks/pre-push`.
+- **Release checklist** — `docs/superpowers/plans/RELEASE-CHECKLIST.md`:
+  scope, automated gates, coverage ratchet, real-app smoke, regression
+  discipline, notes, tag. The real-app smoke step is the one no automation
+  replaces.
+
+### Regression discipline
+
+Every user-reported bug gets a test that **fails on the old code and passes on
+the new**, and the test is named for the symptom, not the fix. Existing examples
+in this repo: `test_note_delete_mid_playback_does_not_crash`,
+`test_playhead_does_not_wrap_when_stopped`,
+`test_increment_scene_requires_selected_pattern`. The crash fixes from P5
+carry the crashing fuzz inputs as permanent regressions in
+`fuzz/corpus/wav/regress*`.
 
 ## Coverage baseline
 
 First-party sources only (system, vendored, and test code excluded), captured
-after the full suite (20 suites) passes. Numbers are lower than in P1 because
+after the full suite (**21 suites**) passes. Numbers are lower than in P1 because
 the coverage build now defines `NDEBUG` (see I12), so `assert()` sites are not
 instrumented:
 
@@ -59,23 +137,30 @@ gated module drops below its floor. A module is listed at 100 only once its
 suite closes every branch; until then it sits at its current level to block
 regressions. `notes.c` and `wavetable.c` are at 100.
 
-## Fault injection (OOM)
+## Fault injection (OOM + I/O)
 
-`tests/support/faultinject.{h,c}` injects allocation failures via the linker's
-`--wrap` mechanism — no production-code hooks. A test executable adds
-`-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free` and links the
-support file; the module's allocator calls then route through shims that can
-fail the *n*-th allocation onward and track outstanding allocations.
+`tests/support/faultinject.{h,c}` injects allocation and I/O failures via the
+linker's `--wrap` mechanism — no production-code hooks. A test executable adds
+`-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fopen64`
+and links the support file; the module's calls then route through shims that can
+fail the *n*-th operation onward and track outstanding allocations.
 
-The pattern is **loop-until-clean**: for each allocation index, fail exactly
-there, run the operation, and assert it degrades cleanly (returns NULL, leaves
-state untouched, leaks nothing). `tests/dsp/test_wavetable_fault.c` does this
-for `createWavetablePool` (3 allocations) and `loadWavetable` (1), which is
-what closes `wavetable.c` to 100% branch. The same harness is the plan for the
-`io.c` `fopen`/`fread`/`malloc` fail-after-N work.
+The pattern is **loop-until-clean**: for each index, fail exactly there, run the
+operation, and assert it degrades cleanly (returns NULL, leaves state untouched,
+leaks nothing, leaves the target struct at a valid default).
+
+- `tests/dsp/test_wavetable_fault.c` — `createWavetablePool` (3 allocations)
+  and `loadWavetable` (1); this is what closes `wavetable.c` to 100% branch.
+- `tests/dsp/test_io_fault.c` — the WAV loader's full failure surface:
+  `fopen`/`fread` short reads (`test_wav_io_faults`) and every allocation
+  (`test_wav_oom`). Feed a valid WAV from an anonymous memfd
+  (`/proc/self/fd/N`) so nothing touches disk.
 
 Because the shims only intercept calls from linked objects (not libc internals)
 and are disabled before process exit, gcov profiling is unaffected.
+
+**This harness powers P7 too**: when built with `-DSPX_MUTATE` the same shims
+call into `tests/support/mutate.c` (see I23).
 
 ## Fuzzing (P5)
 
@@ -371,6 +456,73 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
   populated, so `analysis.c`'s `sqrtf` consumed garbage (valgrind: 4096 errors
   in `test_analysis`; the test had even worked around the symptom via
   `MALLOC_PERTURB_`). Fix: `calloc` the buffers.
+
+### I22 — pre-push hook that could never fail
+
+- Symptom: the existing `scripts/pre-push` built and ran the tests but ended in
+  `|| true`, so it exited 0 no matter what — a red suite still pushed.
+- Cause: `|| true` used to "not annoy" the pusher defeats the entire purpose of
+  a pre-push gate.
+- Fix (P8): `meson/pre-push` runs the fast tier (`meson/check.sh --quiet`) and
+  exits 1 on failure, printing how to bypass once (`git push --no-verify`).
+  Install per clone: `ln -sf ../../meson/pre-push .git/hooks/pre-push`.
+- Takeaway: a gate that cannot fail is documentation, not a gate. If a hook
+  must tolerate an environment, it should *skip loudly*, never swallow a real
+  failure.
+
+### I23 — mutation runner is a scaffold; mutants survive
+
+- Symptom: `./meson/mutate.sh` reports `killed: 0 survived: N` for both
+  default targets.
+- Cause (understood, not fully chased): the seeded bit-flip lands in heap
+  buffers whose flipped byte does not reach a value the test asserts on — the
+  loader copies PCM into a pool arena and the oracle compares the decoded
+  floats, and a flip in the small source buffer, a malloc header, or a
+  pointer-valued field does not change those floats. Nor can a flip reliably
+  corrupt control-flow allocations (flipping a fresh page of zeros only
+  sometimes yields an invalid pointer), so most mutants are behaviourally
+  inert.
+- Status: **scaffold complete and wired into `check.sh --full`; signal
+  inconclusive.** Deliberately not pursued further this cycle (user call:
+  "lets not investigate for now, just complete the test scaffolding").
+- Next step if picked up: make the mutation target asserted *data* rather than
+  every allocation — e.g. a `MUTATE_ONLY_SIZE=` filter, or have the allocator
+  hook flip a byte inside a named buffer the test passes in — so each flip is
+  guaranteed observable. A real mutation framework (Mull) remains the
+  full-strength option if the compiler can be pinned.
+- Takeaway: mutation testing is only meaningful when the mutation provably
+  reaches an asserted value; "all mutants survive" usually means the mutations
+  miss, not that the suite is weak.
+
+### I24 — sample table could be written out of bounds
+
+- Symptom: `loadSample` (sample.c) stored `samples[sp->sampleCount]` and
+  incremented without checking `sampleCount` against `samples`' capacity
+  (`maxSamples` = `MAX_LOADED_SAMPLES`). The arena bound was enforced, but the
+  *table* bound was not.
+- Cause: the table guard was simply missing; the pool arena guard above it gave
+  a false sense of bounds safety.
+- Fix (P4b): refuse the load (`sampleCount >= maxSamples`) before touching the
+  table, mirroring the arena check.
+- Takeaway: a resource usually has *two* limits — the bytes and the slot count;
+  guarding one does not guard the other.
+
+### I25 — `--wrap=fopen` silently never fired (fopen64)
+
+- Symptom: fault injection on the WAV loader reported `clean after 2 io ops` and
+  never triggered an injected `fopen` failure — while `strace` showed the file
+  being opened.
+- Cause: meson builds with `_FILE_OFFSET_BITS=64`, so glibc's headers rewrite
+  `fopen` to `fopen64` at the call site; the linker only has `--wrap=fopen`, so
+  the real `fopen64` ran un-wrapped. `objdump` confirmed the relocation was
+  `R_X86_64_PLT32 fopen64`.
+- Fix: add `__wrap_fopen64` (and `-Wl,--wrap=fopen64`). Only `fopen` is remapped
+  by glibc — `fread`/`fclose` have no `*64` libc symbols — so their plain
+  wrappers are correct, but `__real_fread` must be defined with `#undef fread`
+  first so the macro cannot rewrite it into a non-existent `__real_fread64`.
+- Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
+  you intend to wrap is the symbol the linker actually sees; `--wrap` fails
+  silently when the compiler resolved a suffixed name.
 
 ### I6 — `ALWAYS(x);` as a bare statement breaks `-Wunused-value`
 

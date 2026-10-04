@@ -111,7 +111,7 @@ test('test_wavetable', exe)
 # OOM fault injection: allocation calls in the linked object are redirected
 # through tests/support/faultinject.c via the linker's --wrap mechanism.
 exe = executable('test_wavetable_fault',
-  files('dsp/test_wavetable_fault.c', 'support/faultinject.c'),
+  files('dsp/test_wavetable_fault.c', 'support/faultinject.c', 'support/mutate.c'),
   link_with: [core_lib],
   include_directories: [inc, include_directories('support')],
   dependencies: [m],
@@ -120,6 +120,31 @@ exe = executable('test_wavetable_fault',
     '-Wl,--wrap=calloc',
     '-Wl,--wrap=realloc',
     '-Wl,--wrap=free',
+    '-Wl,--wrap=fopen',
+    '-Wl,--wrap=fread',
+    '-Wl,--wrap=fclose',
+    '-Wl,--wrap=fopen64',
+
   ],
 )
 test('test_wavetable_fault', exe)
+
+# I/O + OOM fault injection for the WAV loader (fopen/fread and the allocator).
+exe = executable('test_io_fault',
+  files('dsp/test_io_fault.c', 'support/faultinject.c', 'support/mutate.c'),
+  link_with: [core_lib],
+  include_directories: [inc, include_directories('support')],
+  dependencies: [m],
+  link_args: [
+    '-Wl,--wrap=malloc',
+    '-Wl,--wrap=calloc',
+    '-Wl,--wrap=realloc',
+    '-Wl,--wrap=free',
+    '-Wl,--wrap=fopen',
+    '-Wl,--wrap=fread',
+    '-Wl,--wrap=fclose',
+    '-Wl,--wrap=fopen64',
+
+  ],
+)
+test('test_io_fault', exe)
