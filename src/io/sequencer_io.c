@@ -124,6 +124,16 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 				return SEQ_ERROR_READ;
 				printf("error reading pattern data\n");
 			}
+			/* pattern_size is attacker-controlled and every consumer treats
+			 * it as a step count into fixed-size arrays (Pattern.notes is
+			 * MAX_SEQUENCE_LENGTH rows, and gui_pattern.c's stepData[] /
+			 * stepNodes[] are too). An out-of-range value is a corrupt file,
+			 * not a longer pattern. Same class as the WAV subchunk2Size bound
+			 * (TESTING.md I16). */
+			if(p->pattern_size < 0 || p->pattern_size > MAX_SEQUENCE_LENGTH) {
+				fclose(file);
+				return SEQ_ERROR_FORMAT;
+			}
 		}
 	}
 

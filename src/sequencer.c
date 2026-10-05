@@ -154,6 +154,26 @@ int addBlankPattern(PatternList *patternList) {
 }
 
 int addPattern(PatternList *patternList, int patternSize, int notes[][NOTE_INFO_SIZE]) {
+	if(!patternList || !notes) {
+		return -1;
+	}
+	/* Pattern.notes is a fixed MAX_SEQUENCE_LENGTH x NOTE_INFO_SIZE array and
+	 * every consumer treats pattern_size as a step count into fixed-size
+	 * arrays, so the size has to be bounded here — this is the chokepoint
+	 * every pattern passes through. An unbounded size is an out-of-bounds
+	 * write in the copy loop below and an out-of-bounds read in every
+	 * consumer (gui_pattern.c's stepData[]/stepNodes[], selectStep's clamp,
+	 * the sequencer's playhead modulo). Clamp rather than reject so callers
+	 * still get a usable index back. */
+	if(patternSize < 0) {
+		patternSize = 0;
+	}
+	if(patternSize > MAX_SEQUENCE_LENGTH) {
+		patternSize = MAX_SEQUENCE_LENGTH;
+	}
+	if(patternList->pattern_count >= MAX_PATTERNS) {
+		return -1;
+	}
 	patternList->patterns[patternList->pattern_count].pattern_size = patternSize;
 	for(int i = 0; i < patternSize; i++) {
 		for(int j = 0; j < NOTE_INFO_SIZE; j++) {

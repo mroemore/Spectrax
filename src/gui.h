@@ -60,6 +60,7 @@ typedef struct {
 void createArrangerGraph(Arranger *a, PatternList *pl);
 void arrangerGraphControlInput(int keymapping);
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep);
+void destroyPatternGraph();
 void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setSongMinimapGui(SongMinimapGui *smg);

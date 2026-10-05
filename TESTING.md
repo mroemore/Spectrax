@@ -127,10 +127,94 @@ Pilot modules (pure logic, worst-covered first). Rates move as the ratchet in
 `meson/coverage-min.txt` closes each module:
 
 ```
-notes.c 100%  wavetable.c 100%  filters.c 100%   dstruct.c 25%   vizfx.c 26%
+notes.c 100%  wavetable.c 100%  filters.c 100%   gui_layer.c 100%
+gui_pattern.c 98.6%                            dstruct.c 25%   vizfx.c 26%
 io.c 25%      blit_synth.c 25%  sample.c 32%     sequencer.c 48% fft.c 51%
 voice.c 54%   modsystem.c 61%
 ```
+
+Modules closed to 100% so far: `notes.c`, `wavetable.c`, `filters.c`,
+`gui_layer.c` — plus `gui_pattern.c` at 98.6% with one documented exclusion.
+
+### Worked module: `gui_pattern.c` to 98.6% branch
+
+Second GUI module, and the one that exposed a file-sourced memory-safety bug.
+`gui_pattern.c` builds the pattern-step grid (a `Graph` of row/step nodes) and
+handles arrow-key navigation of the selected step. It went **0% → 100% line,
+100% function, 98.6% branch**.
+
+Three tests, same techniques as `gui_layer`:
+
+1. `tests/dsp/test_gui_pattern.c` — graph construction (row layout, partial last
+   row, empty pattern, out-of-range `selectedPattern`, negative and oversized
+   `pattern_size`), all four navigation directions plus the `default`
+   (unmapped-key) case, edge clamping, `rebuildPatternGraph`, and the
+   "called before any create" guards. `PatternList`/`Sequencer` are plain
+   structs so the tests build them directly; `selectStep()` calls
+   `patternList->onStepChange.f`, so the tests install a recording stub — that
+   callback is part of the contract, not a detail.
+2. `tests/dsp/test_gui_pattern_fault.c` — `createSongMinimapGui`'s malloc guard
+   via `--wrap`.
+3. `tests/dsp/test_gui_pattern_draw.c` — `drawStepGuiNode`, `drawSongMinimapGui`
+   and `gui_pattern_draw` under Xvfb. The minimap test populates
+   `arranger->song` so all four colour branches (selected / playing / default /
+   blank) are taken, and the sequencer channels are arranged so the channel-scan
+   operands are each exercised (the scan stops at the *first* match, so the
+   "running" and "stopped" cases need two separate passes with a
+   `rebuildPatternGraph` between them).
+
+**Five defects fixed (I29)**, four of them memory-safety:
+
+1. **Out-of-bounds read/write from an unvalidated `pattern_size`.**
+   `createStepNode` writes `stepData[stepIndex]` and `stepNodes[stepIndex]`,
+   both `MAX_SEQUENCE_LENGTH` (24) entries, for every step up to
+   `pattern_size`. `pattern_size` comes from a project file
+   (`io/sequencer_io.c` reads it with `fread` and **no range check**), so a
+   corrupt file drives out-of-bounds writes at graph-build time and an
+   out-of-bounds read of a garbage `GuiNode *` in `navigatePatternGraph`
+   (segfault). Fixed at three layers:
+   - `io/sequencer_io.c` — reject a `pattern_size` outside `[0,
+     MAX_SEQUENCE_LENGTH]` on load (same class as the WAV `subchunk2Size` bound,
+     I16).
+   - `sequencer.c addPattern()` — clamp, plus NULL-argument rejection and a
+     `pattern_count` bound. This is the chokepoint every pattern passes through,
+     and its `notes[i][j]` copy loop was *itself* an out-of-bounds write for an
+     oversized size.
+   - `gui_pattern.c` — bound `size` to the array it indexes, and bound `next`
+     in `navigatePatternGraph` (which clamps against `pattern_size`, not against
+     the array) *before* storing it.
+2. **Graph/data desync on clamp.** `createPatternGraph` clamped the selection
+   locally but did not write it back, so the grid highlighted step 0 while the
+   caller's `*selectedStep` still said −3 — and since `navigatePatternGraph`
+   derives the next step from the *caller's* pointer, the first key press landed
+   somewhere other than adjacent to the highlighted cell. Fixed by writing the
+   clamped value back.
+3. **Unchecked `malloc` in `createSongMinimapGui`** — dereferenced the result
+   immediately; crashed under OOM instead of returning NULL.
+4. **NULL deref in `gui_pattern_draw`** — `drawNode(patternGraph->root)` with no
+   guard, so the first frame before `createPatternGraph` (screen switch, early
+   frame) dereferenced NULL.
+5. **NULL deref in `drawStepGuiNode`** — `getStep()` returns NULL for an
+   out-of-range pattern or step, and the result was dereferenced immediately.
+   That NULL contract is ours (P6/I20 made `getStep` bounds-guard); this caller
+   never caught up.
+
+Plus a lifecycle gap worth noting separately: the module had **no teardown**, so
+`createPatternGraph` called twice orphaned the first tree — valgrind showed 12
+leak records (one 210 KB). Added `destroyPatternGraph()` (paired with the
+existing create, per the project's create/destroy convention) and made
+`createPatternGraph` free any previous graph before replacing it. Valgrind now
+reports zero leaks for the module's tests.
+
+**Documented exclusion (one branch, 98.6% not 100%).**
+`drawStepGuiNode`'s `st->note.fontSize ? (float)st->note.fontSize : (float)textFont.baseSize`.
+The default step-cell style deliberately leaves `fontSize` at 0 so the ternary
+falls through to `textFont.baseSize`; the styled path needs a `step-cell` class
+in `layout.json`, and neither `src/layout.json` nor `bin/layout.json` defines
+one — so production always takes the default. `coverage-min.txt` therefore floors
+`gui_pattern.c` at 98 rather than manufacturing a config the product does not
+ship. This is the DO-178 "record the exclusion and why" case, not a gap to paper
+over.
 
 ### Worked module: `gui_layer.c` to 100%
 
@@ -592,6 +676,55 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
+
+### I30 — `NEVER(x);` as a bare statement asserts nothing and still costs a branch
+
+- Symptom: using `NEVER(...)` to mark a dead condition left an uncoverable
+  branch in the coverage data *and* did nothing at runtime — two failures at once.
+- Why: in a coverage build both contract macros expand to the bare expression
+  `(X)` (see `verify.h` — they are compiled out so their assert edge cannot
+  pollute coverage). As a standalone statement `NEVER(next < 0);` is therefore
+  just a discarded comparison: no assertion, no warning, and the branch is still
+  there.
+- Rule: use `ALWAYS`/`NEVER` only *inside* a larger expression, where the macro
+  removes an assert edge from a condition that is genuinely part of the logic —
+  e.g. `if (NEVER(head == NULL)) return;`. For "dead by construction", prefer to
+  restructure so the condition does not exist: in `rebuildPatternGraph` a
+  three-operand guard (`!patternPl || !patternSeq || !patternGraph`) became a
+  one-operand guard on `patternGraph` because the first two are assigned
+  together with the third — with the reasoning left in a comment. The same
+  applies to `gui_pattern_draw`, where `if (g && g->root)` became `if (g)`
+  because `createGraph` always installs a root.
+- Corollary: `(void)ALWAYS(x);` is the other trap — it silences the unused-value
+  warning without changing the semantics. Neither form is a contract.
+
+### I29 — gui_pattern.c: unvalidated pattern_size from file → OOB write/read
+
+Testing `gui_pattern.c` surfaced a file-driven memory-safety bug with a
+three-layer fix. Full detail in the worked-module section above; the essentials:
+
+- `io/sequencer_io.c` reads `pattern_size` straight from a project file with
+  `fread` and no range check, while `pat_count` right above it *is* validated.
+- Every consumer treats `pattern_size` as a step count into a fixed
+  `MAX_SEQUENCE_LENGTH` (24) array: `Pattern.notes`, `gui_pattern.c`'s
+  `stepData[]`/`stepNodes[]`, `selectStep`'s clamp, the sequencer's playhead
+  modulo. So a corrupt file causes out-of-bounds writes at graph-build time and
+  an out-of-bounds read of a garbage `GuiNode *` in `navigatePatternGraph`.
+- Fixed at the loader (reject), at `addPattern` (clamp — the chokepoint, whose
+  copy loop was itself an OOB write), and in the GUI (bound the size it indexes
+  and the value it stores).
+
+Takeaway: **"a resource has two limits — the count and the capacity."** `pat_count`
+was validated against `MAX_PATTERNS`; `pattern_size` was validated against
+nothing. Validating one field of a file record is not validating the record.
+Two adjacent unchecked-alloc sites (`createSongMinimapGui`) and two NULL-deref
+sites (`gui_pattern_draw`, `drawStepGuiNode`) came out of the same pass.
+
+Also worth recording as a methodology note: the module had **no destructor**, so
+`createPatternGraph` called twice orphaned the first node tree (valgrind: 12 leak
+records, one 210 KB). Adding the paired `destroyPatternGraph()` and having
+`createPatternGraph` free a previous graph first removed the whole class. When a
+`create*` replaces module state, it should release what it replaces.
 
 ### I28 — four memory bugs in gui_layer.c found while testing it
 

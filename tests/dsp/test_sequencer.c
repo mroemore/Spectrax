@@ -379,6 +379,40 @@ static int test_last_note_plays_at_song_end(void) {
 	return 0;
 }
 
+/* addPattern is the chokepoint every pattern passes through, and
+ * Pattern.notes is a fixed MAX_SEQUENCE_LENGTH x NOTE_INFO_SIZE array. An
+ * unbounded patternSize is an out-of-bounds write in the copy loop and an
+ * out-of-bounds read in every consumer, so the size must be clamped here.
+ * (Found via gui_pattern.c's stepData[]/stepNodes[] — TESTING.md I29.) */
+static int test_add_pattern_clamps_size(void) {
+    static int notes[MAX_SEQUENCE_LENGTH * 3][NOTE_INFO_SIZE];
+    for (int i = 0; i < MAX_SEQUENCE_LENGTH * 3; i++) {
+        notes[i][0] = i % 12;
+        notes[i][1] = 0;
+    }
+    PatternList *pl = createPatternList(NULL);
+    ASSERT_TRUE(pl != NULL, "createPatternList");
+
+    int idx = addPattern(pl, MAX_SEQUENCE_LENGTH * 3, notes);
+    ASSERT_EQ_2(idx, 0);
+    ASSERT_EQ_2(pl->pattern_count, 1);
+    /* Clamped, not rejected: the caller still gets a usable index back. */
+    ASSERT_EQ_2(pl->patterns[0].pattern_size, MAX_SEQUENCE_LENGTH);
+    ASSERT_EQ_2(pl->patterns[0].notes[MAX_SEQUENCE_LENGTH - 1][0], (MAX_SEQUENCE_LENGTH - 1) % 12);
+
+    /* Negative size clamps to empty rather than underflowing the copy loop. */
+    int idx2 = addPattern(pl, -3, notes);
+    ASSERT_EQ_2(idx2, 1);
+    ASSERT_EQ_2(pl->patterns[1].pattern_size, 0);
+
+    /* NULL inputs are rejected rather than dereferenced. */
+    ASSERT_EQ_2(addPattern(NULL, 4, notes), -1);
+    ASSERT_EQ_2(addPattern(pl, 4, NULL), -1);
+
+    printf("PASS test_add_pattern_clamps_size\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_increment_scene_requires_selected_pattern();
@@ -390,6 +424,7 @@ int main(void) {
     fails += test_note_cut_paste();
     fails += test_play_fires_step_zero_first();
     fails += test_last_note_plays_at_song_end();
+    fails += test_add_pattern_clamps_size();
     if (fails) {
         fprintf(stderr, "%d sequencer test(s) failed\n", fails);
         return 1;

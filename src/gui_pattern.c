@@ -16,6 +16,7 @@
 #include "io/preset_io.h"
 #include "io.h"
 #include "gui_internal.h"
+#include "verify.h"
 
 
 /* ---- module-private state ---- */
@@ -44,6 +45,9 @@ static int *patternSelectedStepPtr;
 
 SongMinimapGui *createSongMinimapGui(Arranger *arranger, int *songIndex, int x, int y) {
 	SongMinimapGui *minimapGui = (SongMinimapGui *)malloc(sizeof(SongMinimapGui));
+	if(!minimapGui) {
+		return NULL;
+	}
 	minimapGui->base.draw = drawSongMinimapGui;
 	minimapGui->arranger = arranger;
 	minimapGui->songIndex = songIndex;
@@ -113,6 +117,11 @@ void drawStepGuiNode(void *self) {
 		DrawRectangleRec(cell, st->bgEmpty);
 	}
 	int *note = getStep(d->pl, d->patternIndex, d->stepIndex);
+	if(!note) {
+		/* getStep returns NULL for an out-of-range pattern or step (a corrupt
+		 * file can set either). Leave the cell blank rather than deref. */
+		return;
+	}
 	char *noteString = getNoteString(note[0], note[1]);
 	Font *font = styleFont(st->note.fontName);
 	float fontSize = st->note.fontSize ? (float)st->note.fontSize : (float)textFont.baseSize;
@@ -126,11 +135,30 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 	patternSelectedPatternPtr = selectedPattern;
 	patternSelectedStepPtr = selectedStep;
 
+	/* Creating replaces whatever was there: free a previous graph first so a
+	 * second createPatternGraph (a pattern switch, a screen rebuild) cannot
+	 * orphan the old tree. Without this the caller has to know to call
+	 * destroyPatternGraph or rebuildPatternGraph first, and every caller that
+	 * doesn't leaks the whole node tree. */
+	destroyPatternGraph();
+
 	patternGraph = createGraph(na_vertical);
 	int patternIndex = *selectedPattern;
 	int size = 0;
 	if(patternIndex >= 0 && patternIndex < pl->pattern_count) {
 		size = pl->patterns[patternIndex].pattern_size;
+	}
+	/* stepData[]/stepNodes[] are fixed at MAX_SEQUENCE_LENGTH, so the step
+	 * count must be bounded to that, not just to pattern_size. Without this
+	 * a pattern loaded with a larger size indexes past both arrays and the
+	 * selected-step lookup reads a garbage GuiNode * (caught by
+	 * test_graph_oversized_pattern_bounded). A negative size is also
+	 * possible from a corrupt file; treat it as empty. */
+	if(size < 0) {
+		size = 0;
+	}
+	if(size > MAX_SEQUENCE_LENGTH) {
+		size = MAX_SEQUENCE_LENGTH;
 	}
 	int rows = (size + PATTERN_STEPS_PER_ROW - 1) / PATTERN_STEPS_PER_ROW;
 	GuiNode *scrollerStrip = createGuiNode(0, 0, 640, 96, 0, na_horizontal, "scroller", 0, 0);
@@ -158,6 +186,13 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 		if(current >= size) {
 			current = size - 1;
 		}
+		/* Write the clamped value back. navigatePatternGraph derives the next
+		 * step from *selectedStepPtr, so leaving the caller's variable
+		 * out-of-range while the graph highlights a different step means the
+		 * grid displays one step and the data says another — the first key
+		 * press then lands somewhere other than the step adjacent to the
+		 * highlighted one. Keep the two in sync. */
+		*selectedStep = current;
 		patternGraph->selected = stepNodes[current];
 		stepNodes[current]->selected = 1;
 	}
@@ -186,18 +221,39 @@ void navigatePatternGraph(int keymapping) {
 		default:
 			return;
 	}
+	/* selectStep clamps against the pattern's own pattern_size, while
+	 /* selectStep clamps a negative index to 0, so next is never negative;
+	 * no lower clamp needed. stepNodes[] is indexed by step and is only
+	 * MAX_SEQUENCE_LENGTH long, and selectStep clamps against the pattern's
+	 * own pattern_size, which a directly-assigned size can exceed — so clamp
+	 * to the array before storing, or the app's selected step is left
+	 * pointing past the grid and stepNodes[next] reads a garbage node. */
+	if(next >= MAX_SEQUENCE_LENGTH) {
+		next = MAX_SEQUENCE_LENGTH - 1;
+	}
 	*d->selectedStepPtr = next;
 	changeGraphSelection(patternGraph, stepNodes[next]);
 }
 
 
-void rebuildPatternGraph() {
-	if(!patternPl || !patternSeq || !patternGraph) {
+void destroyPatternGraph() {
+	if(!patternGraph) {
 		return;
 	}
 	freeGuiNode(patternGraph->root);
 	free(patternGraph);
 	patternGraph = NULL;
+}
+
+void rebuildPatternGraph() {
+	/* patternPl / patternSeq / patternSelected*Ptr are all assigned together by
+	 * createPatternGraph, so they are set exactly when patternGraph is; a
+	 * guard on patternGraph alone is sufficient (and avoids a compound whose
+	 * other operands are unreachable). */
+	if(!patternGraph) {
+		return;
+	}
+	destroyPatternGraph();
 	createPatternGraph(patternSeq, patternPl, patternSelectedPatternPtr, patternSelectedStepPtr);
 }
 
@@ -235,7 +291,12 @@ static void drawSongMinimapGui(void *self) {
 
 
 void gui_pattern_draw(void) {
-	drawNode(patternGraph->root);
+	/* patternGraph is only built by createPatternGraph, and the draw callback can
+	 * fire before that (screen switch, an early frame). createGraph always
+	 * installs a root, so the graph pointer is the only thing to check. */
+	if(patternGraph) {
+		drawNode(patternGraph->root);
+	}
 	if (smgui) {
 		drawSongMinimapGui(smgui);
 	}
