@@ -40,6 +40,17 @@ seq_sources = files(
 # App-only sources (main carries the audio/init glue; gui owns the graph UI).
 app_only_sources = files(
   'main.c',
+  'distortion.c',
+  'dataviz.c',
+)
+
+# The instrument-chip UI sources. These used to be recompiled per test from
+# ../src/, which made meson name the objects ".._src_gui_core.c.o" — a leading
+# ".." that lcov's geninfo silently treats as a hidden file and drops, so the
+# GUI carried zero measured coverage. Hoisting them into one static library
+# compiles them once, under a normal object name, and both the app and the GUI
+# tests link it. See TESTING.md I27.
+gui_sources = files(
   'gui_core.c',
   'gui_arranger.c',
   'gui_pattern.c',
@@ -49,8 +60,6 @@ app_only_sources = files(
   'gui_inst_mod.c',
   'gui_inst_blep.c',
   'gui_layer.c',
-  'distortion.c',
-  'dataviz.c',
 )
 
 # Buffer-scroller / mod-strip visualisations: used by the app (audio callback,
@@ -69,9 +78,14 @@ seq_lib = static_library('spectrax_seq', seq_sources,
   dependencies: [m],
 )
 
+gui_lib = static_library('spectrax_gui', gui_sources,
+  include_directories: [inc, cjson_inc],
+  dependencies: system_deps,
+)
+
 spectrax = executable('spectrax',
   app_only_sources,
-  link_with: [core_lib, seq_lib, vizfx_lib],
+  link_with: [core_lib, seq_lib, vizfx_lib, gui_lib],
   include_directories: inc,
   dependencies: system_deps,
 )
@@ -79,3 +93,4 @@ spectrax = executable('spectrax',
 # Used by the harness targets below.
 core_dep = declare_dependency(link_with: core_lib, include_directories: inc)
 seq_dep = declare_dependency(link_with: seq_lib, include_directories: inc)
+gui_dep = declare_dependency(link_with: gui_lib, include_directories: inc)

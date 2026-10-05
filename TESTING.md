@@ -162,6 +162,12 @@ Verified: 24 suites pass; matrix asan + valgrind PASS; mutation still clean.
 `gui_*`, `graph_gui`, `dataviz`, and the `sample` audio-device paths are out
 of pure-unit scope: they need raylib/device context.
 
+**GUI sources were invisible until I27.** The nine `gui_*.c` files were
+recompiled per test from `../src/` and their `..`-prefixed object names made
+lcov's geninfo drop them silently, so they read as *unmeasured* (not 0%). After
+the `gui_lib` fix they appear at their true, low rates (gui_core 4%,
+gui_arranger 24%, the chip files ~0%) — honest numbers to work from. See I27.
+
 ## Coverage gate
 
 `meson/coverage-min.txt` lists a branch-coverage floor per module; it is a
@@ -558,6 +564,30 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
+
+### I27 — GUI sources carried zero measured coverage (invisible, not uncovered)
+
+- Symptom: `ctol_status` reported "34 first-party files" and a passing gate, but
+  `src/gui_core.c`, `gui_pattern.c`, `gui_arranger.c`, `gui_instrument.c`,
+  `gui_layer.c` … appeared nowhere in the coverage data — not at 0%, simply
+  absent. Whole modules were unmeasured while the gate read green.
+- Root cause: the GUI sources were recompiled per test from `../src/gui_*.c`
+  (`tests/meson.build`), so meson named the objects `.._src_gui_core.c.o`. At
+  capture time lcov's `geninfo` runs `gcov <file> -b -x -i`, which writes
+  `.._src_gui_core.c##<hash>.gcov.json.gz` — a filename starting with `..`.
+  geninfo then treats that leading-dot file as hidden and discards the data:
+  `WARNING: GCOV did not produce any data`. Proven by copying the identical
+  gcda/gcno to `xgui_core.c.*` (no leading dots) — geninfo then emits
+  `SF:.../src/gui_core.c` correctly. The `core_lib` copies of the same sources
+  were never executed (no `.gcda`), so nothing else supplied the data.
+- Fix: hoist the nine GUI sources into their own `gui_lib` static library
+  (`src/meson.build`), which the app and the GUI tests both link, replacing the
+  per-test `files('../src/gui_*.c')` recompilation. One compilation, normal
+  object names, coverage lcov can read. First-party file count went 34 → 43.
+- Takeaway: a coverage gate can pass while whole files are *unmeasured*; the
+  difference between "0% covered" and "not instrumented" is invisible unless
+  something reconciles the compiled-source list against the capture. (CTOL
+  improvement noted: flag compiled-but-absent sources explicitly.)
 
 ### I26 — `createBiquadFilter` had no `default` case
 
