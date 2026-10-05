@@ -288,6 +288,57 @@ gated module drops below its floor. A module is listed at 100 only once its
 suite closes every branch; until then it sits at its current level to block
 regressions. `notes.c` and `wavetable.c` are at 100.
 
+## GUI module playbook
+
+A GUI file looks untestable and usually isn't. Split it by what it touches:
+**logic needs no window; only draw callbacks do.** Three test binaries per
+module, in this order.
+
+**1. Logic, headless** — `tests/dsp/test_<module>.c`. No `InitWindow`. The two
+levers that make this possible here:
+
+- *Input without raylib.* `isKeyJustPressed(state, KM_UP)` reads
+  `state->keys[i].isPressed / .wasPressed`, not raylib. Write those fields
+  directly (`press_once(is, KM_UP); release(is, KM_UP);`) and every routing
+  branch is reachable with no display.
+- *Don't boot the app.* Build `PatternList` / `Sequencer` / `LayerStack` /
+  `InputState` directly rather than through the `create*` chain, which drags in
+  the voice pool, arranger and config load. When a function calls through a
+  callback slot (`pl->onStepChange.f(...)`) install a **recording stub** — that
+  callback is part of the contract, and asserting what it received is the test.
+
+Link with `gui_test_libs` (`src/meson.build`), which is the app's own GUI
+library — no source recompilation (see I27).
+
+**2. Allocation failures** — `tests/dsp/test_<module>_fault.c`, linked with the
+same `--wrap` set as every other fault target. Loop-until-clean over the
+module's `malloc`/`realloc` sites.
+
+**3. Draw callbacks, under Xvfb** — `tests/dsp/test_<module>_draw.c`. Register
+with `find_program('xvfb-run', required: false)`:
+
+```meson
+xvfb = find_program('xvfb-run', required: false)
+if xvfb.found()
+  test('test_<module>_draw', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', exe], timeout: 60)
+endif
+```
+
+These assert **reachability, not appearance**: build the data so each colour /
+state branch is taken, draw a frame or two, assert no crash. Pixel goldens are a
+different tool and not what this suite does.
+
+**Traps worth knowing before you start:**
+
+| Trap | Symptom | Fix |
+|---|---|---|
+| Test recompiles the source (`files('../src/gui_*.c')`) | meson names it `.._src_gui_x.c.o`; geninfo discards it; the file reads *unmeasured*, gate stays green | put shared sources in a static library (I27) |
+| `if (a && b)` where `b` is dead by construction | uncoverable branch; `NEVER(b);` does **not** help | restructure so the condition doesn't exist; comment why (I30) |
+| A loop that `break`s on first match | only the operands along the taken path are exercised | one rebuild per case — operand enumeration happens once per run |
+| Module file-scope state | tests become order-dependent; hand-ordering "call this first" is the tell | pair `create*`/`free*`; make `create*` release what it replaces (I29) |
+| Branch only reachable via a config we don't ship | 98% and a temptation to fabricate one | record the exclusion, floor the module just below 100 |
+
 ## Fault injection (OOM + I/O)
 
 `tests/support/faultinject.{h,c}` injects allocation and I/O failures via the
