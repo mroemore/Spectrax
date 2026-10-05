@@ -10,3 +10,4 @@
 src/notes.c        100
 src/wavetable.c    100
 src/filters.c      100
+src/gui_layer.c    100

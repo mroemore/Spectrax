@@ -173,7 +173,7 @@ void guiOpenLoadList(void) {
 static void guiCloseLoadList(void) {
 	g_loadListActive = false;
 	if(igui) {
-		popLayer(&igui->overlayLayers);
+		popLayerFree(&igui->overlayLayers);
 	}
 }
 
@@ -309,7 +309,7 @@ static void cbOverwriteConfirm(void *ctx) {
 		markInstrumentSavedAs(inst, g_pendingName);
 	}
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	g_modalState = MODAL_NONE;
 }
@@ -319,7 +319,7 @@ static void cbOverwriteCancel(void *ctx) {
 	(void)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	g_modalState = MODAL_NONE;
 }
@@ -333,7 +333,7 @@ static void cbDirtyDiscard(void *ctx) {
 		markPresetLoaded(inst, NULL);
 	}
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	if(inst) {
 		guiOpenLoadList();
@@ -352,7 +352,7 @@ static void cbDirtySave(void *ctx) {
 		if(r == PRESET_OK) {
 			markInstrumentSavedAs(inst, g_pendingName);
 			if(ig) {
-				popLayer(&ig->overlayLayers);
+				popLayerFree(&ig->overlayLayers);
 			}
 			guiOpenLoadList();
 			return;
@@ -362,7 +362,7 @@ static void cbDirtySave(void *ctx) {
 			 * Pop the dirty layer first so the overwrite layer
 			 * is the only thing on the stack. */
 			if(ig) {
-				popLayer(&ig->overlayLayers);
+				popLayerFree(&ig->overlayLayers);
 			}
 			guiBuildOverwriteLayer(ig, g_pendingName);
 			return;
@@ -370,7 +370,7 @@ static void cbDirtySave(void *ctx) {
 	}
 	/* Any other error: just close the dirty-confirm and bail. */
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 }
 
@@ -379,7 +379,7 @@ static void cbDirtyCancel(void *ctx) {
 	(void)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 }
 
@@ -391,7 +391,7 @@ static void cbLoadListPick(void *ctx) {
 	Instrument *inst = ig ? ig->vm->instruments[*ig->selectedInstrument] : NULL;
 	if(!inst || !inst->presetBank || idx < 0 || idx >= g_loadList.count) {
 		if(ig) {
-			popLayer(&ig->overlayLayers);
+			popLayerFree(&ig->overlayLayers);
 		}
 		g_loadListActive = false;
 		return;
@@ -427,7 +427,7 @@ static void cbLoadListPick(void *ctx) {
 		rebuildInstrumentGraph();
 	}
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	g_loadListActive = false;
 }
@@ -437,7 +437,7 @@ static void cbLoadListCancel(void *ctx) {
 	(void)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	g_loadListActive = false;
 }

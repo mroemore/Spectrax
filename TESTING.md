@@ -132,6 +132,34 @@ io.c 25%      blit_synth.c 25%  sample.c 32%     sequencer.c 48% fft.c 51%
 voice.c 54%   modsystem.c 61%
 ```
 
+### Worked module: `gui_layer.c` to 100%
+
+The first *GUI* module closed by this stack, and the proof of the "test the
+logic, stub the draw" approach: `gui_layer.c` is the modal-overlay layer stack —
+pure container/state logic (push/pop/peek/find, passive-layer skipping, input
+routing decisions) behind a single draw function. It went **0% → 100% line /
+function / branch** with no stubbing of production code.
+
+What it took:
+
+1. `tests/dsp/test_gui_layer.c` — the stack lifecycle, growth, passive
+   skipping, `findLayerByName`, the `*Free` variants, and every input-routing
+   branch (arrow keys, SELECT pop, ROUTE bookkeeping, EDIT firing the selected
+   action). Input is driven by **writing the synthetic `InputState`'s key flags
+   directly** — `isKeyJustPressed()` reads `state->keys[]`, it does not call
+   raylib — so no window is needed for the logic.
+2. `tests/dsp/test_gui_layer_fault.c` — the two allocation-failure guards
+   (`pushLayer` growth realloc, `popLayer`/`popTopNonPassiveLayer` mount
+   malloc) via `--wrap`.
+3. `tests/dsp/test_gui_layer_draw.c` — `layerStackDraw`, the one function with
+   real raylib draw calls, run under **Xvfb** (the project already uses
+   `xvfb-run` for the vizulobe GL tests). It opens a window, draws a stack
+   covering every branch (dim, dim+graph-less, root-less graph), and asserts the
+   path executed. Not a golden-image test — that is a different tool.
+4. `src/gui_layer.c` fixes the framework surfaced — **four real bugs** (I28).
+
+`meson/coverage-min.txt` now gates `gui_layer.c` at 100.
+
 ### Worked module: `filters.c` to 100%
 
 `filters.c` was taken from **32.8% → 100% branch** as the first application
@@ -564,6 +592,43 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
+
+### I28 — four memory bugs in gui_layer.c found while testing it
+
+Writing `test_gui_layer` and running it under valgrind surfaced four real
+defects in `gui_layer.c`, all fixed:
+
+1. **Invalid free in `destroyLayerStack`.** `pushLayer` stores a Layer *value*
+   into the `stack->layers` array, but `destroyLayerStack` called
+   `destroyLayer(&stack->layers[i])`, whose `free(layer)` got an interior
+   pointer into the array — `free(): invalid pointer`, an immediate abort.
+   Fix: split out `destroyLayerContents()` (frees the owned graph + name) and
+   have `destroyLayerStack` free contents in place, not the interior pointer.
+2. **Leak on every modal dismissal (17 call sites).** `popLayer` /
+   `popTopNonPassiveLayer` return a heap copy the caller owns, but every call
+   site in `gui_instrument.c` / `gui_inst_mod.c` discarded it — leaking the
+   Layer, its `strdup`'d name, and (for owned layers) the whole Graph. Fix: add
+   `popLayerFree` / `popTopNonPassiveLayerFree` (pop + `destroyLayer` the copy)
+   and route the 17 discard sites to them; the internal SELECT handler now calls
+   `destroyLayer` instead of `free`.
+3. **Unchecked `malloc` in `createLayer` / `popLayer` /
+   `popTopNonPassiveLayer`.** All three dereferenced the allocation without a
+   null check; `createLayer` crashed outright under OOM (caught by
+   `test_gui_layer_fault`). Fix: null-check and return NULL.
+4. **Dead `!l` guard.** `layerStackInputLayer` checked `!l || !l->graph`, but
+   `l = &stack->layers[index]` after an index bounds-check can never be NULL;
+   the dead half was an uncoverable branch. Fix: `ALWAYS(l != NULL)` and keep
+   the real `!l->graph` guard. (Same class as I8/I12 — an unreachable branch on
+   an invariant.)
+
+Also noted: `fi_live()` (the fault shim's live-allocation counter) is skewed by
+`strdup`, whose internal malloc is libc-internal and bypasses `--wrap` while its
+`free` does not — so valgrind, not the counter, is the leak authority for code
+that uses `strdup`.
+
+Takeaway: the GUI "logic" a first pass dismisses as untestable (a layer stack!)
+hid four memory bugs including an abort-on-teardown. Testing it needed no window
+for the logic and one Xvfb test for the draw call.
 
 ### I27 — GUI sources carried zero measured coverage (invisible, not uncovered)
 

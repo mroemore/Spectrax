@@ -12,6 +12,7 @@ test_names = [
   'test_input',
   'test_layout',
   'test_filters',
+  'test_gui_layer',
 ]
 
 # The GUI/UI sources now live in src/libspectrax_gui.a (see src/meson.build,
@@ -48,6 +49,8 @@ foreach name : test_names
     link_libs = test_cfg_libs
   elif name == 'test_layout'
     link_libs = test_layout_libs
+  elif name == 'test_gui_layer'
+    link_libs = gui_test_libs
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),
@@ -143,6 +146,41 @@ exe = executable('test_io_fault',
   ],
 )
 test('test_io_fault', exe)
+
+# Allocation-failure paths for gui_layer.c (pushLayer growth, createLayer).
+exe = executable('test_gui_layer_fault',
+  files('dsp/test_gui_layer_fault.c', 'support/faultinject.c'),
+  link_with: gui_test_libs,
+  include_directories: [inc, include_directories('support')],
+  dependencies: [m],
+  link_args: [
+    '-Wl,--wrap=malloc',
+    '-Wl,--wrap=calloc',
+    '-Wl,--wrap=realloc',
+    '-Wl,--wrap=free',
+    '-Wl,--wrap=fopen',
+    '-Wl,--wrap=fread',
+    '-Wl,--wrap=fclose',
+    '-Wl,--wrap=fopen64',
+  ],
+)
+test('test_gui_layer_fault', exe)
+
+# layerStackDraw is the one gui_layer.c function with real raylib draw calls.
+# Run it under Xvfb (a real GL context), matching the vizulobe GL tests.
+xvfb = find_program('xvfb-run', required: false)
+if xvfb.found()
+  exe = executable('test_gui_layer_draw',
+    files('dsp/test_gui_layer_draw.c'),
+    link_with: gui_test_libs,
+    include_directories: inc,
+    dependencies: system_deps,
+  )
+  test('test_gui_layer_draw', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', exe],
+    timeout: 60,
+  )
+endif
 
 # Input-byte mutation testing (P7): flips seeded bits of a valid WAV and
 # requires the loader's assertions to notice. No --wrap: it perturbs the file,

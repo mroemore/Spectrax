@@ -911,7 +911,7 @@ void guiPickerUpdateDeferred(void) {
 	if(!src) {
 		return;
 	}
-	popLayer(&ig->overlayLayers);
+	popLayerFree(&ig->overlayLayers);
 	if(g_routePickerCount > 0) {
 		g_routePickerCount--;
 	}
@@ -965,7 +965,7 @@ static void cbDeleteCancel(void *ctx) {
 	(void)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 }
 
@@ -974,7 +974,7 @@ static void cbDeleteConfirmYes(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	if(sc) {
 		removeSource(sc->inst, sc->idx);
@@ -1002,7 +1002,7 @@ static void cbClearAllCancel(void *ctx) {
 	(void)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 }
 
@@ -1010,7 +1010,7 @@ static void cbClearAllConfirmYes(void *ctx) {
 	SourceCtx *sc = (SourceCtx *)ctx;
 	InstrumentGui *ig = igui;
 	if(ig) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 	}
 	if(!sc || !sc->inst || sc->idx < 0 || sc->idx >= modSourceCount(sc->inst->modList)) {
 		return;
@@ -1219,7 +1219,7 @@ static void cbRouteToDest(void *ctx) {
 	 * guiPickerUpdateDeferred. This keeps the double-tap from
 	 * destroying the route on its first press. */
 	if(!already) {
-		popLayer(&ig->overlayLayers);
+		popLayerFree(&ig->overlayLayers);
 		if(g_routePickerCount > 0) {
 			g_routePickerCount--;
 		}
