@@ -26,6 +26,7 @@
 #include "dataviz.h"
 #include "vizfx.h"
 #include "main.h"
+#include "audio.h"
 
 /* Task 9: --probe-route flag. Off by default; when enabled, the frame
  * loop walks the visible instrument graph, picks the first ROUTE action
@@ -39,17 +40,11 @@
  * at x = gfx.texture.width/2 that are not background.
  * Must be a no-op (zero effect, zero prints) when --probe-route is absent. */
 static bool g_probeRoute = false;
-static bool g_probeTempo = false;
-static long g_tempoProbeLastMs = 0;
-static int g_lastProbedBpm = -1;
-static int g_lastProbedEven = -1;
-static int g_lastProbedOdd = -1;
 
 /* --volume / -V output attenuation (0..100, default 100 = unchanged).
  * Applied ONLY to the final samples written to the audio device; the
  * internal render, FFT feed, buffer scroller and mix ring all see the
  * unattenuated signal. */
-static float g_volume = 1.0f;
 
 bool isProbeRouteActive(void) {
 	return g_probeRoute;
@@ -194,44 +189,6 @@ static int probeCountRouteLinePx(RenderTexture2D gfx, ColourScheme *cs) {
 	return count;
 }
 
-/* --probe-tempo diagnostic (rule #1136: zero effect without the flag).
- * Logs the tempo state once at startup, then whenever bpm or the step
- * sample counts change, plus a heartbeat every ~2s while playing. */
-static long g_tempoProbeSteps = 0;   /* increments once per sequencer step */
-static double g_tempoProbeStartT = 0.0;
-static void probeTempoState(paTestData *data) {
-	if(!g_probeTempo || !data || !data->arranger || !data->arranger->tempoSettings.bpm) {
-		return;
-	}
-	Parameter *bpm = data->arranger->tempoSettings.bpm;
-	Parameter *swing = data->arranger->tempoSettings.swing;
-	int bv = (int)getParameterValue(bpm);
-	int ev = data->arranger->tempoSettings.samplesPerEvenStep;
-	int od = data->arranger->tempoSettings.samplesPerOddStep;
-	int sw = swing ? (int)getParameterValue(swing) : -1;
-	bool changed = (bv != g_lastProbedBpm || ev != g_lastProbedEven || od != g_lastProbedOdd);
-	double now = GetTime();
-	if(g_tempoProbeStartT == 0.0) {
-		g_tempoProbeStartT = now;
-	}
-	/* log on change, plus a ~2s heartbeat while playing so a steady-state
-	 * turbo cadence is captured even if nothing changes */
-	bool heartbeat = data->arranger->playing && (now - g_tempoProbeLastMs > 2.0);
-	if(changed || heartbeat) {
-		double dt = now - g_tempoProbeStartT;
-		double stepRate = (dt > 0.001) ? (double)g_tempoProbeSteps / dt : 0.0;
-		double expectStepsPerSec = (double)bv / 60.0 * 4.0; /* 4 steps/beat at this bpm */
-		fprintf(stderr, "TEMPO bpm=%d base=%.1f even=%d odd=%d swing=%d playing=%d elapsed=%d t=%.1f steps=%ld rate=%.1f expect=%.1f\n",
-		        bv, bpm->baseValue, ev, od, sw, data->arranger->playing,
-		        data->arranger->tempoSettings.samplesElapsed, now, g_tempoProbeSteps,
-		        stepRate, expectStepsPerSec);
-		g_tempoProbeLastMs = (long)now;
-		g_lastProbedBpm = bv;
-		g_lastProbedEven = ev;
-		g_lastProbedOdd = od;
-	}
-}
-
 static void probeStepRoute(ApplicationState *appState) {
 	if(!g_probeRoute || g_probeDone) {
 		return;
@@ -318,174 +275,14 @@ static void probeFinalizeRoute(RenderTexture2D gfx) {
 	g_probeDone = true;
 }
 
-/* advanceSequencerStep trigger callback: allocate a voice for the fired
- * note. Runs on the audio thread inside the callback's g_audioLock. */
-static void triggerSequencerNote(void *ctx, int channel, const int *note) {
-	VoiceManager *vm = (VoiceManager *)ctx;
-	Voice *voice = getFreeVoice(vm, channel);
-	triggerVoice(voice, note);
-}
-
-
-/* This routine will be called by the PortAudio engine when audio is needed.
-** It may called at interrupt level on some machines so don't do anything
-** that could mess up the system like calling malloc() or free().
-*/
+/* PortAudio adapter. The callback body lives in audio.c as
+ * renderAudioBuffer(), so the same code path the real stream runs can be
+ * driven from a test without a live audio device (see audio.h). */
 static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
-	paTestData *data = (paTestData *)userData;
-	float *out = (float *)outputBuffer;
-	unsigned int i = 0;
-	unsigned int j = 0;
-	/* Hold the audio lock for the whole buffer: every deref of the
-	 * instrument lists / voice pool below is shared with the GUI thread,
-	 * whose type-swap / preset-apply / resize paths free them under the
-	 * same lock. Without it the `rebuilding` flag leaves a check-then-use
-	 * window where the audio thread touches a freed voice (type-cycle
-	 * segfault). Non-contended in practice — the GUI only takes it during
-	 * a reconfiguration, which skips a buffer at worst. */
-	pthread_mutex_lock(&g_audioLock);
-	float max_output = 0.0f;
 	(void)inputBuffer;
-	clock_t start, end;
-	double cpu_time_used;
-	start = clock();
-	int stepSamples = data->arranger->tempoSettings.swingStep ? data->arranger->tempoSettings.samplesPerOddStep : data->arranger->tempoSettings.samplesPerEvenStep;
-	if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
-		data->arranger->tempoSettings.samplesElapsed = 0;
-		if(data->arranger->playing) {
-			if(g_probeTempo) {
-				g_tempoProbeSteps++;
-				/* Per-step log for the first 5s of probe runtime: captures
-				 * the exact cadence + what triggers on each step so a
-				 * turbo episode at startup is visible step-by-step even if
-				 * it corrects itself before the 2s heartbeat. */
-				double pn = GetTime();
-				if(g_tempoProbeStartT == 0.0) {
-					g_tempoProbeStartT = pn;
-				}
-				if(pn - g_tempoProbeStartT < 5.0) {
-					fprintf(stderr, "STEP %ld bpm=%d swing=%d ssw=%d ev=%d od=%d stepSmp=%d\n",
-					        g_tempoProbeSteps,
-					        (int)getParameterValue(data->arranger->tempoSettings.bpm),
-					        (int)getParameterValueAsInt(data->arranger->tempoSettings.swing),
-					        data->arranger->tempoSettings.swingStep,
-					        data->arranger->tempoSettings.samplesPerEvenStep,
-					        data->arranger->tempoSettings.samplesPerOddStep,
-					        stepSamples);
-				}
-			}
-			advanceSequencerStep(data->sequencer, data->patternList, data->arranger, triggerSequencerNote, data->voiceManager);
-		}
-	}
-
-	/* Task 2.4: audio comes solely from the per-voice mod graphs. The
-	 * instrument's own modLists no longer run in the audio path (their
-	 * sources/dests are the control plane; voices carry the copies and
-	 * syncVoiceGraph pulls live baseValues every buffer). */
-	// process song-level param changes:
-	processModulations(data->globalParameters, data->modList, 1.0f / framesPerBuffer);
-
-	for(i = 0; i < framesPerBuffer; i++) {
-		float left_output = 0.0f;
-		float right_output = 0.0f;
-
-		for(j = 0; j < data->arranger->enabledChannels; j++) {
-			/* Task 8: skip channels whose voice pool is mid-rebuild (the
-			 * Voice structs are freed + re-malloc'd by rebuildVoicesForInstrument
-			 * on preset change). Iterating voicePools[j][v] here would
-			 * deref a freed Voice. */
-			if(data->voiceManager->instruments[j]->rebuilding) {
-				continue;
-			}
-			for(int v = 0; v < data->voiceManager->voiceCount[j]; v++) {
-				Voice *currentVoice = data->voiceManager->voicePools[j][v];
-				if(currentVoice->active) {
-					/* Task 2.3: live-base sync from the instrument before
-					 * this voice's per-sample modulation pass. */
-					syncVoiceGraph(currentVoice);
-					processModulations(currentVoice->paramList, currentVoice->modList, 1.0f / SAMPLE_RATE);
-					// Handle envelope
-					Mod *gainDriver = (currentVoice->cloneCount > 0) ? currentVoice->clones[0] : NULL;
-					if(gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
-						setParameterValue(currentVoice->volume, 1.0f);
-						setParameterBaseValue(currentVoice->volume, 1.0f);
-						currentVoice->active = 0;
-						// printf("%i not triggered...", j);
-						if(currentVoice->type == VOICE_TYPE_SAMPLE) {
-							currentVoice->vd.sampler.samplePosition = 0.0f;
-						}
-					}
-
-					float phase_increment = 0.0f;
-					float freq = 0.0f;
-					if(currentVoice->note[0] != OFF) {
-						freq = noteFrequencies[currentVoice->note[0]][currentVoice->note[1]];
-						setParameterBaseValue(currentVoice->frequency, freq);
-						setParameterValue(currentVoice->frequency, freq);
-						phase_increment = freq / SAMPLE_RATE;
-					}
-
-					OutVal currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);
-
-					/* Voices always mix while active so that stopping the
-					 * song lets the current notes ring out through their
-					 * AD envelope (which ends at 0 amplitude) instead of
-					 * hard-zeroing the output mid-cycle. The old
-					 * `playing ? mix : zero` branch snapped every active
-					 * voice's sample to 0 the instant `playing` flipped --
-					 * a step discontinuity, i.e. the click/pop heard on
-					 * start and stop. */
-					left_output += currentSample.L * getParameterValue(currentVoice->volume);
-					right_output += currentSample.R * getParameterValue(currentVoice->volume);
-					currentVoice->leftPhase = fmodf(currentVoice->leftPhase + phase_increment, 1.0f);
-					currentVoice->rightPhase = fmodf(currentVoice->rightPhase + phase_increment, 1.0f);
-
-					currentVoice->samplesElapsed++;
-					if(!data->arranger->playing) {
-						currentSample.L = 0;
-						currentSample.R = 0;
-						left_output = 0.0f;
-						right_output = 0.0f;
-					}
-				} else {
-					//	data->voices[j].mod[0].result = 0;
-				}
-			}
-		}
-
-		// Track the maximum output value
-		if(fabsf(left_output) > max_output)
-			max_output = fabsf(left_output);
-		if(fabsf(right_output) > max_output)
-			max_output = fabsf(right_output);
-
-		*out++ = left_output * g_volume;
-		*out++ = right_output * g_volume;
-
-		pushFrameToFFT(&data->spectrogram.fft, left_output);
-
-		pushBufferScrollerFrame(&data->bufferScroller, left_output);
-		pushMixRingSample(&data->mixRing, left_output);
-
-		data->arranger->tempoSettings.samplesElapsed++;
-	}
-
-	processFFTData(&data->spectrogram.fft);
-
-	// Normalize the entire buffer to avoid clipping
-	//  if (max_output > MAX_VOLUME)
-	//  {
-	//  	float normalization_factor = MAX_VOLUME / max_output;
-	//  	out = (float *)outputBuffer;
-	//  	for (i = 0; i < framesPerBuffer * 2; i++)
-	//  	{
-	//  		*out++ *= normalization_factor;
-	//  	}
-	//  }
-	end = clock();
-	cpu_time_used = (((double)(end - start)) / CLOCKS_PER_SEC) * 1000.0f;
-	pushTimeGraphMeasurement(&data->timeGraph, cpu_time_used);
-	pthread_mutex_unlock(&g_audioLock);
+	(void)timeInfo;
+	(void)statusFlags;
+	renderAudioBuffer((paTestData *)userData, (float *)outputBuffer, framesPerBuffer);
 	return 0;
 }
 
@@ -517,7 +314,7 @@ int main(int argc, char **argv) {
 				if(v > 100) {
 					v = 100;
 				}
-				g_volume = v / 100.0f;
+				audioSetMasterVolume(v / 100.0f);
 			}
 		}
 	}

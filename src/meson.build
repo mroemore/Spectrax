@@ -6,6 +6,7 @@
 # Sources shared by the app and the dsp/UI tests (the old Makefile.test APP_OBJS).
 core_sources = files(
   'voice.c',
+  'audio.c',
   'modsystem.c',
   'oscillator.c',
   'wavetable.c',
@@ -37,7 +38,10 @@ seq_sources = files(
   'settings.c',
 )
 
-# App-only sources (main carries the audio/init glue; gui owns the graph UI).
+# App-only sources (main carries the init/main-loop glue; audio owns the
+# real-time render path; gui owns the graph UI).
+# audio.c is deliberately NOT app-only: it lives in core_lib so the
+# concurrency tests can link and drive renderAudioBuffer() (see audio.h).
 app_only_sources = files(
   'main.c',
   'distortion.c',
