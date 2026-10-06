@@ -194,6 +194,26 @@ if xvfb.found()
     timeout: 60,
   )
 
+  # I/O + allocation failure injection for the two binary loaders
+# (io/sequencer_io.c, io/preset_io.c) -- see TESTING.md I33.
+  exe = executable('test_io_fault2',
+    files('dsp/test_io_fault2.c', 'support/faultinject.c'),
+    link_with: gui_test_libs,
+    include_directories: [inc, include_directories('support')],
+    dependencies: [m],
+    link_args: [
+      '-Wl,--wrap=malloc',
+      '-Wl,--wrap=calloc',
+      '-Wl,--wrap=realloc',
+      '-Wl,--wrap=free',
+      '-Wl,--wrap=fopen',
+      '-Wl,--wrap=fread',
+      '-Wl,--wrap=fclose',
+      '-Wl,--wrap=fopen64',
+    ],
+  )
+  test('test_io_fault2', exe)
+
   # Allocation-failure paths for gui_pattern.c (createSongMinimapGui).
   exe = executable('test_gui_pattern_fault',
     files('dsp/test_gui_pattern_fault.c', 'support/faultinject.c'),

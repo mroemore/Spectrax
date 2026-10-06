@@ -365,6 +365,10 @@ The pattern is **loop-until-clean**: for each index, fail exactly there, run the
 operation, and assert it degrades cleanly (returns NULL, leaves state untouched,
 leaks nothing, leaves the target struct at a valid default).
 
+- `tests/dsp/test_io_fault2.c` — I/O and OOM injection for the two binary
+  loaders (`io/sequencer_io.c`, `io/preset_io.c`). Feeds a real saved project
+  through an anonymous memfd, so nothing touches disk. Two results and one
+  harness trap in I33.
 - `tests/dsp/test_wavetable_fault.c` — `createWavetablePool` (3 allocations)
   and `loadWavetable` (1); this is what closes `wavetable.c` to 100% branch.
 - `tests/dsp/test_io_fault.c` — the WAV loader's full failure surface:
@@ -384,6 +388,12 @@ and are disabled before process exit, gcov profiling is unaffected.
 builds and runs them with `-fsanitize=fuzzer,address,undefined`:
 
 - `wav` — `src/io.c:load_wav_sample` (untrusted WAV files)
+- `seqfile` — `src/io/sequencer_io.c:loadSequencerState` (untrusted project/song
+  files), then the loaded data through `createSequencer` / `startPlaying` /
+  `advanceSequencerStep`. **The consumer chain is the point**: the loader is a
+  pure deserializer, so a loader-only harness has no teeth — the out-of-bounds
+  access only happens when a consumer treats a loaded value as an index. Found
+  five defects (I32).
 - `config` — `src/io/config_io.c` (settings / theme JSON)
 
 Fuzz input reaches the file-opening loaders through an anonymous memfd
@@ -394,7 +404,14 @@ it selects `/usr/lib/llvm/21/bin/clang`.
 
 The `wav` target immediately found four real defects (I13–I16). After fixing
 them, the corpus plus 150 s of fuzzing (100k+ executions) run clean, and the
-`config` target found nothing.
+`config` target found nothing. The `seqfile` target found five more (I32) and
+now runs 24.2M executions clean.
+
+**Where a fuzzer should aim.** For deserialised input, fuzz where the data is
+*used*, not where it is *read*. The loader's own code is usually a short chain of
+checked `fread`s; the defects live in the consumers that treat a loaded value as
+an index without re-checking it. Confirm the harness has teeth before trusting a
+clean run: revert the fix it is supposed to catch and check the fuzzer finds it.
 
 ## Dynamic-analysis matrix (P6)
 
@@ -783,6 +800,123 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
+
+### I33 — extending `--wrap` to a new loader: the harness allocates too
+
+Extending the `--wrap` fault-injection harness from the WAV loader to the two
+binary loaders surfaced a trap worth writing down, because it cost a segfault
+before it cost a diagnosis.
+
+`--wrap=malloc` wraps **every** allocation in the test executable, including the
+test's own. So the natural shape of a loop-until-clean test — allocate a
+destination, arm injection, call the function — runs the *harness* out of memory
+first, gets NULL back, and then dereferences it. The crash looks like a bug in
+the code under test.
+
+The fix is structural: build the destination **once, outside the injection
+window**, and reset it in place between iterations (`memset` plus restoring the
+handful of pointers the loader writes). `test_io_fault2.c`'s `Dest` struct is the
+pattern. This also makes the loop measure the *loader's* allocation surface
+rather than the harness's — which turned out to be the interesting result.
+
+Two findings from `test_io_fault2.c`:
+
+- **`loadSequencerState` makes zero allocations of its own.** Loop-until-clean
+  converged on the first iteration. That is a result, not a broken harness: the
+  loader writes into caller-owned structs, so there is nothing for it to
+  allocate. The WAV loader's loop runs four iterations because it owns its
+  buffers.
+- **The read sequence has a precise optional tail.** The `LABL` chip-label chunk
+  is optional (older V2 files predate it), so a failed read there legitimately
+  still returns `SEQ_OK`. Rather than assert "no failed read may be followed by
+  success" — which is false — the test walks forward to the first index where a
+  failure *is* tolerated and asserts that boundary sits past the required region.
+  It lands at **read #16**, matching the 16 required reads exactly (magic, PATT
+  header, count, size, notes, ARRG header, playhead_indices, enabled, selx,
+  sely, loop, bpm, playing, song, channelSlots, LABL peek). `loadPresetFile` has
+  no optional chunk, so it tolerates no failure at all.
+
+### I34 — a test that patches file offsets can pass for the wrong reason
+
+The I32 regression tests patch specific ints into a saved project file. Two of
+those offsets were wrong, and **the tests passed anyway** — a mis-placed patch
+exercises nothing and asserts nothing, which looks exactly like success.
+
+Three separate mistakes, in order:
+
+1. `song[]` was placed one int past its real offset, so the "switch to a
+   nonexistent pattern" case patched a row the sequencer never read.
+2. The assertion loop checked all `MAX_SEQUENCER_CHANNELS` channels, including
+   ones past `enabledChannels` that `startPlaying` never initialised. A file
+   legitimately naming pattern 1 of a 1-pattern project tripped it.
+3. Once those were fixed, the tests still passed with the fixes reverted —
+   because `startPlaying` reads `song[i][selected_y]`, not `song[i][0]`, so the
+   patched row was not on the playback path at all.
+
+**Rules this produced:**
+
+- **Assert the patch landed.** Every patched cell is read back through the loader
+  before the test relies on it. A wrong offset now fails loudly and names itself
+  instead of silently testing nothing.
+- **Derive offsets from named constants, not literals**, so a format change moves
+  them rather than making the test lie.
+- **Verify a regression test by reverting its fix** (`.tmp_files/verify_i32.sh`).
+
+The verification script itself had two bugs worth noting, because both produced
+*false passes*:
+
+- It ignored the `ninja` exit status, so a revert producing uncompilable code
+  left the previous binary in place and every case looked like a pass.
+- It removed one lock at a time, but the fixes are defence in depth: the loader
+  clamp *and* the consumer clamp both hold the door shut. Only removing both
+  reproduces the out-of-bounds write.
+
+Final result: all five I32 cases are caught, with the right failure mode —
+removing the `enabledChannels` guards gives SEGV, removing the
+`pattern_index`/`pattern_size` guard gives SIGFPE (which is how the
+division-by-zero is confirmed rather than assumed).
+
+### I32 — fuzzing the project loader: five file-driven defects
+
+The project/song format was the only untrusted binary input with no fuzzer, and
+it is where I29 lived. `fuzz/fuzz_seqfile.c` feeds `loadSequencerState` a memfd
+and then drives the loaded data through `createSequencer` + `startPlaying` +
+`advanceSequencerStep` — the consumers a real project reaches immediately.
+
+**That consumer chain is what gives the harness teeth.** A loader-only harness
+found nothing even with the I29 check removed, because the loader is a pure
+deserializer: it stores `pattern_size` verbatim and the out-of-bounds access
+happens when a *consumer* treats it as a step count. Two minutes of fuzzing to no
+effect was the evidence for changing the shape. The general lesson: **when the
+input is deserialised, fuzz where the data is used, not where it is read.**
+
+Five defects, all fixed, each with a regression test verified to fail without its
+fix:
+
+1. **`createSequencer` out-of-bounds WRITE.** `enabledChannels` comes from the
+   file and bounded a loop writing `sequencer->playhead_index[i]`, an array of
+   `MAX_SEQUENCER_CHANNELS`.
+2. **`getPatternIDfromArranger` out-of-bounds READ.** `selected_x` / `selected_y`
+   indexed `song[][]`. These clamp rather than reject — they are cursors, so a
+   project saved by a future build with more channels should still open.
+3. **`incrementSequencer` out-of-bounds READ.** `playhead_indices[i] + 1` indexed
+   `song[][row+1]`, and the loaded value became `pattern_index`, so the file
+   steered playback.
+4. **`incrementSequencer` out-of-bounds READ and division by zero.** The size
+   lookup validated the *old* pattern index; a mid-step pattern switch reassigned
+   `pattern_index` and the next line used the *new* one unchecked.
+5. **`editStep` wrote `notes[patternIndex]` instead of `notes[noteIndex]`.** The
+   guard bounded `noteIndex` and said nothing about `patternIndex`, so editing
+   step 2 of pattern 200 wrote outside that pattern's note array. The two indices
+   only coincided when they were equal, which is why it went unnoticed.
+
+`createSequencer` also now `calloc`s instead of `malloc` (entries past
+`enabledChannels` were uninitialised) and bounds its loop by the array as well as
+by the file value — defence in depth, so removing the loader clamp alone is not
+enough to reintroduce the write.
+
+24.2M runs / 421 s clean after the fixes. Corpus is seeds plus three crash
+artifacts, matching the existing curate-what-you-track rule.
 
 ### I31 — a race is the one bug class no other rung here can see
 
