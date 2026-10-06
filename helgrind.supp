@@ -14,10 +14,20 @@
 # GUI/input side and read by renderAudioBuffer on the audio thread. Declared
 # _Atomic float precisely so this is not a race; helgrind cannot see that. The
 # aligned 4-byte store/load it emits needs no lock prefix on x86, which is why
-# TSan is satisfied and helgrind is not. Name both frames — a suppression has
-# to match the racing pair, not just the variable.
+# TSan is satisfied and helgrind is not.
+#
+# Two entries, not one: a helgrind suppression matches the *access site*, and a
+# two-sided race has two of them. A single entry naming only the writer
+# suppresses the report only while helgrind happens to attribute it that way —
+# which flipped between runs as the threads interleaved differently. Name the
+# access point on both sides.
 {
-   g_volume-relaxed-atomic-setter
+   g_volume-relaxed-atomic-write
    Helgrind:Race
    fun:audioSetMasterVolume
+}
+{
+   g_volume-relaxed-atomic-read
+   Helgrind:Race
+   fun:audioGetMasterVolume
 }

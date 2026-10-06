@@ -141,6 +141,7 @@ bimodal. Modules are either closed (100%) or barely touched:
 
 ```
 closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
+           gui_arranger.c 97.8% line / 100% func / 81.5% branch
 low        gui_inst_mod.c 3.6% (925 branches)   gui_instrument.c 1.5% (590)
            gui_arranger.c 28.1% (323)           dataviz.c 3.2%   gui_core.c 22.7%
            gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
@@ -925,6 +926,62 @@ enough to reintroduce the write.
 
 24.2M runs / 421 s clean after the fixes. Corpus is seeds plus three crash
 artifacts, matching the existing curate-what-you-track rule.
+
+### I36 — a destructor that cannot accept NULL is a crash under memory pressure
+
+`freeList(List *)` dereferenced its argument immediately. `initGuiNode` calls it
+on `gn->items` and `gn->itemWeights` — the two lists it had just tried to
+create — from its own cleanup path when the `name` allocation fails. So creating
+any GUI node during memory pressure segfaulted *inside the cleanup code*, which
+is the worst place for it: the caller is already handling a failure and now has
+to handle a crash instead.
+
+Found by `test_gui_arranger_fault.c`'s first run. The fix is one line: a
+destructor must tolerate NULL, exactly like `free()`. Worth stating as a rule
+rather than a patch, because the same shape will recur in every `free*` in the
+codebase — `if(!list) return;` at the top, no exceptions.
+
+**The broader lesson: OOM injection finds crashes in error paths, which is
+where crash-hiding is most likely.** The happy path had been exercised
+millions of times. The `malloc` returning NULL branch had never run.
+
+### I35 — gui_arranger: three accessors that assumed a graph existed
+
+Testing the module headlessly surfaced three `agui`-deref-without-a-guard
+sites, each inconsistent with its neighbours:
+
+- `printArrGraph()` — `printGraph(agui->root, 0)`, no check.
+- `gui_arranger_draw()` — `drawNode(agui->root)`, no check.
+- `createArrangerGraph()` — replaced `agui` without freeing the old graph, so a
+  second call orphaned ~370 KB of nodes and left every `g_chipNodes[]` entry
+  pointing into freed memory.
+
+All three fixed the same way, matching what `isInstChipNode`,
+`getArrangerSelectedNode`, `expandChip` and `isChipExpanded` already did:
+`if(!agui || !agui->root) return;`, plus a new `destroyArrangerGraph()` that
+`createArrangerGraph` now calls before rebuilding. Valgrind went from 371 KB
+leaked to zero.
+
+The leak was found by valgrind rather than by a test, which is the usual
+division of labour: an assertion would have needed to know the graph *should*
+be freed, and nobody had written that down.
+
+### I37 — a helgrind suppression must name the access site on both sides
+
+`helgrind.supp` had one entry for the `g_volume` relaxed-atomic race, naming
+only the writer (`fun:audioSetMasterVolume`). It passed the matrix, then failed
+it on a later run with 24,315 errors — the same race, attributed to the
+*reader* that time.
+
+A helgrind suppression matches the frame at the **access site**, and a two-sided
+race has two of them. Which side helgrind prints first depends on the
+interleaving, so a one-sided entry suppresses the report only while the
+threads happen to line up. It is a flaky gate wearing a suppression's clothes.
+
+Fixed by adding an entry per side (`g_volume-relaxed-atomic-write` and
+`-read`), then running the target three times to confirm stability. General
+rule: **if a race has two participants, suppress two access points, and verify
+a suppression by running the target more than once.**
 
 ### I31 — a race is the one bug class no other rung here can see
 

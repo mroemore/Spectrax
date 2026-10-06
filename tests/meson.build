@@ -15,6 +15,8 @@ test_names = [
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
+  'test_gui_arranger',
+  'test_gui_arranger_fault',
 ]
 
 # The GUI/UI sources now live in src/libspectrax_gui.a (see src/meson.build,
@@ -40,6 +42,8 @@ test_layout_libs = test_graph_nav_libs
 
 foreach name : test_names
   extra_srcs = []
+  extra_incs = []
+  extra_link_args = []
   link_libs = [core_lib]
   if name == 'test_graph_nav'
     link_libs = test_graph_nav_libs
@@ -64,12 +68,29 @@ foreach name : test_names
     link_libs = gui_test_libs
   elif name == 'test_gui_pattern'
     link_libs = gui_test_libs
+  elif name == 'test_gui_arranger'
+    link_libs = gui_test_libs
+  elif name == 'test_gui_arranger_fault'
+    # --wrap=malloc so createInstChipGuiNode / createArrangerCellGuiNode's OOM
+    # guards are reachable. gui_lib leads because gui_arranger.o references
+    # symbols in core_lib (initGuiNode) and seq_lib.
+    extra_srcs = files('support/faultinject.c')
+    extra_incs = [inc, include_directories('support')]
+    link_libs = [gui_lib, core_lib, seq_lib, vizfx_lib]
+    # faultinject.c always references the fopen/fread/fclose real symbols, so
+    # the full wrap set must be present even though this target only fails
+    # allocations.
+    extra_link_args = ['-Wl,--wrap=malloc', '-Wl,--wrap=calloc',
+                       '-Wl,--wrap=realloc', '-Wl,--wrap=free',
+                       '-Wl,--wrap=fopen', '-Wl,--wrap=fread',
+                       '-Wl,--wrap=fclose', '-Wl,--wrap=fopen64']
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),
     extra_srcs,
     link_with: link_libs,
-    include_directories: inc,
+    include_directories: extra_incs == [] ? [inc] : extra_incs,
+    link_args: extra_link_args,
     dependencies: system_deps,
   )
   test(name, exe)
@@ -232,6 +253,18 @@ if xvfb.found()
     ],
   )
   test('test_gui_pattern_fault', exe)
+
+  # gui_arranger.c's cell + chip draw callbacks.
+  exe = executable('test_gui_arranger_draw',
+    files('dsp/test_gui_arranger_draw.c'),
+    link_with: gui_test_libs,
+    include_directories: inc,
+    dependencies: system_deps,
+  )
+  test('test_gui_arranger_draw', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', exe],
+    timeout: 60,
+  )
 
   # Same for gui_pattern.c's draw callbacks (step cells + song minimap).
   exe = executable('test_gui_pattern_draw',

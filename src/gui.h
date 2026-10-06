@@ -58,6 +58,7 @@ typedef struct {
 } InstrumentGui;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
+void destroyArrangerGraph(void);
 void arrangerGraphControlInput(int keymapping);
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep);
 void destroyPatternGraph();
