@@ -26,6 +26,7 @@ meson test -C build-cov      # just the suite
 | P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
 | P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/-ftrapv, char signedness) | done |
 | P9 | Concurrency: extract the render path, TSan + helgrind gated | done |
+| P10 | Untrusted-input hardening: fuzz the project loader, `--wrap` the binary loaders | done |
 | P7 | Mutation testing (input-byte, exhaustive) | done |
 | P8 | Process (regression-per-bug, release checklist, gates) | done |
 
@@ -121,7 +122,7 @@ after the full suite (**31 suites**) passes. The coverage build defines
 
 ```
                          files   lines              functions          branches
-app code (src/)             34   49.2% (3981/8084)   54.9% (316/576)   38.9% (1945/5002)
+app code (src/)             34   50.3% (4091/8134)   55.4% (319/576)   40.4% (2042/5052)
 tools/vizulobe             11   76.7% (495/645)     87.2% (41/47)     48.8% (163/334)
 ```
 
@@ -147,6 +148,13 @@ low        gui_inst_mod.c 3.6% (925 branches)   gui_instrument.c 1.5% (590)
 
 Those seven low files are ~2,700 lines and hold the large majority of the
 remaining headroom; `gui_inst_mod.c` alone is a third of the app's branches.
+
+Worth noting where the io work landed: `io/sequencer_io.c` went from 55.8% to
+86.5% line coverage and 64.0% to 86.5% branch, almost entirely from the fuzzer's regression corpus plus
+the load-clamp tests, and `io.c` (the WAV loader) sits at 70.5%. **The format that
+had the most defects was also the one with no fuzzer** — the correlation is not a
+coincidence, and it is the argument for fuzzing every parser rather than the one
+that happened to be popular.
 
 Per-module rates move as the ratchet in `meson/coverage-min.txt` closes each one.
 
