@@ -116,26 +116,39 @@ carry the crashing fuzz inputs as permanent regressions in
 ## Coverage baseline
 
 First-party sources only (system, vendored, and test code excluded), captured
-after the full suite (**21 suites**) passes. Numbers are lower than in P1 because
-the coverage build now defines `NDEBUG` (see I12), so `assert()` sites are not
-instrumented:
+after the full suite (**31 suites**) passes. The coverage build defines
+`NDEBUG` (see I12), so `assert()` sites are not instrumented:
 
 ```
-lines 69.6% (3785/5436)   functions 73.9%   branches 55.7% (1731/3110)
+                         files   lines              functions          branches
+app code (src/)             34   49.2% (3981/8084)   54.9% (316/576)   38.9% (1945/5002)
+tools/vizulobe             11   76.7% (495/645)     87.2% (41/47)     48.8% (163/334)
 ```
 
-Pilot modules (pure logic, worst-covered first). Rates move as the ratchet in
-`meson/coverage-min.txt` closes each module:
+**Do not compare against the P1-era figure (69.6% lines).** That number was
+produced by a capture that silently dropped files: at P1, `gui_core.c`,
+`gui_pattern.c`, `gui_arranger.c`, `gui_instrument.c` and `gui_layer.c` had no
+`SF:` entry at all — invisible, not 0% (I27). Those five files are 1,831 lines
+and sit at 27.5% today, so measurement alone moved the denominator. Recomputing
+over only the files P1 could see still gives 55.6%, because the P1 set also
+omitted files that are now measured (`gui_style.c`, `graph_gui.c`, `gui_inst_*.c`,
+and `audio.c` after the render path moved out of `main.c`). **The 49.2% above is
+the first number produced by a capture that sees the whole codebase.**
+
+The average is also a poor prioritisation signal, because coverage here is
+bimodal. Modules are either closed (100%) or barely touched:
 
 ```
-notes.c 100%  wavetable.c 100%  filters.c 100%   gui_layer.c 100%
-gui_pattern.c 98.6%                            dstruct.c 25%   vizfx.c 26%
-io.c 25%      blit_synth.c 25%  sample.c 32%     sequencer.c 48% fft.c 51%
-voice.c 54%   modsystem.c 61%
+closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
+low        gui_inst_mod.c 3.6% (925 branches)   gui_instrument.c 1.5% (590)
+           gui_arranger.c 28.1% (323)           dataviz.c 3.2%   gui_core.c 22.7%
+           gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
 ```
 
-Modules closed to 100% so far: `notes.c`, `wavetable.c`, `filters.c`,
-`gui_layer.c` — plus `gui_pattern.c` at 98.6% with one documented exclusion.
+Those seven low files are ~2,700 lines and hold the large majority of the
+remaining headroom; `gui_inst_mod.c` alone is a third of the app's branches.
+
+Per-module rates move as the ratchet in `meson/coverage-min.txt` closes each one.
 
 ### Worked module: `gui_pattern.c` to 98.6% branch
 
