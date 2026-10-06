@@ -338,6 +338,7 @@ void DrawGUI(int currentScene);
 RenderTexture2D createPresentTarget(void);
 void presentFrame(RenderTexture2D gfx);
 InstrumentGui *getInstrumentGui(void);
+void freeInstrumentGui(void);
 
 /* True when a non-passive overlay layer (picker / confirm / editor) is up
  * over the instrument base graph. While one is up, arrows belong to the

@@ -142,8 +142,8 @@ bimodal. Modules are either closed (100%) or barely touched:
 ```
 closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
            gui_arranger.c 97.8% line / 100% func / 81.5% branch
-low        gui_inst_mod.c 3.6% (925 branches)   gui_instrument.c 1.5% (590)
-           gui_arranger.c 28.1% (323)           dataviz.c 3.2%   gui_core.c 22.7%
+in progress gui_instrument.c 20.0% line / 31.6% func / 8.4% branch (I40)
+low        gui_inst_mod.c 3.6% (925 branches)   dataviz.c 3.2%   gui_core.c 22.7%
            gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
 ```
 
@@ -982,6 +982,53 @@ Fixed by adding an entry per side (`g_volume-relaxed-atomic-write` and
 `-read`), then running the target three times to confirm stability. General
 rule: **if a race has two participants, suppress two access points, and verify
 a suppression by running the target more than once.**
+
+### I40 — gui_instrument: two unindexed accessors, and a GUI with no destructor
+
+Testing the instrument screen found three things, one of which is a design
+constraint worth knowing before anyone tries to test this module again.
+
+**Accessors indexed an attacker-writable field with no bound.** `selectedInstrument`
+is a caller-owned `int*` written by the load list, the modal callbacks and the
+channel-switch gestures. `getSelectedInstGraph()` and
+`getSelectedInstInstrument()` both did `array[*igui->selectedInstrument]` on
+arrays fixed at `MAX_SEQUENCER_CHANNELS`. Because `instrumentScreenGraphs[]` is
+the *first* field of `InstrumentGui`, an out-of-range selection did not read off
+the allocation — it read `instrumentCount` and `selectedInstrument`
+reinterpreted as a `Graph *`, which the caller then dereferences. A wild pointer,
+not an obvious crash, which is why ASan would never have caught it either.
+
+Fixed with a shared `clampSelectedInstrument()`. Clamping rather than returning
+NULL is deliberate: these are read accessors whose contract is "the selected
+channel's thing", and NULL would push a guard onto every caller for a case that
+is a bug in the *writer*, not the reader.
+
+**`createInstrumentGui` had no destructor.** 184 bytes plus one node tree plus a
+render-texture pair per mod strip, leaked on every rebuild. Added
+`freeInstrumentGui()`; the mod-strip textures come free because
+`createModStripGuiNode` installs `freeModStripGuiNode` as the node destructor.
+
+**The VoiceManager is process-lifetime state, and the test must respect that.**
+`gui_inst_mod.c`'s file-static `g_sourceCtx[]` holds `Instrument *` pointers
+into the VoiceManager. Freeing it leaves a dangling global that the next
+`createInstrumentGui` dereferences — ASan reported it as a heap-use-after-free
+when the test freed the VM as part of its teardown. `main.c` never frees it
+either, so that is the product's actual contract and the test now honours it.
+The fragility is real (any future "recreate the VoiceManager" feature hits this)
+but fixing it belongs with that feature, not with a test.
+
+**The constraint: this screen's graph construction needs a GL context.**
+`createInstGraph` → `createModStripGuiNode` → `initModStrip` →
+`LoadRenderTexture`, so `createInstrumentGui` cannot run headlessly. That makes
+`gui_instrument.c` the one module whose *construction* — not just its drawing —
+requires a window, so its test runs under Xvfb. Worth knowing because it
+inverts the usual split: normally node construction is free and drawing is the
+part that needs a display.
+
+### I39 — see I40: the unclamped `selectedInstrument` accessors
+
+(Recorded together with I40 because they were found in the same pass and are the
+same shape: a caller-owned index used against a fixed array without a bound.)
 
 ### I31 — a race is the one bug class no other rung here can see
 

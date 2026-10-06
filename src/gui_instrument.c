@@ -80,8 +80,58 @@ void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 }
 
 
+/* selectedInstrument is a caller-owned int*, written by several paths (the
+ * load list, the modal callbacks, channel-switch gestures). Both arrays
+ * below are fixed at MAX_SEQUENCER_CHANNELS and both were indexed with it
+ * unchecked, so an out-of-range selection returned whatever followed the
+ * array in the struct — for instrumentScreenGraphs that is instrumentCount
+ * reinterpreted as a Graph*, which the caller then dereferences. Clamp to the
+ * array rather than reject: the caller asked for "the selected channel's
+ * graph", and a clamped answer is a real object where NULL would force every
+ * caller to grow a guard (TESTING.md I39). */
+static int clampSelectedInstrument(void) {
+	if(!igui || !igui->selectedInstrument) {
+		return 0;
+	}
+	int i = *igui->selectedInstrument;
+	if(i < 0) {
+		return 0;
+	}
+	if(i >= MAX_SEQUENCER_CHANNELS) {
+		return MAX_SEQUENCER_CHANNELS - 1;
+	}
+	return i;
+}
+
+/* Paired with createInstrumentGui. The instrument graphs own render textures
+ * (each mod strip allocates a ping/pong pair), and those are released through
+ * the mod-strip node's own destructor, so freeGuiNode on each root is enough.
+ * Without this the GUI leaked on every rebuild -- valgrind found it while
+ * testing the module (TESTING.md I40).
+ *
+ * Note the VoiceManager is *not* touched: it is process-lifetime state, and
+ * gui_inst_mod.c's g_sourceCtx[] keeps Instrument pointers into it. */
+void freeInstrumentGui(void) {
+	if(!igui) {
+		return;
+	}
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+		Graph *g = igui->instrumentScreenGraphs[i];
+		if(g) {
+			freeGuiNode(g->root);
+			free(g);
+			igui->instrumentScreenGraphs[i] = NULL;
+		}
+	}
+	free(igui);
+	igui = NULL;
+}
+
 Graph *getSelectedInstGraph() {
-	return igui->instrumentScreenGraphs[*igui->selectedInstrument];
+	if(!igui) {
+		return NULL;
+	}
+	return igui->instrumentScreenGraphs[clampSelectedInstrument()];
 }
 
 
@@ -1349,7 +1399,7 @@ Instrument *getSelectedInstInstrument(void) {
 	if(!igui || !igui->vm) {
 		return NULL;
 	}
-	return igui->vm->instruments[*igui->selectedInstrument];
+	return igui->vm->instruments[clampSelectedInstrument()];
 }
 
 

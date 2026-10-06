@@ -204,6 +204,21 @@ test('test_gui_layer_fault', exe)
 # Run it under Xvfb (a real GL context), matching the vizulobe GL tests.
 xvfb = find_program('xvfb-run', required: false)
 if xvfb.found()
+  # test_gui_instrument is not a "draw" test, but createInstGraph reaches
+  # createModStripGuiNode -> initModStrip -> LoadRenderTexture, so building
+  # the instrument graph needs a GL context even though handlePresetUiInput
+  # never draws. Xvfb is the cheapest way to get one.
+  exe = executable('test_gui_instrument',
+    files('dsp/test_gui_instrument.c'),
+    link_with: gui_test_libs,
+    include_directories: inc,
+    dependencies: system_deps,
+  )
+  test('test_gui_instrument', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', exe],
+    timeout: 60,
+  )
+
   exe = executable('test_gui_layer_draw',
     files('dsp/test_gui_layer_draw.c'),
     link_with: gui_test_libs,
