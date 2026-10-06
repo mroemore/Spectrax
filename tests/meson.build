@@ -5,6 +5,7 @@
 test_names = [
   'test_io',
   'test_voice',
+  'test_audio_concurrency',
   'test_modsystem',
   'test_mod_voice',
   'test_graph_nav',
@@ -46,6 +47,11 @@ foreach name : test_names
     link_libs = test_mod_voice_libs
   elif name == 'test_voice'
     link_libs = [core_lib, seq_lib]
+  elif name == 'test_audio_concurrency'
+    # audio.c lives in core_lib precisely so this can link it; it also needs
+    # seq_lib for advanceSequencerStep and the GUI lib for the draw helpers
+    # the arranger pulls in transitively.
+    link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]
   elif name == 'test_cfg'
     link_libs = test_cfg_libs
   elif name == 'test_layout'

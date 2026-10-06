@@ -17,6 +17,7 @@
  * are read here and written from main.c's input/argv handling. */
 
 #include <math.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -31,15 +32,23 @@
 #include "vizfx.h"
 #include "fft.h"
 
-/* ---- master volume (set from --volume / -V, or the volume keybinds) ---- */
-static float g_volume = 1.0f;
+/* ---- master volume (set from --volume / -V, or the volume keybinds) ----
+ * Atomic, not plain: the audio thread reads this once per stereo frame while
+ * the GUI thread may write it. A single 4-byte aligned load/store is what the
+ * race detector needs and all it is, so a relaxed atomic costs nothing on the
+ * hot path — whereas taking g_audioLock for a volume read would put a mutex
+ * round-trip in the per-frame loop and invite lock-ordering trouble for no
+ * benefit. (Caught by ThreadSanitizer; today the only writer is argv, which
+ * runs before Pa_StartStream, but this is a public setter, so the next caller
+ * — a volume keybind is the obvious one — must not inherit the race.) */
+static _Atomic float g_volume = 1.0f;
 
 void audioSetMasterVolume(float v) {
-	g_volume = v;
+	atomic_store_explicit(&g_volume, v, memory_order_relaxed);
 }
 
 float audioGetMasterVolume(void) {
-	return g_volume;
+	return atomic_load_explicit(&g_volume, memory_order_relaxed);
 }
 
 /* ---- --probe-tempo diagnostic (rule #1136: zero effect without the flag).
@@ -221,8 +230,9 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 		if(fabsf(right_output) > max_output)
 			max_output = fabsf(right_output);
 
-		*out++ = left_output * g_volume;
-		*out++ = right_output * g_volume;
+		float vol = audioGetMasterVolume();
+		*out++ = left_output * vol;
+		*out++ = right_output * vol;
 
 		pushFrameToFFT(&data->spectrogram.fft, left_output);
 

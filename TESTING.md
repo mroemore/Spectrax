@@ -25,6 +25,7 @@ meson test -C build-cov      # just the suite
 | P4 | Anomaly / fault injection (OOM, I/O fail-after-N) | done |
 | P5 | Fuzzing (config/JSON, WAV) + seed corpus | done |
 | P6 | Dynamic-analysis matrix (ASan/UBSan/valgrind/-ftrapv, char signedness) | done |
+| P9 | Concurrency: extract the render path, TSan + helgrind gated | done |
 | P7 | Mutation testing (input-byte, exhaustive) | done |
 | P8 | Process (regression-per-bug, release checklist, gates) | done |
 
@@ -393,16 +394,58 @@ configuration; it exits non-zero if any gating config fails.
 | `trapv` | gcc `-ftrapv` (signed-overflow traps) | yes |
 | `uchar` / `schar` | gcc `-funsigned-char` / `-fsigned-char` | yes |
 | `valgrind` | plain gcc build, every test under valgrind (gates on memcheck errors; leaks reported) | yes |
+| `tsan` | clang `-fsanitize=thread`, concurrency suite only | yes |
+| `helgrind` | plain build, concurrency suite under `valgrind --tool=helgrind` | yes |
 | `m32` | gcc `-m32` | skipped (no multilib) |
 
-Current state: **asan / trapv / uchar / schar / valgrind PASS**, m32 SKIP.
-MSan is not viable here (needs an instrumented libc).
+Current state: **asan / trapv / uchar / schar / valgrind / tsan / helgrind
+PASS**, m32 SKIP. MSan is not viable here (needs an instrumented libc).
 
 The matrix and valgrind found five real defects, all fixed (I20, I21): a
 deref-after-free in `test_modsystem`, a signed-overflow in `voice.c` grain
 positions, a `patterns[-1]` out-of-bounds in `sequencer.c`
 `getStep`/`getCurrentStep`, an uninitialised-`voiceType` read in
 `createVoiceManager`, and uninitialised FFT buffers read in `analysis`.
+
+### Concurrency: tsan and helgrind (I31)
+
+Every other rung observes *outcomes*. Coverage counts executions; ASan/UBSan/
+valgrind catch single-threaded memory errors after the fact. A data race reads
+as "both branches were taken, everything green" — which is precisely the bug
+class that produced the production type-cycle segfault recorded in `audio.c`'s
+lock comment. TSan and helgrind observe *ordering*, so they are the only rungs
+that can see it.
+
+**The race detector subset is deliberate.** Both tools report races in
+uninstrumented third-party code: raylib's GL/GLX/X11 paths and PortAudio's ALSA
+shims are full of shared state that is thread-affine but not TSan-annotated, and
+neither tool can see inside them. `valgrind.supp` already suppresses exactly
+those for memcheck (`PA_*`, `LGL_*`); the same noise under a race detector
+swamps first-party findings. So `tsan`/`helgrind` run `$RACE_TESTS` only —
+currently `test_audio_concurrency` — which is first-party and calls no raylib
+at all (`renderAudioBuffer` touches raylib only under `g_probeTempo`, which is
+off). **Any test added to `RACE_TESTS` must stay free of window and audio-device
+dependencies**, or it needs its own suppression budget.
+
+`tsan.supp` and `helgrind.supp` hold one documented false positive each (see
+I31); nothing else is suppressed. TSan needs `exitcode=66` so a detected race
+fails the process rather than passing with warnings on stderr.
+
+**What a clean run does and does not mean.** The two production-shaped
+scenarios — the instrument type-cycle (`setInstrumentVoiceType`, which frees and
+re-mallocs the Voice structs the audio thread is iterating) and
+`rebuildVoicesForInstrument` — both passed on their first TSan run, which is
+real evidence that the `g_audioLock` discipline in `voice.c` is sound. But TSan
+reports races it *observes*: an interleaving this two-thread loop never reaches
+stays hidden. A clean run is "no evidence of a race", not "no race".
+
+The refactor that made this possible: the callback body was `static int
+patestCallback(...)` inside `main.c`, so the only way to execute it was to start
+a real PortAudio stream. It is now `renderAudioBuffer()` in `audio.c`, linked
+into `core_lib` (with `dataviz.c`, which it depends on for the CPU-time
+measurement). `main.c` keeps a four-line adapter. `main.c` is not in the
+coverage data at all, so this also brought the render path under measurement
+(`audio.c`: 58% line / 35% branch as of I31).
 
 ## Using the macros
 
@@ -727,6 +770,50 @@ Each entry: **symptom** → **cause** → **fix** → **takeaway**.
 - Takeaway: verify with `objdump -dr ... | grep R_X86_64_PLT32` that the symbol
   you intend to wrap is the symbol the linker actually sees; `--wrap` fails
   silently when the compiler resolved a suffixed name.
+
+### I31 — a race is the one bug class no other rung here can see
+
+- Symptom: none. Coverage read green, ASan/UBSan/valgrind read green, and the
+  type-cycle use-after-free that `audio.c`'s lock comment describes was fixed by
+  adding a mutex with **nothing that could regress it**. A race reads as "both
+  branches were taken" to every coverage-based tool.
+- Two independent gaps:
+  1. *Untestable code.* The whole PortAudio callback body was `static int
+     patestCallback(...)` in `main.c`; the only way to execute it was to open a
+     real audio device. Fixed by extracting `renderAudioBuffer()` into
+     `audio.c`, in `core_lib` (plus `dataviz.c`, which it calls for the CPU-time
+     measurement), leaving a four-line adapter in `main.c`. `main.c` is not in
+     the coverage data, so the render path is now measured at all.
+  2. *No race detector in the matrix.* Added `tsan` (clang
+     `-fsanitize=thread`) and `helgrind` (`valgrind --tool=helgrind`), both
+     gated, both scoped to `$RACE_TESTS` because uninstrumented third-party
+     noise otherwise swamps first-party findings.
+- TSan found one real race on its first run: `g_volume`, the master volume.
+  `renderAudioBuffer` read it once per stereo frame under `g_audioLock`, but
+  `audioSetMasterVolume` wrote it with no lock — the lock protects a variable
+  only if the writer takes it. Latent at the time (the sole writer was argv,
+  which runs before `Pa_StartStream`), but the setter had just become public
+  API, so the obvious next caller — a volume keybind — would have inherited it.
+  Fixed with a relaxed `_Atomic float`: the aligned 4-byte store/load is exactly
+  what the guarantee needs on x86, so it costs nothing on the hot path, whereas
+  locking for a per-frame volume read would add a mutex round-trip to the audio
+  loop for no benefit.
+- Helgrind reported the same thing and that is a **false positive worth
+  documenting**: helgrind models pthread primitives only and does not understand
+  C11 `_Atomic`, so a relaxed atomic (a plain aligned `movss` in the disassembly)
+  looks like an unprotected shared write. Suppressed by naming the racing frame
+  pair in `helgrind.supp`, with the reason inline. The lesson is that TSan and
+  helgrind are not redundant: they model different things, so the same code can
+  be clean under one and flagged under the other.
+- The two production-shaped races (type-cycle, voice-pool rebuild) came back
+  clean, which is genuine evidence the existing lock discipline in `voice.c` is
+  right. It is not proof: TSan reports interleavings it observes, and an
+  unexercised one stays invisible.
+
+Takeaway: coverage-based evidence is silent about concurrency. If a subsystem
+has two threads, an ordering tool is not an optional extra — it is the only
+rung that can fail. And a mutex around a variable protects it only if the
+writer takes the mutex too.
 
 ### I30 — `NEVER(x);` as a bare statement asserts nothing and still costs a branch
 

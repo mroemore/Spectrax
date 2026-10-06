@@ -1,0 +1,23 @@
+# Helgrind suppressions.
+#
+# Helgrind reasons about pthread primitives only. It does not model C11
+# _Atomic, so a relaxed atomic load/store — which compiles to a plain aligned
+# mov, exactly as it should on x86 — is reported as a data race. Each entry
+# below is that case and nothing else. Anything else that shows up is a real
+# finding: do not extend this file to make helgrind quiet.
+#
+# (TSan, which does understand _Atomic, is the authority for these; helgrind's
+# value is that it runs on a plain, uninstrumented build and catches lock-order
+# inversions and genuinely unprotected accesses.)
+
+# src/audio.c g_volume: master volume, written by audioSetMasterVolume from the
+# GUI/input side and read by renderAudioBuffer on the audio thread. Declared
+# _Atomic float precisely so this is not a race; helgrind cannot see that. The
+# aligned 4-byte store/load it emits needs no lock prefix on x86, which is why
+# TSan is satisfied and helgrind is not. Name both frames — a suppression has
+# to match the racing pair, not just the variable.
+{
+   g_volume-relaxed-atomic-setter
+   Helgrind:Race
+   fun:audioSetMasterVolume
+}
