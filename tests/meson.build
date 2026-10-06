@@ -46,7 +46,11 @@ foreach name : test_names
   elif name == 'test_mod_voice'
     link_libs = test_mod_voice_libs
   elif name == 'test_voice'
-    link_libs = [core_lib, seq_lib]
+    link_libs = gui_test_libs
+  elif name == 'test_io'
+    # The I32 regressions drive the loaded project through createSequencer /
+    # startPlaying / advanceSequencerStep, which live in seq_lib.
+    link_libs = gui_test_libs
   elif name == 'test_audio_concurrency'
     # audio.c lives in core_lib precisely so this can link it; it also needs
     # seq_lib for advanceSequencerStep and the GUI lib for the draw helpers

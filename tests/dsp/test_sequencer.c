@@ -413,6 +413,51 @@ static int test_add_pattern_clamps_size(void) {
     return 0;
 }
 
+/* editStep indexed notes[patternIndex] instead of notes[noteIndex]. The
+ * guard compares noteIndex against pattern_size, which bounds noteIndex and
+ * says nothing about patternIndex — so editing step 2 of pattern 200 wrote
+ * outside that pattern's note array (which is MAX_SEQUENCE_LENGTH rows). The
+ * two indices only coincided when patternIndex == noteIndex, which is why it
+ * went unnoticed. */
+static int test_edit_step_writes_the_right_row(void) {
+    static PatternList pl;
+    memset(&pl, 0, sizeof(pl));
+    pl.pattern_count = 4;
+    for (int p = 0; p < 4; p++) {
+        pl.patterns[p].pattern_size = MAX_SEQUENCE_LENGTH;
+        for (int r = 0; r < MAX_SEQUENCE_LENGTH; r++) {
+            pl.patterns[p].notes[r][0] = -1;
+            pl.patterns[p].notes[r][1] = -1;
+        }
+    }
+
+    int note[NOTE_INFO_SIZE] = { 7, 2 };
+    /* patternIndex 2, noteIndex 3: the row that must change is 3, not 2. */
+    editStep(&pl, 2, 3, note);
+    ASSERT_EQ_2(pl.patterns[2].notes[3][0], 7);
+    ASSERT_EQ_2(pl.patterns[2].notes[3][1], 2);
+    ASSERT_EQ_2(pl.patterns[2].notes[2][0], -1);
+
+    /* The last row of a full-length pattern is still in bounds. */
+    editStep(&pl, 0, MAX_SEQUENCE_LENGTH - 1, note);
+    ASSERT_EQ_2(pl.patterns[0].notes[MAX_SEQUENCE_LENGTH - 1][0], 7);
+
+    /* noteIndex >= pattern_size is rejected, so nothing outside the pattern
+     * moves. */
+    pl.patterns[1].pattern_size = 4;
+    editStep(&pl, 1, 4, note);
+    ASSERT_EQ_2(pl.patterns[1].notes[4][0], -1);
+
+    /* An out-of-range patternIndex is rejected rather than writing through
+     * patterns[]. */
+    editStep(&pl, pl.pattern_count, 0, note);
+    editStep(&pl, -1, 0, note);
+    editStep(NULL, 0, 0, note);
+
+    printf("PASS test_edit_step_writes_the_right_row\n");
+    return 0;
+}
+
 int main(void) {
     int fails = 0;
     fails += test_increment_scene_requires_selected_pattern();
@@ -425,6 +470,7 @@ int main(void) {
     fails += test_play_fires_step_zero_first();
     fails += test_last_note_plays_at_song_end();
     fails += test_add_pattern_clamps_size();
+    fails += test_edit_step_writes_the_right_row();
     if (fails) {
         fprintf(stderr, "%d sequencer test(s) failed\n", fails);
         return 1;

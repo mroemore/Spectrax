@@ -2,7 +2,8 @@
 # meson/fuzz.sh [target ...] [--time SECONDS] [--build-only]
 #
 # Build and run the libFuzzer targets in fuzz/ with ASan+UBSan.
-# Targets: wav (WAV loader), config (JSON settings/theme). Default: all.
+# Targets: wav (WAV loader), seqfile (binary project/song loader),
+#         config (JSON settings/theme). Default: all.
 #
 # Requires a clang with the libFuzzer runtime (compiler-rt). Override the
 # compiler with FUZZ_CC.
@@ -36,7 +37,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "${#TARGETS[@]}" -eq 0 ]; then
-  TARGETS=(wav config)
+  TARGETS=(wav seqfile config)
 fi
 
 have_fuzzer() {
@@ -76,6 +77,23 @@ build_wav() {
 build_config() {
   "$CC" "${CFLAGS[@]}" "$ROOT/fuzz/fuzz_config.c" "$ROOT/src/io/config_io.c" \
     "$ROOT/third_party/cjson/cJSON.c" -lm -o "$OUT/fuzz_config"
+}
+
+# Link against the project's built static libraries rather than hand-listing
+# sources: the sequencer reaches appstate -> input -> gui_style -> graph_gui,
+# so a source list here would be both long and silently incomplete as the
+# dependency graph changes. The libs are the dependency graph.
+build_seqfile() {
+  "$CC" "${CFLAGS[@]}" "$ROOT/fuzz/fuzz_seqfile.c" \
+    -Wl,--start-group \
+    "$ROOT/build/src/libspectrax_core.a" \
+    "$ROOT/build/src/libspectrax_seq.a" \
+    "$ROOT/build/src/libspectrax_gui.a" \
+    "$ROOT/build/src/libspectrax_vizfx.a" \
+    "$ROOT/build/libspectrax_cjson.a" \
+    -Wl,--end-group \
+    "$ROOT/lib/linux/libraylib.a" "$ROOT/lib/linux/libkissfft-float.a" \
+    -lm -lpthread -lportaudio -lGL -lX11 -lrt -ldl -o "$OUT/fuzz_seqfile"
 }
 
 for t in "${TARGETS[@]}"; do

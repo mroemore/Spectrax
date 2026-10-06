@@ -75,7 +75,10 @@ Arranger *createArranger(Settings *settings, VoiceManager *vm, ApplicationState 
 	arranger->playing = 0;
 
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
-		arranger->playhead_indices[i] = 0;
+		/* Playhead rows are 0-based song indices; -1 means "this channel has
+		 * no playhead". Anything outside that range would be used to index
+		 * song[][], so keep the loop honest (TESTING.md I32). */
+		arranger->playhead_indices[i] = -1;
 		arranger->channelSlots[i] = 0;
 	}
 	printf("set playhead indices.\n");
@@ -134,9 +137,31 @@ void removeChannel(Arranger *arranger, int channelIndex) {
 Sequencer *createSequencer(Arranger *arranger) {
 	// printf("creating sequencer\n");
 
-	Sequencer *sequencer = (Sequencer *)malloc(sizeof(Sequencer));
+	if(!arranger) {
+		return NULL;
+	}
+	/* Zeroed, not malloc'd: every array here is MAX_SEQUENCER_CHANNELS long
+	 * but the loop below only initialises enabledChannels entries, so the
+	 * remainder would otherwise be garbage that a later loop bounded by a
+	 * different count reads. */
+	Sequencer *sequencer = (Sequencer *)calloc(1, sizeof(Sequencer));
+	if(!sequencer) {
+		return NULL;
+	}
 
-	for(int i = 0; i < arranger->enabledChannels; i++) {
+	/* Bound by the array, not just by enabledChannels: that field arrives
+	 * from a project file (I32), and this loop writes playhead_index[i] for
+	 * each i — an oversized count is an out-of-bounds write. The loader
+	 * clamps it, and this clamp is the second lock on the same door. */
+	int channels = arranger->enabledChannels;
+	if(channels < 0) {
+		channels = 0;
+	}
+	if(channels > MAX_SEQUENCER_CHANNELS) {
+		channels = MAX_SEQUENCER_CHANNELS;
+	}
+
+	for(int i = 0; i < channels; i++) {
 		sequencer->playhead_index[i] = 0;
 		sequencer->selected_index[i] = 0;
 		sequencer->pattern_index[i] = arranger->song[i][0];
@@ -359,7 +384,19 @@ void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger
 		}
 		if(sequencer->playhead_index[i] + 1 > patternSize - 1) {
 			// printf("\n\tEOP. ");
-			int nextRowIndex = arranger->playhead_indices[i] + 1;
+			/* playhead_indices[i] arrives from a project file, so bound it
+			 * here before it is used to index song[][]. The loader clamps it
+			 * (I32); this is the second lock on the same door — a row count
+			 * one past the end must not wrap into row 0 silently either, or
+			 * playback jumps to the top of the song at the loop point. */
+			int currentRow = arranger->playhead_indices[i];
+			if(currentRow < 0) {
+				currentRow = 0;
+			}
+			if(currentRow >= MAX_SONG_LENGTH - 1) {
+				currentRow = MAX_SONG_LENGTH - 2;
+			}
+			int nextRowIndex = currentRow + 1;
 			if(arranger->song[i][nextRowIndex] > -1) {
 				// printf("\n\t\tPattern Switch. \n");
 				arranger->playhead_indices[i]++;
@@ -377,15 +414,43 @@ void incrementSequencer(Sequencer *sequencer, PatternList *patternList, Arranger
 			}
 		}
 		if(sequencer->pattern_index[i] > -1 && sequencer->running[i]) {
-			sequencer->playhead_index[i] = (sequencer->playhead_index[i] + 1) % patternList->patterns[sequencer->pattern_index[i]].pattern_size;
+			/* pattern_index[i] was just taken from arranger->song[i][row], i.e.
+			 * straight from a project file, so it can name a pattern that does
+			 * not exist. And pattern_size can be 0, which makes the modulo a
+			 * division by zero — integer division by zero is undefined and traps
+			 * as SIGFPE on x86. Both were found by fuzz/fuzz_seqfile.c (I32). */
+			int pi = sequencer->pattern_index[i];
+			if(pi >= patternList->pattern_count) {
+				sequencer->pattern_index[i] = -1;
+				sequencer->running[i] = 0;
+				continue;
+			}
+			int size = patternList->patterns[pi].pattern_size;
+			if(size <= 0) {
+				sequencer->pattern_index[i] = -1;
+				sequencer->running[i] = 0;
+				continue;
+			}
+			sequencer->playhead_index[i] = (sequencer->playhead_index[i] + 1) % size;
 		}
 	}
 }
 
 void editStep(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) { // TO-DO: error checking
-	if(noteIndex >= 0 && noteIndex < patternList->patterns[patternIndex].pattern_size) {
+	if(!patternList || !note || patternIndex < 0 || patternIndex >= patternList->pattern_count) {
+		return;
+	}
+	/* Both indices need their own bound: the guard compares noteIndex against
+	 * pattern_size, which bounds noteIndex, but the write was indexing
+	 * notes[patternIndex] — a different index, unbounded by anything here and
+	 * up to MAX_PATTERNS-1 against a notes array of MAX_SEQUENCE_LENGTH rows.
+	 * Editing step 2 of pattern 200 wrote outside the pattern's note array.
+	 * (Found while fuzzing the project loader; the index confusion was not.)
+	 */
+	if(noteIndex >= 0 && noteIndex < patternList->patterns[patternIndex].pattern_size &&
+	   noteIndex < MAX_SEQUENCE_LENGTH) {
 		for(int j = 0; j < NOTE_INFO_SIZE; j++) {
-			patternList->patterns[patternIndex].notes[patternIndex][j] = note[j];
+			patternList->patterns[patternIndex].notes[noteIndex][j] = note[j];
 		}
 	}
 }

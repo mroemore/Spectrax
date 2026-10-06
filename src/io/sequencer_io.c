@@ -163,6 +163,54 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 		printf("error sely\n");
 		return SEQ_ERROR_READ;
 	}
+	/* enabledChannels, selected_x and selected_y are all file-controlled and
+	 * all index fixed-size arrays: createSequencer loops
+	 * `for(i = 0; i < enabledChannels; i++) sequencer->playhead_index[i] = 0`
+	 * over an array of MAX_SEQUENCER_CHANNELS, and
+	 * getPatternIDfromArranger reads song[selected_x][selected_y]. A file
+	 * claiming more channels than exist drove an out-of-bounds WRITE; a file
+	 * claiming a wild cursor drove an out-of-bounds READ. Found by
+	 * fuzz/fuzz_seqfile.c, which drives createSequencer + startPlaying +
+	 * advanceSequencerStep on the loaded data (TESTING.md I32).
+	 *
+	 * These are cursors and counts, not bulk data, so clamping is the right
+	 * response rather than rejecting the file: a project saved by a future
+	 * build with more channels should still open, just not claim rows this
+	 * build cannot address. The cursor clamps matter for files already in the
+	 * wild; the channel count cannot be represented safely if negative. */
+	if(arranger->enabledChannels < 0) {
+		arranger->enabledChannels = 0;
+	}
+	if(arranger->enabledChannels > MAX_SEQUENCER_CHANNELS) {
+		arranger->enabledChannels = MAX_SEQUENCER_CHANNELS;
+	}
+	if(arranger->selected_x < 0) {
+		arranger->selected_x = 0;
+	}
+	if(arranger->selected_x >= MAX_SEQUENCER_CHANNELS) {
+		arranger->selected_x = MAX_SEQUENCER_CHANNELS - 1;
+	}
+	if(arranger->selected_y < 0) {
+		arranger->selected_y = 0;
+	}
+	if(arranger->selected_y >= MAX_SONG_LENGTH) {
+		arranger->selected_y = MAX_SONG_LENGTH - 1;
+	}
+	/* playhead_indices[] are song-row cursors read straight from the file with
+	 * no range check, and incrementSequencer does
+	 * `nextRowIndex = playhead_indices[i] + 1; if(song[i][nextRowIndex] > -1)` —
+	 * so an out-of-range cursor indexes past song[][] and the loaded value
+	 * then becomes sequencer->pattern_index[i], i.e. the file steers playback.
+	 * Found by fuzz/fuzz_seqfile.c (I32). -1 is the documented "no playhead"
+	 * value that createArranger initialises to. */
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+		if(arranger->playhead_indices[i] < -1) {
+			arranger->playhead_indices[i] = -1;
+		}
+		if(arranger->playhead_indices[i] >= MAX_SONG_LENGTH) {
+			arranger->playhead_indices[i] = MAX_SONG_LENGTH - 1;
+		}
+	}
 	if(fread(&arranger->tempoSettings.loop, sizeof(int), 1, file) != 1) {
 		fclose(file);
 		printf("error loop\n");

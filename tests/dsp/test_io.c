@@ -300,6 +300,334 @@ static int test_load_preset_truncated(void) {
     return 0;
 }
 
+/* I29 regression: pattern_size arrives from the file with no range check, and
+ * every consumer treats it as a step count into a fixed MAX_SEQUENCE_LENGTH
+ * array (Pattern.notes, gui_pattern.c's stepData[]/stepNodes[], selectStep's
+ * clamp, the sequencer's playhead modulo). An out-of-range size therefore
+ * caused out-of-bounds writes at graph-build time and an out-of-bounds read of
+ * a garbage GuiNode* in navigatePatternGraph -- a segfault reachable by
+ * opening a corrupt project. The fix validates on load; this asserts the
+ * loader is the layer that rejects it, alongside the addPattern clamp
+ * (test_sequencer.c) and the gui_pattern.c bound (test_gui_pattern.c).
+ *
+ * The file is produced by saveSequencerState and then binary-patched, so the
+ * test does not hardcode the on-disk layout: pattern_count sits at offset 8
+ * and pattern_size at offset 12 (4 magic + 4 PATT header, then the first
+ * field of the first pattern record). */
+static int write_patched_seq_file(const char *path, int pattern_size) {
+    ensure_tmp_dirs();
+    remove(path);
+
+    SeqEnv e;
+    if (make_seq_env(&e, 120.0f, 1) != 0) return 1;
+    SequencerFileResult rc = saveSequencerState(path, e.arranger, e.patterns);
+    free_seq_env(&e);
+    if (rc != SEQ_OK) return 1;
+
+    FILE *f = fopen(path, "r+b");
+    if (!f) return 1;
+    fseek(f, 12, SEEK_SET);
+    fwrite(&pattern_size, sizeof(int), 1, f);
+    fclose(f);
+    return 0;
+}
+
+/* Load a patched file into a fresh destination, so each case starts from a
+ * known-zero PatternList and a rejection cannot be confused with leftover
+ * state from a previous case. */
+static SequencerFileResult load_patched(const char *path, PatternList **dst_out) {
+    PatternList *dst = (PatternList *)calloc(1, sizeof(PatternList));
+    Arranger *ar = (Arranger *)calloc(1, sizeof(Arranger));
+    ParamList *pl = createParamList();
+    if (!dst || !ar || !pl) return SEQ_ERROR_READ;
+    ar->tempoSettings.bpm = createParameterPro(pl, "BPM", 120.0f, 1.0f, 1000.0f,
+                                               1.0f, 10.0f, NULL, NULL);
+    SequencerFileResult rc = loadSequencerState(path, ar, dst);
+    free(pl);
+    free(ar);
+    *dst_out = dst;
+    return rc;
+}
+
+static int test_load_rejects_oversized_pattern_size(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_seq_badsize.seq";
+    PatternList *dst = NULL;
+
+    /* Far past MAX_SEQUENCE_LENGTH: the OOB-write trigger from I29. */
+    ASSERT_EQ(write_patched_seq_file(path, 9999), 0);
+    ASSERT_EQ(load_patched(path, &dst), SEQ_ERROR_FORMAT);
+    free(dst);
+    dst = NULL;
+
+    /* One past the limit is also rejected rather than silently clamped --
+     * a clamp here would quietly truncate a user's pattern. */
+    ASSERT_EQ(write_patched_seq_file(path, MAX_SEQUENCE_LENGTH + 1), 0);
+    ASSERT_EQ(load_patched(path, &dst), SEQ_ERROR_FORMAT);
+    free(dst);
+    dst = NULL;
+
+    /* Negative: a size that would underflow the notes loop. */
+    ASSERT_EQ(write_patched_seq_file(path, -5), 0);
+    ASSERT_EQ(load_patched(path, &dst), SEQ_ERROR_FORMAT);
+    free(dst);
+    dst = NULL;
+
+    /* The boundary itself is legal and must load, so the check cannot have
+     * been off by one in the rejecting direction. */
+    ASSERT_EQ(write_patched_seq_file(path, MAX_SEQUENCE_LENGTH), 0);
+    ASSERT_EQ(load_patched(path, &dst), SEQ_OK);
+    ASSERT_EQ(dst->pattern_count, 1);
+    ASSERT_EQ(dst->patterns[0].pattern_size, MAX_SEQUENCE_LENGTH);
+    free(dst);
+
+    remove(path);
+    printf("PASS test_load_rejects_oversized_pattern_size\n");
+    return 0;
+}
+
+/* Load a patched file and assert the arranger fields that were clamped. Keeps
+ * the per-case setup out of the tests below. */
+static int load_and_check_arranger(const char *path, Arranger **ar_out,
+                                   PatternList **pl_out, Sequencer **seq_out) {
+    ParamList *pl = createParamList();
+    Arranger *ar = (Arranger *)calloc(1, sizeof(Arranger));
+    PatternList *d = (PatternList *)calloc(1, sizeof(PatternList));
+    if(!pl || !ar || !d) {
+        return 1;
+    }
+    ar->tempoSettings.bpm = createParameterPro(pl, "BPM", 120.0f, 1.0f, 1000.0f,
+                                               1.0f, 10.0f, NULL, NULL);
+    if(loadSequencerState(path, ar, d) != SEQ_OK) {
+        free(pl);
+        free(ar);
+        free(d);
+        return 1;
+    }
+    Sequencer *seq = createSequencer(ar);
+    if(!seq) {
+        free(pl);
+        free(ar);
+        free(d);
+        return 1;
+    }
+    *ar_out = ar;
+    *pl_out = d;
+    *seq_out = seq;
+    return 0;
+}
+
+static void free_loaded(ParamList *pl, Arranger *ar, PatternList *d, Sequencer *seq) {
+    free(seq);
+    free(d);
+    free(ar);
+    freeParamList(pl);
+}
+
+/* I32 regressions, all found by fuzz/fuzz_seqfile.c. The loader is a chain of
+ * raw freads into fixed-size arrays with no range validation, and several
+ * fields it reads are used as array indices or loop bounds by the consumers a
+ * loaded project reaches immediately (createSequencer, startPlaying,
+ * advanceSequencerStep). Each field is patched into a known-good file, so the
+ * test does not hardcode the on-disk layout -- these offsets come from the
+ * save layout asserted in test_save_sequencer_ok:
+ *
+ *   playhead_indices  +1 indexes song[][row+1] -> OOB READ, and the loaded
+ *                                   value becomes pattern_index, so a file
+ *                                   steered playback
+ *   enabledChannels   bounds a loop writing sequencer->playhead_index[i]
+ *                      (that array is MAX_SEQUENCER_CHANNELS) -> OOB WRITE
+ *   selected_x/y      indexes song[][y] -> OOB READ
+ *
+ * The offsets are derived from the save layout rather than written as literals,
+ * so a format change moves them instead of silently making these tests patch
+ * the wrong field -- which they did once, when they were literals and the
+ * "playhead" case was in fact overwriting pattern_count.
+ */
+/*   magic(4) PATT(4) count(4) size(4) notes(MAX_SEQ*NOTE*4) ARRG(4) */
+#define SEQ_OFF_ARRG      (4 + 4 + 4 + 4 + (MAX_SEQUENCE_LENGTH * NOTE_INFO_SIZE * 4) + 4)
+#define SEQ_OFF_PLAYHEAD  SEQ_OFF_ARRG
+#define SEQ_OFF_ENABLED   (SEQ_OFF_ARRG + MAX_SEQUENCER_CHANNELS * 4)
+#define SEQ_OFF_SELX      (SEQ_OFF_ENABLED + 4)
+#define SEQ_OFF_SELY      (SEQ_OFF_SELX + 4)
+/* after selected_y come loop, bpm and playing -- four ints, then song[][] */
+#define SEQ_OFF_SONG      (SEQ_OFF_SELY + 4 + 4 + 4 + 4)
+
+static int patch_seq_int(const char *path, long offset, int value) {
+    FILE *f = fopen(path, "r+b");
+    if(!f) {
+        return 1;
+    }
+    if(fseek(f, offset, SEEK_SET) != 0) {
+        fclose(f);
+        return 1;
+    }
+    if(fwrite(&value, sizeof(int), 1, f) != 1) {
+        fclose(f);
+        return 1;
+    }
+    fclose(f);
+    return 0;
+}
+
+static int test_load_clamps_arranger_indices(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_seq_indices.seq";
+    Arranger *ar = NULL;
+    PatternList *d = NULL;
+    Sequencer *seq = NULL;
+
+    /* enabledChannels far past MAX_SEQUENCER_CHANNELS: the OOB write
+     * createSequencer performed. Load succeeds (a count/cursor clamps) with
+     * the value pinned to the array size. */
+    ASSERT_EQ(write_patched_seq_file(path, 8), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_ENABLED, 1000000), 0);
+    ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+    ASSERT_EQ(ar->enabledChannels, MAX_SEQUENCER_CHANNELS);
+    /* The clamped count must leave createSequencer's writes in bounds. */
+    for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+        ASSERT_EQ(seq->playhead_index[i], 0);
+    }
+    free(seq);
+    free(d);
+    free(ar);
+    ar = NULL;
+    d = NULL;
+    seq = NULL;
+
+    /* A negative channel count clamps to 0 rather than looping backwards. */
+    ASSERT_EQ(write_patched_seq_file(path, 8), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_ENABLED, -1), 0);
+    ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+    ASSERT_EQ(ar->enabledChannels, 0);
+    free(seq);
+    free(d);
+    free(ar);
+    ar = NULL;
+    d = NULL;
+    seq = NULL;
+
+    /* Wild cursor coordinates clamp into song[][] bounds, so
+     * getPatternIDfromArranger's song[selected_x][selected_y] is defined. */
+    ASSERT_EQ(write_patched_seq_file(path, 8), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_SELX, 9999), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_SELY, 9999), 0);
+    ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+    ASSERT_EQ(ar->selected_x, MAX_SEQUENCER_CHANNELS - 1);
+    ASSERT_EQ(ar->selected_y, MAX_SONG_LENGTH - 1);
+    (void)getPatternIDfromArranger(ar);
+    free(seq);
+    free(d);
+    free(ar);
+    ar = NULL;
+    d = NULL;
+    seq = NULL;
+
+    /* Playhead row past the end: must not index past song[][], and driving
+     * playback must not divide by a zero pattern_size. */
+    ASSERT_EQ(write_patched_seq_file(path, 8), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_PLAYHEAD, 100000), 0);
+    ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+    ASSERT_EQ(ar->playhead_indices[0], MAX_SONG_LENGTH - 1);
+    startPlaying(seq, d, ar, 0);
+    for(int i = 0; i < 8; i++) {
+        advanceSequencerStep(seq, d, ar, NULL, NULL);
+    }
+    free(seq);
+    free(d);
+    free(ar);
+    ar = NULL;
+    d = NULL;
+    seq = NULL;
+
+    /* Negative playhead row clamps to the documented "no playhead" value. */
+    ASSERT_EQ(write_patched_seq_file(path, 8), 0);
+    ASSERT_EQ(patch_seq_int(path, SEQ_OFF_PLAYHEAD, -500), 0);
+    ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+    ASSERT_EQ(ar->playhead_indices[0], -1);
+    free(seq);
+    free(d);
+    free(ar);
+
+    remove(path);
+    printf("PASS test_load_clamps_arranger_indices\n");
+    return 0;
+}
+
+/* The song matrix carries pattern ids that incrementSequencer uses as
+ * PatternList indices (`patterns[pattern_index[i]]`, then a % pattern_size).
+ * A cell naming a pattern that does not exist must not index past patterns[],
+ * and a zero-size pattern must not make the modulo divide by zero. Both
+ * crashed; both are asserted here. */
+static int test_playback_tolerates_bogus_song(void) {
+    ensure_tmp_dirs();
+    const char *path = TMP_DIR "test_io_seq_bogus_song.seq";
+    /* song[] is the first field after `playing` in the ARRG block. */
+    long song_off = SEQ_OFF_SONG;
+
+    /* The switch case: pattern 0 is one step long, so the very first
+     * advance takes the "end of pattern" branch, reads song[0][selected_y+1]
+     * for the row it switches to, assigns that straight to
+     * pattern_index[0] -- and then indexes patterns[pattern_index[0]] with
+     * it. selected_y is 3 in make_seq_env, so the switch row is 4.
+     *
+     * This is the exact shape the fuzzer found: the *old* pattern index
+     * validated the size lookup, and the *new* one was never checked.
+     */
+    ASSERT_EQ(write_patched_seq_file(path, 1), 0);
+    ASSERT_EQ(patch_seq_int(path, song_off + 3 * 4, 0), 0);     /* current row  */
+    ASSERT_EQ(patch_seq_int(path, song_off + 4 * 4, 5000), 0);  /* switch to a pattern that does not exist */
+    {
+        Arranger *ar = NULL;
+        PatternList *d = NULL;
+        Sequencer *seq = NULL;
+        ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+        /* Read the patched cells back before relying on them. These offsets are
+         * derived from the save layout, and getting one wrong makes the test
+         * pass for the wrong reason -- which it did, twice, before this check
+         * existed. A format change now fails here with a clear message
+         * instead of silently testing nothing. */
+        ASSERT_EQ(ar->song[0][3], 0);
+        ASSERT_EQ(ar->song[0][4], 5000);
+        startPlaying(seq, d, ar, 0);
+        for(int i = 0; i < 16; i++) {
+            advanceSequencerStep(seq, d, ar, NULL, NULL);
+        }
+        /* A pattern index naming nothing must be retired, not left pointing
+         * past the array. Channels beyond enabledChannels are never advanced,
+         * so only those are meaningful here. */
+        for(int i = 0; i < ar->enabledChannels; i++) {
+            ASSERT_TRUE(seq->pattern_index[i] < d->pattern_count,
+                        "pattern_index retired when it names no pattern");
+        }
+        free(seq);
+        free(d);
+        free(ar);
+    }
+
+    /* A zero-size pattern is reachable (the loader validates size >= 0, not
+     * > 0) and must not become a % 0. */
+    ASSERT_EQ(write_patched_seq_file(path, 0), 0);
+    {
+        Arranger *ar = NULL;
+        PatternList *d = NULL;
+        Sequencer *seq = NULL;
+        ASSERT_EQ(load_and_check_arranger(path, &ar, &d, &seq), 0);
+        ASSERT_EQ(d->patterns[0].pattern_size, 0);
+        startPlaying(seq, d, ar, 0);
+        for(int i = 0; i < 8; i++) {
+            advanceSequencerStep(seq, d, ar, NULL, NULL);
+        }
+        free(seq);
+        free(d);
+        free(ar);
+    }
+
+    remove(path);
+    printf("PASS test_playback_tolerates_bogus_song\n");
+    return 0;
+}
+
 static int test_load_presets_from_directory(void) {
     ensure_tmp_dirs();
     /* Clean the preset dir, then drop two preset files into it. */
@@ -1203,6 +1531,9 @@ int main(void) {
     failed |= test_load_preset_missing();
     failed |= test_load_preset_bad_magic();
     failed |= test_load_preset_truncated();
+    failed |= test_load_rejects_oversized_pattern_size();
+    failed |= test_load_clamps_arranger_indices();
+    failed |= test_playback_tolerates_bogus_song();
     failed |= test_load_presets_from_directory();
     failed |= test_directory_list();
     failed |= test_preset_name_roundtrip();
