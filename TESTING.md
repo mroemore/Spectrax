@@ -1292,6 +1292,33 @@ Also worth noting while testing it: a successful probe legitimately grows
 parameter (the `MT_ATTEN` entry that interleaves the modList). An assertion that
 the parameter count is stable across routing is wrong.
 
+### I53 — a gate that passed for the wrong reason
+
+The seqfile fuzz smoke linked against `build/src/libspectrax_{core,seq,gui,vizfx}.a`
+and `build/libspectrax_cjson.a`. Nothing in `check.sh --full` ever configures or
+compiles plain `build/`: the full tier builds `build-cov` for coverage and the
+`build-matrix-*` dirs for the sanitizer matrix, but never the default build
+directory.
+
+So the target only worked because a hand-built `build/` happened to be lying
+around in the working tree. On a clean checkout it fails with
+`clang: error: no such file or directory`.
+
+**This was found by integrating, not by testing.** The branch was fast-forwarded
+into `main`, verified in a fresh worktree of `main`, and the seqfile smoke failed
+there — while passing, every single time, in the lane where it was developed.
+That is the specific failure mode this whole framework is supposed to catch, and
+it got away because "the suite is green" is only ever a statement about the tree
+it ran on.
+
+Fixed by having `build_seqfile` ensure the tree it needs exists
+(`ensure_libs()`: configure `build/` if there is no `build.ninja`, then compile
+it). A gate that depends on undeclared ambient state is not a gate.
+
+Worth generalising: **any step that consumes build output must create it, or be
+reached by something that does.** "I had it built already" is invisible in
+review and invisible in CI, which is exactly where it costs you.
+
 ### I31 — a race is the one bug class no other rung here can see
 
 - Symptom: none. Coverage read green, ASan/UBSan/valgrind read green, and the

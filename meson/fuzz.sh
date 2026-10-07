@@ -83,7 +83,29 @@ build_config() {
 # sources: the sequencer reaches appstate -> input -> gui_style -> graph_gui,
 # so a source list here would be both long and silently incomplete as the
 # dependency graph changes. The libs are the dependency graph.
+#
+# That means this target depends on a *built* tree, which nothing else in the
+# --full tier provides: check.sh builds build-cov (coverage) and the
+# build-matrix-* dirs (the sanitizer matrix), but never plain `build/`. So a
+# clean checkout would fail here with "no such file or directory" on the
+# archives. It passed for as long as it did only because a developer had a
+# hand-built `build/` lying around. Ensure it ourselves. (TESTING.md I53.)
+ensure_libs() {
+  if [ ! -f "$ROOT/build/build.ninja" ]; then
+    echo "   (configuring build/ for the static libs)"
+    meson setup "$ROOT/build" "$ROOT" >/dev/null 2>&1 || {
+      echo "meson setup build failed" >&2
+      return 1
+    }
+  fi
+  meson compile -C "$ROOT/build" >/dev/null 2>&1 || {
+    echo "compiling build/ failed" >&2
+    return 1
+  }
+}
+
 build_seqfile() {
+  ensure_libs || return 1
   "$CC" "${CFLAGS[@]}" "$ROOT/fuzz/fuzz_seqfile.c" \
     -Wl,--start-group \
     "$ROOT/build/src/libspectrax_core.a" \
