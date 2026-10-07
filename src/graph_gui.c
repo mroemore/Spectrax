@@ -192,6 +192,27 @@ void freeGuiNode(GuiNode *gn) {
 	free(gn);
 }
 
+/* Replace a node's name. Same shape as guiNodeSetClass: free the old
+ * allocation before overwriting it, because eleven sites used to do
+ * `node->name = strdup("X")` directly and leaked the original (TESTING.md
+ * I43). Copying rather than aliasing keeps the existing convention that every
+ * node owns its name and freeGuiNode frees exactly one allocation. */
+void guiNodeSetName(GuiNode *gn, const char *name) {
+	if(!gn) {
+		return;
+	}
+	free(gn->name);
+	gn->name = NULL;
+	if(name && name[0]) {
+		size_t len = strlen(name);
+		gn->name = malloc(len + 1);
+		if(!gn->name) {
+			return;
+		}
+		memcpy(gn->name, name, len + 1);
+	}
+}
+
 void guiNodeSetClass(GuiNode *gn, const char *className) {
 	if(!gn) {
 		return;

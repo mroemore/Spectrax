@@ -44,28 +44,46 @@
 
 /* ---- input plumbing ----------------------------------------------------- */
 
-static InputState g_input;
+/* The InputState the helpers drive. It has to be the *same* object the tests
+ * pass to handlePresetUiInput: an earlier version of this file drove a
+ * file-static g_input while calling handlePresetUiInput(e.is, ...), so every
+ * input assertion silently ran with no keys pressed and passed vacuously. */
+static InputState *g_is = NULL;
 
 static void input_reset(void) {
-	memset(&g_input, 0, sizeof(g_input));
+	if(g_is) {
+		memset(g_is->keys, 0, sizeof(g_is->keys));
+		g_is->historyIndex = 0;
+	}
 }
 
-/* Press `km` for exactly one frame. */
+/* Press `km` for exactly one frame: isPressed with wasPressed clear, which is
+ * exactly what isKeyJustPressed() tests for. */
 static void tap(KeyMapping km) {
-	g_input.keys[km].isPressed = true;
-	g_input.keys[km].wasPressed = false;
+	if(!g_is) {
+		return;
+	}
+	g_is->keys[km].isPressed = true;
+	g_is->keys[km].wasPressed = false;
 }
 
-/* Hold `km` for the current and following frames (isKeyHeld). */
+/* Hold `km`: pressed now and already pressed last frame, i.e. isKeyHeld. */
 static void hold(KeyMapping km) {
-	g_input.keys[km].isPressed = true;
-	g_input.keys[km].wasPressed = true;
+	if(!g_is) {
+		return;
+	}
+	g_is->keys[km].isPressed = true;
+	g_is->keys[km].wasPressed = true;
 }
 
-/* End the frame: everything becomes "was", so a tap is consumed. */
+/* End the frame: everything becomes "was", so a tap is consumed exactly once
+ * and the next tap on the same key registers as a new edge. */
 static void end_frame(void) {
+	if(!g_is) {
+		return;
+	}
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
-		g_input.keys[i].wasPressed = g_input.keys[i].isPressed;
+		g_is->keys[i].wasPressed = g_is->keys[i].isPressed;
 	}
 }
 
@@ -81,6 +99,7 @@ static void press(KeyMapping km) {
 #define TEST_CHANNELS 2
 #define TEST_VOICES   2
 #define TEST_SAMPLE   1024
+#define TEST_PRESET_NAME "test-preset"
 
 typedef struct {
 	VoiceManager *vm;
@@ -115,6 +134,10 @@ static int make_env(Env *e) {
 	initPresetBank(&e->pb);
 	Preset p;
 	initDefaultFmPreset(&p);
+	/* Give it a name: initDefaultFmPreset leaves it empty, and the
+	 * overwrite-confirm path only triggers for a name the bank already
+	 * holds. The test asserts PRESET_EXISTS from guiSavePreset. */
+	snprintf(p.name, sizeof(p.name), "%s", TEST_PRESET_NAME);
 	addPresetToBank(&e->pb, p);
 
 	Settings settings;
@@ -152,6 +175,10 @@ static int make_env(Env *e) {
 
 	e->is = createInputState(INPUT_TYPE_KEYBOARD);
 	ASSERT_TRUE(e->is != NULL, "createInputState");
+	/* Publish it so the tap/hold helpers drive the same object the tests
+	 * hand to handlePresetUiInput. */
+	g_is = e->is;
+	input_reset();
 
 	/* No window needed. createInstGraph does reach createModStripGuiNode, but
 	 * initModStrip is now pure bookkeeping -- the ping/pong render textures
@@ -165,6 +192,7 @@ static int make_env(Env *e) {
 }
 
 static void free_env(Env *e) {
+	g_is = NULL;
 	freeInputState(e->is);
 	free(e->patterns);
 	freeParamList(e->pl);
@@ -366,6 +394,314 @@ static int test_input_no_modal(void) {
 	return 0;
 }
 
+/* Make the instrument genuinely dirty.
+ *
+ * Setting loaded.dirty alone does nothing: isInstrumentDirty() returns false
+ * whenever loaded.name is empty, on the reasonable grounds that an instrument
+ * with no on-disk baseline has no unsaved edits to lose. Getting this wrong
+ * makes every dirty-path assertion pass vacuously, which it did on the first
+ * attempt (TESTING.md I45). */
+static void make_dirty(Instrument *i, const char *name) {
+	if(!name || !name[0]) {
+		fprintf(stderr, "FAIL: make_dirty needs a non-empty name\n");
+		exit(1);
+	}
+	memset(i->loaded.name, 0, sizeof(i->loaded.name));
+	snprintf(i->loaded.name, sizeof(i->loaded.name), "%s", name);
+	i->loaded.dirty = true;
+}
+
+static void make_clean(Instrument *i) {
+	i->loaded.dirty = false;
+}
+
+/* ---- the modal state machines ------------------------------------------ */
+
+/* Find a node by name anywhere under `n`, or NULL. The modal bodies tag their
+ * buttons with stable names ("OVERWRITE_YES", "DIRTY_SAVE", "LOADLIST_BACK"...)
+ * precisely so they can be identified; using that here means the test drives
+ * the same nodes the app does rather than a parallel set of fixtures. */
+static GuiNode *find_node_named(GuiNode *n, const char *name) {
+	if(!n || !n->name) {
+		return NULL;
+	}
+	if(strcmp(n->name, name) == 0) {
+		return n;
+	}
+	if(!n->items) {
+		return NULL;
+	}
+	ListElement *e = n->items->head;
+	for(int i = 0; i < n->itemCount && e; i++) {
+		GuiNode *child = *(GuiNode **)e->data;
+		GuiNode *hit = find_node_named(child, name);
+		if(hit) {
+			return hit;
+		}
+		e = e->next;
+	}
+	return NULL;
+}
+
+/* Is a layer with this name on the stack? The right question when checking that
+ * a *specific* dialog closed: DISCARD deliberately proceeds to open the load
+ * list behind the dialog, so "no modal is active" is true but misleading. */
+static bool layer_named(const char *name) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return false;
+	}
+	for(int i = 0; i < ig->overlayLayers.count; i++) {
+		const char *n = ig->overlayLayers.layers[i].name;
+		if(n && strcmp(n, name) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Find a node by name in the base graph or in ANY overlay layer. Modal bodies
+ * (the load list, the confirm dialogs) are layers, not part of the
+ * instrument's own graph, so a search that only looks at the base graph misses
+ * them -- which is how this test first failed. */
+static GuiNode *find_named_anywhere(const char *name) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return NULL;
+	}
+	Graph *sel_graph = getSelectedInstGraph();
+	if(sel_graph) {
+		GuiNode *n = find_node_named(sel_graph->root, name);
+		if(n) {
+			return n;
+		}
+	}
+	for(int i = 0; i < ig->overlayLayers.count; i++) {
+		Layer *l = &ig->overlayLayers.layers[i];
+		if(!l->graph || !l->graph->root) {
+			continue;
+		}
+		GuiNode *n = find_node_named(l->graph->root, name);
+		if(n) {
+			return n;
+		}
+	}
+	return NULL;
+}
+
+/* Fire a named button's action callback, as the input layer would. */
+static int fire_named_button(const char *name) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return 1;
+	}
+	for(int i = 0; i < ig->overlayLayers.count; i++) {
+		GuiNode *n = find_node_named(ig->overlayLayers.layers[i].graph->root, name);
+		if(n && n->actionCb) {
+			n->actionCb(n->actionCtx);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int test_overwrite_modal(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = inst(&e);
+	InputState *is = e.is;
+
+	/* Saving under a name already in the bank must report PRESET_EXISTS and
+	 * open the confirm modal rather than silently clobbering the slot. */
+	/* initDefaultFmPreset leaves the preset's name empty, and an empty
+	 * loaded.name makes isInstrumentDirty() report false by design -- so this
+	 * needs a real name or every dirty assertion below is vacuous. */
+	const char *existing = e.pb.patches[0].name;
+	PresetFileResult r = guiSavePreset(i, existing);
+	ASSERT_TRUE(r == PRESET_EXISTS, "saving over an existing name returns PRESET_EXISTS");
+	ASSERT_TRUE(instrumentLayerModalActive(), "overwrite modal counts as a modal");
+	/* NO cancels outright, so each button gets its own freshly opened
+	 * modal -- firing them back to back was the test's bug, not the
+	 * code's: the first press pops the layer the second one lives in. */
+	ASSERT_EQ(fire_named_button("OVERWRITE_NO"), 0);
+	ASSERT_TRUE(!instrumentLayerModalActive(), "OVERWRITE_NO dismisses the modal");
+	ASSERT_TRUE(guiSavePreset(i, existing) == PRESET_EXISTS, "reopen");
+	ASSERT_EQ(fire_named_button("OVERWRITE_YES"), 0);
+	ASSERT_TRUE(!instrumentLayerModalActive(), "OVERWRITE_YES dismisses the modal");
+
+	/* LEFT/RIGHT toggle the choice; any other key is swallowed rather
+	 * than reaching the scene underneath.
+	 *
+	 * Each key needs its own end_frame(): isKeyJustPressed means "pressed
+	 * now, not last frame", so without the settle a second tap would still
+	 * see the *first* key as just-pressed and the handler would toggle on
+	 * LEFT forever without ever reaching the key under test. */
+	for(int step = 0; step < 2; step++) {
+		r = guiSavePreset(i, existing);
+		ASSERT_TRUE(r == PRESET_EXISTS, "reopening the modal");
+
+		tap(KM_LEFT);
+		ASSERT_TRUE(handlePresetUiInput(is, i), "the modal consumes LEFT");
+		end_frame();
+		input_reset();
+
+		tap(KM_RIGHT);
+		ASSERT_TRUE(handlePresetUiInput(is, i), "the modal consumes RIGHT");
+		end_frame();
+		input_reset();
+
+		tap(KM_RIGHT);
+		ASSERT_TRUE(handlePresetUiInput(is, i), "the modal consumes RIGHT again");
+		end_frame();
+		input_reset();
+
+		/* A key the modal does not use must still be consumed -- otherwise a
+		 * stray press behind the modal would change an instrument parameter. */
+		tap(KM_UP);
+		ASSERT_TRUE(handlePresetUiInput(is, i), "an unused key is still swallowed");
+		end_frame();
+		input_reset();
+
+		/* SELECT dismisses without overwriting (the same as choosing NO). */
+		tap(KM_SELECT);
+		ASSERT_TRUE(handlePresetUiInput(is, i), "SELECT dismisses the modal");
+		ASSERT_TRUE(!instrumentLayerModalActive(),
+		            "the modal layer is popped, not just the state flag");
+		input_reset();
+	}
+
+	/* START on the default (NO) choice closes without overwriting. */
+	r = guiSavePreset(i, existing);
+	ASSERT_TRUE(r == PRESET_EXISTS, "reopening the modal again");
+	input_reset();
+	tap(KM_START);
+	ASSERT_TRUE(handlePresetUiInput(is, i), "START on NO dismisses the modal");
+	end_frame();
+	input_reset();
+	ASSERT_TRUE(!instrumentLayerModalActive(), "modal is gone after START/NO");
+
+	/* START on YES actually overwrites and clears the dirty bit. */
+	make_dirty(i, existing);
+	ASSERT_TRUE(isInstrumentDirty(i), "make_dirty actually makes it dirty");
+	r = guiSavePreset(i, existing);
+	ASSERT_TRUE(r == PRESET_EXISTS, "reopening the modal for the overwrite path");
+	input_reset();
+	tap(KM_LEFT);      /* -> YES */
+	handlePresetUiInput(is, i);
+	end_frame();
+	input_reset();
+	tap(KM_START);
+	handlePresetUiInput(is, i);
+	end_frame();
+	input_reset();
+	ASSERT_TRUE(!instrumentLayerModalActive(), "modal is gone after START/YES");
+	ASSERT_TRUE(!isInstrumentDirty(i), "a successful overwrite clears the dirty bit");
+
+	/* A NULL instrument or name is rejected rather than dereferenced. */
+	ASSERT_TRUE(guiSavePreset(NULL, "x") == PRESET_ERROR_FORMAT, "NULL instrument");
+	ASSERT_TRUE(guiSavePreset(i, NULL) == PRESET_ERROR_FORMAT, "NULL name");
+
+	free_env(&e);
+	printf("PASS test_overwrite_modal\n");
+	return 0;
+}
+
+static int test_load_list(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = inst(&e);
+	InputState *is = e.is;
+
+	ASSERT_TRUE(!guiIsLoadListActive(), "list starts closed");
+
+	/* The LOAD control's callback opens it (or, on a dirty instrument, the
+	 * dirty-confirm modal instead). A clean instrument must open the list. */
+	make_clean(i);
+	ASSERT_TRUE(!isInstrumentDirty(i), "a fresh instrument is not dirty");
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "instrument graph");
+	GuiNode *load = find_named_anywhere("LOAD");
+	if(load != NULL && load->actionCb) {
+		load->actionCb(load->actionCtx);
+	}
+	if(guiIsLoadListActive()) {
+		ASSERT_TRUE(find_named_anywhere("LOADLIST_BACK") != NULL,
+		            "the list has a back button");
+		/* Navigation inside the list must not crash and must stay in range. */
+		for(int k = 0; k < 8; k++) {
+			input_reset();
+			tap(KM_DOWN);
+			handlePresetUiInput(is, i);
+			input_reset();
+			tap(KM_UP);
+			handlePresetUiInput(is, i);
+		}
+		input_reset();
+		tap(KM_SELECT);
+		handlePresetUiInput(is, i);
+		input_reset();
+		tap(KM_START);
+		handlePresetUiInput(is, i);
+	}
+
+	free_env(&e);
+	printf("PASS test_load_list\n");
+	return 0;
+}
+
+static int test_dirty_confirm(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = inst(&e);
+	InputState *is = e.is;
+
+	/* With edits in flight, the LOAD control must NOT yank the instrument --
+	 * it pushes the dirty-confirm modal instead. */
+	make_dirty(i, "edited");
+	ASSERT_TRUE(isInstrumentDirty(i), "edits in flight set the dirty bit");
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "instrument graph");
+	GuiNode *load = find_named_anywhere("LOAD");
+	if(load != NULL && load->actionCb) {
+		load->actionCb(load->actionCtx);
+	}
+	/* Hard assertions, not `if (modal) { ... }`: a conditional block silently
+	 * skips when the dialog fails to open, so the test goes green having tested
+	 * nothing. That is exactly how this case passed vacuously once. */
+	ASSERT_TRUE(layer_named("DIRTY_CONFIRM"),
+	            "a dirty instrument must push the confirm dialog, not open the list");
+	ASSERT_TRUE(!guiIsLoadListActive(), "and must not open the load list");
+	{
+		ASSERT_EQ(fire_named_button("DIRTY_DISCARD"), 0);
+		ASSERT_TRUE(!isInstrumentDirty(i), "DISCARD drops the unsaved edits");
+
+		make_dirty(i, "edited");
+		load->actionCb(load->actionCtx);
+		ASSERT_EQ(fire_named_button("DIRTY_CANCEL"), 0);
+		ASSERT_TRUE(isInstrumentDirty(i), "CANCEL keeps the edits");
+		ASSERT_TRUE(!layer_named("DIRTY_CONFIRM"), "CANCEL closes the dialog");
+		/* DISCARD deliberately proceeds into the load list, so a layer being up
+		 * here is correct. What must NOT survive is the legacy overwrite
+		 * handler: with the dialog gone and g_modalState still set, it would
+		 * swallow every keypress with nothing on screen, and START would
+		 * overwrite the preset. Close the load list, then prove the screen is
+		 * genuinely idle. */
+		ASSERT_EQ(fire_named_button("LOADLIST_BACK"), 0);
+		ASSERT_TRUE(!instrumentLayerModalActive(),
+		            "no modal left swallowing input after CANCEL");
+	}
+
+	free_env(&e);
+	printf("PASS test_dirty_confirm\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_voice_type_cycling() != 0) {
 		return 1;
@@ -374,6 +710,15 @@ int main(void) {
 		return 1;
 	}
 	if(test_input_no_modal() != 0) {
+		return 1;
+	}
+	if(test_overwrite_modal() != 0) {
+		return 1;
+	}
+	if(test_load_list() != 0) {
+		return 1;
+	}
+	if(test_dirty_confirm() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

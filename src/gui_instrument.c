@@ -378,13 +378,27 @@ static void cbOverwriteCancel(void *ctx) {
 static void cbDirtyDiscard(void *ctx) {
 	Instrument *inst = (Instrument *)ctx;
 	InstrumentGui *ig = igui;
-	/* Discard edits and proceed straight to the load list. */
+	/* Discard edits and proceed straight to the load list.
+	 *
+	 * This used to call markPresetLoaded(inst, NULL), which returns
+	 * immediately on a NULL name -- so DISCARD did nothing at all: the
+	 * instrument kept its unsaved edits *and* stayed marked dirty, which is
+	 * precisely the state the button exists to leave you out of.
+	 *
+	 * Discarding is two steps: put the live instrument back to the
+	 * last-loaded snapshot, then re-baseline from it. Marking it clean
+	 * without restoring would just relabel the edits as the new normal.
+	 * (TESTING.md I46.) */
 	if(inst) {
-		markPresetLoaded(inst, NULL);
+		applyInstrumentPreset(inst, inst->loaded.snapshot);
+		markPresetLoaded(inst, inst->loaded.name);
 	}
 	if(ig) {
 		popLayerFree(&ig->overlayLayers);
 	}
+	/* Same as cbDirtyCancel: the dirty dialog claimed the legacy modal state,
+	 * so releasing the layer must release it too. (I47.) */
+	g_modalState = MODAL_NONE;
 	if(inst) {
 		guiOpenLoadList();
 	}
@@ -431,6 +445,11 @@ static void cbDirtyCancel(void *ctx) {
 	if(ig) {
 		popLayerFree(&ig->overlayLayers);
 	}
+	/* guiBuildDirtyConfirmLayer sets g_modalState to keep the legacy field in
+	 * sync, so closing the dialog has to clear it. Otherwise the legacy
+	 * overwrite handler stays live with no dialog on screen, swallowing every
+	 * keypress -- and START would overwrite the user's preset. (I47.) */
+	g_modalState = MODAL_NONE;
 }
 
 
@@ -518,9 +537,9 @@ static void guiBuildOverwriteLayer(InstrumentGui *ig, const char *pendingName) {
 	const int py = (SCREEN_H - 80) / 2;
 	const int px = (SCREEN_W - 280) / 2;
 	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbOverwriteCancel, NULL);
-	noBtn->name = strdup("OVERWRITE_NO");
+	guiNodeSetName(noBtn, "OVERWRITE_NO");
 	GuiNode *yesBtn = createActionBtnGuiNode(px + 150, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbOverwriteConfirm, ig->vm->instruments[*ig->selectedInstrument]);
-	yesBtn->name = strdup("OVERWRITE_YES");
+	guiNodeSetName(yesBtn, "OVERWRITE_YES");
 	appendItem(g->root, noBtn, 1);
 	appendItem(g->root, yesBtn, 1);
 	changeGraphSelection(g, noBtn);
@@ -547,9 +566,9 @@ static void guiBuildDirtyConfirmLayer(InstrumentGui *ig, Instrument *inst) {
 	GuiNode *discardBtn = createActionBtnGuiNode(px + 10, py + 38, 100, 22, 0, na_horizontal, "DISCARD", 1, cbDirtyDiscard, ig->vm->instruments[*ig->selectedInstrument]);
 	GuiNode *saveBtn = createActionBtnGuiNode(px + 130, py + 38, 100, 22, 0, na_horizontal, "SAVE", 0, cbDirtySave, ig->vm->instruments[*ig->selectedInstrument]);
 	GuiNode *cancelBtn = createActionBtnGuiNode(px + 250, py + 38, 100, 22, 0, na_horizontal, "CANCEL", 0, cbDirtyCancel, NULL);
-	discardBtn->name = strdup("DIRTY_DISCARD");
-	saveBtn->name = strdup("DIRTY_SAVE");
-	cancelBtn->name = strdup("DIRTY_CANCEL");
+	guiNodeSetName(discardBtn, "DIRTY_DISCARD");
+	guiNodeSetName(saveBtn, "DIRTY_SAVE");
+	guiNodeSetName(cancelBtn, "DIRTY_CANCEL");
 	appendItem(g->root, discardBtn, 1);
 	appendItem(g->root, saveBtn, 1);
 	appendItem(g->root, cancelBtn, 1);
@@ -588,7 +607,7 @@ static void guiBuildLoadListLayer(InstrumentGui *ig) {
 	GuiNode *firstEntry = NULL;
 	for(int i = 0; i < rows; i++) {
 		GuiNode *row = createActionBtnGuiNode(px, py + i * rowH, pw, rowH, 0, na_horizontal, g_loadList.names[i], 0, cbLoadListPick, (void *)(intptr_t)i);
-		row->name = strdup(g_loadList.names[i]);
+		guiNodeSetName(row, g_loadList.names[i]);
 		appendItem(g->root, row, 1);
 		if(!firstEntry) {
 			firstEntry = row;
@@ -597,7 +616,7 @@ static void guiBuildLoadListLayer(InstrumentGui *ig) {
 	/* Cancel/back button lives at the bottom of the list so the
 	 * default selection is the first preset entry. */
 	GuiNode *cancelBtn = createActionBtnGuiNode(px, py + ph - rowH, pw, rowH, 0, na_horizontal, "< BACK", 0, cbLoadListCancel, NULL);
-	cancelBtn->name = strdup("LOADLIST_BACK");
+	guiNodeSetName(cancelBtn, "LOADLIST_BACK");
 	appendItem(g->root, cancelBtn, 1);
 	if(firstEntry) {
 		changeGraphSelection(g, firstEntry);
@@ -882,7 +901,23 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 				break;
 			}
 		}
-		if(topIdx >= 0) {
+		/* The overwrite dialog is the one modal with a legacy keyboard
+		 * contract (LEFT/RIGHT toggle YES/NO, START commits, SELECT escapes)
+		 * that lives *below* the layer system in this function. Let that
+		 * handler run for it, and let the layer system drive everything else.
+		 *
+		 * Gate on the layer's name, not on g_modalState: guiBuildDirtyConfirmLayer
+		 * also sets g_modalState = MODAL_CONFIRM_OVERWRITE to "keep the legacy
+		 * field in sync", so testing the flag alone would route the dirty
+		 * dialog's keystrokes to the overwrite handler -- where START would
+		 * overwrite the user's preset instead of saving or discarding their
+		 * edits. That is worse than the bug this fixed.
+		 * (TESTING.md I44.) */
+		bool overwriteLayerUp = topIdx >= 0
+		                        && ig->overlayLayers.layers[topIdx].name
+		                        && strcmp(ig->overlayLayers.layers[topIdx].name,
+		                                  "OVERWRITE") == 0;
+		if(topIdx >= 0 && !overwriteLayerUp) {
 			guiSetRouteEraseMode(isKeyHeld(is, KM_FUNCTION));
 			guiSetPickerEditHeld(isKeyHeld(is, KM_EDIT));
 			/* T11: the attenuation editor consumes all picker input
@@ -921,13 +956,25 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 				markInstrumentSavedAs(inst, g_pendingName);
 			}
 			/* Either branch: close the modal. On NO we just drop back to
-			 * the name-edit screen so the user can change the name. */
+			 * the name-edit screen so the user can change the name.
+			 *
+			 * The layer must go too, not just the state flag. guiSetOverwritePending
+			 * pushes a non-passive layer, so with only g_modalState cleared
+			 * the layer branch above still found a modal and kept routing
+			 * every key to it — the modal became undismissable by keyboard.
+			 * (TESTING.md I44.) */
 			g_modalState = MODAL_NONE;
+			if(ig) {
+				popTopNonPassiveLayerFree(&ig->overlayLayers);
+			}
 			return true;
 		}
 		if(isKeyJustPressed(is, KM_SELECT)) {
 			/* SELECT also dismisses (same as choosing NO) — handy escape. */
 			g_modalState = MODAL_NONE;
+			if(ig) {
+				popTopNonPassiveLayerFree(&ig->overlayLayers);
+			}
 			return true;
 		}
 		/* Consume anything else while the modal is up so the underlying
@@ -1453,7 +1500,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	modHdr->draw = drawWrapperNode;
 	GuiNode *modLabel = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODS", 0, 0);
 	GuiNode *modAdd = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "ADD", 0, cbAddModSource, inst);
-	modAdd->name = strdup("MODS_ADD");
+	guiNodeSetName(modAdd, "MODS_ADD");
 	appendItem(modHdr, modAdd, 1);
 	appendItem(modHdr, modLabel, 4);
 	appendItem(instwrap, modHdr, 2);

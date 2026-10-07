@@ -142,7 +142,7 @@ bimodal. Modules are either closed (100%) or barely touched:
 ```
 closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
            gui_arranger.c 97.8% line / 100% func / 81.5% branch
-in progress gui_instrument.c 20.0% line / 31.6% func / 8.4% branch (I40)
+in progress gui_instrument.c 42.0% line / 57.9% func / 19.7% branch (I40, I44-I48)
 low        gui_inst_mod.c 3.6% (925 branches)   dataviz.c 3.2%   gui_core.c 22.7%
            gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
 ```
@@ -1095,6 +1095,99 @@ still be presented, and that teardown is idempotent.
 General lesson: **a node that owns a GPU resource is not a data structure, and it
 makes its whole screen un-testable headlessly.** The cheap fix is not to stub the
 resource — it is to stop constructing it until something uses it.
+
+### I48 — a "no-op" API call that silently did nothing, and one that aliased its own buffer
+
+Two different shapes of the same mistake, both found by the same test file.
+
+**`cbDirtyDiscard` called `markPresetLoaded(inst, NULL)`.** `markPresetLoaded`
+opens with `if(!inst || !name || !name[0]) return;` — so the DISCARD button on
+the dirty-confirm dialog was a complete no-op. It did not restore the edits it
+exists to throw away, and it left the instrument marked dirty, which is exactly
+the state the dialog offers an exit from.
+
+Fixed to `applyInstrumentPreset(inst, inst->loaded.snapshot)` followed by
+`markPresetLoaded(inst, inst->loaded.name)`. Both halves matter: restoring the
+snapshot *and* re-baselining. Marking it clean without restoring would just
+relabel the user's edits as the new baseline.
+
+**That fix then aliased a buffer.** `markPresetLoaded(inst, inst->loaded.name)`
+is the natural way to re-baseline without changing the name — and it makes
+`strncpy(inst->loaded.name, name, ...)` overlap itself, which is undefined
+behaviour. ASan reported it as `strncpy-param-overlap`.
+
+Fixed in the callee rather than the caller: a one-line local copy at the top of
+`markPresetLoaded`. The call that triggered it is the obvious one to write, so
+the API should accept it.
+
+The general lesson is the NULL one: **a defensive early-return in a helper turns
+a caller's mistake into silence.** `markPresetLoaded` cannot report that it did
+nothing, so the caller has no way to know. Where a call is load-bearing, either
+make the failure visible or assert it at the call site.
+
+### I47 — the dirty dialog claimed the legacy modal state and never gave it back
+
+`guiBuildDirtyConfirmLayer` sets `g_modalState = MODAL_CONFIRM_OVERWRITE` with a
+comment about keeping a legacy field in sync. Two of its three callbacks then
+released the *layer* without releasing the *state*:
+
+- `cbDirtyCancel` popped the layer, leaving `g_modalState` set.
+- `cbDirtyDiscard` did the same (before I46 fixed it).
+
+With no dialog on screen but the flag still set, `handlePresetUiInput` falls
+into the legacy overwrite handler: it swallows every keypress, and `START`
+overwrites the user's preset. A phantom modal.
+
+Fixed in both callbacks. The underlying design smell is that a layer and a
+file-static flag are two representations of "a modal is open", and nothing
+enforces that they are changed together.
+
+### I44 — a non-passive layer made the overwrite dialog's keyboard handler unreachable
+
+`handlePresetUiInput` routes input to the topmost non-passive overlay layer
+*before* it reaches the `g_modalState == MODAL_CONFIRM_OVERWRITE` block that
+implements the dialog's keyboard contract (LEFT/RIGHT toggle YES/NO, START
+commits, SELECT escapes). `guiSetOverwritePending` always pushes a non-passive
+layer, so the keyboard block was **dead code**. The dialog could only be
+dismissed with the mouse.
+
+Fixed by letting the legacy handler run for that dialog and gating on the
+layer's *name*:
+
+```c
+bool overwriteLayerUp = topIdx >= 0
+                        && ig->overlayLayers.layers[topIdx].name
+                        && strcmp(ig->overlayLayers.layers[topIdx].name,
+                                  "OVERWRITE") == 0;
+if(topIdx >= 0 && !overwriteLayerUp) { /* layer routing */ }
+```
+
+Gating on `g_modalState` instead looks equivalent and is not: the dirty dialog
+sets the same flag (I47), so every keystroke in the dirty dialog would be routed
+to the *overwrite* handler, where START overwrites the preset instead of saving
+or discarding. Identity, not a shared flag.
+
+Also: START and SELECT now pop the layer as well as clearing the flag. Clearing
+only the flag left the layer up and the modal still swallowing input.
+
+### I46 — see I48: DISCARD was a no-op.
+
+### I45 — the dirty bit is inert without a loaded name
+
+`isInstrumentDirty` returns false whenever `inst->loaded.name` is empty, on the
+sound reasoning that an instrument with no on-disk baseline has no unsaved edits
+to lose. Setting `loaded.dirty = true` on a fresh instrument therefore does
+nothing, and every assertion about the dirty path passes vacuously.
+
+It bit three ways in one test file: `initDefaultFmPreset` leaves the preset name
+empty (so the bank lookup found nothing and `guiSavePreset` never returned
+`PRESET_EXISTS`), the dirty bit never latched, and the dirty dialog never opened
+— which a conditional `if(modal) {...}` block then skipped silently.
+
+The rule that actually fixed it: **make the precondition part of the test.**
+`make_dirty()` now refuses an empty name, and each call site asserts
+`isInstrumentDirty()` afterwards. And never wrap the body of a test in
+`if(thing_might_be_up)`: assert that the thing came up, then test it.
 
 ### I31 — a race is the one bug class no other rung here can see
 

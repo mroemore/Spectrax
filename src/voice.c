@@ -825,6 +825,14 @@ void markPresetLoaded(Instrument *inst, const char *name) {
 	if(!inst || !name || !name[0]) {
 		return;
 	}
+	/* Copy before writing: a caller re-baselining without changing the name
+	 * naturally writes markPresetLoaded(inst, inst->loaded.name), and
+	 * strncpy(dst, src, n) with dst == src is undefined behaviour -- ASan
+	 * reports it as strncpy-param-overlap. Take a local first so that call
+	 * does the obvious thing. (TESTING.md I48.) */
+	char nameCopy[sizeof(inst->loaded.name)];
+	strncpy(nameCopy, name, sizeof(nameCopy) - 1);
+	nameCopy[sizeof(nameCopy) - 1] = '\0';
 	/* Snapshot the live instrument state. presetFromInstrument reads
 	 * every dial on the current voice type and serialises it into
 	 * a Preset — we keep the result in inst->loaded.snapshot so the
@@ -832,9 +840,9 @@ void markPresetLoaded(Instrument *inst, const char *name) {
 	 * alone doesn't capture what changed; the snapshot is the
 	 * baseline.) */
 	inst->loaded.snapshot = presetFromInstrument(inst);
-	strncpy(inst->loaded.snapshot.name, name, sizeof(inst->loaded.snapshot.name) - 1);
+	strncpy(inst->loaded.snapshot.name, nameCopy, sizeof(inst->loaded.snapshot.name) - 1);
 	inst->loaded.snapshot.name[sizeof(inst->loaded.snapshot.name) - 1] = '\0';
-	strncpy(inst->loaded.name, name, sizeof(inst->loaded.name) - 1);
+	strncpy(inst->loaded.name, nameCopy, sizeof(inst->loaded.name) - 1);
 	inst->loaded.name[sizeof(inst->loaded.name) - 1] = '\0';
 	/* Capture completes the sync-to-disk transaction: dirty flips
 	 * to clean so the next edit starts a new diff. */

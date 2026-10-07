@@ -1055,9 +1055,9 @@ void cbOpenClearAllLayer(void *ctx) {
 	label->draw = drawClearAllText;
 	appendItem(g->root, label, 1);
 	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbClearAllCancel, sc);
-	noBtn->name = strdup("CLEARALL_NO");
+	guiNodeSetName(noBtn, "CLEARALL_NO");
 	GuiNode *yesBtn = createActionBtnGuiNode(px + 170, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbClearAllConfirmYes, sc);
-	yesBtn->name = strdup("CLEARALL_YES");
+	guiNodeSetName(yesBtn, "CLEARALL_YES");
 	appendItem(g->root, noBtn, 1);
 	appendItem(g->root, yesBtn, 1);
 	changeGraphSelection(g, noBtn);
@@ -1079,9 +1079,9 @@ static void cbDeleteSource(void *ctx) {
 	const int py = (SCREEN_H - 80) / 2;
 	const int px = (SCREEN_W - 280) / 2;
 	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbDeleteCancel, NULL);
-	noBtn->name = strdup("DELETE_NO");
+	guiNodeSetName(noBtn, "DELETE_NO");
 	GuiNode *yesBtn = createActionBtnGuiNode(px + 150, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbDeleteConfirmYes, sc);
-	yesBtn->name = strdup("DELETE_YES");
+	guiNodeSetName(yesBtn, "DELETE_YES");
 	appendItem(g->root, noBtn, 1);
 	appendItem(g->root, yesBtn, 1);
 	changeGraphSelection(g, noBtn);
@@ -1854,7 +1854,7 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 	if(!core) {
 		GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal,
 		                                         modTypeTag(mod->type), 0, cbCycleSourceType, &g_sourceCtx[idx]);
-		typeBtn->name = strdup(modTypeTag(mod->type));
+		guiNodeSetName(typeBtn, modTypeTag(mod->type));
 		appendItem(wrap, typeBtn, 3);
 	}
 

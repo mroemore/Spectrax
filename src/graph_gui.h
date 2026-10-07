@@ -99,6 +99,7 @@ GuiNode *createNamedBlankGuiNode(char *name);
 void freeGuiNode(GuiNode *gn);
 void printGraph(GuiNode *root, int depth);
 
+void guiNodeSetName(GuiNode *gn, const char *name);
 void guiNodeSetClass(GuiNode *gn, const char *className);
 
 void reflowCoordinates(GuiNode *n);
