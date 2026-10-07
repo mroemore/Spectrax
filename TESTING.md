@@ -1017,18 +1017,84 @@ either, so that is the product's actual contract and the test now honours it.
 The fragility is real (any future "recreate the VoiceManager" feature hits this)
 but fixing it belongs with that feature, not with a test.
 
-**The constraint: this screen's graph construction needs a GL context.**
-`createInstGraph` → `createModStripGuiNode` → `initModStrip` →
-`LoadRenderTexture`, so `createInstrumentGui` cannot run headlessly. That makes
-`gui_instrument.c` the one module whose *construction* — not just its drawing —
-requires a window, so its test runs under Xvfb. Worth knowing because it
-inverts the usual split: normally node construction is free and drawing is the
-part that needs a display.
+**The constraint that was here — now fixed.** `gui_instrument.c` used to be the
+one module whose *construction* needed a GL context: `createInstGraph` →
+`createModStripGuiNode` → `initModStrip` → `LoadRenderTexture`. That inverted the
+usual split (node construction free, drawing needs a display) and forced this
+test under Xvfb for logic that never draws. **I41** makes `ModStrip`'s render
+textures lazily allocated, and this test is now headless like its siblings.
 
 ### I39 — see I40: the unclamped `selectedInstrument` accessors
 
 (Recorded together with I40 because they were found in the same pass and are the
 same shape: a caller-owned index used against a fixed array without a bound.)
+
+### I42 — `fmaxf` where a clamp was meant, flashing a UI element near-black
+
+`updateModStripTexture` built its feedback tint as:
+
+```c
+(Color){ fmaxf(249.0f + tht_x * 8.0f, 255.0f), ... }
+```
+
+`fmaxf(a, b)` returns the *larger* argument, so this is not a clamp in any
+direction — it raises the floor to 255 and lets the top run away. The
+arithmetic ranges over roughly [218, 279], so most of the cycle produced a
+value above 255, which was then narrowed into a `Color`'s `unsigned char`.
+That is undefined behaviour, and on x86 it wrapped: 259 became 3.
+
+**Visible effect:** the mod strip's feedback tint was near-white for part of its
+cycle and flashed near-black for the rest, instead of pulsing smoothly between
+~219 and 255.
+
+Fixed with `fminf(fmaxf(v, 0.0f), 255.0f)`. This is a *visual change*: the strip
+now shimmers through a range of near-whites rather than flashing. Worth
+eyeballing in the app.
+
+Found by UBSan through `test_modstrip_lazy_draw`, on its first run. The code was
+written in `59df0a1` and, so far as the history shows, never executed under a
+sanitizer — because nothing called `updateModStripTexture` from any test until
+now. A one-character-shaped bug that survived because its path had no test.
+
+### I41 — a node that owns GPU state makes its whole screen untestable headlessly
+
+`createInstGraph` reached `createModStripGuiNode` → `initModStrip`, which called
+`LoadRenderTexture` and then *drew* (`BeginTextureMode`/`ClearBackground`) at
+construction time. `LoadRenderTexture` dispatches through `rlgl`'s
+function-pointer table, which is `NULL` before `InitWindow`, so calling
+`createInstrumentGui` headless was a jump through address zero.
+
+The split every other GUI module here gets for free — construct headless, draw
+under Xvfb — did not apply to `gui_instrument.c`, because construction *was* the
+draw. Its test had to `InitWindow` and run under Xvfb for logic that never draws.
+
+**The fix** is a two-phase resource:
+
+- `initModStrip` now only records `voicePool`/`voiceCount`/`width`/`height` and
+  zeroes the textures, adding a `bool loaded` to `ModStrip`.
+- `ensureModStripLoaded()` — static, called at the top of
+  `updateModStripTexture` and `drawModStrip` — does the allocation and the
+  black clear once. The update path is the real first toucher: `main.c` calls
+  `updateModStripTextures()` at the top of every frame, before `BeginTextureMode`.
+- `freeModStrip` returns early unless `loaded`. `UnloadRenderTexture`
+  dereferences `rlgl` state, so unloading a zeroed texture would crash rather
+  than no-op — the flag is what makes lazy construction symmetric with teardown.
+
+The black clear had to move with it: `updateModStripTexture`'s first act is to
+blit one buffer over the other, so whichever is not the clear target would show
+uninitialised GPU memory on frame 1.
+
+**Two tests, deliberately split.** `test_modstrip_lazy` is headless and asserts
+construction touches no GL — if anyone makes `initModStrip` eager again it
+segfaults with no display, which is the signal we want.
+`test_modstrip_lazy_draw` runs under Xvfb and asserts the lazy load actually
+happens, that a second update *reuses* the textures rather than reallocating
+(every frame would otherwise leak a framebuffer), that a never-updated strip can
+still be presented, and that teardown is idempotent.
+
+General lesson: **a node that owns a GPU resource is not a data structure, and it
+makes its whole screen un-testable headlessly.** The cheap fix is not to stub the
+resource — it is to stop constructing it until something uses it.
 
 ### I31 — a race is the one bug class no other rung here can see
 

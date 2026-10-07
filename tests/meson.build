@@ -16,6 +16,8 @@ test_names = [
   'test_gui_layer',
   'test_gui_pattern',
   'test_gui_arranger',
+  'test_gui_instrument',
+  'test_modstrip_lazy',
   'test_gui_arranger_fault',
 ]
 
@@ -69,6 +71,12 @@ foreach name : test_names
   elif name == 'test_gui_pattern'
     link_libs = gui_test_libs
   elif name == 'test_gui_arranger'
+    link_libs = gui_test_libs
+  elif name == 'test_gui_instrument'
+    link_libs = gui_test_libs
+  elif name == 'test_modstrip_lazy'
+    # gui_test_libs, not bare vizfx: vizfx.c calls getColourScheme(), which
+    # lives in gui_core.c.
     link_libs = gui_test_libs
   elif name == 'test_gui_arranger_fault'
     # --wrap=malloc so createInstChipGuiNode / createArrangerCellGuiNode's OOM
@@ -204,21 +212,6 @@ test('test_gui_layer_fault', exe)
 # Run it under Xvfb (a real GL context), matching the vizulobe GL tests.
 xvfb = find_program('xvfb-run', required: false)
 if xvfb.found()
-  # test_gui_instrument is not a "draw" test, but createInstGraph reaches
-  # createModStripGuiNode -> initModStrip -> LoadRenderTexture, so building
-  # the instrument graph needs a GL context even though handlePresetUiInput
-  # never draws. Xvfb is the cheapest way to get one.
-  exe = executable('test_gui_instrument',
-    files('dsp/test_gui_instrument.c'),
-    link_with: gui_test_libs,
-    include_directories: inc,
-    dependencies: system_deps,
-  )
-  test('test_gui_instrument', xvfb,
-    args: ['-a', '-s', '-screen 0 640x480x24', exe],
-    timeout: 60,
-  )
-
   exe = executable('test_gui_layer_draw',
     files('dsp/test_gui_layer_draw.c'),
     link_with: gui_test_libs,
@@ -268,6 +261,18 @@ if xvfb.found()
     ],
   )
   test('test_gui_pattern_fault', exe)
+
+  # The lazy half of I41: ModStrip allocates its ping/pong pair on first use.
+  exe = executable('test_modstrip_lazy_draw',
+    files('dsp/test_modstrip_lazy_draw.c'),
+    link_with: gui_test_libs,
+    include_directories: inc,
+    dependencies: system_deps,
+  )
+  test('test_modstrip_lazy_draw', xvfb,
+    args: ['-a', '-s', '-screen 0 640x480x24', exe],
+    timeout: 60,
+  )
 
   # gui_arranger.c's cell + chip draw callbacks.
   exe = executable('test_gui_arranger_draw',

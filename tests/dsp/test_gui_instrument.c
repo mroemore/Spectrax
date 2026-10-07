@@ -153,19 +153,11 @@ static int make_env(Env *e) {
 	e->is = createInputState(INPUT_TYPE_KEYBOARD);
 	ASSERT_TRUE(e->is != NULL, "createInputState");
 
-	/* createInstGraph -> createModStripGuiNode -> initModStrip ->
-	 * LoadRenderTexture, so building an instrument graph needs a GL context
-	 * even though none of the logic under test draws anything. That makes
-	 * this the one GUI module whose *construction* is not window-free, which
-	 * is why this test runs under Xvfb rather than headless like its siblings.
-	 * (Recorded as an observation in TESTING.md I38: node construction that
-	 * allocates GPU resources makes the whole screen untestable headlessly.) */
-	InitWindow(640, 480, "spx-instrument-test");
-	if(!IsWindowReady()) {
-		fprintf(stderr, "FAIL: no window; test must run under Xvfb\n");
-		return 1;
-	}
-
+	/* No window needed. createInstGraph does reach createModStripGuiNode, but
+	 * initModStrip is now pure bookkeeping -- the ping/pong render textures
+	 * are allocated lazily by ensureModStripLoaded() on first use -- so graph
+	 * construction is pure data again and this test runs headless like every
+	 * other GUI module test (TESTING.md I41). */
 	e->selected = 0;
 	createInstrumentGui(e->vm, &e->selected, 0);
 	ASSERT_TRUE(getInstrumentGui() != NULL, "createInstrumentGui");
@@ -189,7 +181,6 @@ static void free_env(Env *e) {
 	freeSamplePool(e->sp);
 	freeWavetablePool(e->wtp);
 	freeInstrumentGui();
-	CloseWindow();
 }
 
 static Instrument *inst(Env *e) {
