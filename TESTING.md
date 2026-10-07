@@ -143,7 +143,7 @@ bimodal. Modules are either closed (100%) or barely touched:
 closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
            gui_arranger.c 97.8% line / 100% func / 81.5% branch
 in progress gui_instrument.c 42.0% line / 57.9% func / 19.7% branch (I40, I44-I48)
-in progress gui_inst_mod.c 14.4% line / 27.4% func / 10.6% branch (I49)
+in progress gui_inst_mod.c 42.9% line / 62.9% func / 29.2% branch (I49, I51, I52)
 low        dataviz.c 3.2%   gui_core.c 22.7%
            gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
 ```
@@ -1248,6 +1248,49 @@ so the whole suite already has it.
 Worth knowing because the failure looks like flakiness: "works from the shell,
 crashes under the runner". When a test does that, diff the wrapper's
 environment before suspecting the code.
+
+### I51 — a callback whose parameter type is not in its own name
+
+`cbOpenRouteLayer` and `cbOpenClearAllLayer` both take `void *ctx` and cast it
+to **`SourceCtx *`** — a module-private struct holding an `Instrument *` and a
+source position. Neither is exported.
+
+Passing an `Instrument *` is the obvious mistake, and it fails *silently*:
+`resolveSourceCtx` writes through the pointer, so the "instrument" gets
+overwritten with the displayed instrument while its second field is read as a
+source index. The picker then refuses to open, and the caller sees nothing at
+all — no crash, no error, just a function that does not work.
+
+**A `void *` context that is really a two-field struct is an undocumented
+contract.** When a module's callbacks are the intended entry points for tests or
+a harness, the context type belongs in the header next to the function, or the
+function takes the struct directly. Both of these already take `void *` because
+they are `ActionCallback`s, which is a real constraint — so the fix is at least
+to name the expected type in the comment *and* in the test, which is what
+`test_gui_inst_mod_picker.c` now does with a mirrored `SourceCtx` (same
+convention `test_graph_nav` uses for private structs).
+
+### I52 — `probePickFirstRoute` is not a query, and a harness hook reads like one
+
+`probePickFirstRoute` is named and shaped like "probe for a route", but it is a
+*harness hook that creates* routes: it picks the last real source and wires it
+into up to `PROBE_ROUTE_COUNT` unmodulated parameters so the gradient overlay
+has something to draw.
+
+A test that asserted the intuitive contract — "returns 0 when there is nothing
+to pick" — therefore failed. The fix was to read the function rather than its
+name.
+
+Worth recording because it is a trap for whoever tests this module next, and
+because the general shape is common: **harness hooks that seed state read like
+queries about it.** If they must not be mistaken for one, say so in the comment
+*and* give them a verb (`seedPickRoutes`, not `probePickFirstRoute`) — the name
+is the part that misleads.
+
+Also worth noting while testing it: a successful probe legitimately grows
+`paramList`, because `addModulation` creates a per-connection attenuator
+parameter (the `MT_ATTEN` entry that interleaves the modList). An assertion that
+the parameter count is stable across routing is wrong.
 
 ### I31 — a race is the one bug class no other rung here can see
 

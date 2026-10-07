@@ -19,6 +19,7 @@ test_names = [
   'test_gui_instrument',
   'test_gui_inst_mod',
   'test_gui_inst_mod_mirror',
+  'test_gui_inst_mod_picker',
   'test_modstrip_lazy',
   'test_gui_arranger_fault',
 ]
@@ -79,6 +80,8 @@ foreach name : test_names
   elif name == 'test_gui_inst_mod'
     link_libs = gui_test_libs
   elif name == 'test_gui_inst_mod_mirror'
+    link_libs = gui_test_libs
+  elif name == 'test_gui_inst_mod_picker'
     link_libs = gui_test_libs
   elif name == 'test_modstrip_lazy'
     # gui_test_libs, not bare vizfx: vizfx.c calls getColourScheme(), which
