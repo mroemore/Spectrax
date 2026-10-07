@@ -1088,6 +1088,13 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	(*instrument)->loaded.dirty = false;
 	(*instrument)->loaded.snapshot.name[0] = '\0';
 	(*instrument)->rebuilding = false;
+	/* The mod mirror arrays must start as NULL, not whatever malloc left.
+	 * Only slots 0..envelopeCount/lfoCount are ever written, so a loop that
+	 * scans the whole array -- gui_inst_mod.c's own bookkeeping does -- reads
+	 * uninitialised bytes past the populated entries. Under meson's
+	 * MALLOC_PERTURB_ that is a hard crash; without it, a wild read that
+	 * usually happens to look like a NULL. (TESTING.md I49.) */
+	memset((*instrument)->envelopes, 0, sizeof((*instrument)->envelopes));
 	(*instrument)->modList = createModList();
 	if(!(*instrument)->modList) {
 		printf("modList creation failed in init_instrument.\n");

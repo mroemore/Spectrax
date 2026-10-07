@@ -143,7 +143,8 @@ bimodal. Modules are either closed (100%) or barely touched:
 closed     filters.c  notes.c  wavetable.c  gui_layer.c   gui_pattern.c 98.6%
            gui_arranger.c 97.8% line / 100% func / 81.5% branch
 in progress gui_instrument.c 42.0% line / 57.9% func / 19.7% branch (I40, I44-I48)
-low        gui_inst_mod.c 3.6% (925 branches)   dataviz.c 3.2%   gui_core.c 22.7%
+in progress gui_inst_mod.c 14.4% line / 27.4% func / 10.6% branch (I49)
+low        dataviz.c 3.2%   gui_core.c 22.7%
            gui_inst_fm.c 0%  gui_inst_blep.c 0%  gui_inst_sample.c 0%
 ```
 
@@ -1188,6 +1189,65 @@ The rule that actually fixed it: **make the precondition part of the test.**
 `make_dirty()` now refuses an empty name, and each call site asserts
 `isInstrumentDirty()` afterwards. And never wrap the body of a test in
 `if(thing_might_be_up)`: assert that the thing came up, then test it.
+
+### I49 — one array, two index spaces, and an uninitialised tail
+
+`inst->envelopes[]` is a legacy mirror of the envelope mods (the code says so
+itself: "Task 4 will remove the mirror entirely"). Three separate bugs live in
+how it is maintained, all found by the same first test run.
+
+**1. `envelopeCount` counted the wrong thing.** `addRuntimeSource` and
+`removeSource` both set it to `modSourceCount(inst->modList)`, which counts
+every non-atten mod — *including the LFO*, which has no mirror slot. On a
+default instrument that made `envelopeCount` exceed the number of populated
+slots by one. Any loop over `envelopeCount` then walked a slot that was never
+written — which is exactly how the new test segfaulted, the first time it ran
+under `MALLOC_PERTURB_`.
+
+The invariant it should have is `envelopeCount == number of non-NULL entries in
+envelopes[]`, so all three sites now increment / recount instead.
+
+**2. The mirror was cleared by an index from the wrong space.**
+`removeSource` cleared `envelopes[mi]` where `mi = modIndexAt(modList, srcIndex)`
+is a *modList* position, while `addRuntimeSource` writes
+`envelopes[envelopeCount]`, a *source* count. They diverge as soon as anything
+is appended: a runtime source lands at modList index 11 but is mirrored at
+`envelopes[3]`, so the `if(mi < MAX_ENVELOPES)` guard skipped the clear entirely
+and `envelopes[3]` kept pointing at freed memory. ASan: heap-use-after-free via
+`rebuildInstrumentGraph`.
+
+Fixed without trying to reconcile the spaces — scan the array for the pointer
+being removed and NULL that. Works however the array was populated, which
+matters because this is code on its way out.
+
+**3. The array was never zeroed.** `init_instrument` uses `malloc` and only
+writes slots `0..envelopeCount-1`, leaving the tail as whatever malloc returned.
+A scan of the whole array reads uninitialised bytes. That is bug 1's crash
+surfacing again: with the count fixed, the recount loop still walked
+`envelopes[5]` and found garbage where NULL was expected.
+
+Fixed at the source — `memset` both mirror arrays in `init_instrument`. This is
+the one worth generalising: **a partially-initialised array with a separate
+count needs both halves defended.** Zero the tail, *and* make the count mean
+"entries actually written". Doing only one leaves a scan that finds
+`0xd1d1d1d1d1d1d1` and counts it as populated.
+
+### I50 — `MALLOC_PERTURB_` is a test, not just a meson detail
+
+`test_gui_inst_mod` passed when run directly and segfaulted under
+`meson test`. The difference was one environment variable in meson's default
+test wrapper: `MALLOC_PERTURB_`, which makes glibc fill freshly-allocated and
+freed memory with a byte pattern.
+
+Without it, an uninitialised read usually lands on a zeroed page and looks
+correct. With it, the same read is garbage immediately. It is the cheapest
+uninitialised-memory detector available — no sanitizer build, no second
+compiler, no slower test — and meson already sets it for every test by default,
+so the whole suite already has it.
+
+Worth knowing because the failure looks like flakiness: "works from the shell,
+crashes under the runner". When a test does that, diff the wrapper's
+environment before suspecting the code.
 
 ### I31 — a race is the one bug class no other rung here can see
 

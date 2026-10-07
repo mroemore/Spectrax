@@ -125,6 +125,9 @@ static int test_runtime_source_lifecycle(void) {
 
     addRuntimeSource(inst);
     ASSERT_EQ(inst->modList->count, before + 1, "addRuntimeSource appends a source");
+    /* envelopeCount counts mirror slots, not sources. They coincide here only
+     * because this preset has no unmirrored source; do not read this as a
+     * general identity. (TESTING.md I49.) */
     ASSERT_EQ(inst->envelopeCount, modSourceCount(inst->modList),
               "envelopeCount tracks the source count (attens excluded)");
     Mod *m = inst->modList->mods[before];
@@ -141,6 +144,9 @@ static int test_runtime_source_lifecycle(void) {
     /* runtime source removed — runtime source is at source position `beforeSrc` */
     removeSource(inst, beforeSrc);
     ASSERT_EQ(inst->modList->count, before, "runtime source removed");
+    /* envelopeCount counts populated envelopes[] slots, not mod sources: the
+     * LFO is a source but has no mirror slot. It goes back to what it was,
+     * which here also equals beforeSrc only by coincidence. (TESTING.md I49.) */
     ASSERT_EQ(inst->envelopeCount, beforeSrc, "envelopeCount synced after removal");
 
     free(inst);

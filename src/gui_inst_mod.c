@@ -261,11 +261,18 @@ void addRuntimeSource(Instrument *inst) {
 	 * replace this builder with a modList-based one and the mirror goes away. */
 	if(env && inst->envelopeCount < MAX_ENVELOPES) {
 		inst->envelopes[inst->envelopeCount] = env;
+		/* envelopeCount is the number of populated slots in envelopes[],
+		 * so it advances by one -- and only when a slot was really written.
+		 *
+		 * This used to be `envelopeCount = modSourceCount(modList)`, which
+		 * counts every non-atten mod, including the LFO, while envelopes[]
+		 * mirrors envelopes only. On a default instrument that made the count
+		 * exceed the populated slots by one, so any loop over envelopeCount
+		 * -- including this file's own tests -- walked an uninitialised
+		 * pointer and segfaulted under meson's MALLOC_PERTURB_. (TESTING.md
+		 * I49.) */
+		inst->envelopeCount++;
 	}
-	/* Task 3: envelopeCount tracks the SOURCE count (non-atten) so the
-	 * harness ASSERT envcount + the voice aliasing stay aligned even
-	 * though the modList also holds connection attenuators. */
-	inst->envelopeCount = modSourceCount(inst->modList);
 	/* Task 2.4: structural mutations re-clone every voice's mod graph. */
 	if(inst->vm) {
 		rebuildVoicesForInstrument(inst->vm, inst);
@@ -295,15 +302,39 @@ void removeSource(Instrument *inst, int srcIndex) {
 	 * closes the flag's check-then-use race. */
 	pthread_mutex_lock(&g_audioLock);
 	inst->rebuilding = true;
-	removeMod(inst->modList, inst->paramList, inst->modList->mods[mi]);
+	Mod *removed = inst->modList->mods[mi];
+	removeMod(inst->modList, inst->paramList, removed);
 	/* Task 3 fix: clear the mirror slot so the old builder's
-	 * rebuildInstrumentGraph does not deref a freed envelope. Task 4 will
-	 * remove the mirror entirely when it replaces the builder. */
-	if(mi < MAX_ENVELOPES) {
-		inst->envelopes[mi] = NULL;
+	 * rebuildInstrumentGraph does not deref a freed envelope.
+	 *
+	 * This used to clear envelopes[mi], but `mi` is a modList position while
+	 * addRuntimeSource writes envelopes[envelopeCount], which is a source
+	 * count -- and the two diverge as soon as anything is appended. A runtime
+	 * source lands at modList index 11 but is mirrored into envelopes[3], so
+	 * the `if(mi < MAX_ENVELOPES)` guard skipped the clear entirely and
+	 * envelopes[3] kept pointing at freed memory. ASan reported a
+	 * heap-use-after-free via rebuildInstrumentGraph (TESTING.md I49).
+	 *
+	 * The mirror's index space is not reliable, so do not compute an index:
+	 * find whichever slot holds this Mod and NULL that. Works regardless of
+	 * how the array was populated. Task 4 will remove the mirror entirely. */
+	for(int k = 0; k < MAX_ENVELOPES; k++) {
+		if(inst->envelopes[k] == removed) {
+			inst->envelopes[k] = NULL;
+			/* One fewer populated slot. Recompute rather than decrement:
+			 * the mirror may have been mid-edit, and a decrement from a
+			 * stale count would drift the invariant this whole array
+			 * depends on. */
+			int populated = 0;
+			for(int j = 0; j < MAX_ENVELOPES; j++) {
+				if(inst->envelopes[j]) {
+					populated++;
+				}
+			}
+			inst->envelopeCount = populated;
+			break;
+		}
 	}
-	/* Task 3: keep envelopeCount synced with the source count. */
-	inst->envelopeCount = modSourceCount(inst->modList);
 	/* Task 2.4: structural mutations re-clone every voice's mod graph. */
 	if(inst->vm) {
 		rebuildVoicesForInstrument(inst->vm, inst);
@@ -1801,7 +1832,18 @@ static void cbCycleSourceType(void *ctx) {
 	pthread_mutex_lock(&g_audioLock);
 	sc->inst->rebuilding = true;
 	if(changeModType(sc->inst->modList, mod, next, sc->inst->paramList)) {
-		sc->inst->envelopeCount = modSourceCount(sc->inst->modList);
+		/* The mirror holds envelopes; a type change can turn a source into
+		 * something the mirror never had a slot for. Recount the populated
+		 * slots rather than taking the modList source count, which counts
+		 * LFOs too and so can exceed what envelopes[] actually holds.
+		 * (TESTING.md I49.) */
+		int populated = 0;
+		for(int j = 0; j < MAX_ENVELOPES; j++) {
+			if(sc->inst->envelopes[j]) {
+				populated++;
+			}
+		}
+		sc->inst->envelopeCount = populated;
 		if(sc->inst->vm) {
 			rebuildVoicesForInstrument(sc->inst->vm, sc->inst);
 		}
