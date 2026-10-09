@@ -207,6 +207,29 @@ static int test_dial_component_height(void) {
 	return 0;
 }
 
+static int test_dial_value_clamped_to_cell(void) {
+	/* Narrow continuous cell (a sampler dial is 62px wide): the value
+	 * readout must not spill past the cell into the neighbour. */
+	GuiNode *n = createGuiNode(39, 91, 62, 30, 5, na_horizontal, "SAMPLE", 1, 0);
+	const DialStyle *d = resolveDialStyle(n);
+	DialGeometry g;
+	computeDialGeometry(n, d, &g);
+	ASSERT_TRUE(g.valueX + g.valueW <= 39 + 62, "continuous value fits inside the cell");
+	freeGuiNode(n);
+
+	/* Discrete dial: the value must not sit under the knob. */
+	GuiNode *m = createGuiNode(39, 91, 62, 30, 5, na_horizontal, "GAIN", 1, 0);
+	const DialStyle *dd = resolveDiscreteDialStyle(m);
+	DialGeometry gd;
+	computeDialGeometry(m, dd, &gd);
+	ASSERT_TRUE(gd.valueX >= gd.knobX + gd.knobW, "discrete value clear of the knob");
+	ASSERT_TRUE(gd.valueX + gd.valueW <= 39 + 62, "discrete value fits inside the cell");
+	freeGuiNode(m);
+
+	printf("PASS test_dial_value_clamped_to_cell\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
@@ -230,6 +253,7 @@ int main(void) {
 	fails += test_reflow_fills_weighted_column();
 	fails += test_dial_geometry_centers_in_wide_cell();
 	fails += test_dial_component_height();
+	fails += test_dial_value_clamped_to_cell();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;

@@ -59,4 +59,12 @@ void freeSample(Sample *sample);
 float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
 float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
 
+/* Build the min/max peak envelope of the window [lo, hi) of the sample
+ * across `cols` output columns. outMin/outMax must each hold `cols`
+ * floats. Pure (no raylib): the sampler waveform node draws these
+ * directly and the unit test drives it headlessly. Degenerate inputs
+ * (NULL sample/data, non-positive length or cols, lo > hi) are no-ops
+ * or clamp to the valid sample range; never divides by a zero span. */
+void samplePeakEnvelope(const Sample *sample, float lo, float hi, int cols, float *outMin, float *outMax);
+
 #endif

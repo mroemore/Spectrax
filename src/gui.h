@@ -233,6 +233,13 @@ int chipLabelCharIndex(char c);
 VoiceType nextVoiceType(VoiceType t);
 VoiceType prevVoiceType(VoiceType t);
 
+typedef enum {
+	WF_VIEW_FIT,    /* whole sample fitted to the node width */
+	WF_VIEW_LOOP,   /* zoom to the loop region [loopStart, loopEnd) */
+	WF_VIEW_CURSOR, /* 8x zoom window centred on the loop midpoint */
+	WF_VIEW_COUNT
+} WaveformViewMode;
+
 typedef struct {
 	GuiNode base;
 	Instrument *instrument;
@@ -242,6 +249,7 @@ typedef struct {
 	Color wfColour;
 	Color wfAltColour;
 	Image wfImage;
+	WaveformViewMode viewMode;
 } SampleWaveformGuiNode;
 
 typedef struct {

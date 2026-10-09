@@ -92,7 +92,7 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 	sp->sampleCount++;
 	sp->memoryUsed += dataSize;
 
-	printf("%i samples, %i memoryUsed \n", sp->sampleCount, sp->memoryUsed);
+	printf("%zu samples, %zu memoryUsed \n", sp->sampleCount, sp->memoryUsed);
 }
 
 void freeSample(Sample *sample) {
@@ -131,6 +131,59 @@ float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrem
 		return 0;
 	}
 	return value;
+}
+
+void samplePeakEnvelope(const Sample *sample, float lo, float hi, int cols, float *outMin, float *outMax) {
+	if(!sample || !sample->data || sample->length <= 0 || cols <= 0 || !outMin || !outMax) {
+		return;
+	}
+	float len = (float)sample->length;
+	if(lo < 0.0f) {
+		lo = 0.0f;
+	}
+	if(hi > len) {
+		hi = len;
+	}
+	if(hi <= lo) {
+		/* Empty/backwards window: fall back to a one-sample span at the
+		 * clamped low edge so the per-column span is never zero. */
+		hi = lo + 1.0f;
+		if(hi > len) {
+			hi = len;
+			lo = len - 1.0f;
+		}
+	}
+	float span = hi - lo;
+	for(int c = 0; c < cols; c++) {
+		int i0 = (int)(lo + span * (float)c / (float)cols);
+		int i1 = (int)(lo + span * (float)(c + 1) / (float)cols);
+		if(i0 < 0) {
+			i0 = 0;
+		}
+		if(i0 > sample->length - 1) {
+			i0 = sample->length - 1;
+		}
+		if(i1 > sample->length) {
+			i1 = sample->length;
+		}
+		if(i1 <= i0) {
+			/* Narrower than one sample per column: include i0 alone. */
+			i1 = i0 + 1;
+		}
+		float mn = sample->data[i0];
+		float mx = sample->data[i0];
+		for(int i = i0; i < i1; i++) {
+			float v = sample->data[i];
+			if(v < mn) {
+				mn = v;
+			}
+			if(v > mx) {
+				mx = v;
+			}
+		}
+		outMin[c] = mn;
+		outMax[c] = mx;
+	}
 }
 
 float getSampleValueRev(Sample *sample, float *samplePosition, float phaseIncrement, int loop) {

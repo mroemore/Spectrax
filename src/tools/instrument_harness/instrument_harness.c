@@ -97,6 +97,7 @@ typedef enum {
 	SOP_ASSERT_ENVCOUNT, /* inst->envelopeCount == N */
 	SOP_ASSERT_MODULATORS, /* ops[op]->{fb|rat|lvl}->modulator_count == N */
 	SOP_ASSERT_ROUTELINESRC, /* ROUTELINES ctx srcIdx == N */
+	SOP_ASSERT_WAVEVIEW,     /* sampler waveform view mode (WF_VIEW_*) == N */
 	SOP_ASSERT_SELECTED, /* currentGraph->selected->name == "NAME" */
 	SOP_ASSERT_PRESET,   /* presetBank has a patch whose name matches "NAME" */
 	SOP_ASSERT_FILE,     /* "data/instrument_presets/<sanitized>" exists on disk */
@@ -476,6 +477,15 @@ static void parseScript(const char *path) {
 					return;
 				}
 				s->op = SOP_ASSERT_ROUTELINESRC; s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "waveview") == 0) {
+				/* ASSERT waveview == <N>: the selected instrument's
+				 * waveform view mode (0=FIT, 1=LOOP, 2=ZOOM). */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT waveview==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_WAVEVIEW; s->a.n = atoi(tokens[3]);
 			} else if(strcmp(tokens[1], "modulators") == 0) {
 				/* ASSERT modulators == ( <op> , <kind> , <N> ) */
 				if(nt < 9 || strcmp(tokens[2], "==") != 0 ||
@@ -1155,6 +1165,18 @@ static void processScriptAssert(const ScriptStep *s) {
 				return;
 			}
 			fprintf(stdout, "PASS line %d: routelinesrc==%d\n", s->lineno, s->a.n);
+			break;
+		}
+		case SOP_ASSERT_WAVEVIEW: {
+			extern int guiWaveformViewMode(void);
+			int got = guiWaveformViewMode();
+			if(got != s->a.n) {
+				fprintf(stdout, "FAIL line %d: ASSERT waveview==%d failed: got %d\n",
+				        s->lineno, s->a.n, got);
+				failScript(s->lineno, "ASSERT waveview mismatch");
+				return;
+			}
+			fprintf(stdout, "PASS line %d: waveview==%d\n", s->lineno, s->a.n);
 			break;
 		}
 		case SOP_ASSERT_MODULATORS:

@@ -1,0 +1,34 @@
+# sampler_waveform.txt
+# Phase 1 regression: the SAMPLE panel draws a peak-envelope waveform with
+# three view modes (FIT/LOOP/ZOOM) cycled by the VIEW action button.
+#
+# Boot is an FM instrument (the song has no SAMPLE channel), so TPREV cycles
+# the voice type FM -> SAMPLE via the meta-row type button.
+FRAMES 6
+JUMP TPREV
+EDIT
+FRAMES 4
+ASSERT voiceType==SAMPLE
+
+# The panel boots in FIT (0) and exposes a selectable waveform node.
+ASSERT waveview==0
+JUMP WFRM
+FRAMES 2
+ASSERT selected==WFRM
+REPORT WFRM
+
+# VIEW cycles FIT -> LOOP -> ZOOM -> FIT. The action dispatch leaves the
+# button selected, so successive EDITs keep cycling.
+JUMP VIEW
+EDIT
+FRAMES 2
+ASSERT waveview==1
+EDIT
+FRAMES 2
+ASSERT waveview==2
+EDIT
+FRAMES 2
+ASSERT waveview==0
+
+SHOT /tmp/spectrax_sampler_waveform.png
+QUIT
