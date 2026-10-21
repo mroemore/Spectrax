@@ -43,6 +43,7 @@ test_layout_extra = gui_core_extra
 
 foreach name : test_names
   extra_srcs = []
+  test_c_args = []
   link_libs = [core_lib]
   if name == 'test_graph_nav'
     extra_srcs = test_graph_nav_extra
@@ -58,6 +59,9 @@ foreach name : test_names
   elif name == 'test_layout'
     extra_srcs = test_layout_extra
     link_libs = [core_lib, seq_lib, vizfx_lib]
+    # test_layout validates the SHIPPED config, not a fixture: compile the
+    # repo path in so the test can never drift onto a stale copy.
+    test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),
@@ -65,6 +69,7 @@ foreach name : test_names
     link_with: link_libs,
     include_directories: inc,
     dependencies: system_deps,
+    c_args: test_c_args,
   )
   test(name, exe)
 endforeach

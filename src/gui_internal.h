@@ -17,8 +17,8 @@ extern Texture2D dial;
 extern Texture2D curveIconsTexture;
 
 /* core node helpers shared by the screen modules (defined in gui_core.c) */
-void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
-void drawPanelRect(int x, int y, int w, int h, float roundness, float line_w, bool highlighted, Color borderColour);
+void drawPanelRect(int x, int y, int w, int h, float line_w, bool highlighted,
+                   Color borderColour, Color borderColourSelected);
 void drawWrapperNode(void *self);
 void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, int fontSize);
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);

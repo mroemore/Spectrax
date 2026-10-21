@@ -59,7 +59,7 @@ void applyLayout(GuiNode *container, const char *name) {
 
 static DialStyle g_defaultDial = {
 	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
-	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
+	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.value  = { "%05.2f", 38, 14, 28, 2, 9, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.curveIcon = { 0, 8, 0, 0, { 0, 0, 0, 0 } },
@@ -68,24 +68,24 @@ static DialStyle g_defaultDial = {
 
 static DialStyle g_defaultDialDiscrete = {
 	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
-	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
+	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.value  = { "%i", 10, 14, 6, 5, 9, { 0, 0, 0, 0 } },
 	.label  = { "pixel", 9, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static BtnStyle g_defaultBtn = {
-	.border   = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
+	.border   = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.label    = { "pixel", 10, 1, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.sublabel = { "pixel", 8, 0, 4, 12, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static TypeLabelStyle g_defaultTypeLabel = {
 	.label  = { "pixel", 10, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.border = { 0.125f, 2.0f, { 0, 0, 0, 0 } },
+	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static DestStyle g_defaultDest = {
-	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static TextStyle g_defaultText = {
@@ -101,7 +101,7 @@ static TextStyle g_defaultText = {
 };
 
 static ChipStyle g_defaultChip = {
-	.border = { 0.0f, 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.palette = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 },
 	             { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.voiceCount = { "pixel", 9, 1, 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
@@ -118,16 +118,9 @@ static StepCellStyle g_defaultStepCell = {
 	.note = { "text", 10, 4, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
-/* Default curve-icon: frameCount == 0 means "do not draw an icon —
- * fall through to the dial's value text". The frameCount > 0 case is
- * opt-in per node (only the configured class enables it). */
-static CurveIconStyle g_defaultCurveIcon = {
-	.frameCount = 0,
-	.size = 8,
-	.offsetX = 0,
-	.offsetY = 0,
-	.color = { 0, 0, 0, 0 },
-};
+/* Curve icons are an overlay on a dial, not a style type of their own:
+ * `DialStyle.curveIcon.frameCount > 0` opts a dial class in, and the
+ * draw falls back to the value text when it is 0. */
 
 /* Colour defaults are resolved against the theme at compile time; the
  * zeroed colors here get replaced by resolveDefaultColours() below. */
@@ -165,7 +158,9 @@ static void resolveDefaultColours(const ColourScheme *cs) {
 	/* fontSize stays 0 so drawStepGuiNode's ternary falls through to
 	 * textFont.baseSize — matches the pre-StepCellStyle literal. */
 	g_defaultStepCell.note.fontSize = 0;
-	g_defaultCurveIcon.color = cs->valueText;
+	/* Curve-icon overlay defaults to the value-text colour so a class
+	 * that only sets frameCount still draws a visible glyph. */
+	g_defaultDial.curveIcon.color = cs->valueText;
 	g_defaultChip.border.color = cs->wrapperBorder;
 	g_defaultChip.border.colorSelected = cs->outlineColour;
 	for(int i = 0; i < 8; i++) {
@@ -200,11 +195,9 @@ static StepCellStyle g_stepCellClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static DestStyle g_destClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static ChipStyle g_chipClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 static TextStyle g_textClasses[MAX_CLASS_ENTRIES_PER_TYPE];
-static CurveIconStyle g_curveIconClasses[MAX_CLASS_ENTRIES_PER_TYPE];
 
-/* Per-type entry counts. Count the "dial" / "dial-discrete" / "btn" /
- * "type-label" defaults themselves as the first entry so custom classes
- * are zero-indexed on top. */
+/* Per-type entry counts. Baked defaults are held separately, so these
+ * count only the classes compiled from JSON. Reset on every compile. */
 static int g_dialClassCount = 0;
 static int g_discreteDialClassCount = 0;
 static int g_btnClassCount = 0;
@@ -213,7 +206,6 @@ static int g_stepCellClassCount = 0;
 static int g_destClassCount = 0;
 static int g_chipClassCount = 0;
 static int g_textClassCount = 0;
-static int g_curveIconClassCount = 0;
 
 static const char *g_defaultClassName(StyleType t) {
 	switch(t) {
@@ -225,7 +217,6 @@ static const char *g_defaultClassName(StyleType t) {
 		case STYLE_DEST:          return "route-dest";
 		case STYLE_CHIP:          return "chip";
 		case STYLE_TEXT:          return "text";
-		case STYLE_CURVE_ICON:    return "curve-icon";
 		default:                  return NULL;
 	}
 }
@@ -234,6 +225,18 @@ static int findClass(const char *name, StyleType want) {
 	for(int i = 0; i < g_classCount; i++) {
 		if(g_classMap[i].type == want && strcmp(g_classMap[i].name, name) == 0) {
 			return i;
+		}
+	}
+	return -1;
+}
+
+int styleClassType(const char *className) {
+	if(!className) {
+		return -1;
+	}
+	for(int i = 0; i < g_classCount; i++) {
+		if(strcmp(g_classMap[i].name, className) == 0) {
+			return (int)g_classMap[i].type;
 		}
 	}
 	return -1;
@@ -302,11 +305,6 @@ const TextStyle *resolveTextStyle(const GuiNode *gn) {
 	}
 	return &g_defaultText;
 }
-
-/* Curve-icon styling is now embedded in DialStyle (drawDialGuiNode reads
- * &st->curveIcon directly). The standalone STYLE_CURVE_ICON class remains
- * in the JSON schema for backwards compatibility but no longer drives
- * per-node drawing — overlays happen on the dial's style. */
 
 int chipComponentHeight(const ChipStyle *st) {
 	if(!st) return 0;
@@ -426,7 +424,6 @@ static void overlayKnob(cJSON *o, const ColourScheme *cs, KnobStyle *k) {
 	}
 }
 static void overlayBorder(cJSON *o, const ColourScheme *cs, BorderStyle *b) {
-	b->roundness = jsonFloat(o, "roundness", b->roundness);
 	b->borderWidth = jsonFloat(o, "borderWidth", b->borderWidth);
 	jsonColor(o, "color", cs, &b->color);
 	jsonColor(o, "colorSelected", cs, &b->colorSelected);
@@ -627,7 +624,20 @@ static int collectChain(cJSON *styles, const char *name, cJSON *obj, cJSON **out
 }
 
 bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
+	/* Each compile is a clean slate: class registry, per-type entry
+	 * counts and the layout table are all rebuilt so a second call
+	 * (hot reload, tests) replaces the previous config instead of
+	 * appending to it. */
 	g_classCount = 0;
+	g_dialClassCount = 0;
+	g_discreteDialClassCount = 0;
+	g_btnClassCount = 0;
+	g_typeLabelClassCount = 0;
+	g_stepCellClassCount = 0;
+	g_destClassCount = 0;
+	g_chipClassCount = 0;
+	g_textClassCount = 0;
+	g_layoutCount = 0;
 	if(cs) {
 		resolveDefaultColours(cs);
 	}
@@ -811,23 +821,6 @@ bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs) {
 					strncpy(g_classMap[g_classCount].name, name, 63);
 					g_classMap[g_classCount].name[63] = '\0';
 					g_classMap[g_classCount].type = STYLE_TEXT;
-					g_classMap[g_classCount].index = idx;
-					g_classCount++;
-					break;
-				}
-				case STYLE_CURVE_ICON: {
-					CurveIconStyle merged = g_defaultCurveIcon;
-					for(int i = 0; i < n; i++) {
-						overlayCurveIcon(chain[i], cs, &merged);
-					}
-					int idx = g_curveIconClassCount < MAX_CLASS_ENTRIES_PER_TYPE ? g_curveIconClassCount++ : -1;
-					if(idx < 0 || g_classCount >= MAX_STYLE_CLASSES) {
-						continue;
-					}
-					g_curveIconClasses[idx] = merged;
-					strncpy(g_classMap[g_classCount].name, name, 63);
-					g_classMap[g_classCount].name[63] = '\0';
-					g_classMap[g_classCount].type = STYLE_CURVE_ICON;
 					g_classMap[g_classCount].index = idx;
 					g_classCount++;
 					break;

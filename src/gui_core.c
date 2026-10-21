@@ -27,8 +27,6 @@ GuiNode *createDialGuiNode(int x, int y, int w, int h, int padding, NodeAlignmen
 
 void drawActionBtnGuiNode(void *self);
 
-void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted);
-
 void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int offsetAngle);
 
 void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, int fontSize);
@@ -236,25 +234,21 @@ void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, 
 }
 
 
-void drawColourRectangle(int x, int y, int w, int h, float roundness, float line_w, bool highlighted) {
-	/* Backwards-compatible wrapper: delegates to the colour-aware
-	 * drawPanelRect so every panel caller (action buttons, type labels,
-	 * etc.) reads its border from the theme by default. Dial callers go
-	 * through drawPanelRect directly to pass the resolved border colour
-	 * from the dial style. */
-	drawPanelRect(x, y, w, h, roundness, line_w, highlighted, cs.panelBorder);
-}
-
-
-/* Colour-aware panel (shadow + fill + border). drawColourRectangle
- * keeps its callers by delegating with the theme's default border. */
-void drawPanelRect(int x, int y, int w, int h, float roundness, float line_w, bool highlighted, Color borderColour) {
-	(void)roundness;
+/* Colour-aware panel (shadow + fill + border). A highlighted panel uses
+ * borderColourSelected when the style supplied one (alpha != 0);
+ * otherwise it keeps the legacy theme highlight so unset styles look
+ * exactly as before. */
+void drawPanelRect(int x, int y, int w, int h, float line_w, bool highlighted,
+                   Color borderColour, Color borderColourSelected) {
 	int o = (int)line_w;
 	Color shadowColour = highlighted ? (Color){ 0, 0, 0, 200 } : (Color){ 0, 0, 0, 140 };
 	DrawRectangle(x + o, y + o, w, h, shadowColour);
 	DrawRectangle(x, y, w, h, cs.panel);
-	DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, highlighted ? cs.highlightedCell : borderColour);
+	Color outline = borderColour;
+	if(highlighted) {
+		outline = (borderColourSelected.a != 0) ? borderColourSelected : cs.highlightedCell;
+	}
+	DrawRectangleLinesEx((Rectangle){ x, y, w, h }, line_w, outline);
 }
 
 
@@ -291,7 +285,8 @@ void drawDialGuiNode(void *self) {
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
 
-	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
+	               st->border.color, st->border.colorSelected);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
@@ -382,7 +377,8 @@ GuiNode *createActionBtnGuiNode(int x, int y, int w, int h, int padding, NodeAli
 void drawActionBtnGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	const BtnStyle *st = resolveBtnStyle(gn);
-	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
+	               st->border.color, st->border.colorSelected);
 	Font *lf = styleFont(st->label.fontName);
 	const char *label = gn->text ? gn->text : gn->name;
 	DrawTextEx(*lf, label,
@@ -484,7 +480,8 @@ void drawDiscreteDialGuiNode(void *self) {
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
 
-	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.roundness, st->border.borderWidth, gn->selected, st->border.color);
+	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
+	               st->border.color, st->border.colorSelected);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },

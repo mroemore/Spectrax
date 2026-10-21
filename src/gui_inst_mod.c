@@ -135,7 +135,6 @@ static void drawRouteDestNode(void *self) {
 	if(!gn) {
 		return;
 	}
-	(void)drawColourRectangle; /* intentionally unused now */
 	DestCtx *dc = (DestCtx *)gn->actionCtx;
 	Rectangle r = { gn->x, gn->y, gn->w, gn->h };
 	float thickness = gn->selected ? 3.0f : 2.0f;

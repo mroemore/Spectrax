@@ -12,7 +12,6 @@
                 "color": "dial"
             },
             "border": {
-                "roundness": 0.125,
                 "borderWidth": 2.0,
                 "color": "panelBorder"
             },
@@ -22,6 +21,7 @@
                 "height": 14,
                 "offsetX": 28,
                 "offsetY": 2,
+                "fontSize": 9,
                 "color": "valueText"
             },
             "label": {
@@ -39,6 +39,7 @@
             "value": {
                 "format": "%i",
                 "width": 10,
+                "height": 14,
                 "offsetX": 6,
                 "offsetY": 5
             },
@@ -49,7 +50,6 @@
         },
         "btn": {
             "border": {
-                "roundness": 0.125,
                 "borderWidth": 2.0,
                 "color": "panelBorder"
             },
@@ -61,6 +61,15 @@
                 "offsetY": 4,
                 "color": "label",
                 "colorSelected": "labelSelected"
+            },
+            "sublabel": {
+                "font": "pixel",
+                "fontSize": 8,
+                "spacing": 0,
+                "offsetX": 4,
+                "offsetY": 12,
+                "color": "label",
+                "colorSelected": "labelSelected"
             }
         },
         "type-label": {
@@ -68,13 +77,89 @@
                 "font": "pixel",
                 "fontSize": 10,
                 "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 0,
                 "color": "label",
                 "colorSelected": "labelSelected"
             },
             "border": {
-                "roundness": 0.125,
                 "borderWidth": 2.0,
-                "color": "outlineColour"
+                "color": "outline"
+            }
+        },
+        "step-cell": {
+            "bgEmpty": "defaultCell",
+            "bgPlaying": "highlightedCell",
+            "borderSelected": "outline",
+            "note": {
+                "font": "text",
+                "fontSize": 0,
+                "spacing": 4,
+                "offsetX": 4,
+                "offsetY": 4,
+                "color": "font"
+            }
+        },
+        "route-dest": {
+            "border": {
+                "borderWidth": 2.0,
+                "color": "routeAdd",
+                "colorSelected": "labelSelected"
+            }
+        },
+        "chip": {
+            "border": {
+                "borderWidth": 2.0,
+                "color": "wrapperBorder",
+                "colorSelected": "outline"
+            },
+            "palette": [
+                "chipPalette0",
+                "chipPalette1",
+                "chipPalette2",
+                "chipPalette3",
+                "chipPalette4",
+                "chipPalette5",
+                "chipPalette6",
+                "chipPalette7"
+            ],
+            "voiceCount": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": 2,
+                "color": "label"
+            },
+            "typeTag": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": -4,
+                "offsetY": 2,
+                "color": "label"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 12,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "label"
+            },
+            "patchName": {
+                "font": "pixel",
+                "fontSize": 8,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": -11,
+                "color": "label"
+            },
+            "dots": {
+                "size": 4,
+                "gap": 2,
+                "colour": "wrapperBorder",
+                "colourActive": "outline"
             }
         },
         "text": {
@@ -90,24 +175,24 @@
         },
         "stage-rate": {
             "extends": "dial",
+            "vAlign": "top",
+            "knob": {
+                "size": 18,
+                "radius": 9
+            },
             "value": {
                 "format": "%04.1f",
+                "width": 38,
+                "height": 14,
                 "fontSize": 7,
                 "offsetX": -10,
-                "offsetY": 18,
-                "width": 38,
-                "height": 14
+                "offsetY": 18
             },
             "label": {
                 "fontSize": 7,
                 "spacing": 1,
                 "offsetX": 140,
                 "offsetY": 0
-            },
-            "vAlign": "top",
-            "knob": {
-                "size": 18,
-                "radius": 9
             }
         },
         "stage-curve": {
@@ -162,20 +247,6 @@
                 8,
                 3,
                 1
-            ]
-        },
-        "env-row": {
-            "orientation": "horizontal",
-            "padding": 4,
-            "weights": [
-                1,
-                2,
-                1
-            ],
-            "childClasses": [
-                "",
-                "big-dial",
-                ""
             ]
         },
         "fm-op-row": {

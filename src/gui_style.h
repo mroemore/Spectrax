@@ -22,8 +22,10 @@ typedef struct {
 	Texture2D assetTex;
 } KnobStyle;
 
+/* `colorSelected` is honoured wherever the widget draws a selected
+ * border. Leave it unset (alpha 0) to keep the type's legacy highlight;
+ * set it to take control. */
 typedef struct {
-	float roundness;
 	float borderWidth;
 	Color color;
 	Color colorSelected;
@@ -160,7 +162,6 @@ typedef enum {
 	STYLE_DEST,
 	STYLE_CHIP,
 	STYLE_TEXT,
-	STYLE_CURVE_ICON,
 	STYLE_COUNT
 } StyleType;
 
@@ -174,9 +175,12 @@ const StepCellStyle *resolveStepCellStyle(const GuiNode *gn);
 const DestStyle *resolveDestStyle(const GuiNode *gn);
 const ChipStyle *resolveChipStyle(const GuiNode *gn);
 const TextStyle *resolveTextStyle(const GuiNode *gn);
-/* Curve-icon styling lives on DialStyle (DialStyle.curveIcon). The
- * legacy standalone STYLE_CURVE_ICON JSON class is still parsed but is
- * no longer consulted at draw time. */
+/* Curve-icon styling lives on DialStyle (DialStyle.curveIcon); there is
+ * no standalone curve-icon style type. */
+/* Type of a class registered by the last compileLayoutConfig call, or
+ * -1 when the class is unknown (not defined and not a type default).
+ * Used by the config validator and available for diagnostics. */
+int styleClassType(const char *className);
 int chipComponentHeight(const ChipStyle *st);
 void computeChipGeometry(const GuiNode *gn, const ChipStyle *st,
                          const char *typeTag, const char *label,

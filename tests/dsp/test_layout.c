@@ -5,6 +5,7 @@
 #include "gui_style.h"
 #include "graph_gui.h"
 #include "cJSON.h"
+#include "io/config_io.h"
 #include "theme.h"
 #include "gui.h"  /* initDefaultColourScheme (Task 3 step-cell baked-default test) */
 #include "curve_icons.h"
@@ -215,6 +216,208 @@ static int test_dial_component_height(void) {
 	return 0;
 }
 
+
+static int test_border_colour_selected_resolves(void) {
+	/* border.colorSelected is honoured by every bordered widget; leaving
+	 * it out must keep alpha 0 so the draw falls back to the legacy
+	 * highlight instead of painting a transparent border. */
+	const char *path = ".tmp_files/layout_test_colour_selected.json";
+	FILE *f = fopen(path, "w");
+	ASSERT_TRUE(f != NULL, "open temp layout");
+	fputs("{\"styles\":{\"dial\":{\"border\":{\"colorSelected\":\"valueText\"}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	cs.valueText = (Color){ 10, 20, 30, 255 };
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "compile colorSelected layout");
+
+	GuiNode *n = createBlankGuiNode();
+	guiNodeSetClass(n, "dial");
+	const DialStyle *d = resolveDialStyle(n);
+	ASSERT_TRUE(d->border.colorSelected.a == 255, "colorSelected alpha set");
+	ASSERT_TRUE(d->border.colorSelected.r == 10 && d->border.colorSelected.g == 20 &&
+	            d->border.colorSelected.b == 30, "colorSelected resolved from theme");
+	freeGuiNode(n);
+	remove(path);
+
+	GuiNode *plain = createBlankGuiNode();
+	const DialStyle *p2 = resolveDialStyle(plain);
+	ASSERT_TRUE(p2->border.colorSelected.a == 0, "unset colorSelected stays transparent");
+	freeGuiNode(plain);
+	printf("PASS test_border_colour_selected_resolves\n");
+	return 0;
+}
+
+/* --- shipped-config guard ------------------------------------------ */
+
+/* Every colour-bearing JSON key the style parser understands. Keep in
+ * sync with the overlay* helpers in gui_style.c; only these names are
+ * interpreted as theme tokens, so formats/fonts are never mistaken for
+ * colours. */
+static const char *const kColourKeys[] = {
+	"color", "colorSelected", "bgEmpty", "bgPlaying", "borderSelected",
+	"colour", "colourActive", NULL
+};
+
+static int isColourKey(const char *k) {
+	if(!k) {
+		return 0;
+	}
+	for(int i = 0; kColourKeys[i]; i++) {
+		if(strcmp(kColourKeys[i], k) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int checkColourTokens(cJSON *node, const ColourScheme *cs, const char *path) {
+	if(cJSON_IsObject(node)) {
+		cJSON *ch = NULL;
+		cJSON_ArrayForEach(ch, node) {
+			char sub[192];
+			snprintf(sub, sizeof(sub), "%s.%s", path, ch->string ? ch->string : "?");
+			if(isColourKey(ch->string)) {
+				if(!cJSON_IsString(ch) || !themeFieldByName((ColourScheme *)cs, ch->valuestring)) {
+					printf("FAIL: %s is not a theme colour token\n", sub);
+					return 0;
+				}
+			}
+			if(ch->string && strcmp(ch->string, "palette") == 0 && cJSON_IsArray(ch)) {
+				int n = cJSON_GetArraySize(ch);
+				for(int i = 0; i < n; i++) {
+					cJSON *e = cJSON_GetArrayItem(ch, i);
+					if(!cJSON_IsString(e) || !themeFieldByName((ColourScheme *)cs, e->valuestring)) {
+						printf("FAIL: %s[%d] is not a theme colour token\n", sub, i);
+						return 0;
+					}
+				}
+			}
+			if(!checkColourTokens(ch, cs, sub)) {
+				return 0;
+			}
+		}
+	} else if(cJSON_IsArray(node)) {
+		int n = cJSON_GetArraySize(node);
+		for(int i = 0; i < n; i++) {
+			char sub[192];
+			snprintf(sub, sizeof(sub), "%s[%d]", path, i);
+			if(!checkColourTokens(cJSON_GetArrayItem(node, i), cs, sub)) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+/* The shipped src/layout.json is the reference config. Anything the
+ * parser would silently ignore (unknown class, missing extends target,
+ * bad colour token, childClasses/weights mismatch) fails here instead of
+ * reaching users as an invisible no-op. */
+static int test_shipped_layout_json_is_valid(void) {
+	ColourScheme cs;
+	memset(&cs, 0, sizeof(cs));
+	initDefaultColourScheme(&cs);
+
+	const char *path = SPECTRAX_SRC_LAYOUT_JSON;
+	FILE *f = fopen(path, "rb");
+	if(!f) {
+		printf("FAIL: cannot open shipped config %s\n", path);
+		return 1;
+	}
+	fseek(f, 0, SEEK_END);
+	long sz = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char *buf = (char *)malloc((size_t)sz + 1);
+	ASSERT_TRUE(buf != NULL, "alloc shipped config buffer");
+	ASSERT_TRUE(fread(buf, 1, (size_t)sz, f) == (size_t)sz, "read shipped config");
+	buf[sz] = '\0';
+	fclose(f);
+	cJSON *doc = cJSON_Parse(buf);
+	free(buf);
+	ASSERT_TRUE(doc != NULL, "shipped config parses as JSON");
+
+	cJSON *styles = cJSON_GetObjectItemCaseSensitive(doc, "styles");
+	ASSERT_TRUE(cJSON_IsObject(styles), "styles object present");
+	ASSERT_TRUE(compileLayoutConfig(path, &cs), "shipped config compiles");
+
+	/* One class per live style type, so the file documents the schema. */
+	static const char *const required[] = {
+		"dial", "dial-discrete", "btn", "type-label",
+		"step-cell", "route-dest", "chip", "text", NULL
+	};
+	for(int i = 0; required[i]; i++) {
+		ASSERT_TRUE(cJSON_GetObjectItemCaseSensitive(styles, required[i]) != NULL,
+		            "required style class is defined");
+		ASSERT_TRUE(styleClassType(required[i]) >= 0,
+		            "required style class compiles");
+	}
+	/* Retired in favour of DialStyle.curveIcon. */
+	ASSERT_TRUE(cJSON_GetObjectItemCaseSensitive(styles, "curve-icon") == NULL,
+	            "no standalone curve-icon class");
+
+	/* Every class must classify and every extends target must exist in
+	 * this same file. */
+	cJSON *it = NULL;
+	cJSON_ArrayForEach(it, styles) {
+		ASSERT_TRUE(cJSON_IsObject(it), "every style entry is an object");
+		if(styleClassType(it->string) < 0) {
+			printf("FAIL: style class '%s' did not compile (unknown type)\n", it->string);
+			cJSON_Delete(doc);
+			return 1;
+		}
+		cJSON *parent = cJSON_GetObjectItemCaseSensitive(it, "extends");
+		if(cJSON_IsString(parent) &&
+		   cJSON_GetObjectItemCaseSensitive(styles, parent->valuestring) == NULL) {
+			printf("FAIL: style '%s' extends missing class '%s'\n",
+			       it->string, parent->valuestring);
+			cJSON_Delete(doc);
+			return 1;
+		}
+	}
+
+	ASSERT_TRUE(checkColourTokens(styles, &cs, "styles"),
+	            "every colour value names a theme token");
+
+	cJSON *layouts = cJSON_GetObjectItemCaseSensitive(doc, "layouts");
+	if(cJSON_IsObject(layouts)) {
+		cJSON *l = NULL;
+		cJSON_ArrayForEach(l, layouts) {
+			ASSERT_TRUE(layoutByName(l->string) != NULL, "layout registers by name");
+			cJSON *weights = cJSON_GetObjectItemCaseSensitive(l, "weights");
+			cJSON *cc = cJSON_GetObjectItemCaseSensitive(l, "childClasses");
+			if(cJSON_IsArray(weights) && cJSON_IsArray(cc) &&
+			   cJSON_GetArraySize(weights) != cJSON_GetArraySize(cc)) {
+				printf("FAIL: layout '%s' has %d weights but %d childClasses\n",
+				       l->string, cJSON_GetArraySize(weights), cJSON_GetArraySize(cc));
+				cJSON_Delete(doc);
+				return 1;
+			}
+			if(cJSON_IsArray(weights)) {
+				ASSERT_TRUE(cJSON_GetArraySize(weights) <= MAX_NODE_CHILDREN,
+				            "layout weights fit MAX_NODE_CHILDREN");
+			}
+			if(cJSON_IsArray(cc)) {
+				int n = cJSON_GetArraySize(cc);
+				for(int i = 0; i < n; i++) {
+					cJSON *e = cJSON_GetArrayItem(cc, i);
+					ASSERT_TRUE(cJSON_IsString(e), "childClasses entries are strings");
+					if(e->valuestring[0] && styleClassType(e->valuestring) < 0) {
+						printf("FAIL: layout '%s' childClasses[%d] names unknown class '%s'\n",
+						       l->string, i, e->valuestring);
+						cJSON_Delete(doc);
+						return 1;
+					}
+				}
+			}
+		}
+	}
+
+	cJSON_Delete(doc);
+	printf("PASS test_shipped_layout_json_is_valid\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
@@ -239,6 +442,8 @@ int main(void) {
 	fails += test_curve_icon_style_resolves();
 	fails += test_stage_dial_styles_resolve();
 	fails += test_env_stage_layout();
+	fails += test_border_colour_selected_resolves();
+	fails += test_shipped_layout_json_is_valid();
 	fails += test_reflow_fills_weighted_row();
 	fails += test_reflow_gap_distribution();
 	fails += test_reflow_gap_zero_matches_pinned();

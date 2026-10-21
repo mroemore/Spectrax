@@ -768,9 +768,11 @@ static void drawTypeLabelGuiNode(void *self) {
 	int tw = MeasureText(tag, st->label.fontSize);
 	DrawTextEx(*lf, tag,
 	           (Vector2){ gn->x + (gn->w - tw) / 2 + st->label.offsetX, gn->y + (gn->h - st->label.fontSize) / 2 + st->label.offsetY },
-	           st->label.fontSize, st->label.spacing, cs.label);
+	           st->label.fontSize, st->label.spacing,
+	           gn->selected ? st->label.colorSelected : st->label.color);
 	if(gn->selected) {
-		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, st->border.borderWidth, st->border.color);
+		Color outline = (st->border.colorSelected.a != 0) ? st->border.colorSelected : st->border.color;
+		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, st->border.borderWidth, outline);
 	}
 }
 
