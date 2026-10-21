@@ -9,11 +9,11 @@
                 "offsetX": 0,
                 "offsetY": 0,
                 "asset": "resources/images/dial2.png",
-                "color": "dial"
+                "color": "control.dial"
             },
             "border": {
                 "borderWidth": 2.0,
-                "color": "panelBorder"
+                "color": "line.panel"
             },
             "value": {
                 "format": "%05.2f",
@@ -22,7 +22,7 @@
                 "offsetX": 28,
                 "offsetY": 2,
                 "fontSize": 9,
-                "color": "valueText"
+                "color": "text.value"
             },
             "label": {
                 "font": "pixel",
@@ -30,8 +30,8 @@
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 18,
-                "color": "label",
-                "colorSelected": "labelSelected"
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
             }
         },
         "dial-discrete": {
@@ -51,7 +51,7 @@
         "btn": {
             "border": {
                 "borderWidth": 2.0,
-                "color": "panelBorder"
+                "color": "line.panel"
             },
             "label": {
                 "font": "pixel",
@@ -59,8 +59,8 @@
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": 4,
-                "color": "label",
-                "colorSelected": "labelSelected"
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
             },
             "sublabel": {
                 "font": "pixel",
@@ -68,8 +68,8 @@
                 "spacing": 0,
                 "offsetX": 4,
                 "offsetY": 12,
-                "color": "label",
-                "colorSelected": "labelSelected"
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
             }
         },
         "type-label": {
@@ -79,12 +79,12 @@
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 0,
-                "color": "label",
-                "colorSelected": "labelSelected"
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
             },
             "border": {
                 "borderWidth": 2.0,
-                "color": "outline"
+                "color": "line.strong"
             }
         },
         "step-cell": {
@@ -97,21 +97,21 @@
                 "spacing": 4,
                 "offsetX": 4,
                 "offsetY": 4,
-                "color": "font"
+                "color": "text.primary"
             }
         },
         "route-dest": {
             "border": {
                 "borderWidth": 2.0,
-                "color": "routeAdd",
-                "colorSelected": "labelSelected"
+                "color": "mod.routeAdd",
+                "colorSelected": "text.mutedSelected"
             }
         },
         "chip": {
             "border": {
                 "borderWidth": 2.0,
-                "color": "wrapperBorder",
-                "colorSelected": "outline"
+                "color": "line.wrapper",
+                "colorSelected": "line.strong"
             },
             "palette": [
                 "chipPalette0",
@@ -129,7 +129,7 @@
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": 2,
-                "color": "label"
+                "color": "text.muted"
             },
             "typeTag": {
                 "font": "pixel",
@@ -137,7 +137,7 @@
                 "spacing": 1,
                 "offsetX": -4,
                 "offsetY": 2,
-                "color": "label"
+                "color": "text.muted"
             },
             "label": {
                 "font": "pixel",
@@ -145,7 +145,7 @@
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 0,
-                "color": "label"
+                "color": "text.muted"
             },
             "patchName": {
                 "font": "pixel",
@@ -153,7 +153,7 @@
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": -11,
-                "color": "label"
+                "color": "text.muted"
             },
             "dots": {
                 "size": 4,
@@ -170,8 +170,8 @@
             "offsetY": 0,
             "hAlign": "left",
             "vAlign": "top",
-            "color": "font",
-            "colorSelected": "font"
+            "color": "text.primary",
+            "colorSelected": "text.primary"
         },
         "stage-rate": {
             "extends": "dial",
@@ -220,7 +220,7 @@
                 "size": 12,
                 "offsetX": 0,
                 "offsetY": 0,
-                "color": "valueText"
+                "color": "text.value"
             }
         }
     },

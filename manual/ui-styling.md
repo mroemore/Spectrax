@@ -192,7 +192,7 @@ return &g_defaultDial;                                 /* baked default */
     "stage-curve-icon":{ "extends": "stage-curve",
                          "value":  { "width": 0, "height": 0 },
                          "curveIcon": { "frameCount": 32, "size": 8,
-                                        "color": "valueText" } }
+                                        "color": "text.value" } }
   }
 }
 ```
@@ -504,15 +504,16 @@ theme by `resolveDefaultColours`.
 | `dial-discrete` | value `"%i"` 10×14 at (+6,+5); label at (+6,+21) |
 | `btn` | border 2; label pixel fs 10 at (+4,+4); sublabel pixel fs 8 sp 0 at (+4,+12) |
 | `type-label` | label pixel fs 10; border 2 |
-| `route-dest` | border 2; `color = routeAdd`, `colorSelected = labelSelected` |
-| `step-cell` | bg `defaultCell` / `highlightedCell`; surround `outline`; note `text` fs 0 sp 4 at (+4,+4) |
-| `chip` | border 2; palette `chipPalette0..7`; voiceCount pixel 9 at (+4,+2); typeTag pixel 9 at (−4,+2); label pixel 12; patchName pixel 8 at (+4,−11); dots 4/2 |
+| `route-dest` | border 2; `color = mod.routeAdd`, `colorSelected = text.mutedSelected` |
+| `step-cell` | bg `cell.default` / `cell.highlighted`; surround `line.strong`; note `text` fs 0 sp 4 at (+4,+4) |
+| `chip` | border 2; palette `chip.palette0..7`; voiceCount pixel 9 at (+4,+2); typeTag pixel 9 at (−4,+2); label pixel 12; patchName pixel 8 at (+4,−11); dots 4/2 |
 | `text` | pixel fs 10 sp 1, left/top |
 
-Theme seeds: `dial`, `valueText`, `label`, `labelSelected`, `panelBorder`,
-`outline`, `routeAdd`, `wrapperBorder`, `defaultCell`, `highlightedCell`,
-`font`, `chipPalette0..7`. The embedded `curveIcon.color` is seeded with
-`valueText`, so a class that only sets `frameCount` still draws a visible
+Theme seeds: `control.dial`, `text.value`, `text.muted`,
+`text.mutedSelected`, `line.panel`, `line.strong`, `mod.routeAdd`,
+`line.wrapper`, `cell.default`, `cell.highlighted`, `text.primary`,
+`chip.palette0..7`. The embedded `curveIcon.color` is seeded with
+`text.value`, so a class that only sets `frameCount` still draws a visible
 glyph.
 
 ---
@@ -561,8 +562,13 @@ Read this before debugging a style that "does nothing".
 
 ```jsonc
 {
-  "font":  { "path": "resources/fonts/console.ttf", "size": 9, "spacing": 1 },
-  "colors": { "background": "#CF6E3AFF", "font": "#631100FF", ... }
+  "schema": 2,
+  "font": { "path": "resources/fonts/console.ttf", "size": 9, "spacing": 1 },
+  "colors": {
+    "surface": { "window": "#CF6E3AFF", "panel": "#503C3CFF", ... },
+    "text":    { "primary": "#631100FF", "muted": "#C8B4B4FF", ... },
+    "chip":    { "palette": [ "#4682B4FF", ... ] }
+  }
 }
 ```
 
@@ -572,41 +578,39 @@ Read this before debugging a style that "does nothing".
 - **Alpha 0 is treated as "unset"** on load (`#00000000` keeps the default).
   Do not use fully transparent values in the theme.
 - Unknown keys are ignored; missing keys keep their seeded defaults.
-- The app writes the **entire** scheme back on exit, so new keys appear
-  automatically the first time it quits.
+- `colors` groups keys by use case. Groups are **nesting sugar only** —
+  `surface.panel` is the key, whether it is written nested or (legacy)
+  flat as `"panel": "..."`.
+- `chip.palette` is the one array; it is equivalent to
+  `chip.palette0` … `chip.palette7`.
+- The app writes the **entire** scheme back on exit in canonical grouped
+  form (`schema: 2`), so a legacy flat theme is migrated automatically
+  the first time it quits.
 - `font.path` and `font.size` feed `LoadFontEx` for the pixel font.
   `font.spacing` is parsed but unused (each label style carries its own).
 
-### Colour names
+### Canonical colour names
 
-These are the only valid tokens for any style's `color`/`colour` field
-(`themeFieldByName` is authoritative). Grouped by use:
+These are the valid tokens for any style's `color`/`colorSelected` field
+(`themeFieldByName` is authoritative). The canonical list is the *path*
+form; the flat name from an older theme is accepted as an alias.
 
-**Canvas & text**
-`background`, `font`, `secondaryFont`, `outline`, `label`, `labelSelected`,
-`valueText`, `arrangerCellText`
+| Group | Keys | Used for |
+|---|---|---|
+| `surface` | `window`, `panel`, `inset`, `dim` | app background, widget panels, value-display wells, modal scrim |
+| `text` | `primary`, `secondary`, `muted`, `mutedSelected`, `value`, `gridLabel` | body text, dim text, labels, focused labels, dial readouts, arranger cell text |
+| `line` | `panel`, `wrapper`, `strong`, `grid`, `step` | panel borders, wrapper outlines, emphasis borders, graph grid lines, step-cell borders |
+| `cell` | `default`, `blank`, `highlighted`, `selected` | sequencer/arranger cell states |
+| `control` | `dial`, `accent` | knob fill, global accent (record/armed) |
+| `waveform` | `bg`, `primary`, `alt`, `overlay`, `playhead` | scope/spectrogram backgrounds and traces |
+| `sample` | `bg`, `bgAlt`, `border`, `closed` | sample editor rows, slice borders, closed-step label |
+| `arranger` | `playhead` | arranger transport position |
+| `mod` | `lfo`, `env`, `random`, `offset`, `default`, `routeAdd`, `routeMul` | mod-source strip colours and route-line kinds |
+| `chip` | `palette` (array of 8) | instrument chip identities |
 
-**Panels, cells & borders**
-`panel`, `panelBorder`, `wrapperBorder`, `defaultCell`, `blankCell`,
-`highlightedCell`, `selectedCell`, `valueDisplayBg`, `stepBorder`,
-`stepClosed`
-
-**Accents**
-`reddish`, `dial`, `arrangerPlayhead`, `spectrogramPlayhead`, `layerDim`
-
-**Waveform / sample editor**
-`vline`, `poly`, `waveformBg`, `waveform`, `waveformAlt`, `sampleBg`,
-`sampleAltBg`, `sampleBorder`
-
-**Mod-source strips**
-`modStripLfo`, `modStripEnv`, `modStripRnd`, `modStripOfs`,
-`modStripDefault`
-
-**Routing**
-`routeAdd`, `routeMul`
-
-**Chip palette**
-`chipPalette0` … `chipPalette7`
+Legacy flat names (`background`, `panelBorder`, `modStripLfo`,
+`chipPalette3`, …) still resolve to the same fields; see
+`g_themeAliases` in `src/io/config_io.c` for the full mapping.
 
 A style colour is resolved **at compile time** against this table. To add a
 token, see Recipe F.
@@ -802,12 +806,15 @@ Watch the caps: 32 classes per type, 64 total.
 
 ### Recipe F — add a colour token
 
-1. `src/theme.h` — add the `Color` field.
-2. `src/io/config_io.c` — add the name to `themeFieldByName`.
-3. Same file — add the name to the `names[]` array in `saveThemeJson`
-   (keep them in sync; the comment there says so).
+1. `src/theme.h` — add the `Color` field to `ColourScheme`.
+2. `src/io/config_io.c` — add one row to `g_themePaths` (canonical
+   `group.leaf` path + `offsetof`). Lookup, save and the validator all
+   read that table, so there is nothing else to keep in sync.
+3. Same file, only if you are renaming something — add a `g_themeAliases`
+   row so existing themes keep loading.
 4. `initDefaultColourScheme` in `src/gui_core.c` — seed a default.
-5. `bin/clr.json` — add the key (the app will add it on next save anyway).
+5. `bin/clr.json` — add the key (the app will add it on next save anyway;
+   `test_theme` fails until the shipped file covers every field).
 6. Optional: use it as a seed in `resolveDefaultColours`.
 7. Use the name in `layout.json` styles.
 
@@ -867,6 +874,14 @@ no-op.
 `styleClassType(name)` returns the `StyleType` a class compiled to (or `-1`),
 handy when a class seems to "do nothing".
 
+The theme has the same treatment. `test_theme.c` validates the **shipped**
+`bin/clr.json`: all 46 canonical paths resolve to distinct fields, the file
+supplies every one (a typo leaves a zero-alpha field and names the missing
+path), the writer emits the grouped `schema: 2` form that round-trips, legacy
+flat keys still load through the alias table, and unknown or zero-alpha keys
+write nothing. `themePathCount()` / `themePathName(i)` enumerate the canonical
+keys if you need them in your own assertions.
+
 Caveats:
 
 - Each `compileLayoutConfig` call replaces the previous config (§4.4), so
@@ -894,7 +909,7 @@ Caveats:
 8. Dial label X is a centre; Y is relative to the knob top.
 9. Use `"vAlign": "top"` when a numeric must fit below the knob.
 10. `value.width/height ≤ 0` hides the numeric.
-11. `curveIcon.color` defaults to `valueText`; use `frameCount: 32` for the
+11. `curveIcon.color` defaults to `text.value`; use `frameCount: 32` for the
     full range.
 12. `knob.asset` paths are CWD-relative and load once, post-`InitGUI`.
 13. Apply layouts after appending all children.
@@ -902,9 +917,12 @@ Caveats:
 15. Weights are ratios; min-size clamps can overflow the last child.
 16. An extra compile *replaces* the previous config; re-resolve any cached
     style/layout pointers afterwards.
-17. `clr.json` is rewritten on exit.
-18. Text nodes are non-selectable.
-19. Scroll containers ignore weights and need a reflow after
+17. `clr.json` is rewritten on exit in canonical grouped form; a legacy
+    flat theme migrates itself on the next quit.
+18. An unknown theme key is a silent no-op — `test_theme` is what turns it
+    into a failure.
+19. Text nodes are non-selectable.
+20. Scroll containers ignore weights and need a reflow after
     `scrollOffset` changes.
 
 ---
@@ -914,7 +932,7 @@ Caveats:
 | Path | Contains |
 |---|---|
 | `src/theme.h` | `ColourScheme` (the colour token set) + `FontConfig` |
-| `src/io/config_io.c` | `themeFieldByName`, colour parsing, theme load/save, settings |
+| `src/io/config_io.c` | canonical theme path table + aliases, colour parsing, theme load/save, settings |
 | `src/gui_style.h` | style structs, `StyleType`, layout struct, resolver API |
 | `src/gui_style.c` | baked defaults, class registry/compile, geometry helpers, `applyLayout`, `finalizeStyles` |
 | `src/gui_core.c` | `drawPanelRect`, dial/btn/dest/text draw functions, `styleFont`, theme seeding, `InitGUI` |
@@ -925,6 +943,8 @@ Caveats:
 | `src/layout.json` | shipped styles + layouts (source of truth) |
 | `bin/layout.json` | what the harness reads |
 | `~/.config/spectrax/layout.json` | what a default app launch reads |
-| `tests/dsp/test_layout.c` | compile/apply/geometry tests |
+| `bin/clr.json` | shipped theme (canonical `schema: 2` form) |
+| `tests/dsp/test_layout.c` | compile/apply/geometry tests + shipped-layout validator |
+| `tests/dsp/test_theme.c` | shipped-theme completeness, round-trip and alias tests |
 | `docs/superpowers/specs/2026-09-08-layout-config-design.md` | original three-tier design |
 | `docs/superpowers/specs/2026-09-14-ui-theme-polish-design.md` | "every visual knob is a JSON field" convention |

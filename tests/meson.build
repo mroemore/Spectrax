@@ -11,6 +11,7 @@ test_names = [
   'test_cfg',
   'test_input',
   'test_layout',
+  'test_theme',
 ]
 
 # Task 3: gui.c hosts the instrument chip node + creator + recogniser.
@@ -62,6 +63,9 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_theme'
+    # test_theme validates the SHIPPED theme for the same reason.
+    test_c_args = ['-DSPECTRAX_THEME_JSON="' + meson.project_source_root() + '/bin/clr.json"']
   endif
   exe = executable(name,
     files('dsp' / name + '.c'),

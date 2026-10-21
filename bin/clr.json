@@ -1,55 +1,78 @@
 {
+	"schema": 2,
 	"font": {
 		"path": "resources/fonts/console.ttf",
 		"size": 9,
 		"spacing": 1
 	},
 	"colors": {
-		"background": "#CF6E3AFF",
-		"secondaryFont": "#B03500FF",
-		"font": "#631100FF",
-		"outline": "#DB9467FF",
-		"defaultCell": "#944410FF",
-		"blankCell": "#5E171DFF",
-		"highlightedCell": "#D63C11FF",
-		"selectedCell": "#EBA14BFF",
-		"reddish": "#AA2631FF",
-		"panel": "#503C3CFF",
-		"panelBorder": "#0A0000FF",
-		"valueDisplayBg": "#322828FF",
-		"label": "#C8B4B4FF",
-		"labelSelected": "#FFB4B4FF",
-		"dial": "#FF0000FF",
-		"valueText": "#FF0000FF",
-		"vline": "#3CFF96FF",
-		"poly": "#FF5050FF",
-		"waveformBg": "#000000FF",
-		"waveform": "#FF0000FF",
-		"waveformAlt": "#00FF00FF",
-		"sampleBg": "#3C0A0AFF",
-		"sampleAltBg": "#0A320AFF",
-		"sampleBorder": "#C8503CFF",
-		"stepBorder": "#501414FF",
-		"stepClosed": "#501E1EFF",
-		"arrangerPlayhead": "#FF0000FF",
-		"arrangerCellText": "#C8B4B4FF",
-		"wrapperBorder": "#0A0505FF",
-		"modStripLfo": "#00FFFFFF",
-		"modStripEnv": "#82FF82FF",
-		"modStripRnd": "#FF50FFFF",
-		"modStripOfs": "#BEBEBEFF",
-		"modStripDefault": "#D2D2D2FF",
-		"layerDim": "#000000AA",
-		"spectrogramPlayhead": "#FF0000FF",
-		"routeAdd": "#FF7850FF",
-		"routeMul": "#78C8FFFF",
-		"chipPalette0": "#4682B4FF",
-		"chipPalette1": "#C8783CFF",
-		"chipPalette2": "#5AA05AFF",
-		"chipPalette3": "#AA5082FF",
-		"chipPalette4": "#D2B446FF",
-		"chipPalette5": "#6E5AAAFF",
-		"chipPalette6": "#50A0A0FF",
-		"chipPalette7": "#B45A5AFF"
+		"surface": {
+			"window": "#CF6E3AFF",
+			"panel": "#503C3CFF",
+			"inset": "#322828FF",
+			"dim": "#000000AA"
+		},
+		"text": {
+			"primary": "#631100FF",
+			"secondary": "#B03500FF",
+			"muted": "#C8B4B4FF",
+			"mutedSelected": "#FFB4B4FF",
+			"value": "#FF0000FF",
+			"gridLabel": "#C8B4B4FF"
+		},
+		"line": {
+			"panel": "#0A0000FF",
+			"wrapper": "#0A0505FF",
+			"strong": "#DB9467FF",
+			"grid": "#3CFF96FF",
+			"step": "#501414FF"
+		},
+		"cell": {
+			"default": "#944410FF",
+			"blank": "#5E171DFF",
+			"highlighted": "#D63C11FF",
+			"selected": "#EBA14BFF"
+		},
+		"control": {
+			"dial": "#FF0000FF",
+			"accent": "#AA2631FF"
+		},
+		"waveform": {
+			"bg": "#000000FF",
+			"primary": "#FF0000FF",
+			"alt": "#00FF00FF",
+			"overlay": "#FF5050FF",
+			"playhead": "#FF0000FF"
+		},
+		"sample": {
+			"bg": "#3C0A0AFF",
+			"bgAlt": "#0A320AFF",
+			"border": "#C8503CFF",
+			"closed": "#501E1EFF"
+		},
+		"arranger": {
+			"playhead": "#FF0000FF"
+		},
+		"mod": {
+			"lfo": "#00FFFFFF",
+			"env": "#82FF82FF",
+			"random": "#FF50FFFF",
+			"offset": "#BEBEBEFF",
+			"default": "#D2D2D2FF",
+			"routeAdd": "#FF7850FF",
+			"routeMul": "#78C8FFFF"
+		},
+		"chip": {
+			"palette": [
+				"#4682B4FF",
+				"#C8783CFF",
+				"#5AA05AFF",
+				"#AA5082FF",
+				"#D2B446FF",
+				"#6E5AAAFF",
+				"#50A0A0FF",
+				"#B45A5AFF"
+			]
+		}
 	}
 }

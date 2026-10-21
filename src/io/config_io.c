@@ -1,10 +1,171 @@
 #include "config_io.h"
 #include "cJSON.h"
 #include "settings.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+
+/* Canonical theme colour paths.
+ *
+ * The JSON surface groups keys by use case (`surface.panel`,
+ * `text.primary`, ...) while the C side keeps the historical
+ * ColourScheme field names. This table is the single mapping between the
+ * two: `themeFieldByName`, `saveThemeJson` and the theme validator all
+ * walk it, so adding a colour means adding one row here. */
+typedef struct {
+	const char *path;
+	size_t offset;
+} ThemePath;
+
+static const ThemePath g_themePaths[] = {
+	{ "surface.window",      offsetof(ColourScheme, backgroundColor) },
+	{ "surface.panel",       offsetof(ColourScheme, panel) },
+	{ "surface.inset",       offsetof(ColourScheme, valueDisplayBg) },
+	{ "surface.dim",         offsetof(ColourScheme, layerDim) },
+
+	{ "text.primary",        offsetof(ColourScheme, fontColour) },
+	{ "text.secondary",      offsetof(ColourScheme, secondaryFontColour) },
+	{ "text.muted",          offsetof(ColourScheme, label) },
+	{ "text.mutedSelected",  offsetof(ColourScheme, labelSelected) },
+	{ "text.value",          offsetof(ColourScheme, valueText) },
+	{ "text.gridLabel",      offsetof(ColourScheme, arrangerCellText) },
+
+	{ "line.panel",          offsetof(ColourScheme, panelBorder) },
+	{ "line.wrapper",        offsetof(ColourScheme, wrapperBorder) },
+	{ "line.strong",         offsetof(ColourScheme, outlineColour) },
+	{ "line.grid",           offsetof(ColourScheme, vline) },
+	{ "line.step",           offsetof(ColourScheme, stepBorder) },
+
+	{ "cell.default",        offsetof(ColourScheme, defaultCell) },
+	{ "cell.blank",          offsetof(ColourScheme, blankCell) },
+	{ "cell.highlighted",    offsetof(ColourScheme, highlightedCell) },
+	{ "cell.selected",       offsetof(ColourScheme, selectedCell) },
+
+	{ "control.dial",        offsetof(ColourScheme, dial) },
+	{ "control.accent",      offsetof(ColourScheme, reddish) },
+
+	{ "waveform.bg",         offsetof(ColourScheme, waveformBg) },
+	{ "waveform.primary",    offsetof(ColourScheme, waveform) },
+	{ "waveform.alt",        offsetof(ColourScheme, waveformAlt) },
+	{ "waveform.overlay",    offsetof(ColourScheme, poly) },
+	{ "waveform.playhead",   offsetof(ColourScheme, spectrogramPlayhead) },
+
+	{ "sample.bg",           offsetof(ColourScheme, sampleBg) },
+	{ "sample.bgAlt",        offsetof(ColourScheme, sampleAltBg) },
+	{ "sample.border",       offsetof(ColourScheme, sampleBorder) },
+	{ "sample.closed",       offsetof(ColourScheme, stepClosed) },
+
+	{ "arranger.playhead",   offsetof(ColourScheme, arrangerPlayhead) },
+
+	{ "mod.lfo",             offsetof(ColourScheme, modStripLfo) },
+	{ "mod.env",             offsetof(ColourScheme, modStripEnv) },
+	{ "mod.random",          offsetof(ColourScheme, modStripRnd) },
+	{ "mod.offset",          offsetof(ColourScheme, modStripOfs) },
+	{ "mod.default",         offsetof(ColourScheme, modStripDefault) },
+	{ "mod.routeAdd",        offsetof(ColourScheme, routeAdd) },
+	{ "mod.routeMul",        offsetof(ColourScheme, routeMul) },
+
+	{ "chip.palette0",       offsetof(ColourScheme, chipPalette0) },
+	{ "chip.palette1",       offsetof(ColourScheme, chipPalette1) },
+	{ "chip.palette2",       offsetof(ColourScheme, chipPalette2) },
+	{ "chip.palette3",       offsetof(ColourScheme, chipPalette3) },
+	{ "chip.palette4",       offsetof(ColourScheme, chipPalette4) },
+	{ "chip.palette5",       offsetof(ColourScheme, chipPalette5) },
+	{ "chip.palette6",       offsetof(ColourScheme, chipPalette6) },
+	{ "chip.palette7",       offsetof(ColourScheme, chipPalette7) },
+};
+
+#define THEME_PATH_COUNT ((int)(sizeof(g_themePaths) / sizeof(g_themePaths[0])))
+
+/* Pre-rename flat key -> canonical path. Kept so themes written by any
+ * earlier build keep loading; the next save rewrites them canonically. */
+typedef struct {
+	const char *legacy;
+	const char *path;
+} ThemeAlias;
+
+static const ThemeAlias g_themeAliases[] = {
+	{ "background",         "surface.window" },
+	{ "panel",              "surface.panel" },
+	{ "valueDisplayBg",     "surface.inset" },
+	{ "layerDim",           "surface.dim" },
+
+	{ "font",               "text.primary" },
+	{ "secondaryFont",      "text.secondary" },
+	{ "label",              "text.muted" },
+	{ "labelSelected",      "text.mutedSelected" },
+	{ "valueText",          "text.value" },
+	{ "arrangerCellText",   "text.gridLabel" },
+
+	{ "panelBorder",        "line.panel" },
+	{ "wrapperBorder",      "line.wrapper" },
+	{ "outline",            "line.strong" },
+	{ "vline",              "line.grid" },
+	{ "stepBorder",         "line.step" },
+
+	{ "defaultCell",        "cell.default" },
+	{ "blankCell",          "cell.blank" },
+	{ "highlightedCell",    "cell.highlighted" },
+	{ "selectedCell",       "cell.selected" },
+
+	{ "dial",               "control.dial" },
+	{ "reddish",            "control.accent" },
+
+	{ "waveformBg",         "waveform.bg" },
+	{ "waveform",           "waveform.primary" },
+	{ "waveformAlt",        "waveform.alt" },
+	{ "poly",               "waveform.overlay" },
+	{ "spectrogramPlayhead", "waveform.playhead" },
+
+	{ "sampleBg",           "sample.bg" },
+	{ "sampleAltBg",        "sample.bgAlt" },
+	{ "sampleBorder",       "sample.border" },
+	{ "stepClosed",         "sample.closed" },
+
+	{ "arrangerPlayhead",   "arranger.playhead" },
+
+	{ "modStripLfo",        "mod.lfo" },
+	{ "modStripEnv",        "mod.env" },
+	{ "modStripRnd",        "mod.random" },
+	{ "modStripOfs",        "mod.offset" },
+	{ "modStripDefault",    "mod.default" },
+	{ "routeAdd",           "mod.routeAdd" },
+	{ "routeMul",           "mod.routeMul" },
+
+	{ "chipPalette0",       "chip.palette0" },
+	{ "chipPalette1",       "chip.palette1" },
+	{ "chipPalette2",       "chip.palette2" },
+	{ "chipPalette3",       "chip.palette3" },
+	{ "chipPalette4",       "chip.palette4" },
+	{ "chipPalette5",       "chip.palette5" },
+	{ "chipPalette6",       "chip.palette6" },
+	{ "chipPalette7",       "chip.palette7" },
+};
+
+static const char *canonicalThemePath(const char *name) {
+	if(!name) {
+		return NULL;
+	}
+	for(size_t i = 0; i < sizeof(g_themeAliases) / sizeof(g_themeAliases[0]); i++) {
+		if(strcmp(name, g_themeAliases[i].legacy) == 0) {
+			return g_themeAliases[i].path;
+		}
+	}
+	return name;
+}
+
+int themePathCount(void) {
+	return THEME_PATH_COUNT;
+}
+
+const char *themePathName(int index) {
+	if(index < 0 || index >= THEME_PATH_COUNT) {
+		return NULL;
+	}
+	return g_themePaths[index].path;
+}
 
 static int hexNibble(char c) {
 	if(c >= '0' && c <= '9') return c - '0';
@@ -41,59 +202,69 @@ bool parseHexColor(const char *s, Color *out) {
 }
 
 Color *themeFieldByName(ColourScheme *cs, const char *name) {
-	if(!cs || !name) return NULL;
-	if(!strcmp(name, "background")) return &cs->backgroundColor;
-	if(!strcmp(name, "secondaryFont")) return &cs->secondaryFontColour;
-	if(!strcmp(name, "font")) return &cs->fontColour;
-	if(!strcmp(name, "outline")) return &cs->outlineColour;
-	if(!strcmp(name, "defaultCell")) return &cs->defaultCell;
-	if(!strcmp(name, "blankCell")) return &cs->blankCell;
-	if(!strcmp(name, "highlightedCell")) return &cs->highlightedCell;
-	if(!strcmp(name, "selectedCell")) return &cs->selectedCell;
-	if(!strcmp(name, "reddish")) return &cs->reddish;
-	if(!strcmp(name, "panel")) return &cs->panel;
-	if(!strcmp(name, "panelBorder")) return &cs->panelBorder;
-	if(!strcmp(name, "valueDisplayBg")) return &cs->valueDisplayBg;
-	if(!strcmp(name, "label")) return &cs->label;
-	if(!strcmp(name, "labelSelected")) return &cs->labelSelected;
-	if(!strcmp(name, "dial")) return &cs->dial;
-	if(!strcmp(name, "valueText")) return &cs->valueText;
-	if(!strcmp(name, "vline")) return &cs->vline;
-	if(!strcmp(name, "poly")) return &cs->poly;
-	if(!strcmp(name, "waveformBg")) return &cs->waveformBg;
-	if(!strcmp(name, "waveform")) return &cs->waveform;
-	if(!strcmp(name, "waveformAlt")) return &cs->waveformAlt;
-	if(!strcmp(name, "sampleBg")) return &cs->sampleBg;
-	if(!strcmp(name, "sampleAltBg")) return &cs->sampleAltBg;
-	if(!strcmp(name, "sampleBorder")) return &cs->sampleBorder;
-	if(!strcmp(name, "stepBorder")) return &cs->stepBorder;
-	if(!strcmp(name, "stepClosed")) return &cs->stepClosed;
-	if(!strcmp(name, "arrangerPlayhead")) return &cs->arrangerPlayhead;
-	if(!strcmp(name, "arrangerCellText")) return &cs->arrangerCellText;
-	if(!strcmp(name, "wrapperBorder")) return &cs->wrapperBorder;
-	if(!strcmp(name, "modStripLfo")) return &cs->modStripLfo;
-	if(!strcmp(name, "modStripEnv")) return &cs->modStripEnv;
-	if(!strcmp(name, "modStripRnd")) return &cs->modStripRnd;
-	if(!strcmp(name, "modStripOfs")) return &cs->modStripOfs;
-	if(!strcmp(name, "modStripDefault")) return &cs->modStripDefault;
-	if(!strcmp(name, "layerDim")) return &cs->layerDim;
-	if(!strcmp(name, "spectrogramPlayhead")) return &cs->spectrogramPlayhead;
-	if(!strcmp(name, "routeAdd")) return &cs->routeAdd;
-	if(!strcmp(name, "routeMul")) return &cs->routeMul;
-	if(!strcmp(name, "chipPalette0")) return &cs->chipPalette0;
-	if(!strcmp(name, "chipPalette1")) return &cs->chipPalette1;
-	if(!strcmp(name, "chipPalette2")) return &cs->chipPalette2;
-	if(!strcmp(name, "chipPalette3")) return &cs->chipPalette3;
-	if(!strcmp(name, "chipPalette4")) return &cs->chipPalette4;
-	if(!strcmp(name, "chipPalette5")) return &cs->chipPalette5;
-	if(!strcmp(name, "chipPalette6")) return &cs->chipPalette6;
-	if(!strcmp(name, "chipPalette7")) return &cs->chipPalette7;
+	if(!cs) return NULL;
+	const char *path = canonicalThemePath(name);
+	if(!path) return NULL;
+	for(int i = 0; i < THEME_PATH_COUNT; i++) {
+		if(strcmp(path, g_themePaths[i].path) == 0) {
+			return (Color *)((char *)cs + g_themePaths[i].offset);
+		}
+	}
 	return NULL;
 }
 
 static void colorToHex(const Color *c, char *out) {
 	/* Format `#RRGGBBAA` = 9 chars + NUL = 10 bytes. */
 	snprintf(out, 10, "#%02X%02X%02X%02X", c->r, c->g, c->b, c->a);
+}
+
+/* Apply every leaf of a `colors` object (nested groups allowed) to cs.
+ * Unknown keys and zero-alpha values are ignored, matching the legacy
+ * flat loader behaviour. */
+static void applyThemeColors(ColourScheme *cs, cJSON *obj, const char *prefix) {
+	cJSON *item = NULL;
+	cJSON_ArrayForEach(item, obj) {
+		char path[128];
+		if(prefix[0]) {
+			snprintf(path, sizeof(path), "%s.%s", prefix, item->string);
+		} else {
+			snprintf(path, sizeof(path), "%s", item->string);
+		}
+		if(cJSON_IsObject(item)) {
+			applyThemeColors(cs, item, path);
+			continue;
+		}
+		if(cJSON_IsArray(item)) {
+			/* Compact form: chip.palette is chip.palette0..7. */
+			if(strcmp(path, "chip.palette") == 0) {
+				int n = cJSON_GetArraySize(item);
+				if(n > 8) n = 8;
+				for(int i = 0; i < n; i++) {
+					cJSON *el = cJSON_GetArrayItem(item, i);
+					Color v;
+					if(!cJSON_IsString(el) || !parseHexColor(el->valuestring, &v) || v.a == 0) {
+						continue;
+					}
+					char leaf[64];
+					snprintf(leaf, sizeof(leaf), "chip.palette%d", i);
+					Color *field = themeFieldByName(cs, leaf);
+					if(field) {
+						*field = v;
+					}
+				}
+			}
+			continue;
+		}
+		Color v;
+		Color *field = themeFieldByName(cs, path);
+		/* alpha == 0 means "unset" -- a key written back by an older
+		 * build before the field existed (BSS-zero cs). Keep the
+		 * default rather than rendering fully transparent. No
+		 * legitimate theme value has zero alpha (surface.dim is 0xAA). */
+		if(field && cJSON_IsString(item) && parseHexColor(item->valuestring, &v) && v.a != 0) {
+			*field = v;
+		}
+	}
 }
 
 void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font) {
@@ -116,18 +287,7 @@ void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font) {
 
 	cJSON *colors = cJSON_GetObjectItemCaseSensitive(doc, "colors");
 	if(cJSON_IsObject(colors)) {
-		cJSON *item = NULL;
-		cJSON_ArrayForEach(item, colors) {
-			Color *field = themeFieldByName(cs, item->string);
-			Color v;
-			/* alpha == 0 means "unset" -- a key written back by an older
-			 * build before the field existed (BSS-zero cs). Keep the
-			 * default rather than rendering fully transparent. No
-			 * legitimate theme value has zero alpha (layerDim is 0xAA). */
-			if(field && cJSON_IsString(item) && parseHexColor(item->valuestring, &v) && v.a != 0) {
-				*field = v;
-			}
-		}
+		applyThemeColors(cs, colors, "");
 	}
 	cJSON *fontObj = cJSON_GetObjectItemCaseSensitive(doc, "font");
 	if(cJSON_IsObject(fontObj)) {
@@ -141,10 +301,23 @@ void loadThemeJson(const char *path, ColourScheme *cs, FontConfig *font) {
 	cJSON_Delete(doc);
 }
 
+static cJSON *ensureThemeGroup(cJSON *colors, const char *group) {
+	cJSON *g = cJSON_GetObjectItemCaseSensitive(colors, group);
+	if(!g) {
+		g = cJSON_CreateObject();
+		if(!g) {
+			return NULL;
+		}
+		cJSON_AddItemToObject(colors, group, g);
+	}
+	return g;
+}
+
 void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *font) {
 	if(!path || !cs || !font) return;
 	cJSON *doc = cJSON_CreateObject();
 	if(!doc) return;
+	cJSON_AddNumberToObject(doc, "schema", 2);
 	cJSON *fontObj = cJSON_CreateObject();
 	cJSON_AddStringToObject(fontObj, "path", font->path);
 	cJSON_AddNumberToObject(fontObj, "size", font->size);
@@ -152,27 +325,44 @@ void saveThemeJson(const char *path, const ColourScheme *cs, const FontConfig *f
 	cJSON_AddItemToObject(doc, "font", fontObj);
 
 	cJSON *colors = cJSON_CreateObject();
-	/* Every field the loader understands (must stay in sync with themeFieldByName). */
-	const char *names[] = { "background", "secondaryFont", "font", "outline",
-		"defaultCell", "blankCell", "highlightedCell", "selectedCell", "reddish",
-		"panel", "panelBorder", "valueDisplayBg", "label", "labelSelected", "dial",
-		"valueText", "vline", "poly", "waveformBg", "waveform", "waveformAlt",
-		"sampleBg", "sampleAltBg", "sampleBorder", "stepBorder", "stepClosed",
-		"arrangerPlayhead", "arrangerCellText", "wrapperBorder",
-		"modStripLfo", "modStripEnv", "modStripRnd", "modStripOfs",
-		"modStripDefault", "layerDim", "spectrogramPlayhead",
-		"routeAdd", "routeMul",
-		"chipPalette0", "chipPalette1", "chipPalette2", "chipPalette3",
-		"chipPalette4", "chipPalette5", "chipPalette6", "chipPalette7" };
-	size_t n = sizeof(names) / sizeof(names[0]);
-	for(size_t i = 0; i < n; i++) {
-		/* Cast away const for the lookup helper (it only dereferences for read,
-		 * but we copy out the value rather than writing through it). */
-		Color *field = themeFieldByName((ColourScheme *)cs, names[i]);
-		if(!field) continue;
+	cJSON *chipPalette = NULL;
+	/* Emit the canonical grouped form straight from the mapping table so
+	 * the writer can never drift from the loader. */
+	for(int i = 0; i < THEME_PATH_COUNT; i++) {
+		const char *p = g_themePaths[i].path;
+		const Color *field = (const Color *)((const char *)cs + g_themePaths[i].offset);
 		char hex[10];
 		colorToHex(field, hex);
-		cJSON_AddStringToObject(colors, names[i], hex);
+		if(strncmp(p, "chip.palette", 12) == 0 && isdigit((unsigned char)p[12])) {
+			if(!chipPalette) {
+				cJSON *chip = ensureThemeGroup(colors, "chip");
+				if(!chip) {
+					continue;
+				}
+				chipPalette = cJSON_CreateArray();
+				if(!chipPalette) {
+					continue;
+				}
+				cJSON_AddItemToObject(chip, "palette", chipPalette);
+			}
+			cJSON_AddItemToArray(chipPalette, cJSON_CreateString(hex));
+			continue;
+		}
+		const char *dot = strchr(p, '.');
+		if(!dot) {
+			continue;
+		}
+		char group[32];
+		size_t gl = (size_t)(dot - p);
+		if(gl >= sizeof(group)) {
+			continue;
+		}
+		memcpy(group, p, gl);
+		group[gl] = '\0';
+		cJSON *g = ensureThemeGroup(colors, group);
+		if(g) {
+			cJSON_AddStringToObject(g, dot + 1, hex);
+		}
 	}
 	cJSON_AddItemToObject(doc, "colors", colors);
 
