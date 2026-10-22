@@ -29,6 +29,16 @@ reachable() {
         "$CFW_USER@$1" true 2>/dev/null
 }
 
+# 0) The IP recorded by setup-device.sh, if it is still reachable. This is
+# the common case -- the device is on the same lease it had last time --
+# and it costs one connect instead of a 254-host sweep.
+if [ -n "${TRANSPORT_LAST_IP:-}" ]; then
+    if reachable "$TRANSPORT_LAST_IP"; then
+        echo "$TRANSPORT_LAST_IP"
+        exit 0
+    fi
+fi
+
 # 1) USB gadget link-local address.
 if [ -n "$TRANSPORT_USB_GADGET_HOST_IP" ]; then
     if ip addr show 2>/dev/null | grep -q "$TRANSPORT_USB_GADGET_HOST_IP/"; then

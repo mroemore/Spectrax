@@ -30,7 +30,7 @@ probe_run "ls -ld /roms /storage 2>/dev/null || true"
 
 echo
 echo "### suggested profile updates"
-arch=$(probe_run "uname -m" | awk -F= '/^arch=/{print $2}' | tr -d '\r')
+arch=$(probe_run "uname -m" | tr -d '\r' | head -1)
 [ -n "$arch" ] && probe_apply device arch "$arch"
 [ -n "$arch" ] && probe_resolve userspace_arch
 hostname=$(probe_run "hostname" | head -1 | tr -d '\r')

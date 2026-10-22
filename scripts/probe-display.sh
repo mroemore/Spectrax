@@ -26,7 +26,7 @@ probe_run "dmesg 2>/dev/null | grep -i -E 'panfrost|mali|drm|gpu' | tail -20 || 
 
 echo
 echo "### suggested profile updates"
-mode=$(probe_run "cat /sys/class/drm/card0-DSI-1/modes 2>/dev/null | head -1" | tr -d '\r')
+mode=$(probe_run "cat /sys/class/drm/card*-DSI-*/modes 2>/dev/null | head -1" | tr -d '\r')
 if [ -n "$mode" ]; then
     w=$(echo "$mode" | cut -d'x' -f1)
     h=$(echo "$mode" | cut -d'x' -f2)

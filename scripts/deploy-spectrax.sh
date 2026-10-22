@@ -127,19 +127,29 @@ deploy_over_ssh() {
     target_ip=$1
     dest="$(ssh_target "$target_ip"):$PATHS_DATA_DIR"
     echo "rsync -> $dest"
+    # The ports tree is often on a FAT or exFAT volume (vfat here), which has
+    # no concept of POSIX owners or permission bits: -a tries to preserve
+    # both, and the receiver fails with "chown ... Operation not permitted".
+    rsync_opts="-rlt --no-owner --no-group --no-perms --info=progress2"
     for b in spectrax spectrax_bench instrument_harness; do
         p=$(find_binary "$b") || return 1
-        rsync -a --info=progress2 "$p" "$dest/" || return 1
+        # shellcheck disable=SC2086
+        rsync $rsync_opts "$p" "$dest/" || return 1
     done
     for s in $port_scripts; do
-        rsync -a --info=progress2 "scripts/portmaster/$s" "$dest/$s" || return 1
+        # shellcheck disable=SC2086
+        rsync $rsync_opts "scripts/portmaster/$s" "$dest/$s" || return 1
     done
     if [ -d bin/resources ]; then
-        rsync -a --info=progress2 bin/resources/ "$dest/data/" || return 1
+        # shellcheck disable=SC2086
+        rsync $rsync_opts bin/resources/ "$dest/data/" || return 1
     fi
     # The device-side launch wrappers read their paths and the GPU helper
-    # from this fragment.
-    ssh "$(ssh_target "$target_ip")" "cat > /etc/spectrax-device.toml <<'EOF'
+    # from this fragment. Write it to the writable data partition: the
+    # rootfs on ROCKNIX (and on most of these handheld CFWs) is a read-only
+    # squashfs, so /etc is not writable. The wrappers check /etc first (the
+    # GKD has a writable /etc) and then this path.
+    ssh "$(ssh_target "$target_ip")" "cat > '$PATHS_DATA_DIR/device.toml' <<'EOF'
 data_dir = \"$PATHS_DATA_DIR\"
 runs_dir = \"$PATHS_RUNS_DIR\"
 gpu_helper = \"$GPU_HELPER\"

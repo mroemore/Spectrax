@@ -75,9 +75,14 @@ block = "[%s]\n" % section
 if block not in text:
     if not text.endswith("\n"):
         text += "\n"
-    text += "\n" + block
+    if text.strip():
+        text += "\n"
+    text += block
 pat = re.compile(r'(?m)^%s\s*=.*$' % re.escape(key))
-line = '%s = "%s"' % (key, value)
+# Bare integers are written unquoted: the linter types [device].cpu_mhz as
+# int, so quoting it here produced a profile that failed its own lint.
+line = '%s = %s' % (key, value) if re.fullmatch(r'-?\d+', value) \
+       else '%s = "%s"' % (key, value)
 text, n = pat.subn(line, text)
 if n == 0:
     text = text.replace(block, block + line + "\n")
@@ -106,9 +111,19 @@ if block not in text:
     if text and not text.endswith("\n"):
         text += "\n"
     text += "\n" + block
-pat = re.compile(r'(?ms)^\[probes\]\n(?:[^\[]*)')
-body = "".join('needed = [%s]\n' % ", ".join('"%s"' % k for k in keys) if keys else "needed = []\n")
-text = pat.sub(block + body, text)
+# Replace the whole needed-line, not "everything up to the next ['".
+# A negative class that stops at '[' truncates at the array's own opening
+# bracket, which left the old list behind as a bare array and produced
+# invalid TOML on the second probe to resolve.
+pat = re.compile(r'(?m)^needed\s*=\s*\[[^\]]*\]\s*$')
+body = "needed = [%s]" % ", ".join('"%s"' % k for k in keys)
+if pat.search(text):
+    text = pat.sub(body, text, count=1)
+else:
+    text = text.replace(block, block + body + "\n", 1)
+# Keep a blank line after the block so a later section stays separated.
+if not re.search(r'(?m)^needed\s*=.*\n\s*\n', text):
+    text = re.sub(r'(?m)^(needed\s*=.*)$', r'\1\n', text, count=1)
 open(path, "w").write(text)
 PY
     echo "  -> probe '$1' resolved (applied)"

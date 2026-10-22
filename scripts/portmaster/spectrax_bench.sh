@@ -8,6 +8,8 @@ runs_dir=""
 gpu_helper=""
 gpu_driver=""
 
+[ -r "$conf" ] || { [ -r "$data_dir/device.toml" ] && conf="$data_dir/device.toml"; }
+
 if [ -r "$conf" ]; then
     data_dir=$(sed -n 's/^data_dir *= *"\(.*\)".*/\1/p' "$conf" | head -1)
     runs_dir=$(sed -n 's/^runs_dir *= *"\(.*\)".*/\1/p' "$conf" | head -1)
