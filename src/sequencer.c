@@ -30,7 +30,6 @@ PatternList *createPatternList(ApplicationState *appState) {
 static int intBpmToSamplesPerStep(int bpm) {
 	return (PA_SR * 60) / (bpm * 4.0f);
 }
-
 static float floatBpmToSamplesPerStep(float bpm) {
 	return (PA_SR * 60.0f) / (bpm * 4.0f);
 }

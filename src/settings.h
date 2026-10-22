@@ -1,7 +1,12 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-#define PA_SR 44100
+/* The stream's actual rate. PA_SR is the sequencer's view of it: the step
+ * sizes must be derived from the rate the audio device runs at, not a
+ * compile-time constant, or the song plays at the wrong tempo on a device
+ * whose codec does not do 44100. */
+extern float g_sampleRate;
+#define PA_SR ((int)g_sampleRate)
 #define PA_BUFFER_SIZE 256
 #define MAX_SEQUENCER_CHANNELS 16
 #define MAX_VOICES_PER_CHANNEL 8

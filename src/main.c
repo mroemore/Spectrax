@@ -327,6 +327,94 @@ static void triggerSequencerNote(void *ctx, int channel, const int *note) {
 }
 
 
+static PaDeviceIndex findOutputDeviceByName(const char *want);
+static int patestCallback(const void *inputBuffer, void *outputBuffer,
+                          unsigned long framesPerBuffer,
+                          const PaStreamCallbackTimeInfo *timeInfo,
+                          PaStreamCallbackFlags statusFlags, void *userData);
+
+/* Opens the output stream, negotiating a rate and buffer size the device will
+ * accept, and records the rate the stream ended up at in g_sampleRate.
+ *
+ * On a handheld CFW the codec is often locked to a rate the engine does not
+ * default to (the H700 runs at 192000 raw / 48000 via dmix, with no 44100
+ * anywhere), and PortAudio silently substitutes the device's rate. At that
+ * point the period calculation can land on zero and PortAudio aborts on
+ * `framesPerHostBuffer != 0` -- so the old hardcoded 44100 + 256 opened
+ * nothing on this hardware.
+ *
+ * Candidates are tried in order: the ALSA plugin devices first (they carry a
+ * plug layer and report a sane rate), then the raw hardware last. The rate is
+ * requested as "whatever the device wants" and read back from the stream, so
+ * the engine follows the device instead of assuming.
+ */
+static PaError openAudioStream(PaStream **stream, paTestData *data) {
+    static const struct {
+        const char *dev;   /* NULL = PortAudio's default output device */
+        unsigned long buf;
+    } tries[] = {
+        {"dmix", 256},
+        {"dmix", 512},
+        {NULL, 256},
+        {NULL, 512},
+        {NULL, 2048},
+        {"plughw:0,0", 512},
+        {"hw:0,0", 512},
+        {"hw:0,0", 2048},
+    };
+
+    PaError last = paNotInitialized;
+    for(unsigned i = 0; i < sizeof tries / sizeof tries[0]; i++) {
+        PaStreamParameters out;
+        memset(&out, 0, sizeof out);
+        out.channelCount = 2;
+        out.sampleFormat = paFloat32;
+        out.hostApiSpecificStreamInfo = NULL;
+
+        if(tries[i].dev == NULL) {
+            out.device = Pa_GetDefaultOutputDevice();
+            if(out.device == paNoDevice) continue;
+        } else {
+            out.device = findOutputDeviceByName(tries[i].dev);
+            if(out.device == paNoDevice) continue;
+        }
+        const PaDeviceInfo *di = Pa_GetDeviceInfo(out.device);
+        out.suggestedLatency = di ? di->defaultLowOutputLatency : 0;
+
+        /* Ask for the device's own rate: the engine follows it. */
+        double want = di ? di->defaultSampleRate : SAMPLE_RATE_DEFAULT;
+        last = Pa_OpenStream(stream, NULL, &out, want,
+                             tries[i].buf, paNoFlag, patestCallback, data);
+        if(last == paNoError) {
+            const PaStreamInfo *si = Pa_GetStreamInfo(*stream);
+            if(si && si->sampleRate > 0) {
+                g_sampleRate = (float)si->sampleRate;
+                TraceLog(LOG_INFO,
+                         "audio: device=%s buffer=%lu rate=%.0f latency=%.4f",
+                         tries[i].dev ? tries[i].dev : "(default)",
+                         tries[i].buf, si->sampleRate, si->outputLatency);
+            }
+            return paNoError;
+        }
+        TraceLog(LOG_WARNING, "audio: open failed for %s buffer=%lu (%s)",
+                 tries[i].dev ? tries[i].dev : "(default)", tries[i].buf,
+                 Pa_GetErrorText(last));
+    }
+    return last;
+}
+
+/* Finds an output device whose name contains `want` (PortAudio device
+ * names carry the ALSA PCM id, e.g. "H616 Audio Codec: CDC PCM ... (hw:0,0)"). */
+static PaDeviceIndex findOutputDeviceByName(const char *want) {
+    int n = Pa_GetDeviceCount();
+    for(int i = 0; i < n; i++) {
+        const PaDeviceInfo *di = Pa_GetDeviceInfo(i);
+        if(!di || di->maxOutputChannels < 2) continue;
+        if(strstr(di->name, want)) return i;
+    }
+    return paNoDevice;
+}
+
 /* This routine will be called by the PortAudio engine when audio is needed.
 ** It may called at interrupt level on some machines so don't do anything
 ** that could mess up the system like calling malloc() or free().
@@ -615,14 +703,7 @@ int main(int argc, char **argv) {
 	if(err != paNoError)
 		goto error;
 
-	err = Pa_OpenDefaultStream(&stream,
-	                           0,
-	                           2,
-	                           paFloat32,
-	                           SAMPLE_RATE,
-	                           256,
-	                           patestCallback,
-	                           &data);
+	err = openAudioStream(&stream, &data);
 	if(err != paNoError)
 		goto error;
 
