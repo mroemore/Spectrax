@@ -152,6 +152,38 @@ Libs: -L\${libdir} -lasound
 Cflags: -I\${includedir}
 EOF
 cd "$work/portaudio"
+# Two upstream assumptions break on handheld CFW ALSA stacks:
+#
+# 1. `assert( maxPeriods > 1 )` aborts when the device advertises a single
+#    period, which the H700 codec and its dmix plugin both do. That is a
+#    legitimate capability and the very next line clamps numPeriods into
+#    [minPeriods, maxPeriods] anyway, so the assert only turns a workable
+#    device into a crash.
+# 2. The period-size bounds are read from hwParams before they are
+#    constrained, so an unconstrained plugin PCM reports min = max = 0.
+#    Trusting that sets framesPerHostBuffer = max = 0, and the caller then
+#    rejects the stream with "Internal PortAudio error" -- the device never
+#    opens. Treat max == 0 as "no limit".
+if grep -q 'assert( maxPeriods > 1 );' src/hostapi/alsa/pa_linux_alsa.c; then
+    sed -i 's/assert( maxPeriods > 1 );/if( maxPeriods < 1 ) maxPeriods = 1;/' \
+        src/hostapi/alsa/pa_linux_alsa.c
+    python3 - <<'PATCH'
+import io
+p = 'src/hostapi/alsa/pa_linux_alsa.c'
+s = io.open(p, encoding='utf-8').read()
+old = "        minmax_diff = max - min;\n\n        if( framesPerHostBuffer < min )"
+new = ("        minmax_diff = max - min;\n\n"
+       "        if( max == 0 )\n"
+       "        {\n"
+       "            min = 0;\n"
+       "            max = framesPerHostBuffer;\n"
+       "            minmax_diff = 0;\n"
+       "        }\n\n"
+       "        if( framesPerHostBuffer < min )")
+assert s.count(old) == 1, 'period-size patch site not found'
+io.open(p, 'w', encoding='utf-8').write(s.replace(old, new))
+PATCH
+fi
 # The ALSA backend is checked with AC_CHECK_LIB, so the stub's directory has
 # to be on the library path: LIBS carries it for the link tests.
 if [ ! -f "$work/.portaudio-configured" ] ||

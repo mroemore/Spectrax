@@ -5,7 +5,16 @@
 #include <stddef.h>
 #include <string.h>
 
-#define SAMPLE_RATE (44100)
+/* The engine's default rate. The actual rate is runtime state (g_sampleRate):
+ * a handheld's ALSA device need not accept 44100 at all -- the RG35XX SP's
+ * exposes only 192000 (hw), a broken INT_MAX (sysdefault) and 48000 (dmix) --
+ * so the app runs at whatever rate the opened stream reports, and every phase
+ * increment is computed against that. This macro is only the fallback used
+ * before a stream exists. */
+#define SAMPLE_RATE_DEFAULT (44100)
+
+extern float g_sampleRate;
+#define SAMPLE_RATE (g_sampleRate)
 #define BLEP_SIZE 32
 #define ALGO_SIZE 6
 #define ALGO_COUNT 7
