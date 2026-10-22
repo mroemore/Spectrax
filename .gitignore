@@ -26,6 +26,7 @@ build-matrix-*/
 build-aarch64/
 build-armhf/
 build-libs/
+build-*/
 runs/
 meson-private/
 src/tools/nav_harness/nav_harness
