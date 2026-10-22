@@ -9,5 +9,5 @@ executable('inspectro_wavget',
   '../../fft.c',
   '../../dataviz.c',
   include_directories: inc,
-  dependencies: [raylib, kissfft, portaudio, gl, x11, rt, dl, m],
+  dependencies: system_deps,
 )

@@ -44,7 +44,7 @@ SCHEMA = {
         "order": list, "mdns_names": list, "usb_gadget_host_ip": str,
         "usb_gadget_device_ip": str,
     },
-    "build": {"cross_file": str, "libdir": str, "c_args": list},
+    "build": {"cross_file": str, "libdir": str, "incdir": str, "c_args": list},
     "probes": {"needed": list},
 }
 
@@ -58,7 +58,7 @@ REQUIRED = {
     "paths": ["storage_root", "ports_dir", "data_dir", "runs_dir"],
     "transport": ["order", "mdns_names", "usb_gadget_host_ip",
                   "usb_gadget_device_ip"],
-    "build": ["cross_file", "libdir", "c_args"],
+    "build": ["cross_file", "libdir", "incdir", "c_args"],
     "probes": ["needed"],
 }
 

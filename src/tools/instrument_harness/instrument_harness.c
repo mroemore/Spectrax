@@ -50,13 +50,16 @@
 /* raylib and X11 both typedef `Font` and `Drawable`; rename X11's away
  * (same trick as nav_harness). Used by shotX11 (SHOT script verb) to
  * capture the presented window under Xvfb/llvmpipe where raylib's
- * TakeScreenshot reads back a blank frame. */
+ * TakeScreenshot reads back a blank frame. The X11 path is host-only: a
+ * DRM/KMS device build has no X server, so it is compiled out there. */
+#ifdef SPECTRAX_HAVE_X11
 #define Font _X11_Font
 #define Drawable _X11_Drawable
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #undef Drawable
 #undef Font
+#endif
 
 #include "main.h"
 #include "gui.h"
@@ -1286,6 +1289,7 @@ static void processScriptAssert(const ScriptStep *s) {
  * as nav_harness). GetWindowHandle() returns a GLFW struct, not the X
  * Window id -- walk the root's children and match by size.
  */
+#ifdef SPECTRAX_HAVE_X11
 static int shotX11(const char *path) {
 	Display *dpy = XOpenDisplay(NULL);
 	if(!dpy) {
@@ -1346,6 +1350,12 @@ static int shotX11(const char *path) {
 	free(pix);
 	return ok ? 0 : 1;
 }
+#else
+static int shotX11(const char *path) {
+	(void)path;
+	return 1;
+}
+#endif
 
 /* ----- Shared input handler (used by both interactive and scripted) --- */
 

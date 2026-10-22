@@ -56,6 +56,7 @@ usb_gadget_device_ip         string
 ## [build]
 cross_file string   repo-relative path to the arch cross template
 libdir     string   repo-relative target lib directory
+incdir     string   repo-relative target include directory
 c_args     array of strings
 
 ## [probes]

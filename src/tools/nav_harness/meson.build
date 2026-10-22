@@ -4,7 +4,7 @@
 
 executable('nav_harness',
   files('nav_harness.c', '../../graph_gui.c', '../../dstruct.c'),
-  c_args: ['-DDEBUG_GRAPH_DRAW'],
+  c_args: ['-DDEBUG_GRAPH_DRAW'] + x11_cargs,
   include_directories: inc,
-  dependencies: [raylib, kissfft, gl, x11, rt, dl, m],
+  dependencies: system_deps,
 )

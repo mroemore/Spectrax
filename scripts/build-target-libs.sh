@@ -177,9 +177,21 @@ if [ ! -f "$work/.portaudio-configured" ] ||
     }
     touch "$work/.portaudio-configured"
 fi
+# The objects depend on the configure flags, not on the sources, so the
+# build always starts from a clean tree: a stale object would keep the old
+# host-API table.
+make clean >/dev/null 2>&1 || true
 make -j"$(nproc)" > "$work/portaudio-make.log" 2>&1 || {
     echo "error: portaudio build failed; see $work/portaudio-make.log" >&2
     tail -20 "$work/portaudio-make.log" >&2
+    exit 1
+}
+# The Unix host-API table is what routes PortAudio to the ALSA backend. A
+# stale object (compiled before the ALSA backend was enabled) would leave
+# the table empty and the device with no audio at all.
+(cd "$work/portaudio/lib/.libs" && ar x libportaudio.a pa_unix_hostapis.o &&
+    nm pa_unix_hostapis.o | grep -q "U PaAlsa_Initialize") || {
+    echo "error: portaudio's host API table has no ALSA entry" >&2
     exit 1
 }
 cp "$work/portaudio/lib/.libs/libportaudio.a" "$out_lib/"
