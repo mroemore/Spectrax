@@ -14,6 +14,18 @@ this tutorial assumes you know that a style is a lookup, that colours
 are tokens rather than hex values, and that nothing hot-reloads.
 
 Everything below is reproducible on Void Linux with the repo checked out.
+The commands are plain `sh`, `meson` and `gcc`, so they work on any
+distro with meson, ninja and a C toolchain. Two things are worth
+calling out:
+
+- The config and data dirs follow the XDG base-directory spec
+  (`~/.config/spectrax`, `~/.local/share/spectrax`), which is the same
+  on every distro. A distro that does not set `XDG_CONFIG_HOME` falls
+  back to `$HOME/.config`, which is exactly what the ladder in §2
+  handles.
+- The windowed checks need an X server. On a headless box (CI, a
+  container, a bare SSH session) `run_scripted.sh` runs the harness
+  under `xvfb-run` for you.
 
 ```
 manual/tutorials/examples/
