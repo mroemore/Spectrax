@@ -125,6 +125,19 @@ int bench_audio_run(const BenchOptions *opts, BenchReport *r) {
         return 1;
     }
 
+    /* Activate the voices. generateVoice runs regardless, but the app's real
+     * callback only syncs and renders active voices, so an inactive pool
+     * measures a path that production never takes. */
+    for (int c = 0; c < channels; c++) {
+        for (int v_i = 0; v_i < vm->voiceCount[c]; v_i++) {
+            Voice *v = vm->voicePools[c][v_i];
+            if (v) {
+                triggerVoice(v, (const int[]){ 57, 0 });
+                v->active = 1;
+            }
+        }
+    }
+
     float *scratch = calloc((size_t)total * BUF, sizeof(float));
     float *out = calloc(BUF, sizeof(float));
     if (!scratch || !out) {
@@ -140,6 +153,18 @@ int bench_audio_run(const BenchOptions *opts, BenchReport *r) {
     bench_report_str(r, "audio", "buffer_size", "256");
     bench_report_str(r, "audio", "neon", no_neon ? "off" : "on");
     bench_report_metric(r, "audio", "voices_requested", voices * channels);
+    {
+        /* What syncVoiceGraph actually walks: the per-voice copy/atten/dest
+         * array sizes. If these are small the in-loop sync is a handful of
+         * branches and hoisting it saves nothing. */
+        Voice *v0 = vm->voicePools[0][0];
+        if (v0) {
+            bench_report_log(r, "sync counts: clones=%d attens=%d dests=%d\n",
+                             v0->cloneCount, v0->attenCount, v0->destCount);
+            printf("  sync counts: clones=%d attens=%d dests=%d\n",
+                   v0->cloneCount, v0->attenCount, v0->destCount);
+        }
+    }
     bench_report_metric(r, "audio", "voices_actual", total);
 
     int n_buffers = (duration * SR) / BUF;

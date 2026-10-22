@@ -13,6 +13,7 @@
 #include "bench_fileio.h"
 #include "bench_gfx.h"
 #include "bench_mod.h"
+#include "bench_voicetype.h"
 #include "bench_options.h"
 #include "bench_report.h"
 #include "bench_xvfb.h"
@@ -44,6 +45,8 @@ static void usage(void) {
 "  --display=WxH     gfx window size (default: the profile's panel size)\n"
 "  --workdir=DIR     fileio working directory (default: the profile's data dir)\n"
 "  --gpu=API         gles2 | gles3 (default: the profile's gpu.api)\n"
+"  -R RATE           override the audio sample rate the engine runs at\n"
+"  -F FRAMES         override the callback buffer size\n"
 "  --duration=SECS   audio duration in seconds (default 10)\n"
 "  --voices=N        voices per channel for audio mode (default 4)\n"
 "  --channels=N      channels for audio mode (default 4)\n"
@@ -274,7 +277,7 @@ int main(int argc, char **argv) {
     };
 
     int ch;
-    while ((ch = getopt_long(argc, argv, "b:o:D:W:K:G:d:v:c:s:hN", longopts, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, "b:o:D:W:K:G:d:v:c:R:F:s:hN", longopts, NULL)) != -1) {
         switch (ch) {
             case 'b': opts.bench = optarg; break;
             case 'o': opts.out = optarg; break;
@@ -290,6 +293,8 @@ int main(int argc, char **argv) {
             case 'G': opts.gpu = optarg; break;
             case 'd': opts.duration = atoi(optarg); break;
             case 'v': opts.voices = atoi(optarg); break;
+            case 'R': opts.audio_rate = atoi(optarg); break;
+            case 'F': opts.buffer_frames = atoi(optarg); break;
             case 'c': opts.channels = atoi(optarg); break;
             case 'N': opts.no_neon = 1; break;
             case 's': opts.seed = (unsigned)strtoul(optarg, NULL, 0); break;
@@ -360,6 +365,8 @@ int main(int argc, char **argv) {
         rc = bench_audio_run(&opts, r);
     } else if (strcmp(opts.bench, "mod") == 0) {
         rc = run_bench_mod(r, &opts);
+    } else if (strcmp(opts.bench, "voicetype") == 0) {
+        rc = run_bench_voicetype(r, &opts);
     } else if (strcmp(opts.bench, "fileio") == 0) {
         rc = bench_fileio_run(&opts, r);
     } else if (strcmp(opts.bench, "gfx") == 0) {
@@ -370,6 +377,7 @@ int main(int argc, char **argv) {
     } else if (strcmp(opts.bench, "all") == 0) {
         rc = bench_audio_run(&opts, r);
         if (rc == 0) rc = run_bench_mod(r, &opts);
+        if (rc == 0) rc = run_bench_voicetype(r, &opts);
         if (rc == 0) {
             xvfb = bench_xvfb_start_if_needed(headless, opts.width, opts.height);
             if (xvfb < 0) rc = 1;

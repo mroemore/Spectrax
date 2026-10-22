@@ -11,6 +11,7 @@ bench_sources = files(
   'bench_fileio.c',
   'bench_gfx.c',
   'bench_mod.c',
+  'bench_voicetype.c',
 )
 
 executable('spectrax_bench',
