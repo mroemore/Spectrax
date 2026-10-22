@@ -63,7 +63,7 @@ baked C default (g_defaultX in gui_style.c)
 At draw time each node does:
 
 ```c
-const DialStyle *st = resolveDialStyle(gn);   /* gn->className or baked default */
+const DialStyle *st = resolveDialStyle(gn);   /* class → type name → baked */
 ```
 
 So **styling is a lookup, not a cascade of selectors**: one class name per
@@ -157,17 +157,34 @@ Each drawable's style is selected by its `className` (`GuiNode.className`,
 a `char *`):
 
 ```c
+int idx = -1;
 if (gn && gn->className) {
-    int idx = findClass(gn->className, STYLE_DIAL);   /* type-qualified */
-    if (idx >= 0) return &g_dialClasses[g_classMap[idx].index];
+    idx = findClass(gn->className, STYLE_DIAL);      /* type-qualified */
 }
-return &g_defaultDial;                                 /* baked default */
+if (idx < 0) {
+    idx = findTypeClass(STYLE_DIAL);                 /* "dial" by name */
+}
+if (idx >= 0) return &g_dialClasses[g_classMap[idx].index];
+return &g_defaultDial;                               /* baked default */
 ```
 
-- No class name → the type's baked default.
-- A name that is not registered **for that type** → baked default, silently.
-  (This is why a dangling `childClasses` entry is invisible rather than an
-  error.)
+The chain is therefore **explicit class → type-named class → baked
+default**:
+
+- An explicit, registered class name wins.
+- No class name (or an unregistered one) → the class **named after the
+  type**, if the config declares one: `"dial"`, `"dial-discrete"`,
+  `"btn"`, `"type-label"`, `"step-cell"`, `"route-dest"`, `"chip"`,
+  `"text"`.
+- Only if the config declares no class of that name does the widget fall
+  through to the compiled-in baked default.
+
+This is why the per-type entries in `src/layout.json` are meaningful: the
+app's typed factories (`createDialGuiNode` and friends) never call
+`guiNodeSetClass`, so a widget with no class of its own still picks up its
+type's entry. Before this fallback existed those entries were decorative —
+editing `"dial"` did nothing unless a layout bound the node to it
+explicitly.
 - Matching is exact and case-sensitive.
 - The same name may exist under different types (the lookup is
   type-qualified). Two entries with the same name **and** type: the first
@@ -557,8 +574,10 @@ Read this before debugging a style that "does nothing".
     `y + h + oy`).
 11. **Text nodes are non-selectable** — they never receive the cursor, so
     `colorSelected` is unreachable for them.
-12. **Unknown colour names and unknown class names are silent no-ops.** A
-    typo leaves the inherited value/default in place.
+12. **Unknown colour names are silent no-ops**, and so are unknown class
+    names — a widget falls through to the class named after its type,
+    then to the baked default, and nothing warns. A typo leaves the
+    inherited value in place.
 
 ---
 
@@ -919,7 +938,8 @@ Caveats:
 2. `meson install` only seeds missing files; it will not update yours.
 3. Restart after any JSON change; nothing hot-reloads.
 4. A custom class must `extends` a type key, or it is dropped silently.
-5. Unknown class / colour names are silent no-ops.
+5. Unknown class / colour names fall through silently: class →
+   type-named class → baked default.
 6. `border.colorSelected` only shows when its alpha is non-zero; unset
    means "keep the legacy highlight".
 7. `type-label` draws its border only when selected.

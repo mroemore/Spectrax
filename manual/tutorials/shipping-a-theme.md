@@ -279,8 +279,9 @@ default — but the file on disk no longer describes what the app is
 using, and the next time the app quits it will add the key.
 
 The same trap applies to `layout.json`, and it is worse there, because
-a missing class is a **silent no-op** at runtime: the widget falls back
-to the baked default and nothing complains.
+a missing class is a **silent fallback** at runtime: the widget drops to
+the class named after its type, or to the baked default, and nothing
+complains.
 
 Three ways out, in order of preference:
 
@@ -522,23 +523,31 @@ config-driven path. The other is `createTextGuiNode()`, and no
 So the classes in force are `stage-rate` and `stage-curve-icon`, plus
 their `extends` ancestors `stage-curve` and `dial`. Every other widget
 in the app — the buttons, the chips, the step cells, the type labels,
-the route slots, the discrete dials — resolves through the **baked
-default**, not through the JSON entry of the same name.
+the route slots, the discrete dials — has no class of its own.
 
-That is not a subtlety of the resolver; it is what the resolver does:
+**What has changed since this section was written.** The resolver now
+falls back to the class *named after the type* before reaching for the
+baked default:
 
 ```c
 const DialStyle *resolveDialStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_DIAL);
-		if(idx >= 0) return &g_dialClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_DIAL);
 	}
-	return &g_defaultDial;      /* the BAKED default */
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_DIAL);   /* the class named "dial" */
+	}
+	if(idx >= 0) return &g_dialClasses[g_classMap[idx].index];
+	return &g_defaultDial;                 /* the BAKED default */
 }
 ```
 
-`createDialGuiNode()` never sets a class name, so the app's dials
-resolve to `g_defaultDial`.
+`createDialGuiNode()` still never sets a class name, but the dial now
+resolves to the JSON entry named `dial` rather than to `g_defaultDial`.
+That is what makes the per-type entries live — and it is why the layer
+of indirection worth understanding is the *class name*, not whether one
+was set.
 
 You can watch it happen. From the repo root, make the shipped `dial`
 class bigger and resolve a dial with and without the class:
@@ -569,30 +578,32 @@ $ gcc -I include -I src -I third_party/cjson probe.c \
     build/src/libspectrax_core.a build/libspectrax_cjson.a \
     -L lib/linux -lraylib -lm -o probe
 $ ./probe
-classless: knob.size 20  asset ''
+classless: knob.size 30  asset 'resources/images/dial2.png'
 class dial: knob.size 30  asset 'resources/images/dial2.png'
 ```
 
-The classless dial is still 20 px: the JSON `dial` entry never reached
-it. (A `"stage-rate"` dial, which *does* inherit from `dial`, is
-unaffected too — `stage-rate` sets its own size.)
+Since the type-key fallback landed, the classless dial resolves to the
+same entry as the explicitly-classed one. (Before it, the classless
+dial stayed at 20 px and the `dial` entry never reached it.) A
+`"stage-rate"` dial, which *does* inherit from `dial`, still uses its
+own size — an explicit class always wins over the type-name fallback.
 
 ### What to edit, then
 
-- **To change the whole app's look, change the theme.** The baked
-  defaults are seeded from it, and they are what every unbound widget
-  uses.
+- **To change the whole app's look, change the theme** for anything the
+  config does not name, or **edit the per-type class** (`"dial"`,
+  `"btn"`, `"chip"`, …) for that style type. Both reach every widget of
+  that type.
 - **To change one widget, bind a class to it** — through a layout's
-  `childClasses`, or in C with `guiNodeSetClass()`.
-- **Editing one of the seven unbound per-type entries changes
-  nothing**: `dial-discrete`, `btn`, `type-label`, `step-cell`,
-  `route-dest`, `chip`, `text`. The shipped `test_layout` still passes,
-  because it validates that the class *compiles*, not that it is used.
+  `childClasses`, or in C with `guiNodeSetClass()`. An explicit class
+  wins over both the type-named entry and the theme.
+- Remember the ordering: **explicit class → class named after the type
+  → baked default.**
 
 Those entries are not junk. `test_layout` requires one per style type,
-they document the schema, and they mirror the baked defaults, so the
-app looks the same either way. They are inert until something binds
-them.
+they document the schema, and the shipped ones mirror the baked
+defaults so the app looks identical either way. They are what you edit
+to restyle a whole widget type without touching C.
 
 ## 7. Colour-token discipline
 
@@ -915,7 +926,7 @@ alignment; the rest of the type is here.
 | A legacy flat theme lost `text.disabled` | there is no alias for it; the default is used (§5.3) |
 | `chip.palette` is not showing | the *style* takes token names, the *theme* takes hex (§5.2) |
 | You edited the `btn` class and nothing happened | no widget binds that class — it is inert (§6) |
-| A style change reaches one widget but not the others | the other widgets use the baked default, not the JSON (§6) |
+| A style change reaches one widget but not the others | the other widgets have their own class; the change only hit one entry (see §6 for the resolution chain) |
 | The app does not see the change | nothing hot-reloads; restart (§9) |
 | Your classes vanished mid-session | a second `compileLayoutConfig()` replaces the registry (§9) |
 | The knob texture did not load | the path is relative to the data dir; a failed load is silent (§10) |
@@ -957,20 +968,21 @@ Two smaller things this tutorial deliberately does not do:
 
 §6 turned up a gap in the shipped config that no validator catches:
 seven of the eleven classes in `src/layout.json` are bound to no
-widget, so editing them is a no-op. The shipped-config test validates
-that each class *compiles*, not that it is *used*, so nothing in the
-suite fails.
+widget, so editing them was a silent no-op. The shipped-config test
+validates that each class *compiles*, not that it is *used*, so nothing
+in the suite failed.
 
-Whether that is the intent or an oversight is a call for the project
-owner, not for a tutorial. What a config author needs is the map, and
-`theme_tool bound` prints it. Two ways to close the gap properly, if
-it is an oversight:
+**Resolved:** the resolver now falls back to the type-named class
+(`resolveXStyle` → `findTypeClass`) before the baked default, so an
+unclassed widget picks up its type's entry. The resolution chain is
+**explicit class → type-named class → baked default** — see the guide's
+§4.3. The shipped config renders pixel-identical because those entries
+were written to mirror the baked defaults, but editing them now works:
+a `"dial"` or `"chip"` change reaches every widget of that type.
 
-- bind the per-type classes (a `childClasses` entry per layout that
-  holds those widgets), or
-- make the resolver fall back to the compiled type-key class instead of
-  the baked default — which would change what the app draws today, so
-  it is a behaviour change, not a documentation change.
+`theme_tool bound` still prints the map, and is now the way to check
+*which* class a widget ends up on rather than whether your edit is
+futile.
 
 ### Is the styling system fully documented?
 

@@ -196,6 +196,12 @@ void freeGuiNode(GuiNode *gn) {
 	free(gn);
 }
 
+/* Bind a node to a style class. The config-driven caller is
+ * applyLayout() (childClasses); a widget factory can also call this
+ * directly. Note that the app's own typed factories (createDialGuiNode
+ * and friends) do NOT do so, so an unclassed widget resolves to the
+ * baked default for its type, not to the src/layout.json entry of the
+ * same name. See manual/tutorials/shipping-a-theme.md §14. */
 void guiNodeSetClass(GuiNode *gn, const char *className) {
 	if(!gn) {
 		return;

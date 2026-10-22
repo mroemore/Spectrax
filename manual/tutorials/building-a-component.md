@@ -1065,6 +1065,14 @@ Platform notes:
   `src/layout.json`, and a test in `tests/dsp/test_layout.c`.
 - **Then read the gotcha checklist.** The guide's §11 is the one-page
   list of everything that silently does nothing.
+- **Take the other half: the file plumbing.** [Shipping a theme](shipping-a-theme.md)
+  continues from here. This tutorial built a component in its own
+  target; that one covers where config actually lives, what
+  `meson install` seeds and never clobbers, how a theme is authored and
+  rewritten, the validator workflow, and the reload semantics. It also
+  maps which shipped classes are actually bound to a widget — worth
+  reading before you assume a per-type entry in `src/layout.json` is
+  doing anything.
 
 ## 27. Where the pieces live
 

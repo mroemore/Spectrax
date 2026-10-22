@@ -15,6 +15,9 @@
 
 static void ensure_tmp_dirs(void) { mkdir(TMP_DIR, 0755); }
 
+static int test_type_key_fallback_resolves(void);
+static int test_btn_and_typelabel_styles(void);
+
 static int test_baked_defaults_used_when_no_class(void) {
 	GuiNode *n = createBlankGuiNode();
 	const DialStyle *d = resolveDialStyle(n);
@@ -44,13 +47,15 @@ static int test_unknown_class_falls_back_to_type_default(void) {
 
 static int test_compute_dial_geometry(void) {
 	GuiNode *n = createGuiNode(100, 200, 80, 40, 4, na_horizontal, "g", 1, 0);
+	/* Classless, so this resolves through the type-named "dial" entry the
+	 * suite compiled earlier — not the baked default. */
 	const DialStyle *d = resolveDialStyle(n);
 	DialGeometry g;
 	computeDialGeometry(n, d, &g);
 	/* contentW = 80-8 = 72 < groupW 86 -> classic horizontal inset cx+2 */
 	ASSERT_TRUE(g.knobX == 106, "narrow cell keeps horizontal inset");
-	/* contentH = 40-8 = 32 > knob 20 -> knob centers vertically */
-	ASSERT_TRUE(g.knobY == 204 + (32 - 20) / 2, "knob centers vertically");
+	/* contentH = 40-8 = 32 > knob d->knob.size -> knob centers vertically */
+	ASSERT_TRUE(g.knobY == 204 + (32 - d->knob.size) / 2, "knob centers vertically");
 	/* value follows the knob; label centres in the cell below the knob */
 	ASSERT_TRUE(g.valueX == g.knobX + 28, "valueX is knob-relative");
 	ASSERT_TRUE(g.valueY == g.knobY + 2, "valueY is knob-relative");
@@ -240,10 +245,21 @@ static int test_border_colour_selected_resolves(void) {
 	freeGuiNode(n);
 	remove(path);
 
+	/* The classless path resolves through the type-named "dial" entry,
+	 * which this fixture defines — so it inherits colorSelected, exactly
+	 * like the explicitly-named node above. */
 	GuiNode *plain = createBlankGuiNode();
 	const DialStyle *p2 = resolveDialStyle(plain);
-	ASSERT_TRUE(p2->border.colorSelected.a == 0, "unset colorSelected stays transparent");
+	ASSERT_TRUE(p2->border.colorSelected.a == 255,
+	            "classless node inherits colorSelected via the type-named entry");
 	freeGuiNode(plain);
+
+	/* The baked default with no class resolution at all is only reachable
+	 * for a type the config does not define. This fixture defines only
+	 * "dial", so the discrete dial's baked default still has alpha 0. */
+	const DialStyle *baked = resolveDiscreteDialStyle(NULL);
+	ASSERT_TRUE(baked->border.colorSelected.a == 0,
+	            "unset colorSelected stays transparent on the baked default");
 	printf("PASS test_border_colour_selected_resolves\n");
 	return 0;
 }
@@ -423,6 +439,7 @@ int main(void) {
 	ensure_tmp_dirs();
 	fails += test_baked_defaults_used_when_no_class();
 	fails += test_unknown_class_falls_back_to_type_default();
+	fails += test_type_key_fallback_resolves();
 	fails += test_compute_dial_geometry();
 	fails += test_compile_custom_dial_class();
 	fails += test_compile_unknown_class_ignored();
@@ -455,6 +472,50 @@ int main(void) {
 		return 1;
 	}
 	printf("ALL layout tests passed\n");
+	return 0;
+}
+
+static int test_type_key_fallback_resolves(void) {
+	/* The app's typed factories never call guiNodeSetClass, so a widget
+	 * with no class must still honour the class named after its type
+	 * ("dial", "btn", ...) in the config. Without this fallback those
+	 * per-type entries are decorative: the widget would resolve to the
+	 * baked default instead. This pins the two-step chain:
+	 *   explicit class -> type-named class -> baked default.
+	 */
+	const char *path = ".tmp_files/layout_test_typekey.json";
+	FILE *f = fopen(path, "w");
+	fputs("{\"styles\":{\"dial\":{\"knob\":{\"size\":30,\"radius\":15}},"
+	      "\"my-dial\":{\"extends\":\"dial\",\"knob\":{\"size\":44}}}}", f);
+	fclose(f);
+	ColourScheme cs;
+	initDefaultColourScheme(&cs);
+	compileLayoutConfig(path, &cs);
+
+	/* Classless: picks up the type-named "dial" entry, not the baked 20. */
+	GuiNode *plain = createBlankGuiNode();
+	ASSERT_TRUE(resolveDialStyle(plain)->knob.size == 30,
+	            "classless dial resolves to the type-named 'dial' entry");
+	ASSERT_TRUE(resolveDialStyle(plain)->knob.radius == 15,
+	            "classless dial picks up radius from the type-named entry");
+
+	/* Explicit class still wins over the type-named fallback. */
+	GuiNode *named = createBlankGuiNode();
+	guiNodeSetClass(named, "my-dial");
+	ASSERT_TRUE(resolveDialStyle(named)->knob.size == 44,
+	            "explicit class wins over the type-named fallback");
+
+	/* An unknown class falls through to the type-named entry too. */
+	GuiNode *unknown = createBlankGuiNode();
+	guiNodeSetClass(unknown, "no-such-dial");
+	ASSERT_TRUE(resolveDialStyle(unknown)->knob.size == 30,
+	            "unknown class falls through to the type-named entry");
+
+	freeGuiNode(plain);
+	freeGuiNode(named);
+	freeGuiNode(unknown);
+	remove(path);
+	printf("PASS test_type_key_fallback_resolves\n");
 	return 0;
 }
 
@@ -640,49 +701,41 @@ static int test_step_cell_style_resolves_and_draws(void) {
 	initDefaultColourScheme(&cs);
 	compileLayoutConfig(path, &cs);
 
-	/* Resolution: a classless node returns the baked default. */
+	/* Resolution: a classless node resolves through the type-named class
+	 * ("step-cell"), per resolveStepCellStyle's type-key fallback. A
+	 * blank node has no class of its own, so it picks up the config's
+	 * step-cell entry. */
 	GuiNode *plain = createBlankGuiNode();
 	const StepCellStyle *st = resolveStepCellStyle(plain);
-	ASSERT_TRUE(st != NULL, "resolver returns baked default for classless node");
-	/* Baked defaults populated from initDefaultColourScheme's
-	 * defaultCell = {148,68,16,255}; highlight = {214,60,17,255};
-	 * outlineColour = {219,148,103,255}; fontColour = {99,17,0,255}. */
-	ASSERT_TRUE(st->bgEmpty.r == 148 && st->bgEmpty.g == 68 &&
-	            st->bgEmpty.b == 16 && st->bgEmpty.a == 255,
-	            "baked bgEmpty == defaultCell");
-	ASSERT_TRUE(st->bgPlaying.r == 214 && st->bgPlaying.g == 60 &&
-	            st->bgPlaying.b == 17 && st->bgPlaying.a == 255,
-	            "baked bgPlaying == highlightedCell");
-	ASSERT_TRUE(st->borderSelected.r == 219 && st->borderSelected.a == 255,
-	            "baked borderSelected == outlineColour");
-	ASSERT_TRUE(st->note.color.r == 99 && st->note.color.g == 17 &&
-	            st->note.color.b == 0 && st->note.color.a == 255,
-	            "baked note.color == fontColour");
+	ASSERT_TRUE(st != NULL, "resolver returns a style for classless node");
+	ASSERT_TRUE(st->bgEmpty.r == cs.selectedCell.r &&
+	            st->bgEmpty.g == cs.selectedCell.g &&
+	            st->bgEmpty.b == cs.selectedCell.b,
+	            "classless node picks up the type-named step-cell entry");
 	/* The note LabelStyle's fontName must map (via styleFont) to textFont. */
 	ASSERT_TRUE(st->note.fontName && strcmp(st->note.fontName, "text") == 0,
 	            "note fontName references text font slot");
-	/* Baked default keeps fontSize at 0 so drawStepGuiNode's ternary
-	 * falls through to textFont.baseSize — byte-for-byte the same size
-	 * the pre-StepCellStyle drawStepGuiNode used. */
-	ASSERT_TRUE(st->note.fontSize == 0,
-	            "baked note.fontSize == 0 (fall through to textFont.baseSize)");
+	/* The config's step-cell entry sets fontSize 11 (see the fixture
+	 * above), proving the classless path landed on the JSON entry. */
+	ASSERT_TRUE(st->note.fontSize == 11,
+	            "classless node uses the config's step-cell note.fontSize");
 	freeGuiNode(plain);
 
-	/* Unknown class falls back to the baked default (same pointer). */
+	/* Unknown class also falls through to the type-named class, so it
+	 * resolves to the same entry as a classless node. */
 	GuiNode *u = createBlankGuiNode();
 	guiNodeSetClass(u, "no-such-step-cell-class");
 	const StepCellStyle *fb = resolveStepCellStyle(u);
-	ASSERT_TRUE(fb == st, "unknown class returns the same baked default");
+	ASSERT_TRUE(fb == st, "unknown class falls through to the type-named entry");
 	freeGuiNode(u);
 
-	/* Custom class wins: a node classed "step-cell" gets its overrides.
-	 * "selectedCell"/"reddish"/"background" are theme field names chosen
-	 * to differ from defaultCell / highlightedCell / outlineColour so we
-	 * can be sure the override went through. */
+	/* Custom class: a node classed "step-cell" resolves to that entry.
+	 * This is now the same entry a classless node reaches via the
+	 * type-key fallback, so both must agree. */
 	GuiNode *cn = createBlankGuiNode();
 	guiNodeSetClass(cn, "step-cell");
 	const StepCellStyle *custom = resolveStepCellStyle(cn);
-	ASSERT_TRUE(custom != st, "class match returns a custom entry");
+	ASSERT_TRUE(custom == st, "the explicit class and the type-key fallback agree");
 	ASSERT_TRUE(custom->bgEmpty.r == cs.selectedCell.r &&
 	            custom->bgEmpty.g == cs.selectedCell.g &&
 	            custom->bgEmpty.b == cs.selectedCell.b,

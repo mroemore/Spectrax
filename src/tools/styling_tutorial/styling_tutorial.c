@@ -794,10 +794,10 @@ static void checkStyles(void) {
 	CHECK(dest->border.borderWidth == 1.0f, "macro-slot borderWidth 1.0");
 	CHECK(dest->border.color.g == g_cs.vline.g, "macro-slot border is line.grid");
 
-	/* An unknown class falls back to the type default, silently. */
+	/* An unknown class falls through to the type-named class, silently. */
 	guiNodeSetClass(n, "no-such-class");
 	const DialStyle *fb = resolveDialStyle(n);
-	CHECK(fb->knob.size == 20, "unknown class falls back to the baked default");
+	CHECK(fb->knob.size == 18, "unknown class falls through to the type-named entry");
 
 	freeGuiNode(n);
 }
@@ -893,14 +893,18 @@ static void checkGeometry(MacroBank *mb) {
 	      "the second step cell names the per-type default class");
 	CHECK(mb->stepCells[2]->className == NULL, "the third step cell has no class at all");
 
-	/* The per-type default class and the baked default are different
-	 * structs: the JSON "chip" class sets dots 5/3, the baked default
-	 * is 4/2. */
+	/* A classless node resolves through the type-named class, so it lands
+	 * on the JSON "chip" entry (dots 5/3) like an explicitly-named one.
+	 * The baked default (4/2) is only reachable when the config declares
+	 * no class of that name — which this demo's config does not, so it
+	 * cannot be observed as a distinct struct here. The guide's §5.6 has
+	 * the no-config case. */
 	const ChipStyle *named = resolveChipStyle(mb->chip);
 	CHECK(named->dots.size == 5, "the named chip class is the compiled one");
 	GuiNode *plain = createBlankGuiNode();
-	const ChipStyle *baked = resolveChipStyle(plain);
-	CHECK(baked->dots.size == 4, "a classless node gets the baked default");
+	const ChipStyle *unclassed = resolveChipStyle(plain);
+	CHECK(unclassed->dots.size == 5, "a classless node resolves to the type-named class");
+	CHECK(unclassed == named, "classless and explicitly-named hit the same entry");
 	freeGuiNode(plain);
 
 	/* The scroll container. */

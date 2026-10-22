@@ -230,6 +230,18 @@ static int findClass(const char *name, StyleType want) {
 	return -1;
 }
 
+/* A widget with no class of its own still has a type, and the config may
+ * declare a class named after that type ("dial", "btn", ...). Falling
+ * back to it here is what makes those per-type entries live: the app's
+ * typed factories do not call guiNodeSetClass, so without this an
+ * unclassed widget would resolve to the baked default and the entry in
+ * src/layout.json would be decorative. Returns the class index, or -1.
+ */
+static int findTypeClass(StyleType t) {
+	const char *n = g_defaultClassName(t);
+	return n ? findClass(n, t) : -1;
+}
+
 int styleClassType(const char *className) {
 	if(!className) {
 		return -1;
@@ -243,66 +255,98 @@ int styleClassType(const char *className) {
 }
 
 const DialStyle *resolveDialStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_DIAL);
-		if(idx >= 0) return &g_dialClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_DIAL);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_DIAL);
+	}
+	if(idx >= 0) return &g_dialClasses[g_classMap[idx].index];
 	return &g_defaultDial;
 }
 
 const DialStyle *resolveDiscreteDialStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_DIAL_DISCRETE);
-		if(idx >= 0) return &g_discreteDialClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_DIAL_DISCRETE);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_DIAL_DISCRETE);
+	}
+	if(idx >= 0) return &g_discreteDialClasses[g_classMap[idx].index];
 	return &g_defaultDialDiscrete;
 }
 
 const BtnStyle *resolveBtnStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_BTN);
-		if(idx >= 0) return &g_btnClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_BTN);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_BTN);
+	}
+	if(idx >= 0) return &g_btnClasses[g_classMap[idx].index];
 	return &g_defaultBtn;
 }
 
 const TypeLabelStyle *resolveTypeLabelStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_TYPE_LABEL);
-		if(idx >= 0) return &g_typeLabelClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_TYPE_LABEL);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_TYPE_LABEL);
+	}
+	if(idx >= 0) return &g_typeLabelClasses[g_classMap[idx].index];
 	return &g_defaultTypeLabel;
 }
 
 const StepCellStyle *resolveStepCellStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_STEP_CELL);
-		if(idx >= 0) return &g_stepCellClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_STEP_CELL);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_STEP_CELL);
+	}
+	if(idx >= 0) return &g_stepCellClasses[g_classMap[idx].index];
 	return &g_defaultStepCell;
 }
 
 const DestStyle *resolveDestStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_DEST);
-		if(idx >= 0) return &g_destClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_DEST);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_DEST);
+	}
+	if(idx >= 0) return &g_destClasses[g_classMap[idx].index];
 	return &g_defaultDest;
 }
 
 const ChipStyle *resolveChipStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_CHIP);
-		if(idx >= 0) return &g_chipClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_CHIP);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_CHIP);
+	}
+	if(idx >= 0) return &g_chipClasses[g_classMap[idx].index];
 	return &g_defaultChip;
 }
 
 const TextStyle *resolveTextStyle(const GuiNode *gn) {
+	int idx = -1;
 	if(gn && gn->className) {
-		int idx = findClass(gn->className, STYLE_TEXT);
-		if(idx >= 0) return &g_textClasses[g_classMap[idx].index];
+		idx = findClass(gn->className, STYLE_TEXT);
 	}
+	if(idx < 0) {
+		idx = findTypeClass(STYLE_TEXT);
+	}
+	if(idx >= 0) return &g_textClasses[g_classMap[idx].index];
 	return &g_defaultText;
 }
 
