@@ -32,6 +32,33 @@ steps need the hardware; the host steps do not.
 and drops the resolved key from the profile's `[probes] needed` list. A probe
 never fails the build: it reports what it found and exits 0.
 
+### Status on a real unit (ROCKNIX 20261001, 2026-10-22)
+
+Resolved: `userspace_arch` (aarch64), `ports_dir`
+(`/storage/roms/ports`), `display_mode` (640x480 native), `audio_device`
+(`dmix` at 48000).
+
+Still open, and why:
+- `usb_gadget` -- needs the USB-C port exercised with a host on the other
+  end, which this session had no cable for.
+- `cpu_governor`, `lid_switch`, `ram_type` -- not yet probed. Note the RAM
+  dispute is unresolved: Anbernic say DDR3, the ROCKNIX wiki says LPDDR4.
+
+### Audio on this device
+
+The H700 exposes no 44100 Hz device at all: `hw:0,0` is 192000 (no plug
+layer), `sysdefault` reports `INT_MAX`, and only `dmix` is usable, at
+48000. The engine therefore runs at whatever rate the opened stream
+reports rather than a compile-time 44100, and `openAudioStream()` prefers
+the plugin devices. Two upstream PortAudio assumptions break on this
+stack and are patched by `scripts/build-target-libs.sh` (see the comments
+there): `assert(maxPeriods > 1)`, and trusting period-size bounds that an
+unconstrained plugin PCM reports as `min = max = 0`.
+
+Observed on the unit: `device=dmix buffer=256 rate=48000`, stream state
+`RUNNING`, and the `bench_audio` DSP loop at 0 xruns with a real-time
+ratio of ~0.91 for 16 voices.
+
 ## First-time host setup
     scripts/setup-device.sh --device rg35xxsp
 
