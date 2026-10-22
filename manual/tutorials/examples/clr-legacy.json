@@ -1,0 +1,65 @@
+{
+	"schema": 2,
+	"font": {
+		"path": "resources/fonts/console.ttf",
+		"size": 9,
+		"spacing": 1
+	},
+	"colors": {
+		"background": "#101820FF",
+		"panel": "#1B2733FF",
+		"valueDisplayBg": "#0B1118FF",
+		"layerDim": "#000000AA",
+
+		"font": "#E8F1F8FF",
+		"secondaryFont": "#9FB4C6FF",
+		"label": "#6E8496FF",
+		"labelSelected": "#A8D8FFFF",
+		"valueText": "#58C7FFFF",
+		"arrangerCellText": "#6E8496FF",
+
+		"panelBorder": "#1E2C38FF",
+		"wrapperBorder": "#16222CFF",
+		"outline": "#58C7FFFF",
+		"vline": "#2A3B49FF",
+		"stepBorder": "#22323FFF",
+
+		"defaultCell": "#16222CFF",
+		"blankCell": "#0E151BFF",
+		"highlightedCell": "#2E6C82FF",
+		"selectedCell": "#58C7FFFF",
+
+		"dial": "#58C7FFFF",
+		"reddish": "#FF7850FF",
+
+		"waveformBg": "#0B1118FF",
+		"waveform": "#58C7FFFF",
+		"waveformAlt": "#FF9E64FF",
+		"poly": "#58C7FFFF",
+		"spectrogramPlayhead": "#FFFFFFFF",
+
+		"sampleBg": "#131C24FF",
+		"sampleAltBg": "#0E151BFF",
+		"sampleBorder": "#2A3B49FF",
+		"stepClosed": "#1B2733FF",
+
+		"arrangerPlayhead": "#58C7FFFF",
+
+		"modStripLfo": "#64D8FFFF",
+		"modStripEnv": "#8CFF9EFF",
+		"modStripRnd": "#FF7AD9FF",
+		"modStripOfs": "#C0C8D0FF",
+		"modStripDefault": "#96A4B0FF",
+		"routeAdd": "#FF7850FF",
+		"routeMul": "#64D8FFFF",
+
+		"chipPalette0": "#2E6C82FF",
+		"chipPalette1": "#3F8C6CFF",
+		"chipPalette2": "#8C6C2EFF",
+		"chipPalette3": "#6C3F8CFF",
+		"chipPalette4": "#2E8C8CFF",
+		"chipPalette5": "#8C3F5AFF",
+		"chipPalette6": "#5A8C3FFF",
+		"chipPalette7": "#8C8C3FFF"
+	}
+}

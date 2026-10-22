@@ -902,6 +902,13 @@ Caveats:
   its own config, and its own `--selftest` that asserts resolved styles and
   reflowed geometry. See
   [Building a new component](tutorials/building-a-component.md) §22.
+- The shipped-config guards above only cover the *shipped* files. For a
+  theme file of your own, `src/tools/theme_tool/` audits it: it resolves
+  the config dirs the app would pick, reports every canonical colour path
+  the file fails to supply, prints the canonical grouped form the app
+  writes back on exit, and reports which classes the style config
+  actually binds. See
+  [Shipping a theme](tutorials/shipping-a-theme.md) §6, §7 and §8.
 
 ---
 
@@ -934,6 +941,13 @@ Caveats:
 19. Text nodes are non-selectable.
 20. Scroll containers ignore weights and need a reflow after
     `scrollOffset` changes.
+21. A class that nothing binds does nothing. The app resolves a widget
+    through the **baked** default unless a node names the class — the
+    per-type entries in the shipped `src/layout.json` are only in force
+    where a layout's `childClasses` (or a C `guiNodeSetClass()` call)
+    asks for them. `src/tools/theme_tool/` reports which classes the
+    config binds; see
+    [Shipping a theme](tutorials/shipping-a-theme.md) §6.
 
 ---
 
@@ -957,5 +971,6 @@ Caveats:
 | `tests/dsp/test_layout.c` | compile/apply/geometry tests + shipped-layout validator |
 | `tests/dsp/test_theme.c` | shipped-theme completeness, round-trip and alias tests |
 | `src/tools/styling_tutorial/` | self-contained demo for the tutorial: its own build target, config and `--selftest` |
+| `src/tools/theme_tool/` | companion tool for the theme tutorial: resolves the config dirs, audits a theme file, shows the canonical form the app writes back, reports which classes the config binds |
 | `docs/superpowers/specs/2026-09-08-layout-config-design.md` | original three-tier design |
 | `docs/superpowers/specs/2026-09-14-ui-theme-polish-design.md` | "every visual knob is a JSON field" convention |

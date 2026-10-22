@@ -32,6 +32,8 @@ src/tools/sample_analyser/inspectro_wavget
 src/tools/sample_analyser/*.o
 src/tools/styling_tutorial/styling_tutorial
 src/tools/styling_tutorial/*.o
+src/tools/theme_tool/theme_tool
+src/tools/theme_tool/*.o
 bin/instrument_harness
 bin/nav_harness
 bin/inspectro_wavget

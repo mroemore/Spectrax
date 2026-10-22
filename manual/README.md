@@ -16,7 +16,10 @@ than "how did we decide this?".
 - [Tutorials](tutorials/building-a-component.md) — worked examples that
   build something with the styling system. Start with
   [Building a new component](tutorials/building-a-component.md): a new
-  layout and a new widget, from the first class to the tests.
+  layout and a new widget, from the first class to the tests. Then
+  [Shipping a theme](tutorials/shipping-a-theme.md): where the config
+  actually lives, how a theme is authored and shipped, and how to
+  validate a config change before it ships.
 
 ## Adding a guide
 
