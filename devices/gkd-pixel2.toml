@@ -1,0 +1,61 @@
+# GKD Pixel 2 — RK3326S, Cortex-A35, Mali-G31 MP2, 1 GB DDR3, 640x480 IPS.
+# CFW: ROGUE OS (Ninoh-FOX), ROCKNIX-derived, EmulationStation + PortMaster.
+# Facts carried over from docs/superpowers/specs/2026-09-20-gkd-pixel2-tooling-design.md.
+# Hostname/user/password are the GKD spec's stated values; the password is
+# still to be confirmed by scripts/probe-os.sh.
+
+[device]
+id        = "gkd-pixel2"
+vendor    = "GKD"
+model     = "Pixel 2"
+soc       = "RK3326S"
+arch      = "aarch64"
+cpu_core  = "cortex-a35"
+cpu_mhz   = 1500
+cores     = 4
+gpu       = "Mali-G31 MP2"
+ram_mb    = 1024
+ram_type  = "DDR3"
+storage   = "microSD"
+
+[cfw]
+family         = "rogue"
+hostname       = "rogue_pixel2"
+user           = "root"
+password       = "rogue"
+password_source = "fixed"
+ssh_enabled_by_default = true
+
+[display]
+width  = 640
+height = 480
+scale  = 1.0
+native = true
+
+[gpu]
+driver     = "libmali"
+api        = "gles2"
+helper     = "/usr/bin/setgpu.sh"
+compositor = "sway"
+platform   = "drm"
+
+[paths]
+storage_root = "/roms"
+ports_dir    = "/roms/ports"
+data_dir     = "/roms/ports/spectrax"
+runs_dir     = "/roms/ports/spectrax/runs"
+
+[transport]
+order       = ["wifi-ssh", "sd"]
+mdns_names  = ["rogue_pixel2.local"]
+usb_gadget_host_ip   = ""
+usb_gadget_device_ip = ""
+
+[build]
+cross_file = "meson/cross/aarch64-linux-gnu.ini"
+libdir     = "lib/aarch64"
+c_args     = ["-mcpu=cortex-a35", "-mtune=cortex-a35", "-O3",
+              "-ftree-vectorize", "-ffast-math", "-flto"]
+
+[probes]
+needed = ["userspace_arch", "ports_dir", "gpu_driver", "gpu_helper"]

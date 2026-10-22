@@ -121,6 +121,12 @@ exe = executable('test_sequencer',
 )
 test('test_sequencer', exe)
 
+# Device-profile loader/linter contract (host-side, no device needed).
+test('test_device_profile',
+  find_program('dsp/test_device_profile.sh'),
+  args: [],
+)
+
 # vizfx tests are standalone (pure buffer-scroller data ops).
 exe = executable('test_vizfx',
   files('dsp/test_vizfx.c'),
