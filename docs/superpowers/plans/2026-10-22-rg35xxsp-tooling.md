@@ -3299,3 +3299,18 @@ change visible in the commit that made it.
     library is dropped from the link by `--as-needed`). The build script
     always cleans first and verifies that the table references
     `PaAlsa_Initialize`.
+
+18. **Task 5 — the armhf bundle was built too, and the armhf cross template
+    changed.** `scripts/build-target-libs.sh` is arch-generic, so the armhf
+    bundle (`lib/armhf/`, `include/armhf/`) was built the same way and the
+    armhf cross build now links (a 32-bit ARM EABI5 PIE with the same
+    `DT_NEEDED` set). Two changes came with it:
+    * the armhf template's `spectrax_libdir`/`spectrax_incdir` point at the
+      new DRM bundle, not at the legacy `lib/arm/` (a desktop-GLFW build
+      that cannot link on a DRM device; it is left in the tree as it was
+      found);
+    * the armhf template drops `-flto`. The locally installed
+      `arm-linux-gnueabihf` toolchain's LTO plugin cannot resolve the
+      project's static archives — the link fails with undefined references
+      to symbols the archives do define — so the armhf target links
+      without LTO. The aarch64 toolchain is unaffected and keeps `-flto`.
