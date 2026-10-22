@@ -1,0 +1,64 @@
+# Anbernic RG35XX SP — clamshell, Allwinner H700, Cortex-A53, Mali-G31 MP2,
+# 1 GB RAM, 3.5" IPS 640x480.
+#
+# Sources for every value are recorded in
+# docs/superpowers/specs/2026-10-22-rg35xxsp-tooling-design.md section 5.1.
+# Values marked "probed" below are still open and are listed in [probes].
+
+[device]
+id        = "rg35xxsp"
+vendor    = "Anbernic"
+model     = "RG35XX SP"
+soc       = "Allwinner H700"
+arch      = "aarch64"        # ROCKNIX H700 kernel is aarch64 (linux.aarch64.conf)
+cpu_core  = "cortex-a53"     # sun50i-h616.dtsi: compatible = "arm,cortex-a53" x4
+cpu_mhz   = 1500             # OPP table tops out at 1512 MHz; ES offers a 1.5 GHz OC
+cores     = 4
+gpu       = "Mali-G31 MP2"   # DT node: "allwinner,sun50i-h616-mali", "arm,mali-bifrost"
+ram_mb    = 1024             # Anbernic: 1 GB DDR3. ROCKNIX wiki says LPDDR4 -- disputed.
+ram_type  = "DDR3"
+storage   = "microSD"        # ROCKNIX wiki: no eMMC
+
+[cfw]
+family          = "rocknix"
+hostname        = "RG35XX-SP"
+user            = "root"
+password        = ""
+password_source = "user-set"  # ROCKNIX regenerates the root password every boot
+ssh_enabled_by_default = false # ROCKNIX ships with SSH off; enable it in ES
+
+[display]
+width  = 640
+height = 480
+scale  = 1.0
+native = true                 # the panel is 640x480, matching the Spectrax surface
+
+[gpu]
+driver     = "panfrost"       # ROCKNIX wiki: Panfrost, GL 3.1 / GLES 3.1
+api        = "gles3"
+helper     = ""               # no GPU-switch helper is known on this device
+compositor = "sway"           # ROCKNIX uses Sway (Wayland)
+platform   = "drm"
+
+[paths]
+storage_root = "/storage"     # ROCKNIX writable root
+ports_dir    = "/storage/roms/ports"
+data_dir     = "/storage/roms/ports/spectrax"
+runs_dir     = "/storage/roms/ports/spectrax/runs"
+
+[transport]
+order       = ["usb-gadget", "wifi-ssh", "sd"]
+mdns_names  = ["rocknix.local", "rg35xxsp.local"]
+usb_gadget_host_ip   = "169.254.170.1"   # ROCKNIX usbgadget default
+usb_gadget_device_ip = "169.254.170.2"
+
+[build]
+cross_file = "meson/cross/aarch64-linux-gnu.ini"
+libdir     = "lib/aarch64"
+incdir     = "include/aarch64"
+c_args     = ["-mcpu=cortex-a53", "-mtune=cortex-a53", "-O3",
+              "-ftree-vectorize", "-ffast-math", "-flto"]
+
+[probes]
+needed = ["userspace_arch", "ports_dir", "usb_gadget", "display_mode",
+          "audio_device", "cpu_governor", "lid_switch", "ram_type"]
