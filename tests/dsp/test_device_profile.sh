@@ -66,4 +66,11 @@ grep -q "spectrax_incdir = 'include/aarch64'" "$out" || fail "generated cross fi
 grep -q "CFW_PASSWORD_SOURCE" scripts/setup-device.sh || fail "setup-device.sh does not branch on password_source"
 grep -q "fixed" scripts/setup-device.sh || fail "setup-device.sh lacks the fixed-password branch"
 
+# Every probe named in the spec must exist and be syntactically valid.
+for p in probe-os probe-paths probe-usb probe-display probe-audio \
+         probe-cpu probe-mem probe-lid probe-boot probe-storage probe-gpu; do
+    [ -f "scripts/$p.sh" ] || fail "missing probe: $p"
+    sh -n "scripts/$p.sh" || fail "probe $p has a syntax error"
+done
+
 echo "test_device_profile: ok"
