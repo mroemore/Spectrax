@@ -7,6 +7,7 @@ typedef struct {
     const char *device;   /* device profile id, or NULL on the host */
     const char *workdir;  /* fileio working directory, or NULL */
     const char *gpu;      /* gles2 | gles3, or NULL */
+    int audio_rate;       /* stream rate the device opened at; 0 = bench default */
     int width;            /* gfx window width */
     int height;           /* gfx window height */
     int duration;         /* seconds */

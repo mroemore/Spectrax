@@ -12,6 +12,7 @@
 #include "bench_audio.h"
 #include "bench_fileio.h"
 #include "bench_gfx.h"
+#include "bench_mod.h"
 #include "bench_options.h"
 #include "bench_report.h"
 #include "bench_xvfb.h"
@@ -63,6 +64,7 @@ static void default_out_dir(char *buf, size_t n) {
 
 static int extract_toml_string(const char *text, const char *key, char *out,
                                size_t out_sz);
+static int extract_toml_int(const char *text, const char *key, int *out);
 
 static int dir_is_repo(const char *d) {
     char p[1024];
@@ -103,7 +105,8 @@ static int bench_find_repo_root(char *out, size_t n) {
    a build/deploy artefact and is not deployed. Returns 0 on success. */
 static int bench_read_device_fragment(const char *device, int *w, int *h,
                                       char *api, size_t api_sz,
-                                      char *data_dir, size_t dir_sz) {
+                                      char *data_dir, size_t dir_sz,
+                                      int *audio_rate_out) {
     char exe[1024];
     ssize_t len = readlink("/proc/self/exe", exe, sizeof exe - 1);
     if (len <= 0) return -1;
@@ -135,6 +138,14 @@ static int bench_read_device_fragment(const char *device, int *w, int *h,
         /* panfrost -> gles3 on this SoC; libmali would be gles2. */
         snprintf(api, api_sz, "%s", strcmp(val, "panfrost") == 0 ? "gles3" : "gles2");
     }
+    /* The stream rate the device actually opened at. The mod bench reports
+       its budget against a buffer deadline, and 44100 vs 48000 is a ~9%
+       difference in what counts as over budget. */
+    int rate = 0;
+    if (audio_rate_out && extract_toml_int(buf, "audio_rate", &rate) == 0 &&
+        rate > 0) {
+        *audio_rate_out = rate;
+    }
     (void)device; (void)w; (void)h;
     return 0;
 }
@@ -150,6 +161,21 @@ static int extract_toml_string(const char *text, const char *key, char *out,
     size_t i = 0;
     while (*p && *p != '"' && i + 1 < out_sz) out[i++] = *p++;
     out[i] = '\0';
+    return 0;
+}
+
+/* Copies the integer value of KEY = <n> out of a TOML fragment. Returns 0 on
+   success. Used for the deployed audio_rate, which sets the deadline the mod
+   bench reports its budget against. */
+static int extract_toml_int(const char *text, const char *key, int *out) {
+    char pat[128];
+    snprintf(pat, sizeof pat, "%s = ", key);
+    const char *p = strstr(text, pat);
+    if (!p) return -1;
+    p += strlen(pat);
+    while (*p == ' ' || *p == '\t') p++;
+    if (*p < '0' || *p > '9') return -1;
+    *out = (int)strtol(p, NULL, 10);
     return 0;
 }
 
@@ -175,7 +201,7 @@ static int extract_value(const char *text, const char *key, char *out, size_t ou
    still attributable. Returns 0 when no profile could be resolved. */
 static int bench_resolve_profile(const char *device, int *w, int *h,
                                   char *api, size_t api_sz, char *data_dir,
-                                  size_t dir_sz) {
+                                  size_t dir_sz, int *audio_rate_out) {
     char repo[1024];
     if (bench_find_repo_root(repo, sizeof repo) != 0) {
         /* Not a checkout -- this is a deployed device build. Fall back to
@@ -184,7 +210,7 @@ static int bench_resolve_profile(const char *device, int *w, int *h,
          * this the on-device bench reports device_id "host" and measures
          * /tmp (a tmpfs, i.e. RAM) instead of the SD card. */
         return bench_read_device_fragment(device, w, h, api, api_sz,
-                                          data_dir, dir_sz);
+                                          data_dir, dir_sz, audio_rate_out);
     }
     char cmd[2048];
     snprintf(cmd, sizeof cmd, "cd '%s' && scripts/lib/profile.py --shell '%s' 2>/dev/null",
@@ -207,6 +233,12 @@ static int bench_resolve_profile(const char *device, int *w, int *h,
     if (extract_value(buf, "GPU_API", val, sizeof val) == 0) snprintf(api, api_sz, "%s", val);
     if (extract_value(buf, "PATHS_DATA_DIR", val, sizeof val) == 0) {
         snprintf(data_dir, dir_sz, "%s", val);
+    }
+    if (audio_rate_out) {
+        if (extract_value(buf, "AUDIO_SAMPLE_RATE", val, sizeof val) == 0) {
+            int rate = atoi(val);
+            if (rate > 0) *audio_rate_out = rate;
+        }
     }
     return 0;
 }
@@ -279,7 +311,7 @@ int main(int argc, char **argv) {
         api[0] = '\0';
         dir[0] = '\0';
         if (bench_resolve_profile(opts.device, &pw, &ph, api, sizeof api,
-                                  dir, sizeof dir) == 0) {
+                                  dir, sizeof dir, &opts.audio_rate) == 0) {
             if (pw > 0) opts.width = pw;
             if (ph > 0) opts.height = ph;
             if (api[0]) snprintf(profile_api, sizeof profile_api, "%s", api);
@@ -326,6 +358,8 @@ int main(int argc, char **argv) {
 
     if (strcmp(opts.bench, "audio") == 0) {
         rc = bench_audio_run(&opts, r);
+    } else if (strcmp(opts.bench, "mod") == 0) {
+        rc = run_bench_mod(r, &opts);
     } else if (strcmp(opts.bench, "fileio") == 0) {
         rc = bench_fileio_run(&opts, r);
     } else if (strcmp(opts.bench, "gfx") == 0) {
@@ -335,6 +369,7 @@ int main(int argc, char **argv) {
         if (xvfb > 0) { kill(xvfb, SIGTERM); waitpid(xvfb, NULL, 0); }
     } else if (strcmp(opts.bench, "all") == 0) {
         rc = bench_audio_run(&opts, r);
+        if (rc == 0) rc = run_bench_mod(r, &opts);
         if (rc == 0) {
             xvfb = bench_xvfb_start_if_needed(headless, opts.width, opts.height);
             if (xvfb < 0) rc = 1;

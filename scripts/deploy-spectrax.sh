@@ -171,6 +171,7 @@ data_dir = \"$PATHS_DATA_DIR\"
 runs_dir = \"$PATHS_RUNS_DIR\"
 gpu_helper = \"$GPU_HELPER\"
 gpu_driver = \"$GPU_DRIVER\"
+audio_rate = $AUDIO_SAMPLE_RATE
 EOF" || return 1
     if [ "$launch" = 1 ]; then
         remote_out="${out_dir:-$PATHS_RUNS_DIR/$(date -u +%Y%m%dT%H%M%SZ)}"

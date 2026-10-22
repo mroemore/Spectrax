@@ -10,6 +10,7 @@ bench_sources = files(
   'bench_audio.c',
   'bench_fileio.c',
   'bench_gfx.c',
+  'bench_mod.c',
 )
 
 executable('spectrax_bench',
