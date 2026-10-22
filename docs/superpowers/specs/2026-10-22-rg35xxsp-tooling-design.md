@@ -562,3 +562,68 @@ This is the part the GKD plan's author needs to read first.
 - Miyoo Mini / Mini Plus support (different panel geometry — 320×240 and 640×360 — so the "640×480 fits natively" property would not hold).
 - Bench history dashboard, CI integration, run-on-save automation — deferred, as in the GKD spec.
 - Android/ADB transports, unless `probe-os.sh` shows the user's chosen CFW exposes them.
+
+---
+
+## 12. Implementation status (2026-10-22)
+
+The tooling described above is implemented on branch `rg35xxsp-tooling`.
+This section records what was established on the host, what is still open,
+and where the open items stand.
+
+### 12.1 Resolved on the host
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| The missing aarch64 lib bundle (R4, §8.1) | **resolved** | `lib/aarch64/` carries raylib 5.5 (`PLATFORM_DRM` + `GRAPHICS_API_OPENGL_ES2`), PortAudio 19.7.0 with the ALSA backend, kissfft, and the target headers. `scripts/build-target-libs.sh aarch64` rebuilds it. |
+| The hardcoded `lib/linux` (R5) | **resolved** | `meson.build` reads `spectrax_libdir` and `spectrax_incdir` from the cross file; the native build still defaults to `lib/linux`. |
+| Cross-compiling for both devices | **resolved** | `build-gkd-pixel2` and `build-rg35xxsp` both configure and compile clean with `cortex-a35` / `cortex-a53` respectively. The app's `DT_NEEDED` is exactly the device's GL stack: `libEGL.so.1`, `libGLESv2.so.2`, `libgbm.so.1`, `libdrm.so.2`, `libasound.so.2`. |
+| Tier A (QEMU user-mode) | **resolved** | `meson test -C build test_qemu_smoke` cross-builds and runs `test_voice` (11 tests) and `spectrax_bench` under `qemu-aarch64-static`. |
+| Tier B (CPU clamp) | **not applicable as written** | `cpu-clamp.sh` clamps the *host*; the A53 is out-of-order, so a host clamp is an approximation, not a model (unchanged from the spec's §8.4). |
+| Tier C (system emulation) | **skipped, with a reason** | There is no Armbian H700 image and QEMU has no H700 machine model. The GKD keeps its RK3326 helpers under `scripts/devices/gkd-pixel2/`; the SP relies on Tiers A/B/D plus the USB-gadget tier. |
+| The device as data | **resolved** | Two profiles (`devices/gkd-pixel2.toml`, `devices/rg35xxsp.toml`), one loader, one linter, one cross-file generator, one deploy ladder, one bench. The two profiles differ in 18 leaf values; no script is forked per device. |
+
+### 12.2 The library bundle: what ships and what the device provides
+
+The target's EGL/GLES2/GBM/DRM/ALSA libraries live in the device's
+userspace. A cross build cannot link against them (the cross sysroot has no
+aarch64 copy) and shipping foreign distro builds of them would be worse than
+not shipping them at all. So `lib/aarch64/stub/` carries **link-time
+stubs**: shared objects with the right SONAME and the right exported symbol
+names, but no code. The link is satisfied; at run time the loader resolves
+the symbols from the device's real libraries, because the loader looks the
+SONAME up, not the file.
+
+The same stubs are what makes the QEMU smoke test possible: the guest
+sysroot is the cross toolchain's loader and libc plus the stubs.
+
+### 12.3 Open items (device required)
+
+None of these can be closed without the hardware. Each still names its probe.
+
+| § | Open item | Probe | State |
+|---|-----------|-------|-------|
+| 9.1 | Which OS, which userspace ABI | `probe-os.sh` | open — the profile assumes ROCKNIX aarch64 (V8) |
+| 9.2 | Does the USB-C port enumerate as a gadget | `probe-usb.sh` | open — **the highest-value probe**; `scripts/usb-gadget.sh` reports the link state |
+| 9.3 | Where do ports live | `probe-paths.sh` | open — the profile assumes `/storage/roms/ports` (V19/V20) |
+| 9.4 | What the display does | `probe-display.sh` | open — the panel is 640×480 (V9) |
+| 9.5 | The audio subsystem | `probe-audio.sh` | open — the codec's analog mux is in the device tree (V24) |
+| 9.6 | The actual clock | `probe-cpu.sh` | open — 1.4 GHz stock, 1.5 GHz with the ES overclock (V5) |
+| 9.7 | Will raylib get a context | `probe-gpu.sh` + a one-frame gfx run | open — the DRM/EGL/GLES2 build is in place; the device's mesa is not |
+| 9.8 | DDR3 or LPDDR4 | `probe-mem.sh` | open — the two vendor sources still disagree (V10/A10) |
+| 9.9 | Boot time | `probe-boot.sh` | open |
+| 9.10 | ADB | `probe-os.sh` | open, and not needed for ROCKNIX |
+| 9.11 | What the lid does to a running app | `probe-lid.sh` | open — the bench flushes on SIGHUP/SIGTERM, so an interrupted run still leaves a report |
+| 9.12 | Free RAM headroom | `probe-mem.sh` | open |
+| 9.13 | The SD card path | `probe-storage.sh` | open |
+| 9.14 | The PortMaster convention | `probe-paths.sh` | open |
+
+### 12.4 The bench on a device
+
+`bench_fileio` defaults to the profile's `paths.data_dir`, not `/tmp`: on a
+handheld `/tmp` is commonly a tmpfs, and the numbers would describe RAM
+rather than the SD card. `--workdir` overrides it, and the report records
+the directory the numbers actually describe.
+
+`bench_gfx` uses the profile's panel size, and the bench never spawns an X
+server when `--device` is given: a device has a real panel.
