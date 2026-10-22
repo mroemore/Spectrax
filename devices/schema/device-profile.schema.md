@@ -62,6 +62,17 @@ c_args     array of strings
 ## [probes]
 needed  array of strings   profile keys still awaiting a probe
 
+Optional keys (never required; the host-local override may set them):
+
+## [device]
+ip         string   last known address of the device
+
+## [transport]
+last_ip    string   last known address of the device
+
+## [build]
+build_dir  string   local override for the build directory
+
 The linter rejects: unknown top-level sections, unknown keys inside a known
 section, a missing required key, an empty `device.id`, `device.arch` not in
 {aarch64, armhf}, `transport.order` containing an unknown transport, a

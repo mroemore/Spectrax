@@ -62,6 +62,13 @@ REQUIRED = {
     "probes": ["needed"],
 }
 
+# Keys the host-local override may add. They are never required.
+OPTIONAL = {
+    "device": ["ip"],
+    "transport": ["last_ip"],
+    "build": ["build_dir"],
+}
+
 ARCHES = {"aarch64", "armhf"}
 TRANSPORTS = {"usb-gadget", "wifi-ssh", "sd"}
 PASSWORD_SOURCES = {"fixed", "user-set", "device-display"}
@@ -104,8 +111,9 @@ def lint(data, strict=False, expected_id=None):
         if section not in SCHEMA:
             errors.append("unknown section [%s]" % section)
             continue
+        allowed = SCHEMA[section].keys() | set(OPTIONAL.get(section, []))
         for key in data[section]:
-            if key not in SCHEMA[section]:
+            if key not in allowed:
                 errors.append("unknown key [%s].%s" % (section, key))
     for section, keys in REQUIRED.items():
         present = data.get(section, {})

@@ -56,4 +56,14 @@ if scripts/lib/profile.py --lint gkd-pixel2 --strict; then
     fail "linter accepted unresolved probes under --strict"
 fi
 
+# The generated cross file must carry the profile's CPU flags.
+out=$(scripts/gen-cross-file.sh gkd-pixel2 --out "$tmp/crossout")
+grep -q -- "-mcpu=cortex-a35" "$out" || fail "generated cross file lacks -mcpu"
+grep -q "spectrax_libdir = 'lib/aarch64'" "$out" || fail "generated cross file lacks libdir"
+grep -q "spectrax_incdir = 'include/aarch64'" "$out" || fail "generated cross file lacks incdir"
+
+# The setup script must branch on cfw.password_source, not hardcode a password.
+grep -q "CFW_PASSWORD_SOURCE" scripts/setup-device.sh || fail "setup-device.sh does not branch on password_source"
+grep -q "fixed" scripts/setup-device.sh || fail "setup-device.sh lacks the fixed-password branch"
+
 echo "test_device_profile: ok"
