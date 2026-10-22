@@ -3193,3 +3193,109 @@ git show --stat HEAD
 ```
 
 Confirm with the user before any push (project rule #1078).
+
+---
+
+## Plan corrections (applied during execution, 2026-10-22)
+
+The plan was executed task by task. These are the points where reality
+diverged from the plan; each correction is in the same branch, with the
+change visible in the commit that made it.
+
+1. **Task 1 — the cherry-pick was not needed.** The plan cherry-picks
+   `9648016` and then rewrites both cross files as templates. The end state
+   is the same as writing the templates directly, so the commit was made
+   directly (the `.gitignore` additions from `9648016` were kept).
+
+2. **Task 5 — raylib is compiled directly, not through its Makefile.**
+   raylib 5.5's Makefile builds and *links* a shared library, which a cross
+   build cannot do without the target's GL stack. The sources are compiled
+   straight into `libraylib.a` with `-DPLATFORM_DRM -DGRAPHICS_API_OPENGL_ES2`.
+
+3. **Task 5 — the bundle ships link-time stubs, not the device's libraries.**
+   The target's EGL/GLES2/GBM/DRM/ALSA live in the device's userspace; the
+   cross sysroot has no aarch64 copy of them and shipping foreign distro
+   builds of them would be worse than not shipping them. `lib/<arch>/stub/`
+   therefore holds shared objects with the right SONAME and the right
+   exported symbol names but no code. They satisfy the link; the loader
+   resolves the symbols from the device's real libraries at run time. The
+   stubs double as the runtime library set for the QEMU smoke test.
+
+4. **Task 4 — the cross file carries a second property, `spectrax_incdir`.**
+   The target headers (`raylib.h`, `portaudio.h`) live in `include/<arch>/`,
+   and the host's `include/raylib.h` would otherwise shadow them. The
+   property is in the schema (`[build] incdir`) and in both profiles.
+
+5. **Task 4 — `meson install` refuses to run for a cross build.** The install
+   script copies the binaries into `bin/`, which holds the host build. It now
+   takes the target lib dir as an argument and skips the copy (and the XDG
+   provisioning) for a cross target.
+
+6. **Task 7 — the deploy scripts look the binaries up in the build tree.**
+   meson puts an executable next to the `meson.build` that declares it, so
+   the binaries are at `build-<device>/src/spectrax`,
+   `build-<device>/src/tools/bench/spectrax_bench` and
+   `build-<device>/src/tools/instrument_harness/instrument_harness`, not at
+   the top of the build directory. The plan's `build_dir/$f` paths would
+   never have found them.
+
+7. **Task 7 — the plan's `deploy-spectrax.sh` shadows the `ip` command.**
+   `ip=""` replaces the command with an empty variable, so every later
+   `ip addr show` inside the transport functions fails and the USB-gadget
+   transport can never be selected. The variable is now `dev_ip`.
+
+8. **Task 8 — the host override's keys have to be in the schema.** The plan's
+   `setup-device.sh` writes `[device] ip` into the override, which the
+   linter would reject as an unknown key. The schema now has an explicit
+   optional-key set (`device.ip`, `transport.last_ip`, `build.build_dir`).
+
+9. **Task 10 — `inspect-sd.sh` gained a `--dir` mode.** Loop mounting needs
+   root, so the image path could not be exercised on the host. `--dir`
+   inspects an already mounted card.
+
+10. **Task 11 — the per-mode re-parse of the command line does not work.**
+    `main()` parses every option with `getopt_long`, so the per-mode
+    re-parse from `optind` finds nothing and the mode always ran with its
+    defaults. The modes now take a `BenchOptions` struct that `main()`
+    fills in. The CLI contract (the plan's interface list) is unchanged.
+
+11. **Task 11 — the bench's DSP entry points differ from the GKD plan's.**
+    `initVoiceManager()` does not exist in this tree: the constructor is
+    `createVoiceManager(settings, samplePool, wavetablePool, presetBank)`.
+    The bench uses the real constructor, and the bench links
+    `core_lib + seq_lib + vizfx_lib + gui_lib` (the app's own set) because
+    `createSettings` lives in `seq_lib`.
+
+12. **Task 11 — the `--no-neon` toggle needed a real kernel to measure.** The
+    GKD plan toggles an attribute on a wrapper function, which cannot
+    change the vectorisation of the library code it calls. The bench now
+    mixes the per-voice sample buffers in its own code, with an explicit
+    NEON kernel on ARM and a `no-tree-vectorize` scalar fallback, so the
+    flag measures something.
+
+13. **Task 12 — the QEMU smoke test needs a guest sysroot.** The cross
+    binary's `DT_NEEDED` entries (libEGL.so.1 and friends) are not on the
+    host, so the test assembles a sysroot from the cross toolchain's loader
+    and libc plus the bundle's stubs and runs the binary with
+    `qemu-<arch>-static -L <sysroot>`.
+
+14. **Task 13 — the RK3326 helpers did not exist to move.** The GKD branch
+    carries only the two documents and the two cross files, so the helpers
+    were written from the GKD plan's code blocks directly into
+    `scripts/devices/gkd-pixel2/`.
+
+15. **Cross build — the dev harnesses depend on X11.** `nav_harness` and
+    `instrument_harness` include `<X11/Xlib.h>` for their screenshot verb,
+    which has no meaning on a DRM/KMS device. The X11 path is now behind
+    `-DSPECTRAX_HAVE_X11`, which only a build with X11 defines.
+
+16. **Cross build — `vizulobe` used pkg-config for cJSON.** There is no
+    target pkg-config in a cross build, so the subproject now falls back to
+    the vendored cJSON.
+
+17. **Task 5 — PortAudio's objects depend on the configure flags.** A
+    reconfigure that enables the ALSA backend does not rebuild the objects,
+    and the host-API table stays empty (no audio at run time, and the ALSA
+    library is dropped from the link by `--as-needed`). The build script
+    always cleans first and verifies that the table references
+    `PaAlsa_Initialize`.
