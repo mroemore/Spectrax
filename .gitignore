@@ -23,6 +23,10 @@ build-cov/
 build-gc/
 build-fuzz/
 build-matrix-*/
+build-aarch64/
+build-armhf/
+build-libs/
+runs/
 meson-private/
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o
