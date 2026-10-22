@@ -10,6 +10,7 @@ core_sources = files(
   'dataviz.c',
   'modsystem.c',
   'oscillator.c',
+  'sintab.c',
   'wavetable.c',
   'dstruct.c',
   'blit_synth.c',
