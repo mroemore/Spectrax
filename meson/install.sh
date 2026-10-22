@@ -33,7 +33,8 @@ for rel in \
     "src/tools/nav_harness/nav_harness" \
     "src/tools/instrument_harness/instrument_harness" \
     "src/tools/sample_analyser/inspectro_wavget" \
-    "src/tools/vizulobe/vizulobe"; do
+    "src/tools/vizulobe/vizulobe" \
+    "src/tools/bench/spectrax_bench"; do
     src="$BUILD_ROOT/$rel"
     if [ -f "$src" ]; then
         # cp + mv (not a direct cp): a running copy of the binary keeps the
