@@ -20,6 +20,9 @@ typedef struct {
 	Color labelSelected;
 	Color dial;
 	Color valueText;
+	/* Dimmed text for controls/values that exist but are not currently
+	 * available (e.g. a macro that only applies to some voice types). */
+	Color disabledText;
 	Color vline;
 	Color poly;
 	Color waveformBg;

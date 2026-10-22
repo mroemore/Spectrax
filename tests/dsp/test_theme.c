@@ -82,7 +82,7 @@ static cJSON *lookup_written(cJSON *colors, const char *path) {
 /* 1. The mapping table itself: unique names, unique fields. */
 static void test_mapping_table(void) {
 	int n = themePathCount();
-	CHECK(n == 46, "theme path table has 46 entries");
+	CHECK(n == 47, "theme path table has 47 entries");
 	ColourScheme cs;
 	memset(&cs, 0, sizeof(cs));
 	for(int i = 0; i < n; i++) {

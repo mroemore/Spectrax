@@ -13,6 +13,10 @@ than "how did we decide this?".
   style type and field, the class/`extends` resolution chain, `clr.json`
   colours, the layout solver, and recipes for adding styles, classes,
   layouts, fields, types and colours.
+- [Tutorials](tutorials/building-a-component.md) — worked examples that
+  build something with the styling system. Start with
+  [Building a new component](tutorials/building-a-component.md): a new
+  layout and a new widget, from the first class to the tests.
 
 ## Adding a guide
 

@@ -30,6 +30,8 @@ src/tools/instrument_harness/instrument_harness
 src/tools/instrument_harness/*.o
 src/tools/sample_analyser/inspectro_wavget
 src/tools/sample_analyser/*.o
+src/tools/styling_tutorial/styling_tutorial
+src/tools/styling_tutorial/*.o
 bin/instrument_harness
 bin/nav_harness
 bin/inspectro_wavget

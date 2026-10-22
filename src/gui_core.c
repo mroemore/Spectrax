@@ -76,6 +76,7 @@ void initDefaultColourScheme(ColourScheme *colourScheme) {
 	colourScheme->labelSelected = (Color){ 255, 180, 180, 255 };
 	colourScheme->dial = (Color){ 255, 0, 0, 255 };
 	colourScheme->valueText = (Color){ 255, 0, 0, 255 };
+	colourScheme->disabledText = (Color){ 110, 96, 96, 255 };
 	colourScheme->vline = (Color){ 60, 255, 150, 255 };
 	colourScheme->poly = (Color){ 255, 80, 80, 255 };
 	colourScheme->waveformBg = (Color){ 0, 0, 0, 255 };

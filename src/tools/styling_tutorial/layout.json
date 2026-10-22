@@ -1,0 +1,377 @@
+{
+    "styles": {
+        "dial": {
+            "knob": {
+                "size": 18,
+                "radius": 9,
+                "startAngle": -225,
+                "sweep": 270,
+                "offsetX": 0,
+                "offsetY": 0,
+                "asset": "resources/images/dial2.png",
+                "color": "control.dial"
+            },
+            "border": {
+                "borderWidth": 2.0,
+                "color": "line.panel"
+            },
+            "value": {
+                "format": "%05.2f",
+                "width": 38,
+                "height": 14,
+                "offsetX": 28,
+                "offsetY": 2,
+                "fontSize": 9,
+                "color": "text.value"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 18,
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
+            }
+        },
+        "dial-discrete": {
+            "extends": "dial",
+            "value": {
+                "format": "%i",
+                "width": 10,
+                "height": 14,
+                "offsetX": 6,
+                "offsetY": 5
+            },
+            "label": {
+                "offsetX": 6,
+                "offsetY": 21
+            }
+        },
+        "btn": {
+            "border": {
+                "borderWidth": 2.0,
+                "color": "line.panel"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 10,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": 4,
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
+            },
+            "sublabel": {
+                "font": "pixel",
+                "fontSize": 8,
+                "spacing": 0,
+                "offsetX": 4,
+                "offsetY": 12,
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
+            }
+        },
+        "type-label": {
+            "label": {
+                "font": "pixel",
+                "fontSize": 10,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "text.muted",
+                "colorSelected": "text.mutedSelected"
+            },
+            "border": {
+                "borderWidth": 2.0,
+                "color": "line.strong"
+            }
+        },
+        "step-cell": {
+            "bgEmpty": "cell.default",
+            "bgPlaying": "cell.highlighted",
+            "borderSelected": "line.strong",
+            "note": {
+                "font": "text",
+                "fontSize": 9,
+                "spacing": 4,
+                "offsetX": 4,
+                "offsetY": 4,
+                "color": "text.primary"
+            }
+        },
+        "route-dest": {
+            "border": {
+                "borderWidth": 2.0,
+                "color": "mod.routeAdd",
+                "colorSelected": "text.mutedSelected"
+            }
+        },
+        "chip": {
+            "border": {
+                "borderWidth": 2.0,
+                "color": "line.wrapper",
+                "colorSelected": "line.strong"
+            },
+            "palette": [
+                "chip.palette0",
+                "chip.palette1",
+                "chip.palette2",
+                "chip.palette3",
+                "chip.palette4",
+                "chip.palette5",
+                "chip.palette6",
+                "chip.palette7"
+            ],
+            "voiceCount": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": 2,
+                "color": "text.muted"
+            },
+            "typeTag": {
+                "font": "pixel",
+                "fontSize": 9,
+                "spacing": 1,
+                "offsetX": -4,
+                "offsetY": 2,
+                "color": "text.muted"
+            },
+            "label": {
+                "font": "pixel",
+                "fontSize": 12,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "text.muted"
+            },
+            "patchName": {
+                "font": "pixel",
+                "fontSize": 8,
+                "spacing": 1,
+                "offsetX": 4,
+                "offsetY": -11,
+                "color": "text.muted"
+            },
+            "dots": {
+                "size": 5,
+                "gap": 3,
+                "colour": "line.wrapper",
+                "colourActive": "line.strong"
+            }
+        },
+        "text": {
+            "font": "pixel",
+            "fontSize": 11,
+            "spacing": 1,
+            "offsetX": 0,
+            "offsetY": 0,
+            "hAlign": "left",
+            "vAlign": "top",
+            "color": "text.primary",
+            "colorSelected": "text.primary"
+        },
+
+        "macro-dial": {
+            "extends": "dial",
+            "knob": {
+                "size": 16,
+                "radius": 8
+            },
+            "border": {
+                "color": "line.strong",
+                "colorSelected": "text.mutedSelected"
+            },
+            "value": {
+                "format": "%03.1f",
+                "width": 30,
+                "height": 12,
+                "offsetX": 18,
+                "offsetY": 2,
+                "fontSize": 8
+            },
+            "label": {
+                "fontSize": 8,
+                "spacing": 1,
+                "offsetX": 0,
+                "offsetY": 20
+            }
+        },
+        "macro-amount": {
+            "extends": "macro-dial",
+            "knob": {
+                "size": 22,
+                "radius": 11
+            },
+            "value": {
+                "width": 34,
+                "offsetX": 24
+            },
+            "label": {
+                "fontSize": 9,
+                "offsetY": 26
+            }
+        },
+        "macro-ratio": {
+            "extends": "macro-dial",
+            "knob": {
+                "color": "control.accent"
+            }
+        },
+        "macro-plain": {
+            "extends": "dial"
+        },
+        "macro-mode": {
+            "extends": "dial-discrete",
+            "vAlign": "top",
+            "knob": {
+                "size": 14,
+                "radius": 7
+            },
+            "value": {
+                "width": 14,
+                "offsetX": 0,
+                "offsetY": 16,
+                "fontSize": 8
+            },
+            "label": {
+                "fontSize": 8,
+                "offsetX": 4,
+                "offsetY": 32
+            }
+        },
+        "macro-curve": {
+            "extends": "macro-dial",
+            "value": {
+                "width": 0,
+                "height": 0,
+                "fontSize": 0
+            },
+            "curveIcon": {
+                "frameCount": 32,
+                "size": 12,
+                "offsetX": 0,
+                "offsetY": 0,
+                "color": "text.value"
+            }
+        },
+        "macro-bypass": {
+            "extends": "btn",
+            "border": {
+                "color": "control.accent"
+            },
+            "label": {
+                "fontSize": 11,
+                "offsetX": 6,
+                "offsetY": 4
+            },
+            "sublabel": {
+                "fontSize": 8,
+                "offsetX": 4,
+                "offsetY": 18
+            }
+        },
+        "macro-type": {
+            "extends": "type-label",
+            "label": {
+                "fontSize": 11,
+                "color": "text.primary"
+            }
+        },
+        "macro-slot": {
+            "extends": "route-dest",
+            "border": {
+                "borderWidth": 1.0,
+                "color": "line.grid",
+                "colorSelected": "text.mutedSelected"
+            }
+        },
+        "macro-step": {
+            "extends": "step-cell",
+            "bgEmpty": "cell.blank",
+            "bgPlaying": "cell.selected",
+            "borderSelected": "text.mutedSelected",
+            "note": {
+                "fontSize": 10,
+                "spacing": 2,
+                "offsetX": 3,
+                "offsetY": 2,
+                "color": "text.primary"
+            }
+        },
+        "macro-title": {
+            "extends": "text",
+            "fontSize": 12,
+            "spacing": 2,
+            "hAlign": "center",
+            "vAlign": "middle",
+            "color": "text.primary"
+        },
+        "macro-hint": {
+            "extends": "text",
+            "fontSize": 8,
+            "hAlign": "center",
+            "vAlign": "middle",
+            "color": "text.disabled"
+        }
+    },
+    "layouts": {
+        "macro-bank": {
+            "orientation": "vertical",
+            "padding": 2,
+            "gap": 2,
+            "weights": [
+                2,
+                5,
+                3,
+                6,
+                2
+            ],
+            "childClasses": [
+                "macro-title",
+                "",
+                "",
+                "",
+                "macro-hint"
+            ]
+        },
+        "macro-dial-row": {
+            "orientation": "horizontal",
+            "padding": 1,
+            "gap": 2,
+            "weights": [
+                3,
+                3,
+                3,
+                2,
+                2
+            ],
+            "childClasses": [
+                "",
+                "macro-ratio",
+                "macro-plain",
+                "macro-mode",
+                "macro-curve"
+            ]
+        },
+        "macro-action-row": {
+            "orientation": "horizontal",
+            "padding": 1,
+            "gap": 2,
+            "weights": [
+                2,
+                3,
+                4,
+                2
+            ],
+            "childClasses": [
+                "macro-type",
+                "macro-bypass",
+                "chip",
+                "macro-slot"
+            ]
+        }
+    }
+}

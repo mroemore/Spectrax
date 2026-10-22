@@ -1,0 +1,58 @@
+{
+	"schema": 2,
+	"font": {
+		"path": "resources/fonts/console.ttf",
+		"size": 9,
+		"spacing": 1
+	},
+	"colors": {
+		"surface": {
+			"window": "#1A1210FF",
+			"panel": "#503C3CFF",
+			"inset": "#322828FF",
+			"dim": "#000000AA"
+		},
+		"text": {
+			"primary": "#F0D8C8FF",
+			"secondary": "#B03500FF",
+			"muted": "#C8B4B4FF",
+			"mutedSelected": "#FFB4B4FF",
+			"value": "#FF6A3CFF",
+			"gridLabel": "#C8B4B4FF",
+			"disabled": "#6E6060FF"
+		},
+		"line": {
+			"panel": "#0A0000FF",
+			"wrapper": "#0A0505FF",
+			"strong": "#DB9467FF",
+			"grid": "#3CFF96FF",
+			"step": "#501414FF"
+		},
+		"cell": {
+			"default": "#944410FF",
+			"blank": "#5E171DFF",
+			"highlighted": "#D63C11FF",
+			"selected": "#EBA14BFF"
+		},
+		"control": {
+			"dial": "#FF6A3CFF",
+			"accent": "#AA2631FF"
+		},
+		"mod": {
+			"routeAdd": "#FF7850FF",
+			"routeMul": "#78C8FFFF"
+		},
+		"chip": {
+			"palette": [
+				"#4682B4FF",
+				"#C8783CFF",
+				"#5AA05AFF",
+				"#AA5082FF",
+				"#D2B446FF",
+				"#6E5AAAFF",
+				"#50A0A0FF",
+				"#B45A5AFF"
+			]
+		}
+	}
+}

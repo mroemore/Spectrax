@@ -31,6 +31,7 @@ static const ThemePath g_themePaths[] = {
 	{ "text.mutedSelected",  offsetof(ColourScheme, labelSelected) },
 	{ "text.value",          offsetof(ColourScheme, valueText) },
 	{ "text.gridLabel",      offsetof(ColourScheme, arrangerCellText) },
+	{ "text.disabled",       offsetof(ColourScheme, disabledText) },
 
 	{ "line.panel",          offsetof(ColourScheme, panelBorder) },
 	{ "line.wrapper",        offsetof(ColourScheme, wrapperBorder) },

@@ -9,6 +9,10 @@ drawable picks a C struct of style values by name, and `layout.json` supplies
 those values plus a few container layouts. Nothing hot-reloads — restart the
 app after editing.
 
+A worked example of everything below is in
+[Building a new component](tutorials/building-a-component.md): a new layout
+and a new widget, built step by step and tested.
+
 ---
 
 ## Contents
@@ -322,7 +326,7 @@ hard-coded spacing of 1.
 | `frameCount` | int | 0 | 0 = off; > 0 = draw the icon instead of the numeric |
 | `size` | int | 8 | icon side length |
 | `offsetX` / `offsetY` | int | 0 | nudge from the knob's centre |
-| `color` | colour | **transparent** | **must be set**; it does not inherit `valueText` |
+| `color` | colour | `text.value` | seeded from the theme (see §5.10); it does not follow `value.color` |
 
 #### `dots` (chip)
 
@@ -598,7 +602,7 @@ form; the flat name from an older theme is accepted as an alias.
 | Group | Keys | Used for |
 |---|---|---|
 | `surface` | `window`, `panel`, `inset`, `dim` | app background, widget panels, value-display wells, modal scrim |
-| `text` | `primary`, `secondary`, `muted`, `mutedSelected`, `value`, `gridLabel` | body text, dim text, labels, focused labels, dial readouts, arranger cell text |
+| `text` | `primary`, `secondary`, `muted`, `mutedSelected`, `value`, `gridLabel`, `disabled` | body text, dim text, labels, focused labels, dial readouts, arranger cell text, unavailable controls |
 | `line` | `panel`, `wrapper`, `strong`, `grid`, `step` | panel borders, wrapper outlines, emphasis borders, graph grid lines, step-cell borders |
 | `cell` | `default`, `blank`, `highlighted`, `selected` | sequencer/arranger cell states |
 | `control` | `dial`, `accent` | knob fill, global accent (record/armed) |
@@ -875,7 +879,7 @@ no-op.
 handy when a class seems to "do nothing".
 
 The theme has the same treatment. `test_theme.c` validates the **shipped**
-`bin/clr.json`: all 46 canonical paths resolve to distinct fields, the file
+`bin/clr.json`: all 47 canonical paths resolve to distinct fields, the file
 supplies every one (a typo leaves a zero-alpha field and names the missing
 path), the writer emits the grouped `schema: 2` form that round-trips, legacy
 flat keys still load through the alias table, and unknown or zero-alpha keys
@@ -892,6 +896,12 @@ Caveats:
   (`src/tools/instrument_harness/run_scripted.sh fixtures/<name>.txt`) after
   `meson install -C build`, because it reads `bin/layout.json` and
   `bin/instrument_harness`.
+- A component that is not part of the app cannot be driven by the
+  instrument harness (it boots the shipped app). The self-contained demo in
+  `src/tools/styling_tutorial/` shows the alternative: its own build target,
+  its own config, and its own `--selftest` that asserts resolved styles and
+  reflowed geometry. See
+  [Building a new component](tutorials/building-a-component.md) §22.
 
 ---
 
@@ -946,5 +956,6 @@ Caveats:
 | `bin/clr.json` | shipped theme (canonical `schema: 2` form) |
 | `tests/dsp/test_layout.c` | compile/apply/geometry tests + shipped-layout validator |
 | `tests/dsp/test_theme.c` | shipped-theme completeness, round-trip and alias tests |
+| `src/tools/styling_tutorial/` | self-contained demo for the tutorial: its own build target, config and `--selftest` |
 | `docs/superpowers/specs/2026-09-08-layout-config-design.md` | original three-tier design |
 | `docs/superpowers/specs/2026-09-14-ui-theme-polish-design.md` | "every visual knob is a JSON field" convention |

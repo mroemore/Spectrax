@@ -18,7 +18,8 @@
 			"muted": "#C8B4B4FF",
 			"mutedSelected": "#FFB4B4FF",
 			"value": "#FF0000FF",
-			"gridLabel": "#C8B4B4FF"
+			"gridLabel": "#C8B4B4FF",
+			"disabled": "#6E6060FF"
 		},
 		"line": {
 			"panel": "#0A0000FF",
