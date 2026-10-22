@@ -33,6 +33,15 @@ height = 480
 scale  = 1.0
 native = true                 # the panel is 640x480, matching the Spectrax surface
 
+[audio]
+# Measured on a real unit (ROCKNIX 20261001, 2026-10-22). The codec is
+# 192 kHz native and exposes no 44100 device at all, so the engine runs at
+# whatever rate the opened stream reports rather than a compile-time 44100.
+device        = "dmix"        # hw:0,0 is 192000 (no plug layer); sysdefault reports INT_MAX
+sample_rate   = 48000         # dmix; PortAudio's ALSA backend selects it
+periods_max   = 1             # the dmix plugin and the H700 codec both report 1 period
+engine_follows_device_rate = true
+
 [gpu]
 driver     = "panfrost"       # ROCKNIX wiki: Panfrost, GL 3.1 / GLES 3.1
 api        = "gles3"
@@ -60,5 +69,8 @@ c_args     = ["-mcpu=cortex-a53", "-mtune=cortex-a53", "-O3",
               "-ftree-vectorize", "-ffast-math", "-flto"]
 
 [probes]
-needed = ["userspace_arch", "ports_dir", "usb_gadget", "display_mode",
-          "audio_device", "cpu_governor", "lid_switch", "ram_type"]
+# Resolved on a real unit 2026-10-22: userspace_arch aarch64, ports_dir
+# /storage/roms/ports, display_mode 640x480 native, audio_device dmix@48000.
+# Still open: usb_gadget (no cable to test the port), cpu_governor,
+# lid_switch, ram_type (Anbernic says DDR3, the ROCKNIX wiki says LPDDR4).
+needed = ["usb_gadget", "cpu_governor", "lid_switch", "ram_type"]

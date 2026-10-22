@@ -144,6 +144,23 @@ deploy_over_ssh() {
         # shellcheck disable=SC2086
         rsync $rsync_opts bin/resources/ "$dest/data/" || return 1
     fi
+    # The style and theme files, and a minimal cfg.json. resolveConfigDir()
+    # falls back to the cwd only when no config dir holds a cfg.json, and
+    # the styles are then never loaded -- the app would run on baked
+    # defaults with no layouts. Ship them so a deployed build is styled.
+    for j in layout.json clr.json; do
+        [ -f "bin/$j" ] || continue
+        # shellcheck disable=SC2086
+        rsync $rsync_opts "bin/$j" "$dest/$j" || return 1
+    done
+    if [ -f bin/cfg.json ]; then
+        # Never clobber a cfg.json the device already has: it may carry the
+        # user's own settings from a previous run.
+        if ! ssh "$(ssh_target "$target_ip")" "test -f '$dest/cfg.json'" 2>/dev/null; then
+            # shellcheck disable=SC2086
+            rsync $rsync_opts bin/cfg.json "$dest/cfg.json" || return 1
+        fi
+    fi
     # The device-side launch wrappers read their paths and the GPU helper
     # from this fragment. Write it to the writable data partition: the
     # rootfs on ROCKNIX (and on most of these handheld CFWs) is a read-only

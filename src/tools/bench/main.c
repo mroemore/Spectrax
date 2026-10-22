@@ -61,6 +61,9 @@ static void default_out_dir(char *buf, size_t n) {
 
 /* --- device profile resolution (host side) ------------------------------- */
 
+static int extract_toml_string(const char *text, const char *key, char *out,
+                               size_t out_sz);
+
 static int dir_is_repo(const char *d) {
     char p[1024];
     snprintf(p, sizeof p, "%s/scripts/lib/profile.py", d);
@@ -95,6 +98,61 @@ static int bench_find_repo_root(char *out, size_t n) {
     return -1;
 }
 
+/* Reads device.toml next to the running binary -- the fragment the deploy
+   writes. This is the on-device profile source: the TOML profile itself is
+   a build/deploy artefact and is not deployed. Returns 0 on success. */
+static int bench_read_device_fragment(const char *device, int *w, int *h,
+                                      char *api, size_t api_sz,
+                                      char *data_dir, size_t dir_sz) {
+    char exe[1024];
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (len <= 0) return -1;
+    exe[len] = '\0';
+    char *slash = strrchr(exe, '/');
+    if (!slash) return -1;
+    *slash = '\0';
+    char path[1100];
+    /* The bench lives in src/tools/bench in the build tree and beside its
+       siblings in the deployed tree; check "." and "..". */
+    const char *dirs[] = {".", "..", NULL};
+    FILE *f = NULL;
+    for (int i = 0; dirs[i]; i++) {
+        snprintf(path, sizeof path, "%s/%s/device.toml", exe, dirs[i]);
+        f = fopen(path, "r");
+        if (f) break;
+    }
+    if (!f) return -1;
+    static char buf[4096];
+    size_t total = fread(buf, 1, sizeof buf - 1, f);
+    fclose(f);
+    buf[total] = '\0';
+
+    char val[1024];
+    if (extract_toml_string(buf, "data_dir", val, sizeof val) == 0) {
+        snprintf(data_dir, dir_sz, "%s", val);
+    }
+    if (extract_toml_string(buf, "gpu_driver", val, sizeof val) == 0) {
+        /* panfrost -> gles3 on this SoC; libmali would be gles2. */
+        snprintf(api, api_sz, "%s", strcmp(val, "panfrost") == 0 ? "gles3" : "gles2");
+    }
+    (void)device; (void)w; (void)h;
+    return 0;
+}
+
+/* Copies the value of KEY = "..." out of a TOML fragment. */
+static int extract_toml_string(const char *text, const char *key, char *out,
+                               size_t out_sz) {
+    char pat[128];
+    snprintf(pat, sizeof pat, "%s = \"", key);
+    const char *p = strstr(text, pat);
+    if (!p) return -1;
+    p += strlen(pat);
+    size_t i = 0;
+    while (*p && *p != '"' && i + 1 < out_sz) out[i++] = *p++;
+    out[i] = '\0';
+    return 0;
+}
+
 /* Copies the value of KEY='...' out of the loader's output. */
 static int extract_value(const char *text, const char *key, char *out, size_t out_sz) {
     char pat[128];
@@ -119,7 +177,15 @@ static int bench_resolve_profile(const char *device, int *w, int *h,
                                   char *api, size_t api_sz, char *data_dir,
                                   size_t dir_sz) {
     char repo[1024];
-    if (bench_find_repo_root(repo, sizeof repo) != 0) return -1;
+    if (bench_find_repo_root(repo, sizeof repo) != 0) {
+        /* Not a checkout -- this is a deployed device build. Fall back to
+         * the fragment the deploy writes next to the binaries, which
+         * carries the same paths the profile would have produced. Without
+         * this the on-device bench reports device_id "host" and measures
+         * /tmp (a tmpfs, i.e. RAM) instead of the SD card. */
+        return bench_read_device_fragment(device, w, h, api, api_sz,
+                                          data_dir, dir_sz);
+    }
     char cmd[2048];
     snprintf(cmd, sizeof cmd, "cd '%s' && scripts/lib/profile.py --shell '%s' 2>/dev/null",
              repo, device);

@@ -32,6 +32,10 @@ SCHEMA = {
         "password_source": str, "ssh_enabled_by_default": bool,
     },
     "display": {"width": int, "height": int, "scale": float, "native": bool},
+    "audio": {
+        "device": str, "sample_rate": int, "periods_max": int,
+        "engine_follows_device_rate": bool,
+    },
     "gpu": {
         "driver": str, "api": str, "helper": str, "compositor": str,
         "platform": str,
@@ -54,6 +58,8 @@ REQUIRED = {
     "cfw": ["family", "hostname", "user", "password", "password_source",
             "ssh_enabled_by_default"],
     "display": ["width", "height", "scale", "native"],
+    "audio": ["device", "sample_rate", "periods_max",
+              "engine_follows_device_rate"],
     "gpu": ["driver", "api", "helper", "compositor", "platform"],
     "paths": ["storage_root", "ports_dir", "data_dir", "runs_dir"],
     "transport": ["order", "mdns_names", "usb_gadget_host_ip",

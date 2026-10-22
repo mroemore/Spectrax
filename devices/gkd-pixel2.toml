@@ -32,6 +32,15 @@ height = 480
 scale  = 1.0
 native = true
 
+[audio]
+# Not yet measured on hardware (no Pixel 2 attached). The same runtime-rate
+# handling applies: the engine follows whatever the opened stream reports,
+# and openAudioStream() prefers the plugin devices.
+device        = ""
+sample_rate   = 44100
+periods_max   = 0
+engine_follows_device_rate = true
+
 [gpu]
 driver     = "libmali"
 api        = "gles2"
