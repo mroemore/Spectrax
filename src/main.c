@@ -284,6 +284,14 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo,
                           PaStreamCallbackFlags statusFlags, void *userData);
 
+/* Number of audio callbacks the stream has delivered. The candidate loop
+ * uses it to reject a device that opens but never actually runs: on the
+ * RG35XX SP the raw ALSA paths (dmix, hw:0,0) open happily, reach state
+ * RUNNING and advance the hardware pointer, yet never deliver a single
+ * callback -- the app would sit there playing the silence it was primed
+ * with. The PipeWire-backed PCMs deliver callbacks normally. */
+static volatile unsigned long g_audioCallbacks = 0;
+
 /* Opens the output stream, negotiating a rate and buffer size the device will
  * accept, and records the rate the stream ended up at in g_sampleRate.
  *
@@ -298,12 +306,21 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
  * plug layer and report a sane rate), then the raw hardware last. The rate is
  * requested as "whatever the device wants" and read back from the stream, so
  * the engine follows the device instead of assuming.
+ *
+ * Two environment variables override the search:
+ *   SPECTRAX_AUDIO_DEVICE  ALSA/PortAudio device substring to try first
+ *   SPECTRAX_AUDIO_RATE    engine sample rate to request, in Hz
+ * The rate override is what makes a lower internal rate possible: a named
+ * PipeWire PCM (see /storage/.config/asound.conf) offers a fixed rate that
+ * the server then resamples, so the engine can run at e.g. 24000 while the
+ * codec keeps its native rate.
  */
 static PaError openAudioStream(PaStream **stream, paTestData *data) {
     static const struct {
         const char *dev;   /* NULL = PortAudio's default output device */
         unsigned long buf;
     } tries[] = {
+        {"spx48000", 256},
         {"dmix", 256},
         {"dmix", 512},
         {NULL, 256},
@@ -315,6 +332,23 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
     };
 
     PaError last = paNotInitialized;
+    /* A stream that opened but never delivered a callback is kept as a
+     * fallback: on a device where no candidate actually runs, the app should
+     * still start (and be silent) rather than refuse to launch. */
+    PaStream *fallback = NULL;
+    double fallback_rate = 0.0;
+
+    /* Overrides. The device substring is tried first; the rate is requested
+     * explicitly instead of "whatever the device wants", which is what lets
+     * a named PipeWire PCM pin the engine rate. */
+    const char *want_dev = getenv("SPECTRAX_AUDIO_DEVICE");
+    double want_rate = 0.0;
+    const char *rate_env = getenv("SPECTRAX_AUDIO_RATE");
+    if(rate_env && *rate_env) {
+        want_rate = atof(rate_env);
+        if(want_rate < 8000.0 || want_rate > 192000.0) want_rate = 0.0;
+    }
+
     for(unsigned i = 0; i < sizeof tries / sizeof tries[0]; i++) {
         PaStreamParameters out;
         memset(&out, 0, sizeof out);
@@ -322,34 +356,123 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
         out.sampleFormat = paFloat32;
         out.hostApiSpecificStreamInfo = NULL;
 
-        if(tries[i].dev == NULL) {
+        /* The override device gets first refusal, ahead of the built-in list. */
+        const char *dev_name = tries[i].dev;
+        if(want_dev && i == 0) dev_name = want_dev;
+        else if(want_dev && tries[i].dev) continue;
+
+        if(dev_name == NULL) {
             out.device = Pa_GetDefaultOutputDevice();
             if(out.device == paNoDevice) continue;
         } else {
-            out.device = findOutputDeviceByName(tries[i].dev);
+            out.device = findOutputDeviceByName(dev_name);
             if(out.device == paNoDevice) continue;
         }
         const PaDeviceInfo *di = Pa_GetDeviceInfo(out.device);
         out.suggestedLatency = di ? di->defaultLowOutputLatency : 0;
 
-        /* Ask for the device's own rate: the engine follows it. */
-        double want = di ? di->defaultSampleRate : SAMPLE_RATE_DEFAULT;
+        /* Ask for the device's own rate: the engine follows it -- unless the
+         * caller pinned a rate, in which case that is what we ask for. */
+        double want = want_rate > 0.0
+                    ? want_rate
+                    : (di ? di->defaultSampleRate : SAMPLE_RATE_DEFAULT);
+        TraceLog(LOG_INFO,
+                 "audio: trying %s (idx=%d name=%s device_rate=%.0f want=%.0f lat=%.4f buf=%lu)",
+                 dev_name ? dev_name : "(default)", (int)out.device,
+                 di ? di->name : "(none)",
+                 di ? di->defaultSampleRate : -1.0, want,
+                 out.suggestedLatency, tries[i].buf);
         last = Pa_OpenStream(stream, NULL, &out, want,
                              tries[i].buf, paNoFlag, patestCallback, data);
         if(last == paNoError) {
+            /* Start it here so a device that opens but never runs can be
+             * rejected before we commit to it. */
+            if(Pa_StartStream(*stream) != paNoError) {
+                Pa_CloseStream(*stream);
+                *stream = NULL;
+                last = paNotInitialized;
+                continue;
+            }
+            /* Give the stream time to deliver a callback. The first
+             * PipeWire-backed stream in a process has to link to the server
+             * before the callback thread produces anything, and that took
+             * just over two seconds on the RG35XX SP; later streams link
+             * immediately. A device that works delivers its first callback
+             * well inside this window, so only a genuinely dead device
+             * costs the full wait. */
+            g_audioCallbacks = 0;
+            for(int waited = 0; waited < 5000 && g_audioCallbacks == 0; waited += 20) {
+                Pa_Sleep(20);
+            }
+            if(g_audioCallbacks == 0) {
+                TraceLog(LOG_WARNING,
+                         "audio: %s opened but delivered no callbacks in 5s; rejecting",
+                         dev_name ? dev_name : "(default)");
+                /* Keep it as a fallback: a device that opens but never runs
+                 * is still better than refusing to launch, and the warning
+                 * above says why it would be silent. */
+                if(!fallback) {
+                    fallback = *stream;
+                    const PaStreamInfo *fsi = Pa_GetStreamInfo(fallback);
+                    fallback_rate = fsi ? fsi->sampleRate : 0.0;
+                } else {
+                    Pa_StopStream(*stream);
+                    Pa_CloseStream(*stream);
+                }
+                *stream = NULL;
+                last = paNotInitialized;
+                continue;
+            }
             const PaStreamInfo *si = Pa_GetStreamInfo(*stream);
+            /* A rate far above anything this engine needs means the device
+             * negotiated a rate the engine would then have to synthesise at
+             * (the PipeWire PCM defaults to its own 384000). Every sample
+             * would cost 8x the CPU, so reject it and try the next device. */
+            if(si && si->sampleRate > 96000.0) {
+                TraceLog(LOG_WARNING,
+                         "audio: %s negotiated %.0f Hz; too high for the engine, rejecting",
+                         dev_name ? dev_name : "(default)", si->sampleRate);
+                if(!fallback) {
+                    fallback = *stream;
+                    fallback_rate = si->sampleRate;
+                } else {
+                    Pa_StopStream(*stream);
+                    Pa_CloseStream(*stream);
+                }
+                *stream = NULL;
+                last = paNotInitialized;
+                continue;
+            }
+            /* A working candidate: drop any fallback we were holding. */
+            if(fallback) {
+                Pa_StopStream(fallback);
+                Pa_CloseStream(fallback);
+                fallback = NULL;
+            }
             if(si && si->sampleRate > 0) {
                 g_sampleRate = (float)si->sampleRate;
                 TraceLog(LOG_INFO,
                          "audio: device=%s buffer=%lu rate=%.0f latency=%.4f",
-                         tries[i].dev ? tries[i].dev : "(default)",
+                         dev_name ? dev_name : "(default)",
                          tries[i].buf, si->sampleRate, si->outputLatency);
             }
             return paNoError;
         }
         TraceLog(LOG_WARNING, "audio: open failed for %s buffer=%lu (%s)",
-                 tries[i].dev ? tries[i].dev : "(default)", tries[i].buf,
+                 dev_name ? dev_name : "(default)", tries[i].buf,
                  Pa_GetErrorText(last));
+    }
+
+    /* Nothing delivered a callback. Fall back to a stream that at least
+     * opened, so the app still starts -- it will be silent, and the warnings
+     * above say why. */
+    if(fallback) {
+        *stream = fallback;
+        if(fallback_rate > 0.0) g_sampleRate = (float)fallback_rate;
+        TraceLog(LOG_WARNING,
+                 "audio: no device delivered callbacks; running on the fallback stream at %.0f Hz (silent)",
+                 fallback_rate);
+        return paNoError;
     }
     return last;
 }
@@ -369,6 +492,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 	(void)inputBuffer;
 	(void)timeInfo;
 	(void)statusFlags;
+	g_audioCallbacks++;
 	renderAudioBuffer((paTestData *)userData, (float *)outputBuffer, framesPerBuffer);
 	return 0;
 }
@@ -487,9 +611,6 @@ int main(int argc, char **argv) {
 	if(err != paNoError)
 		goto error;
 
-	err = Pa_StartStream(stream);
-	if(err != paNoError)
-		goto error;
 	SetTraceLogLevel(LOG_WARNING);
 	RenderTexture2D gfx = createPresentTarget();
 	while(!WindowShouldClose()) {

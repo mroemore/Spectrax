@@ -15,8 +15,16 @@ cpu_core  = "cortex-a53"     # sun50i-h616.dtsi: compatible = "arm,cortex-a53" x
 cpu_mhz   = 1500             # OPP table tops out at 1512 MHz; ES offers a 1.5 GHz OC
 cores     = 4
 gpu       = "Mali-G31 MP2"   # DT node: "allwinner,sun50i-h616-mali", "arm,mali-bifrost"
-ram_mb    = 1024             # Anbernic: 1 GB DDR3. ROCKNIX wiki says LPDDR4 -- disputed.
-ram_type  = "DDR3"
+ram_mb    = 1024             # Anbernic: 1 GB. ROCKNIX wiki says LPDDR4.
+ram_type  = "DDR4"           # RESOLVED 2026-10-30: the device runs the
+                             # ROCKNIX-H700.aarch64-20261001-DDR4 image
+                             # correctly (boots, WiFi, audio all work), and
+                             # that image's SP DTB programs the DRAM rail
+                             # reg_dcdc3 = 0x10c8e0 = 1.1V (DDR4/LPDDR4).
+                             # The DDR4 image ships a separate
+                             # rg35xx-2024-ddr3.dtbo overlay for DDR3L
+                             # boards (1.2V). The earlier "DDR3" value here
+                             # was Anbernic's spec, never probe-verified.
 storage   = "microSD"        # ROCKNIX wiki: no eMMC
 
 [cfw]
@@ -24,7 +32,11 @@ family          = "rocknix"
 hostname        = "RG35XX-SP"
 user            = "root"
 password        = ""
-password_source = "user-set"  # ROCKNIX regenerates the root password every boot
+password_source = "user-set"  # stock default password is rocknix; user may change it in ES
+                               # NOTE: NOT regenerated per boot. Root's home is /storage
+                               # (writable ext4), and /storage/.ssh/authorized_keys persists
+                               # across boots (tmpfiles only creates the .ssh directory).
+                               # Verified on device 2026-10-24.
 ssh_enabled_by_default = false # ROCKNIX ships with SSH off; enable it in ES
 
 [display]
@@ -60,6 +72,7 @@ order       = ["usb-gadget", "wifi-ssh", "sd"]
 mdns_names  = ["rocknix.local", "rg35xxsp.local"]
 usb_gadget_host_ip   = "169.254.170.1"   # ROCKNIX usbgadget default
 usb_gadget_device_ip = "169.254.170.2"
+last_ip      = "192.168.68.109"  # DHCP lease after the 2026-10-30 reflash
 
 [build]
 cross_file = "meson/cross/aarch64-linux-gnu.ini"
@@ -71,6 +84,8 @@ c_args     = ["-mcpu=cortex-a53", "-mtune=cortex-a53", "-O3",
 [probes]
 # Resolved on a real unit 2026-10-22: userspace_arch aarch64, ports_dir
 # /storage/roms/ports, display_mode 640x480 native, audio_device dmix@48000.
-# Still open: usb_gadget (no cable to test the port), cpu_governor,
-# lid_switch, ram_type (Anbernic says DDR3, the ROCKNIX wiki says LPDDR4).
-needed = ["usb_gadget", "cpu_governor", "lid_switch", "ram_type"]
+# Resolved 2026-10-30 after the reflash onto a healthy 32GB card: ram_type
+# DDR4 (the DDR4 image boots and runs correctly; its SP DTB programs the
+# DRAM rail at 1.1V). usb_gadget verified separately via the CDC-NCM link.
+# Still open: cpu_governor, lid_switch.
+needed = ["cpu_governor", "lid_switch"]

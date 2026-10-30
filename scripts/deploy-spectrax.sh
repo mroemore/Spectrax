@@ -161,6 +161,17 @@ deploy_over_ssh() {
             rsync $rsync_opts bin/cfg.json "$dest/cfg.json" || return 1
         fi
     fi
+    # The ALSA user config, which is where ROCKNIX looks for it
+    # (/storage/.config/asound.conf -- /etc is a read-only squashfs). It
+    # defines the named PipeWire PCMs the app opens: the raw ALSA paths on
+    # this handheld never deliver PortAudio callbacks, so without these the
+    # app runs silently.
+    if [ -f bin/asound.conf ]; then
+        asound_dest="root@$target_ip:/storage/.config/asound.conf"
+        ssh "$(ssh_target "$target_ip")" "mkdir -p /storage/.config" 2>/dev/null || true
+        # shellcheck disable=SC2086
+        rsync $rsync_opts bin/asound.conf "$asound_dest" || return 1
+    fi
     # The device-side launch wrappers read their paths and the GPU helper
     # from this fragment. Write it to the writable data partition: the
     # rootfs on ROCKNIX (and on most of these handheld CFWs) is a read-only
