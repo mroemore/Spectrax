@@ -1,9 +1,8 @@
 #include "oscillator.h"
 
-/* Rate the audio stream actually runs at; every phase increment divides by
- * it. Set from the opened stream (see openAudioStream in main.c) before the
- * callback runs. */
-float g_sampleRate = SAMPLE_RATE_DEFAULT;
+/* g_sampleRate (the rate the audio stream actually runs at) is defined in
+ * samplerate.c, so that a single definition can be shared with targets that
+ * do not link the oscillator -- see src/samplerate.c. */
 #include "modsystem.h"
 #include "sintab.h"
 #include <math.h>

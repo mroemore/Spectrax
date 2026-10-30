@@ -11,6 +11,7 @@ core_sources = files(
   'modsystem.c',
   'oscillator.c',
   'sintab.c',
+  'samplerate.c',
   'wavetable.c',
   'dstruct.c',
   'blit_synth.c',
