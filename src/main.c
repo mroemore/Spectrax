@@ -302,7 +302,7 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
 static volatile unsigned long g_audioCallbacks = 0;
 
 /* Opens the output stream, negotiating a rate and buffer size the device will
- * accept, and records the rate the stream ended up at in g_sampleRate.
+ * accept, and records the rate the stream ended up at in g_deviceRate.
  *
  * On a handheld CFW the codec is often locked to a rate the engine does not
  * default to (the H700 runs at 192000 raw / 48000 via dmix, with no 44100
@@ -312,17 +312,17 @@ static volatile unsigned long g_audioCallbacks = 0;
  * nothing on this hardware.
  *
  * Candidates are tried in order: the ALSA plugin devices first (they carry a
- * plug layer and report a sane rate), then the raw hardware last. The rate is
- * requested as "whatever the device wants" and read back from the stream, so
- * the engine follows the device instead of assuming.
+ * plug layer and report a sane rate), then the raw hardware last.
  *
- * Two environment variables override the search:
+ * The rate is NOT negotiated with the device: the engine synthesises at
+ * SPECTRAX_ENGINE_RATE, always, so that a voice's output is the same on every
+ * device. A candidate that cannot run at that rate is rejected rather than
+ * silently substituted -- PortAudio substitutes without a word (asking the
+ * RG35XX SP's hw:0,0 for 48000 gets 192000), and the engine's output would
+ * then arrive at the speaker at the wrong speed.
+ *
+ * One environment variable overrides the device search:
  *   SPECTRAX_AUDIO_DEVICE  ALSA/PortAudio device substring to try first
- *   SPECTRAX_AUDIO_RATE    engine sample rate to request, in Hz
- * The rate override is what makes a lower internal rate possible: a named
- * PipeWire PCM (see /storage/.config/asound.conf) offers a fixed rate that
- * the server then resamples, so the engine can run at e.g. 24000 while the
- * codec keeps its native rate.
  */
 static PaError openAudioStream(PaStream **stream, paTestData *data) {
     static const struct {
@@ -347,16 +347,9 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
     PaStream *fallback = NULL;
     double fallback_rate = 0.0;
 
-    /* Overrides. The device substring is tried first; the rate is requested
-     * explicitly instead of "whatever the device wants", which is what lets
-     * a named PipeWire PCM pin the engine rate. */
+    /* Override: the device substring is tried first. There is no rate
+     * override -- the engine's rate is a constant, not a choice. */
     const char *want_dev = getenv("SPECTRAX_AUDIO_DEVICE");
-    double want_rate = 0.0;
-    const char *rate_env = getenv("SPECTRAX_AUDIO_RATE");
-    if(rate_env && *rate_env) {
-        want_rate = atof(rate_env);
-        if(want_rate < 8000.0 || want_rate > 192000.0) want_rate = 0.0;
-    }
 
     for(unsigned i = 0; i < sizeof tries / sizeof tries[0]; i++) {
         PaStreamParameters out;
@@ -380,11 +373,9 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
         const PaDeviceInfo *di = Pa_GetDeviceInfo(out.device);
         out.suggestedLatency = di ? di->defaultLowOutputLatency : 0;
 
-        /* Ask for the device's own rate: the engine follows it -- unless the
-         * caller pinned a rate, in which case that is what we ask for. */
-        double want = want_rate > 0.0
-                    ? want_rate
-                    : (di ? di->defaultSampleRate : SAMPLE_RATE_DEFAULT);
+        /* Ask for the engine's rate. The device either runs at it or is
+         * rejected below. */
+        double want = (double)SPECTRAX_ENGINE_RATE;
         TraceLog(LOG_INFO,
                  "audio: trying %s (idx=%d name=%s device_rate=%.0f want=%.0f lat=%.4f buf=%lu)",
                  dev_name ? dev_name : "(default)", (int)out.device,
@@ -397,6 +388,27 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
             /* Start it here so a device that opens but never runs can be
              * rejected before we commit to it. */
             if(Pa_StartStream(*stream) != paNoError) {
+                Pa_CloseStream(*stream);
+                *stream = NULL;
+                last = paNotInitialized;
+                continue;
+            }
+            const PaStreamInfo *si = Pa_GetStreamInfo(*stream);
+            /* The engine synthesises at SPECTRAX_ENGINE_RATE, always, so a
+             * candidate that negotiated another rate cannot carry that
+             * output without a boundary resampler. PortAudio substitutes
+             * silently, so this has to be checked rather than assumed:
+             * asking the RG35XX SP's hw:0,0 for 48000 gets 192000, and the
+             * PipeWire PCM defaults to its own 384000. Playing into such a
+             * stream would put every note at the wrong pitch and every tempo
+             * at the wrong speed, so reject it and try the next candidate.
+             * It does not become the fallback either -- a wrong-rate stream
+             * is audible, and audibly wrong. */
+            if(si && si->sampleRate != (double)SPECTRAX_ENGINE_RATE) {
+                TraceLog(LOG_WARNING,
+                         "audio: %s negotiated %.0f Hz; the engine runs at %d Hz and has no boundary resampler, rejecting",
+                         dev_name ? dev_name : "(default)", si->sampleRate, SPECTRAX_ENGINE_RATE);
+                Pa_StopStream(*stream);
                 Pa_CloseStream(*stream);
                 *stream = NULL;
                 last = paNotInitialized;
@@ -424,26 +436,7 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
                     fallback = *stream;
                     const PaStreamInfo *fsi = Pa_GetStreamInfo(fallback);
                     fallback_rate = fsi ? fsi->sampleRate : 0.0;
-                } else {
-                    Pa_StopStream(*stream);
-                    Pa_CloseStream(*stream);
-                }
-                *stream = NULL;
-                last = paNotInitialized;
-                continue;
-            }
-            const PaStreamInfo *si = Pa_GetStreamInfo(*stream);
-            /* A rate far above anything this engine needs means the device
-             * negotiated a rate the engine would then have to synthesise at
-             * (the PipeWire PCM defaults to its own 384000). Every sample
-             * would cost 8x the CPU, so reject it and try the next device. */
-            if(si && si->sampleRate > 96000.0) {
-                TraceLog(LOG_WARNING,
-                         "audio: %s negotiated %.0f Hz; too high for the engine, rejecting",
-                         dev_name ? dev_name : "(default)", si->sampleRate);
-                if(!fallback) {
-                    fallback = *stream;
-                    fallback_rate = si->sampleRate;
+                    g_deviceRate = (float)fallback_rate;
                 } else {
                     Pa_StopStream(*stream);
                     Pa_CloseStream(*stream);
@@ -459,7 +452,7 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
                 fallback = NULL;
             }
             if(si && si->sampleRate > 0) {
-                g_sampleRate = (float)si->sampleRate;
+                g_deviceRate = (float)si->sampleRate;
                 TraceLog(LOG_INFO,
                          "audio: device=%s buffer=%lu rate=%.0f latency=%.4f",
                          dev_name ? dev_name : "(default)",
@@ -477,7 +470,7 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
      * above say why. */
     if(fallback) {
         *stream = fallback;
-        if(fallback_rate > 0.0) g_sampleRate = (float)fallback_rate;
+        if(fallback_rate > 0.0) g_deviceRate = (float)fallback_rate;
         TraceLog(LOG_WARNING,
                  "audio: no device delivered callbacks; running on the fallback stream at %.0f Hz (silent)",
                  fallback_rate);

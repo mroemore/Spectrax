@@ -1263,7 +1263,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			int fftSize = 2048;
 			initFFT(&fft, fftSize, 256, 5, false, true);
 			float sampleFreq = 261.625;
-			float phaseInc = sampleFreq / SAMPLE_RATE;
+			float phaseInc = sampleFreq / SPECTRAX_ENGINE_RATE;
 			for(int i = 0; i < samplePool->samples[0]->length; i++) {
 				float spos = (float)i;
 				float s = getSampleValueFwd(samplePool->samples[1], &spos, phaseInc, 0);
@@ -1383,7 +1383,7 @@ OutVal granularProcess(GranularProcessor *gp, float phaseIncrement) {
 	OutVal result = { 0.0f, 0.0f };
 
 	for(int i = 0; i < GRAIN_COUNT; i++) {
-		float adjusted_phaseinc_sample = phaseIncrement * (SAMPLE_RATE / (float)gp->sample->sampleRate);
+		float adjusted_phaseinc_sample = phaseIncrement * (SPECTRAX_ENGINE_RATE / (float)gp->sample->sampleRate);
 		gp->grainReadPos[i] += adjusted_phaseinc_sample;
 		gp->windowIndex[i] += phaseIncrement;
 

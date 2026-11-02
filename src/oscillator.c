@@ -1,8 +1,7 @@
 #include "oscillator.h"
 
-/* g_sampleRate (the rate the audio stream actually runs at) is defined in
- * samplerate.c, so that a single definition can be shared with targets that
- * do not link the oscillator -- see src/samplerate.c. */
+/* The engine's rate is SPECTRAX_ENGINE_RATE (settings.h); the device's own
+ * rate lives in devicerate.c and no synthesis path reads it. */
 #include "modsystem.h"
 #include "sintab.h"
 #include <math.h>
@@ -55,7 +54,7 @@ float sineFmAlgo(Operator *ops[], float frequency, int algorithm) {
 }
 
 float sine_op(Operator *op, float frequency, float mod) {
-	float phase_inc = opFrequencyAt(op, frequency) / SAMPLE_RATE;
+	float phase_inc = opFrequencyAt(op, frequency) / SPECTRAX_ENGINE_RATE;
 	float feedbackLevel = getParameterValue(op->feedbackAmount) * op->lastVal;
 	op->phase = fmodf(op->phase + phase_inc, 1.0f);
 	float a = sinTab(op->phase + mod);

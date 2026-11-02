@@ -191,7 +191,7 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 					/* Task 2.3: live-base sync from the instrument before
 					 * this voice's per-sample modulation pass. */
 					syncVoiceGraph(currentVoice);
-					processModulations(currentVoice->paramList, currentVoice->modList, 1.0f / SAMPLE_RATE);
+					processModulations(currentVoice->paramList, currentVoice->modList, 1.0f / SPECTRAX_ENGINE_RATE);
 					// Handle envelope
 					Mod *gainDriver = (currentVoice->cloneCount > 0) ? currentVoice->clones[0] : NULL;
 					if(gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
@@ -210,7 +210,7 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 						freq = noteFrequencies[currentVoice->note[0]][currentVoice->note[1]];
 						setParameterBaseValue(currentVoice->frequency, freq);
 						setParameterValue(currentVoice->frequency, freq);
-						phase_increment = freq / SAMPLE_RATE;
+						phase_increment = freq / SPECTRAX_ENGINE_RATE;
 					}
 
 					OutVal currentSample = generateVoice(data->voiceManager, currentVoice, phase_increment, freq);

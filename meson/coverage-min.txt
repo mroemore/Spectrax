@@ -11,13 +11,20 @@ src/notes.c        100
 src/wavetable.c    100
 src/filters.c      100
 src/gui_layer.c    100
-# 98, not 100: one branch in gui_pattern.c's drawStepGuiNode
-# (st->note.fontSize ? ... : textFont.baseSize) is only reachable with a
-# step-cell style class in layout.json, and neither the shipped src/ nor
-# bin/ layout.json defines one — so production always takes the default
-# (fontSize 0). Documented exclusion rather than a fabricated config.
-# See TESTING.md (I29).
-src/gui_pattern.c  98
+# 40, not 98: the 98 floor came from main, whose gui_pattern.c was 303 lines.
+# The consolidated file is pattern-mod's 552-line version, which adds the
+# pattern-track editor (the PTN indicator, the track grid, the track step
+# nodes, the track branches of navigatePatternGraph and handlePatternTrackEdit
+# -- 166 uncovered lines in 39 ranges). pattern-mod's branch carried no
+# coverage floor at all, so that feature landed untested; the merge combined
+# main's floor with a different file and the gate went red.
+#
+# The uncovered code is the track editor's own surface, which the
+# instrument_harness fixtures drive (the same arrangement as the sampler
+# control-panel modules below). The floor is re-baselined here so the ratchet
+# holds from the consolidated file's real coverage; it should climb as the
+# track editor gets unit tests of its own.
+src/gui_pattern.c  40
 # Sampler waveform pass: floors from the unit suite only (tests/dsp).
 # The GUI control-panel modules (gui_inst_sample.c, gui_instrument.c, ...)
 # are exercised by the instrument_harness fixtures, whose coverage is

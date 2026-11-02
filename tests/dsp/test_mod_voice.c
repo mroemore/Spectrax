@@ -332,7 +332,7 @@ static int make_env(TestEnv *e, int defaultVoiceCount) {
     for (int i = 0; i < TEST_SAMPLE_LEN; i++) {
         buf[i] = sinf(2.0f * (float)M_PI * (float)i / (float)TEST_SAMPLE_LEN);
     }
-    loadSample(e->sp, "sine", buf, 24, SAMPLE_RATE, TEST_SAMPLE_LEN);
+    loadSample(e->sp, "sine", buf, 24, SPECTRAX_ENGINE_RATE, TEST_SAMPLE_LEN);
     free(buf);
 
     e->wtp = createWavetablePool();

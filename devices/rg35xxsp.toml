@@ -47,12 +47,15 @@ native = true                 # the panel is 640x480, matching the Spectrax surf
 
 [audio]
 # Measured on a real unit (ROCKNIX 20261001, 2026-10-22). The codec is
-# 192 kHz native and exposes no 44100 device at all, so the engine runs at
-# whatever rate the opened stream reports rather than a compile-time 44100.
+# 192 kHz native and exposes no 44100 device at all; dmix is the one that
+# runs at the engine's rate. The engine's rate is a compile-time constant
+# (SPECTRAX_ENGINE_RATE, 48000) -- the device has to run at that rate or
+# openAudioStream() rejects it, because a silently substituted rate would
+# put every note at the wrong pitch.
 device        = "dmix"        # hw:0,0 is 192000 (no plug layer); sysdefault reports INT_MAX
 sample_rate   = 48000         # dmix; PortAudio's ALSA backend selects it
 periods_max   = 1             # the dmix plugin and the H700 codec both report 1 period
-engine_follows_device_rate = true
+engine_follows_device_rate = false
 
 [gpu]
 driver     = "panfrost"       # ROCKNIX wiki: Panfrost, GL 3.1 / GLES 3.1

@@ -30,7 +30,9 @@
 #define BENCH_HAVE_NEON 1
 #endif
 
-#define SR 44100
+/* The engine's rate (SPECTRAX_ENGINE_RATE). The bench drives the engine's
+ * own render path, so it must synthesise at the rate the engine uses. */
+#define SR SPECTRAX_ENGINE_RATE
 #define BUF 256
 
 static double seconds_now(void) {
@@ -149,7 +151,7 @@ int bench_audio_run(const BenchOptions *opts, BenchReport *r) {
 
     const char *cols[] = {"buffer_idx", "elapsed_ms", "callback_ms"};
     bench_report_series_begin(r, "audio_callbacks", cols, 3);
-    bench_report_str(r, "audio", "sample_rate", "44100");
+    bench_report_str(r, "audio", "sample_rate", "48000");
     bench_report_str(r, "audio", "buffer_size", "256");
     bench_report_str(r, "audio", "neon", no_neon ? "off" : "on");
     bench_report_metric(r, "audio", "voices_requested", voices * channels);

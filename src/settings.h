@@ -1,12 +1,23 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
-/* The stream's actual rate. PA_SR is the sequencer's view of it: the step
- * sizes must be derived from the rate the audio device runs at, not a
- * compile-time constant, or the song plays at the wrong tempo on a device
- * whose codec does not do 44100. */
-extern float g_sampleRate;
-#define PA_SR ((int)g_sampleRate)
+/* The engine's sample rate. Every synthesis timebase -- phase increments,
+ * envelope and LFO clocks, the sequencer's step cadence -- derives from
+ * this constant, so a voice's output is a pure function of its settings and
+ * never of the device it plays on. The device's own rate is a boundary fact
+ * (g_deviceRate): a device that cannot run at this rate cannot carry the
+ * engine's output without a boundary resampler, and the stream open refuses
+ * it rather than playing every note at the wrong pitch. */
+#define SPECTRAX_ENGINE_RATE 48000
+
+/* The rate the sequencer derives its step cadence from. It used to follow
+ * the opened stream's rate, which made the tempo drift with the device. */
+#define PA_SR SPECTRAX_ENGINE_RATE
+
+/* The rate the opened audio device actually runs at. Boundary only: the
+ * stream open records it and a future boundary resampler will need it. No
+ * synthesis path may read it. */
+extern float g_deviceRate;
 #define PA_BUFFER_SIZE 256
 #define MAX_SEQUENCER_CHANNELS 16
 #define MAX_VOICES_PER_CHANNEL 8

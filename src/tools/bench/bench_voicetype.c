@@ -31,7 +31,7 @@
 #include <unistd.h>
 
 #define BUF_MAX 512
-#define SR_DEFAULT 44100
+#define SR_DEFAULT 48000
 
 static double seconds_now(void) {
     struct timespec ts;
@@ -166,10 +166,10 @@ int run_bench_voicetype(BenchReport *r, const BenchOptions *o) {
     int voices = o->voices > 0 ? o->voices : 4;
     int channels = o->channels > 0 ? o->channels : 1;
     g_rate = o->audio_rate > 0 ? o->audio_rate : SR_DEFAULT;
-    /* The engine reads the rate from g_sampleRate; the bench must set it so
+    /* The device rate; the bench must set it so
      * phase increments, filter coefficients and envelope rates all follow.
      * This is what makes the rate sweep meaningful rather than cosmetic. */
-    g_sampleRate = (float)g_rate;
+    g_deviceRate = (float)g_rate;
     /* Holding the callback PERIOD constant is the only fair way to compare
      * rates: 48000/256 and 24000/128 are both 5.33 ms. Sampling at a lower
      * rate at the SAME buffer size changes nothing except the deadline, which

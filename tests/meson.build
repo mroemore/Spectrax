@@ -14,6 +14,7 @@ test_names = [
   'test_layout',
   'test_theme',
   'test_waveform',
+  'test_engine_rate',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -76,6 +77,12 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_engine_rate'
+    # The contract test greps the synthesis sources, so it needs their path.
+    test_c_args = ['-DSPECTRAX_SRC_DIR="' + meson.project_source_root() + '/src"']
+    # createArranger lives in seq_lib; appstate.o's rebuildPatternGraph is
+    # stubbed in the test file.
+    link_libs = [core_lib, seq_lib]
   elif name == 'test_theme'
     # test_theme validates the SHIPPED theme for the same reason.
     test_c_args = ['-DSPECTRAX_THEME_JSON="' + meson.project_source_root() + '/bin/clr.json"']

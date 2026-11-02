@@ -46,6 +46,11 @@ echo ">> build"
 ninja -C "$BUILD"
 
 echo ">> test"
+# Clear stale counters first. A .gcda written by a previous build of the same
+# path carries the old build's stamp, and lcov refuses it with "stamp
+# mismatch with notes file" -- which breaks the capture whenever a source
+# file changed since the last run.
+find "$BUILD" -name '*.gcda' -delete
 # A failing test still executes code, so keep going and report coverage;
 # the suite's exit status is surfaced at the end.
 TEST_RC=0

@@ -33,13 +33,14 @@ scale  = 1.0
 native = true
 
 [audio]
-# Not yet measured on hardware (no Pixel 2 attached). The same runtime-rate
-# handling applies: the engine follows whatever the opened stream reports,
-# and openAudioStream() prefers the plugin devices.
+# Not yet measured on hardware (no Pixel 2 attached). The engine's rate is
+# a compile-time constant (SPECTRAX_ENGINE_RATE, 48000); the device has to
+# run at that rate or openAudioStream() rejects it. openAudioStream() prefers
+# the plugin devices, which carry a plug layer and report a sane rate.
 device        = ""
-sample_rate   = 44100
+sample_rate   = 48000
 periods_max   = 0
-engine_follows_device_rate = true
+engine_follows_device_rate = false
 
 [gpu]
 driver     = "libmali"

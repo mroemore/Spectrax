@@ -41,6 +41,17 @@ helper      string   optional GPU-switch helper path; may be empty
 compositor  string   sway | x11
 platform    string   raylib PLATFORM_ suffix, e.g. drm
 
+## [audio]
+device              string  ALSA/PortAudio device substring; empty = the default device
+sample_rate         int     the rate the device must run at. The engine's rate is a
+                              compile-time constant (SPECTRAX_ENGINE_RATE, 48000); a
+                              device that cannot run at that rate is rejected at the
+                              stream open rather than silently substituted, because a
+                              substituted rate puts every note at the wrong pitch.
+periods_max         int     the device's maximum period count (0 = unknown)
+engine_follows_device_rate bool  always false: the engine's rate is a constant, never
+                              a property of the device.
+
 ## [paths]
 storage_root string
 ports_dir    string

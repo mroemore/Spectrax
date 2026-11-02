@@ -117,7 +117,7 @@ static int make_env(TestEnv *e, int defaultVoiceCount) {
     for (int i = 0; i < TEST_SAMPLE_LEN; i++) {
         buf[i] = sinf(2.0f * (float)M_PI * (float)i / (float)TEST_SAMPLE_LEN);
     }
-    loadSample(e->sp, "sine", buf, 24, SAMPLE_RATE, TEST_SAMPLE_LEN);
+    loadSample(e->sp, "sine", buf, 24, SPECTRAX_ENGINE_RATE, TEST_SAMPLE_LEN);
     free(buf);
 
     e->wtp = createWavetablePool();
@@ -148,11 +148,11 @@ static int make_env(TestEnv *e, int defaultVoiceCount) {
  * processModulations + generateVoice), returning the peak |L| amplitude.
  */
 static float render_voice(TestEnv *e, Voice *voice, int n) {
-    float phaseInc = 440.0f / (float)SAMPLE_RATE;
+    float phaseInc = 440.0f / (float)SPECTRAX_ENGINE_RATE;
     float maxAbs = 0.0f;
     for (int i = 0; i < n; i++) {
         processModulations(voice->paramList, voice->modList,
-                           1.0f / (float)SAMPLE_RATE);
+                           1.0f / (float)SPECTRAX_ENGINE_RATE);
         OutVal out = generateVoice(e->vm, voice, phaseInc, 440.0f);
         float a = fabsf(out.L);
         if (a > maxAbs) maxAbs = a;
@@ -217,16 +217,16 @@ static int test_fm_voice_envelope_attack_then_silence(void) {
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
     triggerVoice(v, note);
 
-    int total = 5 * SAMPLE_RATE; /* 5 s */
-    float phaseInc = 440.0f / (float)SAMPLE_RATE;
+    int total = 5 * SPECTRAX_ENGINE_RATE; /* 5 s */
+    float phaseInc = 440.0f / (float)SPECTRAX_ENGINE_RATE;
     float attackMax = 0.0f, tailMax = 0.0f;
     for (int i = 0; i < total; i++) {
-        processModulations(v->paramList, v->modList, 1.0f / (float)SAMPLE_RATE);
+        processModulations(v->paramList, v->modList, 1.0f / (float)SPECTRAX_ENGINE_RATE);
         OutVal out = generateVoice(e.vm, v, phaseInc, 440.0f);
         float a = fabsf(out.L);
         /* generous attack window (covers both 1x and 2x env rate) */
         if (i > 1000 && i < 4500 && a > attackMax) attackMax = a;
-        if (i > total - (SAMPLE_RATE / 10) && a > tailMax) tailMax = a;
+        if (i > total - (SPECTRAX_ENGINE_RATE / 10) && a > tailMax) tailMax = a;
     }
     ASSERT_TRUE(attackMax > 0.005f,
                 "envelope never produced audible attack output");
@@ -476,7 +476,7 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
     seq->running[0] = 1;
     seq->pattern_index[0] = 0;
 
-    int stepSamples = SAMPLE_RATE / 8; /* 8 steps/sec, coarse */
+    int stepSamples = SPECTRAX_ENGINE_RATE / 8; /* 8 steps/sec, coarse */
     for (int step = 0; step < 12; step++) {
         incrementSequencer(seq, pl, arr);
         if (seq->running[0]) {
@@ -492,14 +492,14 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
                 Voice *cv = e.vm->voicePools[0][v];
                 if (!cv->active) continue;
                 syncVoiceGraph(cv);
-                processModulations(cv->paramList, cv->modList, 1.0f / (float)SAMPLE_RATE);
+                processModulations(cv->paramList, cv->modList, 1.0f / (float)SPECTRAX_ENGINE_RATE);
                 Mod *gainDriver = (cv->cloneCount > 0) ? cv->clones[0] : NULL;
                 if (gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
                     setParameterValue(cv->volume, 1.0f);
                     setParameterBaseValue(cv->volume, 1.0f);
                     cv->active = 0;
                 }
-                generateVoice(e.vm, cv, 440.0f / (float)SAMPLE_RATE, 440.0f);
+                generateVoice(e.vm, cv, 440.0f / (float)SPECTRAX_ENGINE_RATE, 440.0f);
             }
         }
         /* step 4: the GUI deletes step 2's note (the 3rd note). */
@@ -563,7 +563,7 @@ static int test_note_delete_autoload_song(void) {
     Sequencer *seq = createSequencer(arr);
     ASSERT_TRUE(seq != NULL, "createSequencer");
 
-    int stepSamples = SAMPLE_RATE / 8;
+    int stepSamples = SPECTRAX_ENGINE_RATE / 8;
     for (int p = 0; p < pl->pattern_count; p++) {
         if (pl->patterns[p].pattern_size <= 0) continue;
         seq->running[0] = 1;
@@ -586,14 +586,14 @@ static int test_note_delete_autoload_song(void) {
                         Voice *cv = e.vm->voicePools[0][v];
                         if (!cv->active) continue;
                         syncVoiceGraph(cv);
-                        processModulations(cv->paramList, cv->modList, 1.0f / (float)SAMPLE_RATE);
+                        processModulations(cv->paramList, cv->modList, 1.0f / (float)SPECTRAX_ENGINE_RATE);
                         Mod *gainDriver = (cv->cloneCount > 0) ? cv->clones[0] : NULL;
                         if (gainDriver && gainDriver->type == MT_ENV && !gainDriver->data.env.isTriggered) {
                             setParameterValue(cv->volume, 1.0f);
                             setParameterBaseValue(cv->volume, 1.0f);
                             cv->active = 0;
                         }
-                        generateVoice(e.vm, cv, 440.0f / (float)SAMPLE_RATE, 440.0f);
+                        generateVoice(e.vm, cv, 440.0f / (float)SPECTRAX_ENGINE_RATE, 440.0f);
                     }
                 }
             }

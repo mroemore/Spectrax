@@ -100,7 +100,7 @@ Arranger *createArranger(Settings *settings, VoiceManager *vm, ApplicationState 
 // void updateBpm(Arranger *arranger, int bpm) {
 // 	if(bpm > 1 && bpm < 800) {
 // 		arranger->beats_per_minute = bpm;
-// 		arranger->samplesPerStep = (SAMPLE_RATE * 60) / (arranger->beats_per_minute * 4);
+// 		arranger->samplesPerStep = (SPECTRAX_ENGINE_RATE * 60) / (arranger->beats_per_minute * 4);
 // 	}
 // }
 

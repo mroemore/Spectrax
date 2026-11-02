@@ -105,7 +105,7 @@ static int make_env(void) {
 	for(int i = 0; i < TEST_SAMPLE_LEN; i++) {
 		sbuf[i] = sinf(2.0f * (float)M_PI * (float)i / (float)TEST_SAMPLE_LEN);
 	}
-	loadSample(sp, "sine", sbuf, 24, SAMPLE_RATE, TEST_SAMPLE_LEN);
+	loadSample(sp, "sine", sbuf, 24, SPECTRAX_ENGINE_RATE, TEST_SAMPLE_LEN);
 	free(sbuf);
 
 	WavetablePool *wtp = createWavetablePool();

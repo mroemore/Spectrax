@@ -98,7 +98,7 @@ int main(void) {
 		for(int i = 0; i < N; i++) {
 			buf[i] = sinf(2.0f * (float)M_PI * (float)i / (float)N);
 		}
-		loadSample(sp, "sine", buf, 24, SAMPLE_RATE, N);
+		loadSample(sp, "sine", buf, 24, SPECTRAX_ENGINE_RATE, N);
 		free(buf);
 	}
 	WavetablePool *wtp = createWavetablePool();

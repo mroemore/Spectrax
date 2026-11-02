@@ -34,7 +34,7 @@
 /* Fallback only: when the device profile reports the rate the stream actually
  * opened at, that wins, because the deadline a patch must fit inside depends
  * on it (44100 -> 5.81 ms, 48000 -> 5.33 ms for a 256-frame buffer). */
-#define SR_DEFAULT 44100
+#define SR_DEFAULT 48000
 
 static double seconds_now(void) {
     struct timespec ts;
