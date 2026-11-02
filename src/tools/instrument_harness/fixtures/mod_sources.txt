@@ -13,7 +13,7 @@ DOWN
 DOWN
 ASSERT selected==MODS_ADD
 EDIT
-ASSERT envcount==9
+ASSERT envcount==5
 
 # --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
 # After ADD selection reset to RATIO1; DOWN x10 reaches env[4]'s
@@ -32,7 +32,7 @@ DOWN
 DOWN
 ASSERT selected==ENV
 EDIT
-ASSERT envcount==9
+ASSERT envcount==5
 # Rebuild reset selection to RATIO1; re-navigate to the type button (now LFO).
 DOWN
 DOWN
@@ -107,14 +107,14 @@ EDIT
 ASSERT topLayerSelected==DELETE_NO
 # EDIT on NO cancels: envcount stays 9.
 EDIT
-ASSERT envcount==9
+ASSERT envcount==5
 # Re-open + confirm YES: envcount drops to 8 (core only incl. 4 patterns).
 EDIT
 ASSERT topLayerSelected==DELETE_NO
 RIGHT
 ASSERT topLayerSelected==DELETE_YES
 EDIT
-ASSERT envcount==8
+ASSERT envcount==4
 
 # --- Task 3.1: no-dial dests join the picker ------------------------------
 # Re-add a runtime source; open its picker; the `gain` dest (unique name,

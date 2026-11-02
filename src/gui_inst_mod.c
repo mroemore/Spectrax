@@ -320,7 +320,16 @@ bool removeSource(Instrument *inst, int srcIndex) {
 	 * how the array was populated. Task 4 will remove the mirror entirely. */
 	for(int k = 0; k < MAX_MOD_SOURCES; k++) {
 		if(inst->envelopes[k] == removed) {
-			inst->envelopes[k] = NULL;
+			/* Compact the mirror. The array is dense: slots 0..envelopeCount-1
+			 * hold the mirrored envelopes, and addRuntimeSource writes the
+			 * next one at envelopes[envelopeCount]. Leaving a hole here would
+			 * put the count below the live slots, so the next add would
+			 * overwrite a mirrored envelope that is still in the mod list.
+			 * Shift the tail down and drop the last slot. */
+			for(int j = k; j < MAX_MOD_SOURCES - 1; j++) {
+				inst->envelopes[j] = inst->envelopes[j + 1];
+			}
+			inst->envelopes[MAX_MOD_SOURCES - 1] = NULL;
 			/* One fewer populated slot. Recompute rather than decrement:
 			 * the mirror may have been mid-edit, and a decrement from a
 			 * stale count would drift the invariant this whole array
