@@ -1,5 +1,6 @@
 #include "sampler_character.h"
 #include "canonical_math.h"
+#include "settings.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -340,4 +341,136 @@ void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQ
 	if(res) {
 		*res = d->res;
 	}
+}
+
+/* ------------------------------------------------------------------ */
+/* The playback read path, and the intended tuning.                    */
+/* ------------------------------------------------------------------ */
+
+/* The equal-tempered semitone ratios, 2^(k/12) for k in [0, 12). They are
+ * literals rather than a computed power, so they are the same bits on every
+ * platform. */
+static const float SAMPLER_SEMITONE_RATIO[12] = {
+	1.0f,
+	1.0594630943592953f,
+	1.122462048309373f,
+	1.189207115002721f,
+	1.2599210498948732f,
+	1.3348398541700344f,
+	1.4142135623730951f,
+	1.4983070768766815f,
+	1.5874010519681994f,
+	1.681792830507429f,
+	1.7817974362806785f,
+	1.8877486253632068f
+};
+
+float samplerAdvance(int rootSemitones, float tune, int bakedRate) {
+	/* Split the shift into octaves and a remainder, so only the
+	 * twelve ratios are ever needed. */
+	int octaves = rootSemitones / 12;
+	int rem = rootSemitones - octaves * 12;
+	if(rem < 0) {
+		rem += 12;
+		octaves -= 1;
+	}
+	float ratio = SAMPLER_SEMITONE_RATIO[rem & 11];
+	for(int i = 0; i < octaves; i++) {
+		ratio *= 2.0f;
+	}
+	for(int i = 0; i > octaves; i--) {
+		ratio *= 0.5f;
+	}
+	if(!(tune > 0.0f)) {
+		tune = 1.0f;
+	}
+	int rate = (bakedRate > 0) ? bakedRate : SPECTRAX_ENGINE_RATE;
+	return ratio * tune * ((float)rate / (float)SPECTRAX_ENGINE_RATE);
+}
+
+/* The loop region, clamped to the bake. A region that is not a proper
+ * range means "the whole buffer". */
+static void loopBounds(const BakedSample *b, int loopStart, int loopEnd, int *start, int *end) {
+	int s = 0;
+	int e = b->length;
+	if(loopStart > 0) {
+		s = loopStart;
+	}
+	if(loopEnd > 0 && loopEnd < b->length) {
+		e = loopEnd;
+	}
+	if(e <= s) {
+		s = 0;
+		e = b->length;
+	}
+	*start = s;
+	*end = e;
+}
+
+float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
+                          int loop, int loopStart, int loopEnd) {
+	if(!b || !b->data || b->length <= 0 || !addr || !phase) {
+		return 0.0f;
+	}
+	int start = 0, end = b->length;
+	loopBounds(b, loopStart, loopEnd, &start, &end);
+	if(!(advance > 0.0f)) {
+		advance = 1.0f;
+	}
+	/* The fractional part is carried, and the integer part moves the
+	 * address -- truncated, as the machine's accumulator did. */
+	double ip = *phase + (double)advance;
+	uint32_t i = (uint32_t)ip;
+	*phase = ip - (double)i;
+	/* The address never stalls: an integer part of zero still advances a
+	 * frame, so a slow passage repeats rather than sticking. */
+	*addr += (i != 0) ? i : 1u;
+	if(*addr >= (uint32_t)end) {
+		if(!loop) {
+			*addr = (uint32_t)(end - 1);
+			return 0.0f;
+		}
+		uint32_t span = (uint32_t)(end - start);
+		if(span == 0) {
+			return 0.0f;
+		}
+		*addr = (uint32_t)start + ((*addr - (uint32_t)start) % span);
+	}
+	return b->data[*addr];
+}
+
+float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
+                            int loop, int loopStart, int loopEnd) {
+	if(!b || !b->data || b->length <= 0 || !pos) {
+		return 0.0f;
+	}
+	int start = 0, end = b->length;
+	loopBounds(b, loopStart, loopEnd, &start, &end);
+	*pos += advance;
+	if(*pos >= (float)end) {
+		if(!loop) {
+			*pos = (float)(end - 1);
+			return 0.0f;
+		}
+		float span = (float)(end - start);
+		if(span <= 0.0f) {
+			return 0.0f;
+		}
+		float rel = *pos - (float)start;
+		rel = rel - floorf(rel / span) * span;
+		*pos = (float)start + rel;
+	}
+	if(*pos < (float)start) {
+		*pos = (float)start;
+	}
+	int floorIndex = (int)*pos;
+	int ceilIndex = floorIndex + 1;
+	if(ceilIndex >= end) {
+		ceilIndex = loop ? start : end - 1;
+	}
+	if(floorIndex < start) {
+		floorIndex = start;
+	}
+	float frac = *pos - (float)floorIndex;
+	return b->data[floorIndex] * (1.0f - frac) + b->data[ceilIndex] * frac;
 }

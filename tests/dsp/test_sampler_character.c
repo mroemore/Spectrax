@@ -21,6 +21,7 @@
 #include <math.h>
 
 #include "sampler_character.h"
+#include "settings.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 
@@ -202,40 +203,6 @@ static int test_quant_bits_clamp(void) {
 /* ------------------------------------------------------------------ */
 /* Task 2: the bake -- band-limited decimation plus the coding law.     */
 /* ------------------------------------------------------------------ */
-
-/* The residual after removing the best-fit fundamental at `freq`.
- *
- * The bake resamples, and a resampling filter has a passband response and a
- * phase, so the output is not the ideal sine even before it is quantized.
- * Fitting the fundamental out (a two-unknown least squares) leaves only what
- * the quantizer did. */
-static double residualRms(const float *data, int len, float freq, float sr) {
-	double cc = 0, cs = 0, ss = 0, yc = 0, ys = 0;
-	for(int i = 0; i < len; i++) {
-		double t = (double)i / (double)sr;
-		double c = cos(2.0 * M_PI * (double)freq * t);
-		double s = sin(2.0 * M_PI * (double)freq * t);
-		cc += c * c;
-		cs += c * s;
-		ss += s * s;
-		yc += (double)data[i] * c;
-		ys += (double)data[i] * s;
-	}
-	double det = cc * ss - cs * cs;
-	if(det == 0.0) {
-		return 0.0;
-	}
-	double a = (yc * ss - ys * cs) / det;
-	double b = (ys * cc - yc * cs) / det;
-	double sum = 0;
-	for(int i = 0; i < len; i++) {
-		double t = (double)i / (double)sr;
-		double fit = a * cos(2.0 * M_PI * (double)freq * t) + b * sin(2.0 * M_PI * (double)freq * t);
-		double e = (double)data[i] - fit;
-		sum += e * e;
-	}
-	return sqrt(sum / (double)len);
-}
 
 /* The amplitude of the component at `freq`, by direct correlation. */
 static float toneAmplitude(const float *data, int len, float freq, float sr) {
@@ -614,6 +581,250 @@ static int test_profile_clean_is_passthrough(void) {
 	return 0;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Task 4: the playback read path, and the intended tuning.            */
+/* ------------------------------------------------------------------ */
+
+/* The advance is in BAKED frames per output frame. At unity -- the root
+ * note unshifted, the tune at 1, and the baked rate equal to the engine's
+ * rate -- it is exactly 1.0, which is the whole point: the sample plays at
+ * its recorded pitch.
+ *
+ * The plan's original advance (phaseIncrement * PA_SR * 2 * srcBit /
+ * srcRate) was the opposite: it made the pitch depend on the device's audio
+ * rate and on the sample's bit depth and channel count, so the same
+ * recording played at a different pitch on every machine, and an 8-bit mono
+ * sample and a 16-bit stereo one played at different pitches on the same
+ * machine. */
+static int test_advance_is_exactly_one_at_unity(void) {
+	float a = samplerAdvance(0, 1.0f, SPECTRAX_ENGINE_RATE);
+	if(a != 1.0f) {
+		printf("FAIL: the unity advance is %.9g, want exactly 1\n", (double)a);
+		return 1;
+	}
+	printf("PASS test_advance_is_exactly_one_at_unity\n");
+	return 0;
+}
+
+static int test_advance_follows_the_root(void) {
+	/* An octave up doubles the advance, an octave down halves it, and a
+	 * semitone is the twelfth root of two. */
+	if(samplerAdvance(12, 1.0f, SPECTRAX_ENGINE_RATE) != 2.0f) {
+		printf("FAIL: the +12 advance is %.9g, want 2\n", (double)samplerAdvance(12, 1.0f, SPECTRAX_ENGINE_RATE));
+		return 1;
+	}
+	if(samplerAdvance(-12, 1.0f, SPECTRAX_ENGINE_RATE) != 0.5f) {
+		printf("FAIL: the -12 advance is %.9g, want 0.5\n", (double)samplerAdvance(-12, 1.0f, SPECTRAX_ENGINE_RATE));
+		return 1;
+	}
+	float semi = samplerAdvance(1, 1.0f, SPECTRAX_ENGINE_RATE);
+	float expect = powf(2.0f, 1.0f / 12.0f);
+	if(fabsf(semi - expect) > 1e-6f) {
+		printf("FAIL: the +1 advance is %.9g, want %.9g\n", (double)semi, (double)expect);
+		return 1;
+	}
+	printf("PASS test_advance_follows_the_root\n");
+	return 0;
+}
+
+static int test_advance_follows_the_bake_rate(void) {
+	/* A buffer baked at half the engine's rate advances half a frame per
+	 * output frame. */
+	float a = samplerAdvance(0, 1.0f, SPECTRAX_ENGINE_RATE / 2);
+	if(fabsf(a - 0.5f) > 1e-6f) {
+		printf("FAIL: the half-rate advance is %.9g, want 0.5\n", (double)a);
+		return 1;
+	}
+	printf("PASS test_advance_follows_the_bake_rate\n");
+	return 0;
+}
+
+static int test_advance_follows_the_tune(void) {
+	float a = samplerAdvance(0, 1.5f, SPECTRAX_ENGINE_RATE);
+	if(fabsf(a - 1.5f) > 1e-6f) {
+		printf("FAIL: the tuned advance is %.9g, want 1.5\n", (double)a);
+		return 1;
+	}
+	printf("PASS test_advance_follows_the_tune\n");
+	return 0;
+}
+
+static int test_advance_ignores_the_device_rate(void) {
+	/* The engine's rate is a constant, so the advance cannot move when the
+	 * device's rate does. */
+	float before = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	float saved = g_deviceRate;
+	g_deviceRate = 44100.0f;
+	float at44 = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	g_deviceRate = 192000.0f;
+	float at192 = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	g_deviceRate = saved;
+	if(before != at44 || before != at192) {
+		printf("FAIL: the advance moved with the device rate (%g, %g, %g)\n",
+		       (double)before, (double)at44, (double)at192);
+		return 1;
+	}
+	printf("PASS test_advance_ignores_the_device_rate\n");
+	return 0;
+}
+
+/* A baked ramp, so a read's position is readable from its value. */
+static BakedSample makeRamp(int length, int rate) {
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	b.data = (float *)malloc(sizeof(float) * (size_t)length);
+	for(int i = 0; i < length; i++) {
+		b.data[i] = (float)i / (float)length;
+	}
+	b.length = length;
+	b.rate = rate;
+	b.srcBit = 16;
+	b.bits = 24;
+	b.law = SQL_OFF;
+	b.src = NULL;
+	return b;
+}
+
+static int test_drop_never_stalls(void) {
+	/* The SP-1200's accumulator truncates the fractional increment when
+	 * it indexes, so a slow advance would repeat the same frame forever.
+	 * Its algorithm advances at least one frame per tick. */
+	BakedSample b = makeRamp(1024, SPECTRAX_ENGINE_RATE);
+	uint32_t addr = 0;
+	double phase = 0.0;
+	uint32_t prev = addr;
+	for(int i = 0; i < 500; i++) {
+		getBakedSampleDrop(&b, &addr, &phase, 0.3f, 0, 0, b.length);
+		if(i > 0 && addr <= prev) {
+			printf("FAIL: the drop read stalled at tick %d (addr %u -> %u)\n", i, prev, addr);
+			freeBakedSample(&b);
+			return 1;
+		}
+		prev = addr;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_drop_never_stalls\n");
+	return 0;
+}
+
+static int test_drop_pitch_down_repeats(void) {
+	/* Drop-sample is sample-and-hold: at half speed the same frame comes
+	 * back twice. */
+	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
+	uint32_t addr = 0;
+	double phase = 0.0;
+	int repeats = 0;
+	float prev = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length);
+	for(int i = 1; i < 100; i++) {
+		float v = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length);
+		if(v == prev) {
+			repeats++;
+		}
+		prev = v;
+	}
+	if(repeats == 0) {
+		printf("FAIL: the drop read never repeated a frame\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_drop_pitch_down_repeats\n");
+	return 0;
+}
+
+static int test_baked_drop_wrap_short(void) {
+	/* A three-frame bake, looped, read fast: every value must be one of
+	 * the three, and the address must stay inside. */
+	BakedSample b = makeRamp(3, SPECTRAX_ENGINE_RATE);
+	uint32_t addr = 0;
+	double phase = 0.0;
+	for(int i = 0; i < 1000; i++) {
+		float v = getBakedSampleDrop(&b, &addr, &phase, 2.7f, 1, 0, b.length);
+		if(!(v == b.data[0] || v == b.data[1] || v == b.data[2])) {
+			printf("FAIL: the drop read returned %g, which is not in the bake\n", (double)v);
+			freeBakedSample(&b);
+			return 1;
+		}
+		if(addr >= (uint32_t)b.length) {
+			printf("FAIL: the drop read's address %u is outside the bake\n", addr);
+			freeBakedSample(&b);
+			return 1;
+		}
+	}
+	freeBakedSample(&b);
+	printf("PASS test_baked_drop_wrap_short\n");
+	return 0;
+}
+
+static int test_linear_interpolates(void) {
+	/* A linear read sits between the two frames it spans. */
+	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
+	float pos = 0.0f;
+	float v = getBakedSampleLinear(&b, &pos, 0.5f, 0, 0, b.length);
+	/* After the advance the position is 0.5, halfway between frame 0 and
+	 * frame 1. */
+	if(fabsf(v - 0.5f * (b.data[0] + b.data[1])) > 1e-6f) {
+		printf("FAIL: the linear read gave %g, want %g\n",
+		       (double)v, (double)(0.5f * (b.data[0] + b.data[1])));
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_linear_interpolates\n");
+	return 0;
+}
+
+static int test_linear_loops_within_the_region(void) {
+	/* The loop region is honoured: the read wraps inside [start, end) and
+	 * never reads outside it. */
+	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
+	float pos = 0.0f;
+	float minSeen = 1e9f, maxSeen = -1e9f;
+	for(int i = 0; i < 500; i++) {
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24);
+		if(v < minSeen) {
+			minSeen = v;
+		}
+		if(v > maxSeen) {
+			maxSeen = v;
+		}
+		if(pos < 8.0f - 1e-4f || pos >= 24.0f + 1e-4f) {
+			printf("FAIL: the linear read's position %g left the loop region\n", (double)pos);
+			freeBakedSample(&b);
+			return 1;
+		}
+	}
+	if(minSeen < b.data[8] - 1e-4f || maxSeen > b.data[23] + 1e-4f) {
+		printf("FAIL: the linear read left the region's values ([%g, %g] vs the region's [%g, %g])\n",
+		       (double)minSeen, (double)maxSeen, (double)b.data[8], (double)b.data[23]);
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_linear_loops_within_the_region\n");
+	return 0;
+}
+
+static int test_read_stops_at_the_end_without_looping(void) {
+	/* Without a loop, the read runs out and falls silent rather than
+	 * reading past the end. */
+	BakedSample b = makeRamp(16, SPECTRAX_ENGINE_RATE);
+	float pos = 0.0f;
+	float last = 1.0f;
+	for(int i = 0; i < 64; i++) {
+		last = getBakedSampleLinear(&b, &pos, 1.0f, 0, 0, b.length);
+	}
+	if(last != 0.0f) {
+		printf("FAIL: the read past the end gave %g, want silence\n", (double)last);
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_read_stops_at_the_end_without_looping\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_quant_off_passthrough();
@@ -632,6 +843,17 @@ int main(void) {
 	fails += test_profile_table_complete();
 	fails += test_profile_values();
 	fails += test_profile_clean_is_passthrough();
+	fails += test_advance_is_exactly_one_at_unity();
+	fails += test_advance_follows_the_root();
+	fails += test_advance_follows_the_bake_rate();
+	fails += test_advance_follows_the_tune();
+	fails += test_advance_ignores_the_device_rate();
+	fails += test_drop_never_stalls();
+	fails += test_drop_pitch_down_repeats();
+	fails += test_baked_drop_wrap_short();
+	fails += test_linear_interpolates();
+	fails += test_linear_loops_within_the_region();
+	fails += test_read_stops_at_the_end_without_looping();
 	if(fails) {
 		fprintf(stderr, "%d sampler-character test(s) failed\n", fails);
 		return 1;

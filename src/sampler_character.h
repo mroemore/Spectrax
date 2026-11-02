@@ -2,6 +2,7 @@
 #define SPECTRAX_SAMPLER_CHARACTER_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "sample.h"
 
@@ -104,6 +105,40 @@ void freeBakedSample(BakedSample *b);
 
 /* True when `b` is the bake of `src` under the given settings. */
 bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, SamplerQuantLaw law);
+
+/* The per-output-sample advance, in baked frames.
+ *
+ *   advance = 2^(rootSemitones/12) * tune * (bakedRate / engineRate)
+ *
+ * `rootSemitones` is how far the recording is from the note it is played
+ * with (0 = it was recorded at the pitch it is played at). `tune` is the
+ * machine's own tuning trim. `bakedRate` is the baked buffer's rate.
+ *
+ * At unity -- root 0, tune 1, and the baked rate equal to the engine's --
+ * the advance is exactly 1.0: one baked frame per output frame, and the
+ * sample sounds at its recorded pitch. The device's own audio rate is not
+ * an input: the engine's rate is a constant, so a voice's output does not
+ * depend on the machine it plays on. */
+float samplerAdvance(int rootSemitones, float tune, int bakedRate);
+
+/* The SP-1200's drop-sample read.
+ *
+ * An integer-address accumulator whose fractional increment is truncated
+ * when it indexes: the fractional part is carried in `phase` and the
+ * integer part moves the address. The address never stalls -- it advances
+ * at least one frame per tick -- so a slow passage repeats frames instead
+ * of sticking, which is exactly what the machine did.
+ *
+ * `addr` and `phase` are the voice's read state. `loopStart` and `loopEnd`
+ * are the loop region in baked frames; when `loop` is zero the read falls
+ * silent at the end instead of wrapping. */
+float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
+                          int loop, int loopStart, int loopEnd);
+
+/* The linear-interpolated read: the varispeed class. `pos` is the voice's
+ * read position in baked frames. */
+float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
+                            int loop, int loopStart, int loopEnd);
 
 /* Quantize one sample.
  *
