@@ -213,11 +213,11 @@ static int test_save_preset_ok(void) {
     make_preset(&p, 1);
     ASSERT_EQ(savePresetFile(path, &p), PRESET_OK);
 
-    /* Magic header (V3 = IPB3; V1 = IPBH kept for migration only) */
+    /* Magic header (V4 = IPB4; V1 = IPBH kept for migration only) */
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
-    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V3, 4) == 0,
-                "preset file must start with IPB3 magic (V3 format)");
+    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V4, 4) == 0,
+                "preset file must start with IPB4 magic (V4 format)");
 
     /* Non-empty, exactly magic + raw struct */
     ASSERT_EQ(file_size(path), (long long)(4 + sizeof(Preset)));
@@ -1187,15 +1187,92 @@ static int test_preset_v1_migration(void) {
     ASSERT_EQ_MSG(pb->presetCount, 1, "v1 preset loaded");
     ASSERT_TRUE(strcmp(pb->patches[0].name, "oldpreset") == 0, "name from filename");
 
-    /* migration re-saved the file as V3: check the header magic */
+    /* migration re-saved the file as V4: check the header magic */
     fp = fopen(v1, "rb");
     ASSERT_TRUE(fp != NULL, "open v1 for read");
-    ASSERT_TRUE(readAndVerifyChunkHeader(fp, PRESET_MAGIC_HEADER_V3), "file now V3 after migration");
+    ASSERT_TRUE(readAndVerifyChunkHeader(fp, PRESET_MAGIC_HEADER_V4), "file now V4 after migration");
     fclose(fp);
 
     free(pb);
     remove(v1);
     printf("PASS test_preset_v1_migration\n");
+    return 0;
+}
+
+/* A V3 file (IPB3) predates the character chain: the sampler patch had no
+ * profile, law, interpolator, filter, cutoff, resonance, tuning trim or
+ * root. Loading it keeps the old fields and defaults the new ones. The
+ * chain's fields are appended to the sampler patch, so the old body has to
+ * be mirrored exactly -- it is written here by hand. */
+typedef struct {
+    int bitDepth;
+    int sampleRate;
+    bool loopSample;
+    int sampleIndex;
+    SamplePlaybackType playbackType;
+    int loopStartIndex;
+    int loopEndIndex;
+} SamplerPatchV3Test;
+
+typedef struct {
+    char name[33];
+    VoiceType voiceType;
+    ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+    int modSettingsCount;
+    union {
+        SamplerPatchV3Test sampler;
+        FmPatch fm;
+        BlepPatch blep;
+    } pd;
+} PresetV3Test;
+
+static int test_preset_v3_migration(void) {
+    ensure_tmp_dirs();
+    const char *v3 = TMP_DIR "presetdir/v3old.ipb";
+    remove(v3);
+    PresetV3Test old;
+    memset(&old, 0, sizeof(old));
+    strncpy(old.name, "v3old", sizeof(old.name) - 1);
+    old.voiceType = VOICE_TYPE_SAMPLE;
+    old.modSettingsCount = 0;
+    old.pd.sampler.bitDepth = 12;
+    old.pd.sampler.sampleRate = 26040;
+    old.pd.sampler.loopSample = true;
+    old.pd.sampler.sampleIndex = 3;
+    old.pd.sampler.playbackType = SPT_FORWARD;
+    old.pd.sampler.loopStartIndex = 100;
+    old.pd.sampler.loopEndIndex = 900;
+
+    FILE *fp = fopen(v3, "wb");
+    ASSERT_TRUE(fp != NULL, "open v3 for write");
+    ASSERT_TRUE(writeChunkHeader(fp, "IPB3"), "v3 header written");
+    ASSERT_TRUE(fwrite(&old, sizeof(old), 1, fp) == 1, "v3 body written");
+    fclose(fp);
+
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(loadPresetFile(v3, pb) == PRESET_OK, "v3 load ok");
+    ASSERT_EQ_MSG(pb->presetCount, 1, "v3 preset loaded");
+    ASSERT_TRUE(strcmp(pb->patches[0].name, "v3old") == 0, "name preserved from v3 body");
+    ASSERT_TRUE(pb->patches[0].voiceType == VOICE_TYPE_SAMPLE, "voice type preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.bitDepth == 12, "bit depth preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.sampleRate == 26040, "sample rate preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopSample == true, "loop flag preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.sampleIndex == 3, "sample index preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopStartIndex == 100, "loop start preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopEndIndex == 900, "loop end preserved");
+    /* The chain's defaults. */
+    ASSERT_TRUE(pb->patches[0].pd.sampler.profile == SMP_CLEAN, "profile defaults to clean");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.law == SQL_TRUNC, "a 12-bit preset gets truncation");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.interp == SPI_LINEAR, "interpolator defaults to linear");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.filterOn == 0, "the filter defaults to off");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.cutoff == 20000.0f, "cutoff defaults to 20000");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.res == 0.0f, "resonance defaults to zero");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.tune == 1.0f, "tune defaults to one");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.root == 0, "root defaults to zero");
+
+    free(pb);
+    remove(v3);
+    printf("PASS test_preset_v3_migration\n");
     return 0;
 }
 
@@ -1594,6 +1671,7 @@ int main(void) {
     failed |= test_preset_name_roundtrip();
     failed |= test_preset_v1_migration();
     failed |= test_preset_v2_pitch_migration();
+    failed |= test_preset_v3_migration();
     failed |= test_preset_pitch_and_gain_roundtrip();
     failed |= test_preset_ship_dir_migration();
     failed |= test_save_sequencer_ok();

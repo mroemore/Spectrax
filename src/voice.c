@@ -10,6 +10,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/* The character chain's helpers. Defined below, next to the bake itself;
+ * declared here because applyInstrumentPreset creates the parameters whose
+ * callbacks they are, and it comes before them in this file. */
+static void rebuildSamplerBakeUnsafe(Instrument *inst);
+static void cb_applySamplerProfile(void *instrument);
+static void cb_rebuildSamplerBake(void *instrument);
+
 /* Shared with the PortAudio callback (see voice.h). Static initializer. */
 pthread_mutex_t g_audioLock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -809,12 +816,26 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			int sl = (instrument->id.sampler.sample) ? instrument->id.sampler.sample->length : 1;
 			int smax = (instrument->id.sampler.sp && instrument->id.sampler.sp->sampleCount > 0) ? instrument->id.sampler.sp->sampleCount - 1 : 0;
 			instrument->id.sampler.bitDepth = createParameterEx(instrument->paramList, "bitdepth", (float)p.pd.sampler.bitDepth, 8.0f, 24.0f, 1.0f, 4.0f);
-			instrument->id.sampler.sampleRate = createParameterEx(instrument->paramList, "bitrate", (float)p.pd.sampler.sampleRate, 2000.0f, 44100.0f, 100.0f, 1000.0f);
+			instrument->id.sampler.sampleRate = createParameterEx(instrument->paramList, "bitrate", (float)p.pd.sampler.sampleRate, 0.0f, 48000.0f, 100.0f, 1000.0f);
 			instrument->id.sampler.sampleIndex = createParameterPro(instrument->paramList, "sample", (float)p.pd.sampler.sampleIndex, 0, (float)smax, 1.0f, 10.0f, instrument, updateSampleReferences);
 			instrument->id.sampler.loopSample = createParameterEx(instrument->paramList, "loop", (float)p.pd.sampler.loopSample, 0, 1.0, 1.0f, 1.0f);
 			instrument->id.sampler.playbackType = createParameterPro(instrument->paramList, "playback", (float)p.pd.sampler.playbackType, 0, (float)SPT_COUNT, 1.0f, 10.0f, instrument, setSamplePlaybackFunction);
 			instrument->id.sampler.loopStartIndex = createParameterEx(instrument->paramList, "loop start", (float)p.pd.sampler.loopStartIndex, 0, (float)sl, 100.0f, 1000.0f);
 			instrument->id.sampler.loopEndIndex = createParameterEx(instrument->paramList, "loop end", (float)p.pd.sampler.loopEndIndex, 1.0f, (float)sl, 100.0f, 1000.0f);
+			/* The character chain's parameters have to be recreated here as
+			 * well: applyInstrumentPreset clears the parameter list, and a
+			 * parameter that is cleared and not recreated leaves a dangling
+			 * pointer that the next access hits. */
+			instrument->id.sampler.profile = createParameterPro(instrument->paramList, "profile", (float)p.pd.sampler.profile, 0.0f, (float)(SMP_PROFILE_COUNT - 1), 1.0f, 1.0f, instrument, cb_applySamplerProfile);
+			instrument->id.sampler.law = createParameterPro(instrument->paramList, "law", (float)p.pd.sampler.law, 0.0f, (float)(SQL_COUNT - 1), 1.0f, 1.0f, instrument, cb_rebuildSamplerBake);
+			instrument->id.sampler.interp = createParameterEx(instrument->paramList, "interp", (float)p.pd.sampler.interp, 0.0f, (float)(SPI_INTERP_COUNT - 1), 1.0f, 1.0f);
+			instrument->id.sampler.filter = createParameterEx(instrument->paramList, "filter", (float)p.pd.sampler.filterOn, 0.0f, 1.0f, 1.0f, 1.0f);
+			instrument->id.sampler.cutoff = createParameterEx(instrument->paramList, "cutoff", p.pd.sampler.cutoff, 20.0f, 20000.0f, 10.0f, 100.0f);
+			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", p.pd.sampler.res, 0.0f, 0.9f, 0.01f, 0.05f);
+			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", p.pd.sampler.tune, 0.25f, 8.0f, 0.01f, 0.1f);
+			instrument->id.sampler.root = createParameterEx(instrument->paramList, "root", (float)p.pd.sampler.root, -48.0f, 48.0f, 1.0f, 12.0f);
+			instrument->id.sampler.baked = NULL;
+			rebuildSamplerBakeUnsafe(instrument);
 			break;
 		case VOICE_TYPE_BLEP:
 			instrument->id.blep.shape = createParameterEx(instrument->paramList, "shape", (float)p.pd.blep.shape, 0.0f, (float)BLEP_SHAPE_COUNT - 1, 1.0, 10.0);
@@ -979,6 +1000,14 @@ Preset presetFromInstrument(Instrument *instrument) {
 			p.pd.sampler.playbackType = (SamplePlaybackType)getParameterValueAsInt(instrument->id.sampler.playbackType);
 			p.pd.sampler.loopStartIndex = getParameterValueAsInt(instrument->id.sampler.loopStartIndex);
 			p.pd.sampler.loopEndIndex = getParameterValueAsInt(instrument->id.sampler.loopEndIndex);
+			p.pd.sampler.profile = getParameterValueAsInt(instrument->id.sampler.profile);
+			p.pd.sampler.law = getParameterValueAsInt(instrument->id.sampler.law);
+			p.pd.sampler.interp = getParameterValueAsInt(instrument->id.sampler.interp);
+			p.pd.sampler.filterOn = getParameterValueAsInt(instrument->id.sampler.filter);
+			p.pd.sampler.cutoff = getParameterValue(instrument->id.sampler.cutoff);
+			p.pd.sampler.res = getParameterValue(instrument->id.sampler.res);
+			p.pd.sampler.tune = getParameterValue(instrument->id.sampler.tune);
+			p.pd.sampler.root = getParameterValueAsInt(instrument->id.sampler.root);
 			break;
 		case VOICE_TYPE_BLEP:
 			p.pd.blep.shape = getParameterValueAsInt(instrument->id.blep.shape);
@@ -1170,6 +1199,115 @@ static void seedPitchVibrato(ParamList *pl, ModList *ml, Mod *src, Parameter *de
 	}
 }
 
+/* The character chain's helpers. Defined below, next to the bake itself;
+ * declared here because applyInstrumentPreset (which comes first in this
+ * file) creates the parameters whose callbacks they are. */
+static void rebuildSamplerBakeUnsafe(Instrument *inst);
+static void cb_applySamplerProfile(void *instrument);
+static void cb_rebuildSamplerBake(void *instrument);
+
+/* Rebuild the baked copy of the instrument's current sample.
+ *
+ * The bake is the record-time stage of the character chain: the source is
+ * resampled to the machine's rate and quantized to its word and law. It is
+ * rebuilt whenever the sample or any of those change, and the result is
+ * cached on the instrument so the voice reads it without re-baking.
+ *
+ * The caller holds g_audioLock (or is the audio thread). */
+static void rebuildSamplerBakeUnsafe(Instrument *inst) {
+	if(!inst || inst->voiceType != VOICE_TYPE_SAMPLE) {
+		return;
+	}
+	if(inst->id.sampler.baked) {
+		freeBakedSample(inst->id.sampler.baked);
+		free(inst->id.sampler.baked);
+		inst->id.sampler.baked = NULL;
+	}
+	Sample *src = inst->id.sampler.sample;
+	if(!src) {
+		return;
+	}
+	int rate = getParameterValueAsInt(inst->id.sampler.sampleRate);
+	if(rate <= 0) {
+		/* A rate of 0 means "keep the source's own rate". */
+		rate = (src->sampleRate > 0) ? src->sampleRate : SPECTRAX_ENGINE_RATE;
+	}
+	int bits = getParameterValueAsInt(inst->id.sampler.bitDepth);
+	SamplerQuantLaw law = (SamplerQuantLaw)getParameterValueAsInt(inst->id.sampler.law);
+	BakedSample *b = (BakedSample *)malloc(sizeof(BakedSample));
+	if(!b) {
+		return;
+	}
+	memset(b, 0, sizeof(*b));
+	if(!bakeSamplerCharacter(src, rate, bits, law, b)) {
+		free(b);
+		return;
+	}
+	inst->id.sampler.baked = b;
+}
+
+void applySamplerProfile(Instrument *inst) {
+	if(!inst || inst->voiceType != VOICE_TYPE_SAMPLE || !inst->id.sampler.profile) {
+		return;
+	}
+	SamplerProfile profile = (SamplerProfile)getParameterValueAsInt(inst->id.sampler.profile);
+	int rate = 0, bits = 0, filterOn = 0;
+	float cutoff = 0.0f, res = 0.0f;
+	SamplerQuantLaw law = SQL_OFF;
+	SamplerInterp interp = SPI_LINEAR;
+	samplerProfileConfig(profile, &rate, &bits, &law, &interp, &filterOn, &cutoff, &res);
+	if(rate <= 0) {
+		/* "Keep the source's own rate" resolves to the source's rate, so
+		 * the dial shows a real number and the bake is the identity. */
+		Sample *src = inst->id.sampler.sample;
+		rate = (src && src->sampleRate > 0) ? src->sampleRate : SPECTRAX_ENGINE_RATE;
+	}
+	/* The other parameters are written with their callbacks suppressed: the
+	 * profile sets the whole chain at once, and a rebuild per parameter
+	 * would bake the same data several times over. */
+	Parameter *suppressed[6] = { inst->id.sampler.sampleRate, inst->id.sampler.bitDepth,
+	                             inst->id.sampler.law, inst->id.sampler.interp,
+	                             inst->id.sampler.cutoff, inst->id.sampler.res };
+	CallbackFunction saved[6];
+	for(int k = 0; k < 6; k++) {
+		saved[k] = suppressed[k]->onChange.cbFunc;
+		suppressed[k]->onChange.cbFunc = NULL;
+	}
+	setParameterBaseValue(inst->id.sampler.sampleRate, (float)rate);
+	setParameterBaseValue(inst->id.sampler.bitDepth, (float)bits);
+	setParameterBaseValue(inst->id.sampler.law, (float)law);
+	setParameterBaseValue(inst->id.sampler.interp, (float)interp);
+	setParameterBaseValue(inst->id.sampler.cutoff, cutoff);
+	setParameterBaseValue(inst->id.sampler.res, res);
+	for(int k = 0; k < 6; k++) {
+		suppressed[k]->onChange.cbFunc = saved[k];
+	}
+	/* The filter's own switch has no callback: it does not change the
+	 * bake. */
+	setParameterBaseValue(inst->id.sampler.filter, (float)filterOn);
+	rebuildSamplerBakeUnsafe(inst);
+}
+
+static void cb_applySamplerProfile(void *instrument) {
+	Instrument *inst = (Instrument *)instrument;
+	if(!inst) {
+		return;
+	}
+	pthread_mutex_lock(&g_audioLock);
+	applySamplerProfile(inst);
+	pthread_mutex_unlock(&g_audioLock);
+}
+
+static void cb_rebuildSamplerBake(void *instrument) {
+	Instrument *inst = (Instrument *)instrument;
+	if(!inst) {
+		return;
+	}
+	pthread_mutex_lock(&g_audioLock);
+	rebuildSamplerBakeUnsafe(inst);
+	pthread_mutex_unlock(&g_audioLock);
+}
+
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool, PresetBank *pb) {
 	*instrument = (Instrument *)malloc(sizeof(Instrument));
 	if(!*instrument) {
@@ -1238,6 +1376,19 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
 			(*instrument)->id.sampler.loopStartIndex = createParameterEx((*instrument)->paramList, "loop start", 0, 0, (float)sampleLen, 100.0f, 1000.0f);
 			(*instrument)->id.sampler.loopEndIndex = createParameterEx((*instrument)->paramList, "loop end", (float)(sampleLen - 1), 1.0f, (float)sampleLen, 100.0f, 1000.0f);
+			/* The character chain. Every one of these is a modulation
+			 * destination as well as a dial, so an envelope can drive the
+			 * cutoff or the pitch the way it drives anything else. */
+			(*instrument)->id.sampler.profile = createParameterPro((*instrument)->paramList, "profile", (float)SMP_CLEAN, 0.0f, (float)(SMP_PROFILE_COUNT - 1), 1.0f, 1.0f, (*instrument), cb_applySamplerProfile);
+			(*instrument)->id.sampler.law = createParameterPro((*instrument)->paramList, "law", (float)SQL_OFF, 0.0f, (float)(SQL_COUNT - 1), 1.0f, 1.0f, (*instrument), cb_rebuildSamplerBake);
+			(*instrument)->id.sampler.interp = createParameterEx((*instrument)->paramList, "interp", (float)SPI_LINEAR, 0.0f, (float)(SPI_INTERP_COUNT - 1), 1.0f, 1.0f);
+			(*instrument)->id.sampler.filter = createParameterEx((*instrument)->paramList, "filter", 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+			(*instrument)->id.sampler.cutoff = createParameterEx((*instrument)->paramList, "cutoff", 20000.0f, 20.0f, 20000.0f, 10.0f, 100.0f);
+			(*instrument)->id.sampler.res = createParameterEx((*instrument)->paramList, "res", 0.0f, 0.0f, 0.9f, 0.01f, 0.05f);
+			(*instrument)->id.sampler.tune = createParameterEx((*instrument)->paramList, "tune", 1.0f, 0.25f, 8.0f, 0.01f, 0.1f);
+			(*instrument)->id.sampler.root = createParameterEx((*instrument)->paramList, "root", 0.0f, -48.0f, 48.0f, 1.0f, 12.0f);
+			(*instrument)->id.sampler.baked = NULL;
+			rebuildSamplerBakeUnsafe(*instrument);
 			break;
 		case VOICE_TYPE_FM:
 			(*instrument)->envelopeCount = 4;
@@ -1317,6 +1468,8 @@ void updateSampleReferences(void *instrument) {
 	setParameterMaxValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length);
 	setParameterBaseValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
 	setParameterValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
+	/* A different sample means a different bake. */
+	rebuildSamplerBakeUnsafe(i);
 }
 
 void setSamplePlaybackFunction(void *instrument) {

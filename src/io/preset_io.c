@@ -38,6 +38,34 @@ typedef struct {
 	} pd;
 } PresetV2;
 
+/* V3 (IPB3) predated the character chain: the sampler patch had no
+ * profile, law, interpolator, filter, cutoff, resonance, tuning trim or
+ * root. The chain's fields are appended to the sampler patch, so the union
+ * grew and the old body cannot be read into the current struct by
+ * truncation -- every field after the sampler patch would misalign. The
+ * old layout is mirrored exactly and copied field by field. */
+typedef struct {
+	int bitDepth;
+	int sampleRate;
+	bool loopSample;
+	int sampleIndex;
+	SamplePlaybackType playbackType;
+	int loopStartIndex;
+	int loopEndIndex;
+} SamplerPatchV3;
+
+typedef struct {
+	char name[33];
+	VoiceType voiceType;
+	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+	int modSettingsCount;
+	union {
+		SamplerPatchV3 sampler;
+		FmPatch fm;
+		BlepPatch blep;
+	} pd;
+} PresetV3;
+
 static int cmpPresetPaths(const void *a, const void *b) {
 	const char *const *pa = a;
 	const char *const *pb = b;
@@ -64,7 +92,7 @@ PresetFileResult savePresetFile(const char *filename, Preset *preset) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
+	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V4)) {
 		fclose(file);
 		return PRESET_ERROR_WRITE;
 	}
@@ -83,7 +111,7 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
+	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V4)) {
 		if(fread(&preset, sizeof(Preset), 1, file) != 1) {
 			fclose(file);
 			return PRESET_ERROR_READ;
@@ -92,8 +120,63 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 		addPresetToBank(pb, preset);
 		return PRESET_OK;
 	}
-	/* V2: same struct minus the per-op `pitch` field. */
+	/* V3: the current layout minus the character chain. */
 	fclose(file);
+	file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
+		/* fall through to V2 handling below */
+	} else {
+		PresetV3 v3;
+		memset(&v3, 0, sizeof(v3));
+		if(fread(&v3, sizeof(v3), 1, file) != 1) {
+			fclose(file);
+			return PRESET_ERROR_READ;
+		}
+		fclose(file);
+		Preset migrated;
+		memset(&migrated, 0, sizeof(migrated));
+		memcpy(migrated.name, v3.name, sizeof(migrated.name));
+		migrated.voiceType = v3.voiceType;
+		memcpy(migrated.modSettings, v3.modSettings, sizeof(migrated.modSettings));
+		migrated.modSettingsCount = v3.modSettingsCount;
+		switch(migrated.voiceType) {
+			case VOICE_TYPE_FM:
+				migrated.pd.fm = v3.pd.fm;
+				break;
+			case VOICE_TYPE_SAMPLE:
+				migrated.pd.sampler.bitDepth = v3.pd.sampler.bitDepth;
+				migrated.pd.sampler.sampleRate = v3.pd.sampler.sampleRate;
+				migrated.pd.sampler.loopSample = v3.pd.sampler.loopSample;
+				migrated.pd.sampler.sampleIndex = v3.pd.sampler.sampleIndex;
+				migrated.pd.sampler.playbackType = v3.pd.sampler.playbackType;
+				migrated.pd.sampler.loopStartIndex = v3.pd.sampler.loopStartIndex;
+				migrated.pd.sampler.loopEndIndex = v3.pd.sampler.loopEndIndex;
+				/* The chain's defaults. A preset that asked for fewer than
+				 * 24 bits was asking to be heard at that word length, so
+				 * it gets truncation; the rest is neutral. */
+				migrated.pd.sampler.profile = SMP_CLEAN;
+				migrated.pd.sampler.law = (v3.pd.sampler.bitDepth < 24) ? SQL_TRUNC : SQL_OFF;
+				migrated.pd.sampler.interp = SPI_LINEAR;
+				migrated.pd.sampler.filterOn = 0;
+				migrated.pd.sampler.cutoff = 20000.0f;
+				migrated.pd.sampler.res = 0.0f;
+				migrated.pd.sampler.tune = 1.0f;
+				migrated.pd.sampler.root = 0;
+				break;
+			case VOICE_TYPE_BLEP:
+				migrated.pd.blep = v3.pd.blep;
+				break;
+			default:
+				break;
+		}
+		addPresetToBank(pb, migrated);
+		return PRESET_OK;
+	}
+	fclose(file);
+	/* V2: same struct minus the per-op `pitch` field. */
 	file = fopen(filename, "rb");
 	if(!file) {
 		return PRESET_ERROR_OPEN;

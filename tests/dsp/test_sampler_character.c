@@ -22,6 +22,7 @@
 
 #include "sampler_character.h"
 #include "settings.h"
+#include "voice.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 
@@ -825,6 +826,214 @@ static int test_read_stops_at_the_end_without_looping(void) {
 	return 0;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Task 5: the instrument's character parameters, and the bake cache.  */
+/* ------------------------------------------------------------------ */
+
+/* A sampler instrument with a sample in its pool. */
+typedef struct {
+	SamplePool *sp;
+	PresetBank pb;
+	Instrument *inst;
+} SamplerEnv;
+
+static int makeSamplerEnv(SamplerEnv *e) {
+	memset(e, 0, sizeof(*e));
+	e->sp = createSamplePool();
+	if(!e->sp) {
+		return 1;
+	}
+	float buf[512];
+	for(int i = 0; i < 512; i++) {
+		buf[i] = (float)i / 512.0f - 0.5f;
+	}
+	loadSample(e->sp, "ramp", buf, 16, SPECTRAX_ENGINE_RATE, 512);
+	init_instrument(&e->inst, VOICE_TYPE_SAMPLE, e->sp, &e->pb);
+	if(!e->inst) {
+		return 1;
+	}
+	return 0;
+}
+
+/* The instrument is deliberately not freed: freeInstrument is private to
+ * voice.c, and the test's own heap churn is not what it is here to check. */
+static void freeSamplerEnv(SamplerEnv *e) {
+	e->inst = NULL;
+	if(e->sp) {
+		freeSamplePool(e->sp);
+		e->sp = NULL;
+	}
+}
+
+static int test_sampler_params_exist(void) {
+	SamplerEnv e;
+	if(makeSamplerEnv(&e) != 0) {
+		printf("FAIL: could not build a sampler instrument\n");
+		return 1;
+	}
+	Instrument *i = e.inst;
+	struct {
+		const char *name;
+		Parameter *p;
+	} want[] = {
+		{ "profile", i->id.sampler.profile },
+		{ "law", i->id.sampler.law },
+		{ "interp", i->id.sampler.interp },
+		{ "filter", i->id.sampler.filter },
+		{ "cutoff", i->id.sampler.cutoff },
+		{ "res", i->id.sampler.res },
+		{ "tune", i->id.sampler.tune },
+		{ "root", i->id.sampler.root },
+	};
+	for(size_t k = 0; k < sizeof(want) / sizeof(want[0]); k++) {
+		if(!want[k].p) {
+			printf("FAIL: the sampler has no %s parameter\n", want[k].name);
+			freeSamplerEnv(&e);
+			return 1;
+		}
+	}
+	/* The defaults are the neutral ones: no character, no root shift, no
+	 * tuning trim. */
+	if(getParameterValueAsInt(i->id.sampler.profile) != SMP_CLEAN) {
+		printf("FAIL: the default profile is %d\n", getParameterValueAsInt(i->id.sampler.profile));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.law) != SQL_OFF) {
+		printf("FAIL: the default law is %d\n", getParameterValueAsInt(i->id.sampler.law));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.interp) != SPI_LINEAR) {
+		printf("FAIL: the default interpolator is %d\n", getParameterValueAsInt(i->id.sampler.interp));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.filter) != 0) {
+		printf("FAIL: the default filter is on\n");
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.root) != 0) {
+		printf("FAIL: the default root is %d\n", getParameterValueAsInt(i->id.sampler.root));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValue(i->id.sampler.tune) != 1.0f) {
+		printf("FAIL: the default tune is %g\n", (double)getParameterValue(i->id.sampler.tune));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	freeSamplerEnv(&e);
+	printf("PASS test_sampler_params_exist\n");
+	return 0;
+}
+
+static int test_profile_applies_the_chain(void) {
+	SamplerEnv e;
+	if(makeSamplerEnv(&e) != 0) {
+		printf("FAIL: could not build a sampler instrument\n");
+		return 1;
+	}
+	Instrument *i = e.inst;
+	/* The SP-1200's chain: 12 bits at 26040, truncation, drop-sample, the
+	 * SSM2044 filter. */
+	setParameterBaseValue(i->id.sampler.profile, (float)SMP_SP1200);
+	setParameterValue(i->id.sampler.profile, (float)SMP_SP1200);
+	applySamplerProfile(i);
+	if(getParameterValueAsInt(i->id.sampler.sampleRate) != 26040) {
+		printf("FAIL: the SP-1200's rate is %d\n", getParameterValueAsInt(i->id.sampler.sampleRate));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.bitDepth) != 12) {
+		printf("FAIL: the SP-1200's bits are %d\n", getParameterValueAsInt(i->id.sampler.bitDepth));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.law) != SQL_TRUNC) {
+		printf("FAIL: the SP-1200's law is %d\n", getParameterValueAsInt(i->id.sampler.law));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.interp) != SPI_DROPSAMPLE) {
+		printf("FAIL: the SP-1200's interpolator is %d\n", getParameterValueAsInt(i->id.sampler.interp));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.filter) != 1) {
+		printf("FAIL: the SP-1200's filter is off\n");
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValue(i->id.sampler.cutoff) != 12000.0f) {
+		printf("FAIL: the SP-1200's cutoff is %g\n", (double)getParameterValue(i->id.sampler.cutoff));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	/* And the bake followed: it is the SP-1200's rate and word. */
+	if(!i->id.sampler.baked) {
+		printf("FAIL: the profile did not build a bake\n");
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(i->id.sampler.baked->rate != 26040 || i->id.sampler.baked->bits != 12) {
+		printf("FAIL: the bake is rate=%d bits=%d\n",
+		       i->id.sampler.baked->rate, i->id.sampler.baked->bits);
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	freeSamplerEnv(&e);
+	printf("PASS test_profile_applies_the_chain\n");
+	return 0;
+}
+
+static int test_params_survive_a_preset_apply(void) {
+	/* applyInstrumentPreset clears and recreates the instrument's
+	 * parameters, so every new one has to be recreated there too -- a
+	 * parameter that is cleared and not recreated leaves a dangling
+	 * pointer the next access hits. */
+	SamplerEnv e;
+	if(makeSamplerEnv(&e) != 0) {
+		printf("FAIL: could not build a sampler instrument\n");
+		return 1;
+	}
+	Preset p;
+	memset(&p, 0, sizeof(p));
+	p.voiceType = VOICE_TYPE_SAMPLE;
+	p.pd.sampler.profile = SMP_SP1200;
+	p.pd.sampler.law = SQL_TRUNC;
+	p.pd.sampler.interp = SPI_DROPSAMPLE;
+	p.pd.sampler.filterOn = 1;
+	p.pd.sampler.cutoff = 12000.0f;
+	p.pd.sampler.res = 0.05f;
+	p.pd.sampler.tune = 1.0f;
+	p.pd.sampler.root = 5;
+	applyInstrumentPreset(e.inst, p);
+	Instrument *i = e.inst;
+	if(!i->id.sampler.profile || !i->id.sampler.law || !i->id.sampler.interp ||
+	   !i->id.sampler.filter || !i->id.sampler.cutoff || !i->id.sampler.res ||
+	   !i->id.sampler.tune || !i->id.sampler.root) {
+		printf("FAIL: a parameter was not recreated by applyInstrumentPreset\n");
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.profile) != SMP_SP1200) {
+		printf("FAIL: the applied profile is %d\n", getParameterValueAsInt(i->id.sampler.profile));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	if(getParameterValueAsInt(i->id.sampler.root) != 5) {
+		printf("FAIL: the applied root is %d\n", getParameterValueAsInt(i->id.sampler.root));
+		freeSamplerEnv(&e);
+		return 1;
+	}
+	freeSamplerEnv(&e);
+	printf("PASS test_params_survive_a_preset_apply\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_quant_off_passthrough();
@@ -854,6 +1063,9 @@ int main(void) {
 	fails += test_linear_interpolates();
 	fails += test_linear_loops_within_the_region();
 	fails += test_read_stops_at_the_end_without_looping();
+	fails += test_sampler_params_exist();
+	fails += test_profile_applies_the_chain();
+	fails += test_params_survive_a_preset_apply();
 	if(fails) {
 		fprintf(stderr, "%d sampler-character test(s) failed\n", fails);
 		return 1;

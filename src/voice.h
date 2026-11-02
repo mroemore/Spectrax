@@ -12,6 +12,7 @@
 #include "blit_synth.h"
 #include "filters.h"
 #include "fft.h"
+#include "sampler_character.h"
 
 #define MAX_LFOS 8
 #define MAX_ENVELOPES 6
@@ -115,6 +116,18 @@ typedef struct {
 	SamplePlaybackType playbackType;
 	int loopStartIndex;
 	int loopEndIndex;
+	/* The character engine's chain. The bake rate and word are the two
+	 * fields above (bitDepth and sampleRate); these are the rest of it.
+	 * A rate of 0 means "keep the source's own rate", which is what the
+	 * CLEAN profile asks for. */
+	int profile;
+	int law;
+	int interp;
+	int filterOn;
+	float cutoff;
+	float res;
+	float tune;
+	int root;
 } SamplerPatch;
 
 typedef struct {
@@ -128,6 +141,19 @@ typedef struct {
 	Parameter *loopStartIndex;
 	Parameter *loopEndIndex;
 	GetSampleFunc getSampleValue;
+	/* The character chain's parameters. */
+	Parameter *profile;
+	Parameter *law;
+	Parameter *interp;
+	Parameter *filter;
+	Parameter *cutoff;
+	Parameter *res;
+	Parameter *tune;
+	Parameter *root;
+	/* The baked (degraded) copy of the current sample, rebuilt whenever
+	 * the sample or the chain changes. Null until there is something to
+	 * bake. */
+	BakedSample *baked;
 } SamplerInstrumentData;
 
 typedef struct {
@@ -332,6 +358,11 @@ extern pthread_mutex_t g_audioLock;
 
 VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePool *wtp, PresetBank *pb);
 void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrument *inst);
+
+/* Apply the selected machine profile's defaults to the rest of the
+ * character chain and rebuild the bake. The profile's own callback is
+ * cb_applySamplerProfile; this is the part that can be called directly. */
+void applySamplerProfile(Instrument *inst);
 void initVoiceManager(VoiceManager *vm, SamplePool *sp);
 void freeVoice(Voice *v);
 void freeVoiceManager(VoiceManager *vm);
