@@ -13,6 +13,7 @@ test_names = [
   'test_input',
   'test_layout',
   'test_theme',
+  'test_waveform',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',

@@ -44,6 +44,9 @@ bool dialVisibleInViewport(GuiNode *dial);
 void guiInstRefreshSourceCtx(void);
 /* test hook: which source's routes the ROUTELINES overlay currently shows */
 int guiRouteLinesSource(void);
+/* test hook: the selected instrument's waveform view mode (WF_VIEW_*), or
+ * -1 when the sampler panel isn't built. */
+int guiWaveformViewMode(void);
 /* find a source's ROUTE button by source position (its actionCtx is the
  * &g_sourceCtx[idx] slot). Exposed for the route-lines regression test. */
 GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx);

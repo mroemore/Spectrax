@@ -57,7 +57,14 @@ static int test_compute_dial_geometry(void) {
 	/* contentH = 40-8 = 32 > knob d->knob.size -> knob centers vertically */
 	ASSERT_TRUE(g.knobY == 204 + (32 - d->knob.size) / 2, "knob centers vertically");
 	/* value follows the knob; label centres in the cell below the knob */
-	ASSERT_TRUE(g.valueX == g.knobX + 28, "valueX is knob-relative");
+	/* value follows the knob; the cell-aware clamp pushes it to the knob's
+	 * right edge when the style's offset would start it inside the knob
+	 * (the dial styles are wider than their value offset). */
+	int expectValueX = g.knobX + d->value.offsetX;
+	if(expectValueX < g.knobX + g.knobW) {
+		expectValueX = g.knobX + g.knobW + 2;
+	}
+	ASSERT_TRUE(g.valueX == expectValueX, "valueX is knob-relative, clamped clear of the knob");
 	ASSERT_TRUE(g.valueY == g.knobY + 2, "valueY is knob-relative");
 	ASSERT_TRUE(g.labelX == 104 + 36, "labelX centres in the cell");
 	ASSERT_TRUE(g.labelY == g.knobY + 18, "labelY sits below the knob");
@@ -434,6 +441,29 @@ static int test_shipped_layout_json_is_valid(void) {
 	return 0;
 }
 
+static int test_dial_value_clamped_to_cell(void) {
+	/* Narrow continuous cell (a sampler dial is 62px wide): the value
+	 * readout must not spill past the cell into the neighbour. */
+	GuiNode *n = createGuiNode(39, 91, 62, 30, 5, na_horizontal, "SAMPLE", 1, 0);
+	const DialStyle *d = resolveDialStyle(n);
+	DialGeometry g;
+	computeDialGeometry(n, d, &g);
+	ASSERT_TRUE(g.valueX + g.valueW <= 39 + 62, "continuous value fits inside the cell");
+	freeGuiNode(n);
+
+	/* Discrete dial: the value must not sit under the knob. */
+	GuiNode *m = createGuiNode(39, 91, 62, 30, 5, na_horizontal, "GAIN", 1, 0);
+	const DialStyle *dd = resolveDiscreteDialStyle(m);
+	DialGeometry gd;
+	computeDialGeometry(m, dd, &gd);
+	ASSERT_TRUE(gd.valueX >= gd.knobX + gd.knobW, "discrete value clear of the knob");
+	ASSERT_TRUE(gd.valueX + gd.valueW <= 39 + 62, "discrete value fits inside the cell");
+	freeGuiNode(m);
+
+	printf("PASS test_dial_value_clamped_to_cell\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
@@ -467,6 +497,7 @@ int main(void) {
 	fails += test_reflow_fills_weighted_column();
 	fails += test_dial_geometry_centers_in_wide_cell();
 	fails += test_dial_component_height();
+	fails += test_dial_value_clamped_to_cell();
 	if(fails) {
 		printf("%d layout test(s) failed\n", fails);
 		return 1;

@@ -1484,7 +1484,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 			appendFMInstControlNode(instGraph, instwrap, "fmctrl", 13, true, inst);
 			break;
 		case VOICE_TYPE_SAMPLE:
-			appendSampleInstControlNode(instGraph, instwrap, "sctrl", 8, true, inst);
+			appendSampleInstControlNode(instGraph, instwrap, "sctrl", 24, true, inst);
 			break;
 		case VOICE_TYPE_BLEP:
 			appendBlepInstControlNode(instGraph, instwrap, "blctrl", 8, true, inst);

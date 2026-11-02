@@ -418,6 +418,20 @@ void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *o
 	out->valueY = knobY + st->value.offsetY;
 	out->valueW = st->value.width;
 	out->valueH = st->value.height;
+	/* Keep the value readout inside its own cell. A value whose offset
+	 * starts under the knob (the discrete style's +6) is pushed to the
+	 * knob's right edge; then its width is clamped so it never crosses
+	 * the cell's right edge into the neighbouring dial. */
+	if(out->valueX < out->knobX + out->knobW) {
+		out->valueX = out->knobX + out->knobW + 2;
+	}
+	int valueAvail = (int)gn->x + (int)gn->w - out->valueX - 1;
+	if(valueAvail < 0) {
+		valueAvail = 0;
+	}
+	if(out->valueW > valueAvail) {
+		out->valueW = valueAvail;
+	}
 	/* The label is the dial's caption: it centres in the cell (offsetX
 	 * is a fine-tune from the cell centre) and sits below the knob
 	 * (offsetY relative to the knob top). */
