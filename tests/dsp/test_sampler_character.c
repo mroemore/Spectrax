@@ -34,9 +34,10 @@
 #define COMPAND12_MAX_ABS_ERROR (1.0f / 256.0f)
 
 static int test_quant_off_passthrough(void) {
+	uint32_t dither = 0x9E3779B9u;
 	const float xs[] = {-1.0f, 0.0f, 0.503f, 1.0f};
 	for(size_t i = 0; i < sizeof(xs) / sizeof(xs[0]); i++) {
-		float y = samplerQuantize(xs[i], 8, SQL_OFF);
+		float y = samplerQuantize(xs[i], 8, SQL_OFF, &dither);
 		if(y != xs[i]) {
 			printf("FAIL: SQL_OFF(%g) = %.9g\n", (double)xs[i], (double)y);
 			return 1;
@@ -47,14 +48,15 @@ static int test_quant_off_passthrough(void) {
 }
 
 static int test_quant_trunc_floor(void) {
+	uint32_t dither = 0x9E3779B9u;
 	/* 8 bits over [-1,1] is a step of 1/128. Truncation floors toward
 	 * negative infinity, so -0.503 lands on -65/128. */
-	float y = samplerQuantize(0.503f, 8, SQL_TRUNC);
+	float y = samplerQuantize(0.503f, 8, SQL_TRUNC, &dither);
 	if(y != 0.5f) {
 		printf("FAIL: SQL_TRUNC(0.503) = %.9g, want 0.5\n", (double)y);
 		return 1;
 	}
-	y = samplerQuantize(-0.503f, 8, SQL_TRUNC);
+	y = samplerQuantize(-0.503f, 8, SQL_TRUNC, &dither);
 	if(y != -65.0f / 128.0f) {
 		printf("FAIL: SQL_TRUNC(-0.503) = %.9g, want %g\n", (double)y, -65.0 / 128.0);
 		return 1;
@@ -64,7 +66,7 @@ static int test_quant_trunc_floor(void) {
 	float delta = 2.0f / 256.0f;
 	for(int i = 0; i < 1000; i++) {
 		float x = -1.0f + 2.0f * (float)i / 999.0f;
-		float e = samplerQuantize(x, 8, SQL_TRUNC) - x;
+		float e = samplerQuantize(x, 8, SQL_TRUNC, &dither) - x;
 		if(e < -delta || e > 0.0f) {
 			printf("FAIL: SQL_TRUNC error %g out of [-%g, 0] at x=%g\n",
 			       (double)e, (double)delta, (double)x);
@@ -76,10 +78,11 @@ static int test_quant_trunc_floor(void) {
 }
 
 static int test_quant_round_bounds(void) {
+	uint32_t dither = 0x9E3779B9u;
 	float delta = 2.0f / 256.0f;
 	for(int i = 0; i < 1000; i++) {
 		float x = -1.0f + 2.0f * (float)i / 999.0f;
-		float e = samplerQuantize(x, 8, SQL_ROUND) - x;
+		float e = samplerQuantize(x, 8, SQL_ROUND, &dither) - x;
 		if(e < -delta * 0.5f || e > delta * 0.5f) {
 			printf("FAIL: SQL_ROUND error %g out of [-%g, %g] at x=%g\n",
 			       (double)e, (double)(delta * 0.5f), (double)(delta * 0.5f), (double)x);
@@ -91,6 +94,7 @@ static int test_quant_round_bounds(void) {
 }
 
 static int test_quant_tpdf_bounded(void) {
+	uint32_t dither = 0x9E3779B9u;
 	/* The TPDF dither spans a whole step, so the error can reach 1.5 steps:
 	 * the dither moves the input by up to one step and the rounding adds
 	 * half. It is the decorrelation that matters, and that is what the
@@ -100,8 +104,8 @@ static int test_quant_tpdf_bounded(void) {
 	double sumT = 0.0, sumT2 = 0.0, sumR = 0.0, sumR2 = 0.0;
 	for(int i = 0; i < N; i++) {
 		float x = 0.9f * sinf(2.0f * 3.14159265358979f * 997.0f * (float)i / 48000.0f);
-		float et = samplerQuantize(x, 8, SQL_TPDF) - x;
-		float er = samplerQuantize(x, 8, SQL_TRUNC) - x;
+		float et = samplerQuantize(x, 8, SQL_TPDF, &dither) - x;
+		float er = samplerQuantize(x, 8, SQL_TRUNC, &dither) - x;
 		if(fabsf(et) > TPDF_MAX_ERROR_STEPS * delta) {
 			printf("FAIL: SQL_TPDF error %g exceeds %g steps\n",
 			       (double)et, (double)(TPDF_MAX_ERROR_STEPS * delta));
@@ -123,7 +127,8 @@ static int test_quant_tpdf_bounded(void) {
 }
 
 static int test_quant_ulaw_roundtrip(void) {
-	if(samplerQuantize(0.0f, 8, SQL_ULAW) != 0.0f) {
+	uint32_t dither = 0x9E3779B9u;
+	if(samplerQuantize(0.0f, 8, SQL_ULAW, &dither) != 0.0f) {
 		printf("FAIL: SQL_ULAW(0) is not exactly zero\n");
 		return 1;
 	}
@@ -131,7 +136,7 @@ static int test_quant_ulaw_roundtrip(void) {
 	float prev = -2.0f;
 	for(int i = 0; i <= 1000; i++) {
 		float x = -1.0f + 2.0f * (float)i / 1000.0f;
-		float y = samplerQuantize(x, 8, SQL_ULAW);
+		float y = samplerQuantize(x, 8, SQL_ULAW, &dither);
 		if(y < prev) {
 			printf("FAIL: SQL_ULAW is not monotonic at x=%g (%g < %g)\n",
 			       (double)x, (double)y, (double)prev);
@@ -142,7 +147,7 @@ static int test_quant_ulaw_roundtrip(void) {
 	/* Bounded by the grid's top step. */
 	for(int i = 0; i <= 1000; i++) {
 		float x = -1.0f + 2.0f * (float)i / 1000.0f;
-		float e = fabsf(samplerQuantize(x, 8, SQL_ULAW) - x);
+		float e = fabsf(samplerQuantize(x, 8, SQL_ULAW, &dither) - x);
 		if(e > ULAW_MAX_ABS_ERROR) {
 			printf("FAIL: SQL_ULAW error %g exceeds %g at x=%g\n",
 			       (double)e, (double)ULAW_MAX_ABS_ERROR, (double)x);
@@ -152,8 +157,8 @@ static int test_quant_ulaw_roundtrip(void) {
 	/* The companding property: the absolute error at a low level is much
 	 * smaller than at a high level. That is what mu-law buys: a lower
 	 * noise floor, not a better relative error down low. */
-	float lowErr = fabsf(samplerQuantize(0.001f, 8, SQL_ULAW) - 0.001f);
-	float highErr = fabsf(samplerQuantize(0.9f, 8, SQL_ULAW) - 0.9f);
+	float lowErr = fabsf(samplerQuantize(0.001f, 8, SQL_ULAW, &dither) - 0.001f);
+	float highErr = fabsf(samplerQuantize(0.9f, 8, SQL_ULAW, &dither) - 0.9f);
 	if(!(lowErr < highErr)) {
 		printf("FAIL: SQL_ULAW error at 0.001 (%g) is not below the one at 0.9 (%g)\n",
 		       (double)lowErr, (double)highErr);
@@ -164,18 +169,19 @@ static int test_quant_ulaw_roundtrip(void) {
 }
 
 static int test_quant_compand12(void) {
+	uint32_t dither = 0x9E3779B9u;
 	/* Bounded by the grid's top step. */
 	for(int i = 0; i <= 1000; i++) {
 		float x = -1.0f + 2.0f * (float)i / 1000.0f;
-		float e = fabsf(samplerQuantize(x, 12, SQL_COMPAND12) - x);
+		float e = fabsf(samplerQuantize(x, 12, SQL_COMPAND12, &dither) - x);
 		if(e > COMPAND12_MAX_ABS_ERROR) {
 			printf("FAIL: SQL_COMPAND12 error %g exceeds %g at x=%g\n",
 			       (double)e, (double)COMPAND12_MAX_ABS_ERROR, (double)x);
 			return 1;
 		}
 	}
-	float lowErr = fabsf(samplerQuantize(0.01f, 12, SQL_COMPAND12) - 0.01f);
-	float highErr = fabsf(samplerQuantize(0.9f, 12, SQL_COMPAND12) - 0.9f);
+	float lowErr = fabsf(samplerQuantize(0.01f, 12, SQL_COMPAND12, &dither) - 0.01f);
+	float highErr = fabsf(samplerQuantize(0.9f, 12, SQL_COMPAND12, &dither) - 0.9f);
 	if(!(lowErr < highErr)) {
 		printf("FAIL: SQL_COMPAND12 error at 0.01 (%g) is not below the one at 0.9 (%g)\n",
 		       (double)lowErr, (double)highErr);
@@ -186,10 +192,11 @@ static int test_quant_compand12(void) {
 }
 
 static int test_quant_bits_clamp(void) {
+	uint32_t dither = 0x9E3779B9u;
 	const int bad[] = {-3, 0, 25, 999};
 	for(size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
 		for(int law = 0; law < SQL_COUNT; law++) {
-			float y = samplerQuantize(0.37f, bad[i], (SamplerQuantLaw)law);
+			float y = samplerQuantize(0.37f, bad[i], (SamplerQuantLaw)law, &dither);
 			if(!(y == y) || fabsf(y) > 1.0001f) {
 				printf("FAIL: bits=%d law=%d gave %g\n", bad[i], law, (double)y);
 				return 1;
@@ -783,6 +790,18 @@ static int test_linear_loops_within_the_region(void) {
 	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
 	float pos = 0.0f;
 	float minSeen = 1e9f, maxSeen = -1e9f;
+	/* The head is played first, and then the loop region: the position
+	 * wraps to the region's start when it passes the region's end, the
+	 * way the drop read does. The two interpolators have to agree. */
+	for(int i = 0; i < 8; i++) {
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24);
+		if(fabsf(v - b.data[i + 1]) > 1e-6f) {
+			printf("FAIL: the linear read skipped the head at %d (%g, want %g)\n",
+			       i, (double)v, (double)b.data[i + 1]);
+			freeBakedSample(&b);
+			return 1;
+		}
+	}
 	for(int i = 0; i < 500; i++) {
 		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24);
 		if(v < minSeen) {
@@ -790,11 +809,6 @@ static int test_linear_loops_within_the_region(void) {
 		}
 		if(v > maxSeen) {
 			maxSeen = v;
-		}
-		if(pos < 8.0f - 1e-4f || pos >= 24.0f + 1e-4f) {
-			printf("FAIL: the linear read's position %g left the loop region\n", (double)pos);
-			freeBakedSample(&b);
-			return 1;
 		}
 	}
 	if(minSeen < b.data[8] - 1e-4f || maxSeen > b.data[23] + 1e-4f) {

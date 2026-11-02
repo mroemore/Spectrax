@@ -272,6 +272,15 @@ void incrementSampleParam(Parameter *sampleIndex, float delta) {
 }
 
 void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]) {
+	/* A new note starts the sample from the beginning, whichever
+	 * interpolator is reading it. The voice's type data is a union, so
+	 * this is only written for a sampler voice: writing the sampler's
+	 * fields for an FM voice would land on the operator array. */
+	if(voice->type == VOICE_TYPE_SAMPLE) {
+		voice->vd.sampler.samplePosition = 0.0f;
+		voice->vd.sampler.dsAddr = 0;
+		voice->vd.sampler.dsPhase = 0.0;
+	}
 	voice->note[0] = note[0];
 	voice->note[1] = note[1];
 	voice->leftPhase = 0.0f;
@@ -858,7 +867,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			int sl = (instrument->id.sampler.sample) ? instrument->id.sampler.sample->length : 1;
 			int smax = (instrument->id.sampler.sp && instrument->id.sampler.sp->sampleCount > 0) ? instrument->id.sampler.sp->sampleCount - 1 : 0;
 			instrument->id.sampler.bitDepth = createParameterEx(instrument->paramList, "bitdepth", (float)p.pd.sampler.bitDepth, 8.0f, 24.0f, 1.0f, 4.0f);
-			instrument->id.sampler.sampleRate = createParameterEx(instrument->paramList, "bitrate", (float)p.pd.sampler.sampleRate, 0.0f, 48000.0f, 100.0f, 1000.0f);
+			instrument->id.sampler.sampleRate = createParameterEx(instrument->paramList, "bitrate", (float)p.pd.sampler.sampleRate, 0.0f, 192000.0f, 100.0f, 1000.0f);
 			instrument->id.sampler.sampleIndex = createParameterPro(instrument->paramList, "sample", (float)p.pd.sampler.sampleIndex, 0, (float)smax, 1.0f, 10.0f, instrument, updateSampleReferences);
 			instrument->id.sampler.loopSample = createParameterEx(instrument->paramList, "loop", (float)p.pd.sampler.loopSample, 0, 1.0, 1.0f, 1.0f);
 			instrument->id.sampler.playbackType = createParameterPro(instrument->paramList, "playback", (float)p.pd.sampler.playbackType, 0, (float)SPT_COUNT, 1.0f, 10.0f, instrument, setSamplePlaybackFunction);
@@ -876,6 +885,12 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", presetValueOr(p.pd.sampler.res, 0.0f, 0.9f, 0.0f), 0.0f, 0.9f, 0.01f, 0.05f);
 			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", presetValueOr(p.pd.sampler.tune, 0.25f, 8.0f, 1.0f), 0.25f, 8.0f, 0.01f, 0.1f);
 			instrument->id.sampler.root = createParameterEx(instrument->paramList, "root", (float)p.pd.sampler.root, -48.0f, 48.0f, 1.0f, 12.0f);
+			/* The previous bake is freed here rather than orphaned:
+			 * applyInstrumentPreset replaces the whole chain. */
+			if(instrument->id.sampler.baked) {
+				freeBakedSample(instrument->id.sampler.baked);
+				free(instrument->id.sampler.baked);
+			}
 			instrument->id.sampler.baked = NULL;
 			rebuildSamplerBakeUnsafe(instrument);
 			break;
@@ -1255,7 +1270,9 @@ static void cb_rebuildSamplerBake(void *instrument);
  * rebuilt whenever the sample or any of those change, and the result is
  * cached on the instrument so the voice reads it without re-baking.
  *
- * The caller holds g_audioLock (or is the audio thread). */
+ * The caller holds g_audioLock (or is the audio thread): the old bake is
+ * freed here, and the audio thread reads that buffer every sample of every
+ * buffer. */
 static void rebuildSamplerBakeUnsafe(Instrument *inst) {
 	if(!inst || inst->voiceType != VOICE_TYPE_SAMPLE) {
 		return;
@@ -1420,7 +1437,7 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			/* 0 means "keep the source's own rate", which is what a fresh
 			 * instrument wants: the bake is then the identity and the
 			 * source is not resampled for nothing. */
-			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 0.0f, 0.0f, 48000.0f, 100.0f, 1000.0f);
+			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 0.0f, 0.0f, 192000.0f, 100.0f, 1000.0f);
 			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)sampleCountMax, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->id.sampler.loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
 			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
@@ -1519,8 +1536,12 @@ void updateSampleReferences(void *instrument) {
 	setParameterMaxValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length);
 	setParameterBaseValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
 	setParameterValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
-	/* A different sample means a different bake. */
+	/* A different sample means a different bake. The old one is freed, and
+	 * the audio thread may be reading it, so the swap happens under the
+	 * lock. */
+	pthread_mutex_lock(&g_audioLock);
 	rebuildSamplerBakeUnsafe(i);
+	pthread_mutex_unlock(&g_audioLock);
 }
 
 void setSamplePlaybackFunction(void *instrument) {

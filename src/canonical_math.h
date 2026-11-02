@@ -23,7 +23,8 @@
  * Two deliberate differences from libm, both documented at the function:
  *   - canonicalExp flushes to zero below the normal range instead of
  *     returning a subnormal (a subnormal is flushed differently by NEON's
- *     FZ mode than by x86's DAZ, which would break the gate again);
+ *     FZ mode than by x86's DAZ, which would break the gate again), and
+ *     saturates at FLT_MAX above exp(88), which overflows a float;
  *   - canonicalPow is defined for x >= 0 only.
  */
 

@@ -166,6 +166,9 @@ int run_bench_voicetype(BenchReport *r, const BenchOptions *o) {
     int voices = o->voices > 0 ? o->voices : 4;
     int channels = o->channels > 0 ? o->channels : 1;
     g_rate = o->audio_rate > 0 ? o->audio_rate : SR_DEFAULT;
+    /* The engine renders at its own rate, which is a constant; the
+     * benchmark's rate sweep moves the *device* rate, which only changes
+     * the deadline the measurement is compared against. */
     /* The device rate; the bench must set it so
      * phase increments, filter coefficients and envelope rates all follow.
      * This is what makes the rate sweep meaningful rather than cosmetic. */

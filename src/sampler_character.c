@@ -18,20 +18,21 @@
 #define SAMPLER_MIN_BITS 1
 #define SAMPLER_MAX_BITS 24
 
-/* A xorshift32, seeded from a fixed constant so a bake is reproducible: the
- * same sample always dithers the same way, on every platform and every run.
- * (The corpus notes that a vintage quantizer's error is signal-correlated;
- * a fixed dither pattern keeps that correlation rather than inventing a
- * random one that no machine ever had.) */
-static uint32_t g_ditherState = 0x9E3779B9u;
+/* The dither's seed. Fixed, so a bake is reproducible: the same sample
+ * always dithers the same way, on every platform and every run. (The corpus
+ * notes that a vintage quantizer's error is signal-correlated; a fixed
+ * dither pattern keeps that correlation rather than inventing a random one
+ * that no machine ever had.) The state itself belongs to the caller, so
+ * two bakes never share a pattern. */
+#define SAMPLER_DITHER_SEED 0x9E3779B9u
 
-static float ditherUniform(void) {
+static float ditherUniform(uint32_t *state) {
 	/* xorshift32: three shifts and three xors, all exact. */
-	uint32_t x = g_ditherState;
+	uint32_t x = *state;
 	x ^= x << 13;
 	x ^= x >> 17;
 	x ^= x << 5;
-	g_ditherState = x;
+	*state = x;
 	/* [-0.5, 0.5): x >> 8 is 24 bits, so the divisor is 2^24. */
 	return ((float)(x >> 8) / 16777216.0f) - 0.5f;
 }
@@ -88,7 +89,7 @@ static float compand(float x, float mu, int levels) {
 	return sign * (expanded - 1.0f) / mu;
 }
 
-float samplerQuantize(float x, int bits, SamplerQuantLaw law) {
+float samplerQuantize(float x, int bits, SamplerQuantLaw law, uint32_t *ditherState) {
 	if(bits < SAMPLER_MIN_BITS) {
 		bits = SAMPLER_MIN_BITS;
 	}
@@ -117,7 +118,9 @@ float samplerQuantize(float x, int bits, SamplerQuantLaw law) {
 			 * push the input across a grid boundary -- that is what
 			 * decorrelates the error from the signal. */
 			float step = linearStep(bits);
-			float d = ditherUniform() + ditherUniform();
+			uint32_t local = SAMPLER_DITHER_SEED;
+			uint32_t *state = ditherState ? ditherState : &local;
+			float d = ditherUniform(state) + ditherUniform(state);
 			float scaled = x / step + d;
 			float q = (scaled >= 0.0f) ? floorf(scaled + 0.5f) : ceilf(scaled - 0.5f);
 			return clampUnit(q * step);
@@ -159,8 +162,9 @@ static float bakeKernel(double t, double fc) {
 	} else {
 		s = canonicalSin((float)(x * 0.5)) / (3.14159265358979323846 * x);
 	}
-	/* The Hann window over the taps, in the periodic form: it vanishes at
-	 * both ends, which is what keeps the sidelobes down. */
+	/* The Hann window over the taps: the symmetric form, which is a few
+	 * thousandths away from zero at the ends and keeps the sidelobes
+	 * down. */
 	return (float)(s);
 }
 
@@ -241,9 +245,13 @@ bool bakeSamplerCharacter(const Sample *src, int rate, int bits, SamplerQuantLaw
 			data[m] = (wsum != 0.0) ? (float)(sum / wsum) : 0.0f;
 		}
 	}
-	/* The coding law comes last: degrade once, at record time. */
+	/* The coding law comes last: degrade once, at record time. The
+	 * dither's state is local to this bake and seeded with a fixed
+	 * constant, so the same source always bakes the same way -- and two
+	 * bakes never share a dither pattern. */
+	uint32_t ditherState = SAMPLER_DITHER_SEED;
 	for(int i = 0; i < outLen; i++) {
-		data[i] = samplerQuantize(data[i], bits, law);
+		data[i] = samplerQuantize(data[i], bits, law, &ditherState);
 	}
 	out->data = data;
 	out->length = outLen;
@@ -252,6 +260,7 @@ bool bakeSamplerCharacter(const Sample *src, int rate, int bits, SamplerQuantLaw
 	out->bits = bits;
 	out->law = law;
 	out->src = src;
+	out->srcLength = src->length;
 	return true;
 }
 
@@ -279,7 +288,7 @@ bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, S
 		rate = (src->sampleRate > 0) ? src->sampleRate : 44100;
 	}
 	return b->rate == rate && b->bits == bits && b->law == law &&
-	       b->src == src && b->srcBit == src->bit;
+	       b->src == src && b->srcBit == src->bit && b->srcLength == src->length;
 }
 
 /* ------------------------------------------------------------------ */
@@ -461,16 +470,19 @@ float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
 		rel = rel - floorf(rel / span) * span;
 		*pos = (float)start + rel;
 	}
-	if(*pos < (float)start) {
-		*pos = (float)start;
+	/* The head is played before the loop: the position only reaches the
+	 * loop region by wrapping at the end, exactly as the drop read does.
+	 * Clamping it up to the region's start would skip the head. */
+	if(*pos < 0.0f) {
+		*pos = 0.0f;
 	}
 	int floorIndex = (int)*pos;
 	int ceilIndex = floorIndex + 1;
 	if(ceilIndex >= end) {
 		ceilIndex = loop ? start : end - 1;
 	}
-	if(floorIndex < start) {
-		floorIndex = start;
+	if(floorIndex < 0) {
+		floorIndex = 0;
 	}
 	float frac = *pos - (float)floorIndex;
 	return b->data[floorIndex] * (1.0f - frac) + b->data[ceilIndex] * frac;

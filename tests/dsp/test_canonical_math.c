@@ -338,7 +338,9 @@ static int containsCall(const char *line, const char *name) {
 }
 
 static int test_canonical_module_calls_no_inexact_libm(void) {
-	static const char *const FILES[] = {"canonical_math.c", "sintab.c"};
+	/* The bake lives on the audio path too -- its output is read by the
+	 * voice -- so it is under the same invariant. */
+	static const char *const FILES[] = {"canonical_math.c", "sintab.c", "sampler_character.c"};
 	for(size_t fi = 0; fi < sizeof(FILES) / sizeof(FILES[0]); fi++) {
 		char path[512];
 		snprintf(path, sizeof(path), "%s/%s", SPECTRAX_SRC_DIR, FILES[fi]);

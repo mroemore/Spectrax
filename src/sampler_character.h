@@ -53,6 +53,7 @@ typedef struct {
 	int bits;      /* the word length the bake quantized to */
 	SamplerQuantLaw law; /* the coding law the bake applied */
 	const Sample *src;   /* the source it was baked from */
+	int srcLength;       /* the source's length when it was baked */
 } BakedSample;
 
 /* The interpolators a machine profile can use.
@@ -114,8 +115,9 @@ bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, S
  *   advance = 2^((note - root)/12) * tune * (bakedRate / engineRate)
  *
  * `noteSemitones` is the note being played and `rootSemitones` the note the
- * recording was made at, both in the engine's numbering (C0 is 0, so C4 is
- * 48). `tune` is the machine's own tuning trim. `bakedRate` is the baked
+ * recording was made at, both counted from C4 (so C4 is 0, A4 is 9, and C3
+ * is -12). The engine's own octave numbering starts at C0, so the note is
+ * converted with (octave - 4) * 12 + note. `tune` is the machine's own tuning trim. `bakedRate` is the baked
  * buffer's rate.
  *
  * At unity -- the note played is the root note, tune 1, and the baked rate
@@ -151,8 +153,15 @@ float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
  * produce a division by zero or a shift overflow. `law` is clamped into
  * [0, SQL_COUNT).
  *
+ * `ditherState` is the TPDF dither's running state, and it belongs to the
+ * caller: a module-global state would make the dither depend on how many
+ * quantizations happened before, so the same sample baked twice would come
+ * out different -- a voice's output would depend on the load order, which
+ * criterion C forbids. Pass a word seeded with a fixed constant and let it
+ * run; pass NULL for a law that does not dither.
+ *
  * The result is always finite and within [-1, 1]. SQL_OFF returns x exactly.
  */
-float samplerQuantize(float x, int bits, SamplerQuantLaw law);
+float samplerQuantize(float x, int bits, SamplerQuantLaw law, uint32_t *ditherState);
 
 #endif

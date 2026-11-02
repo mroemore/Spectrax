@@ -172,6 +172,9 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 			default:
 				break;
 		}
+		/* Re-save as V4, the way the V1 and V2 migrations do, so the
+		 * file on disk carries the current format. */
+		savePresetFile(filename, &migrated);
 		addPresetToBank(pb, migrated);
 		return PRESET_OK;
 	}

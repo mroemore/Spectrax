@@ -32,3 +32,12 @@ src/gui_pattern.c  40
 # docs/coverage/. Gate them once that pipeline is scripted.
 src/sample.c        50
 src/gui_style.c      60
+# The sampler's character engine and the canonical math module. Their
+# floors come from the unit suite (tests/dsp/test_sampler_character.c and
+# tests/dsp/test_canonical_math.c), which is what carries the chain.
+# canonical_math's uncovered branches are the argument guards: the
+# exponent overflow, the non-positive logarithm and the NaN input, none of
+# which the tree's callers reach.
+src/sampler_character.c  66
+src/canonical_math.c     51
+src/sintab.c             85

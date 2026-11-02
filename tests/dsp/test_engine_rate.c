@@ -42,6 +42,11 @@ static const char *const SYNTHESIS_PATH[] = {
 	"modsystem.c",
 	"sequencer.c",
 	"sample.c",
+	"canonical_math.c",
+	"sampler_character.c",
+	"sintab.c",
+	"filters.c",
+	"wavetable.c",
 };
 
 static int test_engine_rate_is_the_canonical_constant(void) {
