@@ -285,6 +285,10 @@ typedef struct {
 	Sample *sample;
 	float samplePosition; // Position in the sample data
 	SamplePool *samplePool;
+	/* The drop-sample read's state: an integer address and the fractional
+	 * part carried beside it. */
+	uint32_t dsAddr;
+	double dsPhase;
 } SamplerVoiceData;
 
 typedef struct {

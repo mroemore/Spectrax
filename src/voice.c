@@ -116,10 +116,38 @@ OutVal generateFM(Voice *currentVoice, float phaseIncrement, float frequency) {
 
 OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency) {
 	OutVal out;
-	int sampleIndex = getParameterValueAsInt(currentVoice->instrumentRef->id.sampler.sampleIndex);
-	bool loop = getParameterValueAsInt(currentVoice->instrumentRef->id.sampler.loopSample);
-	out.L = getSampleValueFwd(currentVoice->vd.sampler.samplePool->samples[sampleIndex], &currentVoice->vd.sampler.samplePosition, phaseIncrement, loop);
-	out.L *= 0.5;
+	out.L = 0.0f;
+	out.R = 0.0f;
+	Instrument *inst = currentVoice->instrumentRef;
+	if(!inst) {
+		return out;
+	}
+	const SamplerInstrumentData *id = &inst->id.sampler;
+	SamplerVoiceData *vd = &currentVoice->vd.sampler;
+	BakedSample *baked = id->baked;
+	if(!baked || !baked->data || baked->length <= 0) {
+		/* No bake yet: an empty pool at boot, or a sample that has not
+		 * been baked. Silence is the only safe answer. */
+		return out;
+	}
+	/* The note against the recording's root, both counted from C4. */
+	int noteSemitones = (currentVoice->note[1] - 4) * 12 + currentVoice->note[0];
+	int root = getParameterValueAsInt(id->root);
+	float tune = getParameterValue(id->tune);
+	float advance = samplerAdvance(noteSemitones, root, tune, baked->rate);
+	int loop = getParameterValueAsInt(id->loopSample);
+	/* The loop points are the source's frames, and the bake may be at
+	 * another rate, so they are scaled into the bake's frames. */
+	int srcRate = (id->sample && id->sample->sampleRate > 0) ? id->sample->sampleRate : baked->rate;
+	int loopStart = (int)(((long)getParameterValueAsInt(id->loopStartIndex) * baked->rate) / srcRate);
+	int loopEnd = (int)(((long)getParameterValueAsInt(id->loopEndIndex) * baked->rate) / srcRate);
+	float v;
+	if(getParameterValueAsInt(id->interp) == SPI_DROPSAMPLE) {
+		v = getBakedSampleDrop(baked, &vd->dsAddr, &vd->dsPhase, advance, loop, loopStart, loopEnd);
+	} else {
+		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd);
+	}
+	out.L = v * 0.5f;
 	out.R = out.L;
 	return out;
 }
@@ -406,6 +434,11 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			voice->vd.sampler.sample = inst->id.sampler.sample;
 			voice->vd.sampler.samplePosition = 0.0f; // Initialize sample position
 			voice->vd.sampler.samplePool = inst->id.sampler.sp;
+			/* The drop-sample read's state: the voice is malloc'd, so the
+			 * address and the carried fraction start uninitialised -- and
+			 * an uninitialised address reads outside the bake. */
+			voice->vd.sampler.dsAddr = 0;
+			voice->vd.sampler.dsPhase = 0.0;
 			voice->generate = generateSample;
 			break;
 
@@ -775,6 +808,15 @@ void applyPatternTrackSetToInstruments(VoiceManager *vm, const PatternTrackSet *
 	}
 }
 
+/* A preset field that falls outside its parameter's legal range means the
+ * preset never carried it -- a zeroed boot preset, or a file from before the
+ * field existed. Clamping those to the range's edge would give a chain that
+ * is coherent but not neutral (a tuning trim of a quarter, a loop that ends
+ * one frame in), so the parameter's own default is used instead. */
+static float presetValueOr(float v, float min, float max, float fallback) {
+	return (v >= min && v <= max) ? v : fallback;
+}
+
 void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	/* Task 8: gate the audio thread out while we tear down + rebuild the
 	 * param/mod lists. The PortAudio callback reads these lists every
@@ -821,7 +863,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.loopSample = createParameterEx(instrument->paramList, "loop", (float)p.pd.sampler.loopSample, 0, 1.0, 1.0f, 1.0f);
 			instrument->id.sampler.playbackType = createParameterPro(instrument->paramList, "playback", (float)p.pd.sampler.playbackType, 0, (float)SPT_COUNT, 1.0f, 10.0f, instrument, setSamplePlaybackFunction);
 			instrument->id.sampler.loopStartIndex = createParameterEx(instrument->paramList, "loop start", (float)p.pd.sampler.loopStartIndex, 0, (float)sl, 100.0f, 1000.0f);
-			instrument->id.sampler.loopEndIndex = createParameterEx(instrument->paramList, "loop end", (float)p.pd.sampler.loopEndIndex, 1.0f, (float)sl, 100.0f, 1000.0f);
+			instrument->id.sampler.loopEndIndex = createParameterEx(instrument->paramList, "loop end", (p.pd.sampler.loopEndIndex >= 1 && p.pd.sampler.loopEndIndex <= sl) ? (float)p.pd.sampler.loopEndIndex : (float)(sl - 1), 1.0f, (float)sl, 100.0f, 1000.0f);
 			/* The character chain's parameters have to be recreated here as
 			 * well: applyInstrumentPreset clears the parameter list, and a
 			 * parameter that is cleared and not recreated leaves a dangling
@@ -830,9 +872,9 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.law = createParameterPro(instrument->paramList, "law", (float)p.pd.sampler.law, 0.0f, (float)(SQL_COUNT - 1), 1.0f, 1.0f, instrument, cb_rebuildSamplerBake);
 			instrument->id.sampler.interp = createParameterEx(instrument->paramList, "interp", (float)p.pd.sampler.interp, 0.0f, (float)(SPI_INTERP_COUNT - 1), 1.0f, 1.0f);
 			instrument->id.sampler.filter = createParameterEx(instrument->paramList, "filter", (float)p.pd.sampler.filterOn, 0.0f, 1.0f, 1.0f, 1.0f);
-			instrument->id.sampler.cutoff = createParameterEx(instrument->paramList, "cutoff", p.pd.sampler.cutoff, 20.0f, 20000.0f, 10.0f, 100.0f);
-			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", p.pd.sampler.res, 0.0f, 0.9f, 0.01f, 0.05f);
-			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", p.pd.sampler.tune, 0.25f, 8.0f, 0.01f, 0.1f);
+			instrument->id.sampler.cutoff = createParameterEx(instrument->paramList, "cutoff", presetValueOr(p.pd.sampler.cutoff, 20.0f, 20000.0f, 20000.0f), 20.0f, 20000.0f, 10.0f, 100.0f);
+			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", presetValueOr(p.pd.sampler.res, 0.0f, 0.9f, 0.0f), 0.0f, 0.9f, 0.01f, 0.05f);
+			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", presetValueOr(p.pd.sampler.tune, 0.25f, 8.0f, 1.0f), 0.25f, 8.0f, 0.01f, 0.1f);
 			instrument->id.sampler.root = createParameterEx(instrument->paramList, "root", (float)p.pd.sampler.root, -48.0f, 48.0f, 1.0f, 12.0f);
 			instrument->id.sampler.baked = NULL;
 			rebuildSamplerBakeUnsafe(instrument);
@@ -1352,6 +1394,11 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	(*instrument)->voiceCountParam = createParameterPro((*instrument)->paramList, "voiceCount", 1.0f, 1.0f, 8.0f, 1.0f, 1.0f, (*instrument), cb_setVoiceCount);
 
 	(*instrument)->selectedPresetIndex = createParameterPro((*instrument)->paramList, "preset", 0.0f, 0.0f, (float)(PRESET_BANK_SLOTS - 1), 1.0, 1.0, (*instrument), cb_setInstrumentPreset);
+	/* The voice type is set before the branch below, not after it: the
+	 * branch's helpers read it (the bake's rebuild checks it), and an
+	 * uninitialised voiceType made them bail out. The apply path already
+	 * does this. */
+	(*instrument)->voiceType = vt;
 	switch(vt) {
 		case VOICE_TYPE_BLEP:
 			(*instrument)->envelopeCount = 2;
@@ -1370,7 +1417,10 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			int sampleCountMax = (samplePool->sampleCount > 0) ? samplePool->sampleCount - 1 : 0;
 			(*instrument)->id.sampler.getSampleValue = getSampleValueFwd;
 			(*instrument)->id.sampler.bitDepth = createParameterEx((*instrument)->paramList, "bitdepth", 24.0f, 8.0f, 24.0f, 1.0f, 4.0f);
-			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 44100.0f, 2000.0f, 44100.0f, 100.0f, 1000.0f);
+			/* 0 means "keep the source's own rate", which is what a fresh
+			 * instrument wants: the bake is then the identity and the
+			 * source is not resampled for nothing. */
+			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 0.0f, 0.0f, 48000.0f, 100.0f, 1000.0f);
 			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)sampleCountMax, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->id.sampler.loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
 			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
@@ -1386,6 +1436,8 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->id.sampler.cutoff = createParameterEx((*instrument)->paramList, "cutoff", 20000.0f, 20.0f, 20000.0f, 10.0f, 100.0f);
 			(*instrument)->id.sampler.res = createParameterEx((*instrument)->paramList, "res", 0.0f, 0.0f, 0.9f, 0.01f, 0.05f);
 			(*instrument)->id.sampler.tune = createParameterEx((*instrument)->paramList, "tune", 1.0f, 0.25f, 8.0f, 0.01f, 0.1f);
+			/* The root is counted from C4, so zero means C4 -- which is
+			 * what a zeroed preset gives. */
 			(*instrument)->id.sampler.root = createParameterEx((*instrument)->paramList, "root", 0.0f, -48.0f, 48.0f, 1.0f, 12.0f);
 			(*instrument)->id.sampler.baked = NULL;
 			rebuildSamplerBakeUnsafe(*instrument);
@@ -1439,7 +1491,6 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 		(*instrument)->envelopes[i] = createAD((*instrument)->paramList, (*instrument)->modList, .25f, 4.25f, "AD1");
 	}
 
-	(*instrument)->voiceType = vt;
 	for(int t = 0; t < PATTERN_TRACKS; t++) {
 		initPatternTrackData(&(*instrument)->patternTracks[t]);
 	}

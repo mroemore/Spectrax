@@ -365,11 +365,12 @@ static const float SAMPLER_SEMITONE_RATIO[12] = {
 	1.8877486253632068f
 };
 
-float samplerAdvance(int rootSemitones, float tune, int bakedRate) {
+float samplerAdvance(int noteSemitones, int rootSemitones, float tune, int bakedRate) {
 	/* Split the shift into octaves and a remainder, so only the
 	 * twelve ratios are ever needed. */
-	int octaves = rootSemitones / 12;
-	int rem = rootSemitones - octaves * 12;
+	int semitones = noteSemitones - rootSemitones;
+	int octaves = semitones / 12;
+	int rem = semitones - octaves * 12;
 	if(rem < 0) {
 		rem += 12;
 		octaves -= 1;

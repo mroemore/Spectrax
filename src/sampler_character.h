@@ -62,8 +62,11 @@ typedef struct {
  * truncated when indexing, so a sample may repeat on a pitch-down and
  * never stalls. Linear interpolation is the varispeed class. */
 typedef enum {
-	SPI_DROPSAMPLE,
+	/* Linear comes first so that the zero value is the modern default: a
+	 * preset that predates the chain, or a zeroed boot preset, keeps the
+	 * linear read it always had. */
 	SPI_LINEAR,
+	SPI_DROPSAMPLE,
 	SPI_INTERP_COUNT
 } SamplerInterp;
 
@@ -108,18 +111,19 @@ bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, S
 
 /* The per-output-sample advance, in baked frames.
  *
- *   advance = 2^(rootSemitones/12) * tune * (bakedRate / engineRate)
+ *   advance = 2^((note - root)/12) * tune * (bakedRate / engineRate)
  *
- * `rootSemitones` is how far the recording is from the note it is played
- * with (0 = it was recorded at the pitch it is played at). `tune` is the
- * machine's own tuning trim. `bakedRate` is the baked buffer's rate.
+ * `noteSemitones` is the note being played and `rootSemitones` the note the
+ * recording was made at, both in the engine's numbering (C0 is 0, so C4 is
+ * 48). `tune` is the machine's own tuning trim. `bakedRate` is the baked
+ * buffer's rate.
  *
- * At unity -- root 0, tune 1, and the baked rate equal to the engine's --
- * the advance is exactly 1.0: one baked frame per output frame, and the
- * sample sounds at its recorded pitch. The device's own audio rate is not
- * an input: the engine's rate is a constant, so a voice's output does not
- * depend on the machine it plays on. */
-float samplerAdvance(int rootSemitones, float tune, int bakedRate);
+ * At unity -- the note played is the root note, tune 1, and the baked rate
+ * equal to the engine's -- the advance is exactly 1.0: one baked frame per
+ * output frame, and the sample sounds at its recorded pitch. The device's
+ * own audio rate is not an input: the engine's rate is a constant, so a
+ * voice's output does not depend on the machine it plays on. */
+float samplerAdvance(int noteSemitones, int rootSemitones, float tune, int bakedRate);
 
 /* The SP-1200's drop-sample read.
  *

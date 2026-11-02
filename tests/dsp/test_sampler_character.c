@@ -599,7 +599,8 @@ static int test_profile_clean_is_passthrough(void) {
  * sample and a 16-bit stereo one played at different pitches on the same
  * machine. */
 static int test_advance_is_exactly_one_at_unity(void) {
-	float a = samplerAdvance(0, 1.0f, SPECTRAX_ENGINE_RATE);
+	/* The note played is the root note: the recording sounds as recorded. */
+	float a = samplerAdvance(9, 9, 1.0f, SPECTRAX_ENGINE_RATE);
 	if(a != 1.0f) {
 		printf("FAIL: the unity advance is %.9g, want exactly 1\n", (double)a);
 		return 1;
@@ -611,15 +612,15 @@ static int test_advance_is_exactly_one_at_unity(void) {
 static int test_advance_follows_the_root(void) {
 	/* An octave up doubles the advance, an octave down halves it, and a
 	 * semitone is the twelfth root of two. */
-	if(samplerAdvance(12, 1.0f, SPECTRAX_ENGINE_RATE) != 2.0f) {
-		printf("FAIL: the +12 advance is %.9g, want 2\n", (double)samplerAdvance(12, 1.0f, SPECTRAX_ENGINE_RATE));
+	if(samplerAdvance(21, 9, 1.0f, SPECTRAX_ENGINE_RATE) != 2.0f) {
+		printf("FAIL: the +12 advance is %.9g, want 2\n", (double)samplerAdvance(21, 9, 1.0f, SPECTRAX_ENGINE_RATE));
 		return 1;
 	}
-	if(samplerAdvance(-12, 1.0f, SPECTRAX_ENGINE_RATE) != 0.5f) {
-		printf("FAIL: the -12 advance is %.9g, want 0.5\n", (double)samplerAdvance(-12, 1.0f, SPECTRAX_ENGINE_RATE));
+	if(samplerAdvance(-3, 9, 1.0f, SPECTRAX_ENGINE_RATE) != 0.5f) {
+		printf("FAIL: the -12 advance is %.9g, want 0.5\n", (double)samplerAdvance(-3, 9, 1.0f, SPECTRAX_ENGINE_RATE));
 		return 1;
 	}
-	float semi = samplerAdvance(1, 1.0f, SPECTRAX_ENGINE_RATE);
+	float semi = samplerAdvance(10, 9, 1.0f, SPECTRAX_ENGINE_RATE);
 	float expect = powf(2.0f, 1.0f / 12.0f);
 	if(fabsf(semi - expect) > 1e-6f) {
 		printf("FAIL: the +1 advance is %.9g, want %.9g\n", (double)semi, (double)expect);
@@ -632,7 +633,7 @@ static int test_advance_follows_the_root(void) {
 static int test_advance_follows_the_bake_rate(void) {
 	/* A buffer baked at half the engine's rate advances half a frame per
 	 * output frame. */
-	float a = samplerAdvance(0, 1.0f, SPECTRAX_ENGINE_RATE / 2);
+	float a = samplerAdvance(9, 9, 1.0f, SPECTRAX_ENGINE_RATE / 2);
 	if(fabsf(a - 0.5f) > 1e-6f) {
 		printf("FAIL: the half-rate advance is %.9g, want 0.5\n", (double)a);
 		return 1;
@@ -642,7 +643,7 @@ static int test_advance_follows_the_bake_rate(void) {
 }
 
 static int test_advance_follows_the_tune(void) {
-	float a = samplerAdvance(0, 1.5f, SPECTRAX_ENGINE_RATE);
+	float a = samplerAdvance(9, 9, 1.5f, SPECTRAX_ENGINE_RATE);
 	if(fabsf(a - 1.5f) > 1e-6f) {
 		printf("FAIL: the tuned advance is %.9g, want 1.5\n", (double)a);
 		return 1;
@@ -654,12 +655,12 @@ static int test_advance_follows_the_tune(void) {
 static int test_advance_ignores_the_device_rate(void) {
 	/* The engine's rate is a constant, so the advance cannot move when the
 	 * device's rate does. */
-	float before = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	float before = samplerAdvance(12, 9, 1.0f, SPECTRAX_ENGINE_RATE);
 	float saved = g_deviceRate;
 	g_deviceRate = 44100.0f;
-	float at44 = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	float at44 = samplerAdvance(12, 9, 1.0f, SPECTRAX_ENGINE_RATE);
 	g_deviceRate = 192000.0f;
-	float at192 = samplerAdvance(3, 1.0f, SPECTRAX_ENGINE_RATE);
+	float at192 = samplerAdvance(12, 9, 1.0f, SPECTRAX_ENGINE_RATE);
 	g_deviceRate = saved;
 	if(before != at44 || before != at192) {
 		printf("FAIL: the advance moved with the device rate (%g, %g, %g)\n",
@@ -1034,6 +1035,138 @@ static int test_params_survive_a_preset_apply(void) {
 	return 0;
 }
 
+
+/* The end-to-end proof: a 440 Hz recording played at A4 with the root set
+ * to A4 comes out at 440 Hz. The advance it used to be -- phaseIncrement *
+ * PA_SR * 2 * srcBit / srcRate -- put it 64x too fast at 16-bit stereo, and
+ * made the pitch depend on the device's audio rate and on the sample's bit
+ * depth and channel count. */
+static int test_sampler_voice_plays_at_the_written_pitch(void) {
+	const int N = 48000;
+	float *data = (float *)malloc(sizeof(float) * N);
+	if(!data) {
+		printf("FAIL: out of memory\n");
+		return 1;
+	}
+	for(int i = 0; i < N; i++) {
+		double t = (double)i / (double)SPECTRAX_ENGINE_RATE;
+		data[i] = (float)sin(2.0 * M_PI * 440.0 * t);
+	}
+	SamplePool *sp = createSamplePool();
+	if(!sp) {
+		printf("FAIL: no sample pool\n");
+		free(data);
+		return 1;
+	}
+	loadSample(sp, "a440", data, 16, SPECTRAX_ENGINE_RATE, N);
+	PresetBank pb;
+	memset(&pb, 0, sizeof(pb));
+	Instrument *inst = NULL;
+	init_instrument(&inst, VOICE_TYPE_SAMPLE, sp, &pb);
+	if(!inst) {
+		printf("FAIL: no instrument\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	/* A4 in the engine's numbering: octave 4, note 9 (C is 0) -> 57. */
+	setParameterBaseValue(inst->id.sampler.root, 9.0f);
+	setParameterValue(inst->id.sampler.root, 9.0f);
+	/* The bake is the identity at the engine's rate. */
+	if(!inst->id.sampler.baked || inst->id.sampler.baked->rate != SPECTRAX_ENGINE_RATE) {
+		printf("FAIL: the bake is missing or at the wrong rate\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	WavetablePool *wtp = createWavetablePool();
+	Settings settings;
+	memset(&settings, 0, sizeof(settings));
+	settings.enabledChannels = 1;
+	settings.defaultVoiceCount = 1;
+	settings.defaultBPM = 120;
+	VoiceManager *vm = createVoiceManager(&settings, sp, wtp, &pb);
+	if(!vm) {
+		printf("FAIL: no voice manager\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	/* The manager creates its own SAMPLE instruments; use the one it made
+	 * for channel 0 so the voice pool and the instrument agree. */
+	Instrument *chan0 = vm->instruments[0];
+	if(!chan0) {
+		printf("FAIL: the manager made no instrument\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	chan0->id.sampler.sample = sp->samples[0];
+	setParameterBaseValue(chan0->id.sampler.root, 9.0f);
+	setParameterValue(chan0->id.sampler.root, 9.0f);
+	{
+		Instrument *inst2 = chan0;
+		/* The bake is the identity at the engine's rate. */
+		if(!inst2->id.sampler.baked || inst2->id.sampler.baked->rate != SPECTRAX_ENGINE_RATE) {
+			printf("FAIL: the bake is missing or at the wrong rate\n");
+			freeSamplePool(sp);
+			free(data);
+			return 1;
+		}
+	}
+	inst = chan0;
+	initVoicePool(vm, 0, 1, chan0);
+	int note[NOTE_INFO_SIZE] = { A, 4 };
+	Voice *v = getFreeVoice(vm, 0);
+	if(!v) {
+		printf("FAIL: no free voice\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	triggerVoice(v, note);
+	const int RENDER = 8192;
+	float *out = (float *)malloc(sizeof(float) * RENDER);
+	if(!out) {
+		printf("FAIL: out of memory\n");
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	for(int i = 0; i < RENDER; i++) {
+		OutVal o = generateVoice(vm, v, 440.0f / (float)SPECTRAX_ENGINE_RATE, 440.0f);
+		out[i] = o.L;
+	}
+	float amp = toneAmplitude(out, RENDER, 440.0f, (float)SPECTRAX_ENGINE_RATE);
+	/* The legacy advance put this at 64 * 440 Hz, far above Nyquist, so it
+	 * aliased into the audible band. The rendered amplitude at 440 Hz must
+	 * now be a good fraction of the recording's. */
+	if(amp < 0.15f) {
+		printf("FAIL: the rendered 440 Hz amplitude is %g, want at least 0.15\n", (double)amp);
+		free(out);
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	/* And it must not be somewhere else: check that the energy is where it
+	 * belongs by measuring a tone an octave up, which the old advance
+	 * would have put in the band. */
+	float up = toneAmplitude(out, RENDER, 880.0f, (float)SPECTRAX_ENGINE_RATE);
+	if(up > amp * 0.5f) {
+		printf("FAIL: the rendered 880 Hz amplitude is %g, want well under the 440 Hz one (%g)\n",
+		       (double)up, (double)amp);
+		free(out);
+		freeSamplePool(sp);
+		free(data);
+		return 1;
+	}
+	free(out);
+	freeSamplePool(sp);
+	free(data);
+	printf("PASS test_sampler_voice_plays_at_the_written_pitch\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_quant_off_passthrough();
@@ -1066,6 +1199,7 @@ int main(void) {
 	fails += test_sampler_params_exist();
 	fails += test_profile_applies_the_chain();
 	fails += test_params_survive_a_preset_apply();
+	fails += test_sampler_voice_plays_at_the_written_pitch();
 	if(fails) {
 		fprintf(stderr, "%d sampler-character test(s) failed\n", fails);
 		return 1;
