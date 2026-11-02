@@ -20,6 +20,7 @@ core_sources = files(
   'fft.c',
   'notes.c',
   'sample.c',
+  'sampler_character.c',
   'graph_gui.c',
   'gui_style.c',
   'io.c',

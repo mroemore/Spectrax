@@ -16,6 +16,7 @@ test_names = [
   'test_waveform',
   'test_engine_rate',
   'test_canonical_math',
+  'test_sampler_character',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
