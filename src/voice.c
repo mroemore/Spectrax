@@ -39,12 +39,16 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 		 * can find the channel in vm->instruments[] on first edit. */
 		vm->instruments[i]->metaChannel = i;
 		/* Task 6: the boot preset is a stand-in for "no preset yet"
-		 * (presetBank starts empty — patches[0].name is uninitialised).
-		 * Zero the name so applyInstrumentPreset's trailing
-		 * markPresetLoaded call skips the snapshot capture and leaves
-		 * loaded.name empty (no baseline). */
+		 * (presetBank starts empty — patches[0] is uninitialised).
+		 * Zero the WHOLE patch, not just the name: applyInstrumentPreset
+		 * below switches on patches[0].voiceType, so reading an
+		 * uninitialised voiceType/patch is UB (valgrind:
+		 * "conditional jump depends on uninitialised value"). A zeroed
+		 * Preset is voiceType 0 (VOICE_TYPE_SAMPLE) with empty data — a
+		 * deterministic, silent default. The zeroed name also makes
+		 * markPresetLoaded skip the snapshot capture (no baseline). */
 		if(pb->presetCount == 0) {
-			pb->patches[0].name[0] = '\0';
+			memset(&pb->patches[0], 0, sizeof(Preset));
 		}
 		applyInstrumentPreset(vm->instruments[i], pb->patches[0]);
 		initVoicePool(vm, i, settings->defaultVoiceCount, vm->instruments[i]);
@@ -910,6 +914,14 @@ void markPresetLoaded(Instrument *inst, const char *name) {
 	if(!inst || !name || !name[0]) {
 		return;
 	}
+	/* Copy before writing: a caller re-baselining without changing the name
+	 * naturally writes markPresetLoaded(inst, inst->loaded.name), and
+	 * strncpy(dst, src, n) with dst == src is undefined behaviour -- ASan
+	 * reports it as strncpy-param-overlap. Take a local first so that call
+	 * does the obvious thing. (TESTING.md I48.) */
+	char nameCopy[sizeof(inst->loaded.name)];
+	strncpy(nameCopy, name, sizeof(nameCopy) - 1);
+	nameCopy[sizeof(nameCopy) - 1] = '\0';
 	/* Snapshot the live instrument state. presetFromInstrument reads
 	 * every dial on the current voice type and serialises it into
 	 * a Preset — we keep the result in inst->loaded.snapshot so the
@@ -917,9 +929,9 @@ void markPresetLoaded(Instrument *inst, const char *name) {
 	 * alone doesn't capture what changed; the snapshot is the
 	 * baseline.) */
 	inst->loaded.snapshot = presetFromInstrument(inst);
-	strncpy(inst->loaded.snapshot.name, name, sizeof(inst->loaded.snapshot.name) - 1);
+	strncpy(inst->loaded.snapshot.name, nameCopy, sizeof(inst->loaded.snapshot.name) - 1);
 	inst->loaded.snapshot.name[sizeof(inst->loaded.snapshot.name) - 1] = '\0';
-	strncpy(inst->loaded.name, name, sizeof(inst->loaded.name) - 1);
+	strncpy(inst->loaded.name, nameCopy, sizeof(inst->loaded.name) - 1);
 	inst->loaded.name[sizeof(inst->loaded.name) - 1] = '\0';
 	/* Capture completes the sync-to-disk transaction: dirty flips
 	 * to clean so the next edit starts a new diff. */
@@ -1172,6 +1184,13 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 	(*instrument)->loaded.dirty = false;
 	(*instrument)->loaded.snapshot.name[0] = '\0';
 	(*instrument)->rebuilding = false;
+	/* The mod mirror arrays must start as NULL, not whatever malloc left.
+	 * Only slots 0..envelopeCount/lfoCount are ever written, so a loop that
+	 * scans the whole array -- gui_inst_mod.c's own bookkeeping does -- reads
+	 * uninitialised bytes past the populated entries. Under meson's
+	 * MALLOC_PERTURB_ that is a hard crash; without it, a wild read that
+	 * usually happens to look like a NULL. (TESTING.md I49.) */
+	memset((*instrument)->envelopes, 0, sizeof((*instrument)->envelopes));
 	(*instrument)->modList = createModList();
 	if(!(*instrument)->modList) {
 		printf("modList creation failed in init_instrument.\n");
@@ -1350,8 +1369,10 @@ GranularProcessor *createGranularProcessor(Sample *s) {
 		gp->windowIndex[i] = 0;
 	}
 	for(int i = 0; i < GRAIN_COUNT; i++) {
-		float startPos = rand() * GRANULAR_BUFFER_SIZE / 4.0;
-		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", rand() * GRANULAR_BUFFER_SIZE / 4.0, 0.0f, (float)GRANULAR_BUFFER_SIZE);
+		/* Scale in floating point: rand() * GRANULAR_BUFFER_SIZE overflows
+		 * int (signed overflow, UB — caught by UBSan). */
+		float startPos = (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f;
+		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f, 0.0f, (float)GRANULAR_BUFFER_SIZE);
 		gp->grainReadPos[i] = startPos;
 	}
 

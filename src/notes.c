@@ -1,4 +1,5 @@
 #include "notes.h"
+#include "verify.h"
 #include <string.h>
 
 const char* noteNames[NOTE_COUNT] = {
@@ -35,9 +36,17 @@ const float noteFrequencies[NOTE_COUNT][MAX_OCTAVES] = {
 };
 
 char* getNoteString(int note, int octave){
-	if (note < 0 || note >= NOTE_COUNT || octave < 0 || octave >= MAX_OCTAVES) {
+	int noteInRange = (note >= 0) && (note < NOTE_COUNT);
+	int octaveInRange = (octave >= 0) && (octave < MAX_OCTAVES);
+	if (!noteInRange || !octaveInRange) {
         return NULL;
     }
+
+	/* The checks above establish that the reads below are in bounds; a future
+	 * refactor that weakens them should abort in debug, not read out of
+	 * bounds. */
+	(void)ALWAYS(noteInRange);
+	(void)ALWAYS(octaveInRange);
 
 	static char res[5];
 	res[0] = '\0';

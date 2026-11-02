@@ -57,6 +57,14 @@ void destroyLayer(Layer *layer);
 /* Push / pop */
 void pushLayer(LayerStack *stack, Layer *layer);
 Layer *popLayer(LayerStack *stack); /* removes + returns the top, caller frees */
+/* Pop-and-free convenience: same removal, but the removed Layer's owned
+ * resources (graph when ownsGraph, and its name) are freed and the returned
+ * heap copy released. Use these at call sites that only want the layer gone;
+ * the plain popLayer/popTopNonPassiveLayer hand the caller an owning copy.
+ * (17 call sites discarded the owning copy without freeing it, leaking the
+ * Layer + name + graph on every modal dismissal — find by test_gui_layer.) */
+void popLayerFree(LayerStack *stack);
+void popTopNonPassiveLayerFree(LayerStack *stack);
 Layer *topLayer(const LayerStack *stack); /* peek, does not modify */
 bool layerStackIsEmpty(const LayerStack *stack);
 

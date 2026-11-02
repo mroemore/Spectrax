@@ -163,11 +163,45 @@ void load_wav_sample(const char *filename, SamplePool *sp) {
 	// }
 
 	// Read and convert PCM data to float
-	int bit = header.bitsPerSample * header.numChannels;
-	int length = header.subchunk2Size / (header.bitsPerSample / 4);
-	float *data = (float *)malloc(sizeof(float) * length);
+	// Validate the bit depth up front: the length maths below divides by
+	// bitsPerSample/4, so a 0 or unsupported depth must not reach it.
+	if(header.bitsPerSample != 8 && header.bitsPerSample != 16) {
+		printf("Unsupported bit depth: %d\n", header.bitsPerSample);
+		fclose(file);
+		return;
+	}
+
+	// Bound the data-chunk claim before it drives an allocation: loadSample()
+	// can never store more than the pool arena, so a larger (or attacker-
+	// chosen) subchunk2Size is rejected up front. Without this a crafted
+	// header asks for a multi-gigabyte malloc (found by fuzzing).
+	if(header.subchunk2Size > MAX_SAMPLE_POOL_BYTES) {
+		printf("WAV data chunk too large: %u bytes\n", header.subchunk2Size);
+		fclose(file);
+		return;
+	}
+
+	int channels = header.numChannels > 0 ? (int)header.numChannels : 1;
+	int bytesPerSample = header.bitsPerSample / 8;
+	// Frames are interleaved: the PCM buffer holds
+	// subchunk2Size / (channels * bytesPerSample) samples per channel. The
+	// old formula (subchunk2Size / (bitsPerSample/4)) held only for stereo
+	// and over-read the buffer for other channel counts (found by fuzzing).
+	int length = (int)(header.subchunk2Size / (uint32_t)(channels * bytesPerSample));
+	float *data = (float *)malloc(sizeof(float) * (size_t)length);
+	if(!data) {
+		printf("Failed to allocate sample data\n");
+		fclose(file);
+		return;
+	}
 	if(header.bitsPerSample == 8) {
 		uint8_t *pcm_data = (uint8_t *)malloc(header.subchunk2Size);
+		if(!pcm_data) {
+			printf("Failed to allocate PCM data\n");
+			free(data);
+			fclose(file);
+			return;
+		}
 		if(fread(pcm_data, 1, header.subchunk2Size, file) != header.subchunk2Size) {
 			printf("Failed to read WAV data\n");
 			free(pcm_data);
@@ -175,22 +209,24 @@ void load_wav_sample(const char *filename, SamplePool *sp) {
 			fclose(file);
 			return;
 		}
-		for(uint32_t i = 0; i < length; i++) {
+		for(int i = 0; i < length; i++) {
 			float value = 0.0f;
-			for(uint16_t ch = 0; ch < header.numChannels; ch++) {
-				value += (pcm_data[i * header.numChannels + ch] - 128) / 128.0f;
+			for(int ch = 0; ch < channels; ch++) {
+				value += (pcm_data[i * channels + ch] - 128) / 128.0f;
 			}
-			data[i] = value / header.numChannels;
-		}
-		printf("Copied data (first 10 samples):\n");
-		for(int i = 0; i < 10; i++) {
-			printf("%f ", data[i]);
+			data[i] = value / channels;
 		}
 		loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, header.sampleRate, length);
 		free(pcm_data);
-		// free(data);
-	} else if(header.bitsPerSample == 16) {
+		free(data);
+	} else {
 		int16_t *pcm_data = (int16_t *)malloc(header.subchunk2Size);
+		if(!pcm_data) {
+			printf("Failed to allocate PCM data\n");
+			free(data);
+			fclose(file);
+			return;
+		}
 		if(fread(pcm_data, sizeof(int16_t), header.subchunk2Size / 2, file) != header.subchunk2Size / 2) {
 			printf("Failed to read WAV data\n");
 			free(pcm_data);
@@ -198,24 +234,16 @@ void load_wav_sample(const char *filename, SamplePool *sp) {
 			fclose(file);
 			return;
 		}
-		for(uint32_t i = 0; i < length; i++) {
+		for(int i = 0; i < length; i++) {
 			float value = 0.0f;
-			for(uint16_t ch = 0; ch < header.numChannels; ch++) {
-				value += pcm_data[i * header.numChannels + ch] / 32768.0f;
+			for(int ch = 0; ch < channels; ch++) {
+				value += pcm_data[i * channels + ch] / 32768.0f;
 			}
-			data[i] = value / header.numChannels;
-		}
-		printf("Copied data (first 10 samples):\n");
-		for(int i = 0; i < 10; i++) {
-			printf("%f ", data[i]);
+			data[i] = value / channels;
 		}
 		loadSample(sp, filename, data, header.bitsPerSample * header.numChannels, header.sampleRate, length);
 		free(pcm_data);
-		// free(data);
-	} else {
-		printf("Unsupported bit depth: %d\n", header.bitsPerSample);
-		fclose(file);
-		return;
+		free(data);
 	}
 
 	fclose(file);

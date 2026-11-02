@@ -51,7 +51,27 @@ Arranger *g_arranger;
 
 
 
+/* Paired with createArrangerGraph, per the create/destroy convention. The
+ * arranger graph is ~370 KB of nodes; without this, calling
+ * createArrangerGraph twice (a rebuild, a test, a future screen switch)
+ * orphans the previous tree and every g_chipNodes[] entry keeps pointing into
+ * freed memory. Found by valgrind while testing the module (TESTING.md I35). */
+void destroyArrangerGraph(void) {
+	if(agui) {
+		freeGuiNode(agui->root);
+		free(agui);
+		agui = NULL;
+	}
+	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
+		g_chipNodes[i] = NULL;
+	}
+	g_arranger = NULL;
+}
+
 void createArrangerGraph(Arranger *a, PatternList *pl) {
+	/* Creating replaces whatever was there: free a previous graph first, so
+	 * a second call cannot orphan the first. */
+	destroyArrangerGraph();
 	agui = createGraph(na_vertical);
 	GuiNode *arrWrap = createGuiNode(0, 0, 100, 100, 5, na_horizontal, "awrap", 0, 0);
 	GuiNode *songControls = createGuiNode(0, 0, 100, 100, 5, na_vertical, "song", 0, 0);
@@ -169,6 +189,10 @@ void arrangerGraphControlInput(int keymapping) {
 
 
 void printArrGraph() {
+	/* Guarded like every other accessor in this module: agui is NULL until
+	 * createArrangerGraph runs, and printGraph(agui->root) dereferences it
+	 * unguarded (TESTING.md I35). */
+	if(!agui || !agui->root) return;
 	printGraph(agui->root, 0);
 }
 
@@ -785,5 +809,8 @@ void scrollArrangerWindowTo(Arranger *a, int targetStart) {
 }
 
 void gui_arranger_draw(void) {
+	/* Same guard as printArrGraph: agui is NULL until createArrangerGraph
+	 * runs, and destroyArrangerGraph clears it (TESTING.md I35). */
+	if(!agui || !agui->root) return;
 	drawNode(agui->root);
 }

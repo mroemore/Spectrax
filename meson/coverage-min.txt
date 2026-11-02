@@ -1,0 +1,20 @@
+# Branch-coverage floors enforced by meson/coverage-gate.sh.
+# Format: <path relative to repo root> <minimum branch %>
+#
+# This is a ratchet: floors only ever go up. A module is listed at 100 once
+# its suite closes every branch; before then it is listed at its current level
+# purely to block regressions. See TESTING.md.
+#
+# (modules still carrying OOM/IO failure paths land their true floors in P4)
+
+src/notes.c        100
+src/wavetable.c    100
+src/filters.c      100
+src/gui_layer.c    100
+# 98, not 100: one branch in gui_pattern.c's drawStepGuiNode
+# (st->note.fontSize ? ... : textFont.baseSize) is only reachable with a
+# step-cell style class in layout.json, and neither the shipped src/ nor
+# bin/ layout.json defines one — so production always takes the default
+# (fontSize 0). Documented exclusion rather than a fabricated config.
+# See TESTING.md (I29).
+src/gui_pattern.c  98

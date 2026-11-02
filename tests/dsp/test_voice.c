@@ -481,7 +481,7 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
         incrementSequencer(seq, pl, arr);
         if (seq->running[0]) {
             int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
-            if (note[0] != OFF) {
+            if (note != NULL && note[0] != OFF) {
                 Voice *v = getFreeVoice(e.vm, 0);
                 triggerVoice(v, note);
             }
@@ -518,7 +518,7 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
     free(arr);
     freeParamList(gpl);
     free(pl);
-    free(as);
+    freeApplicationState(as);
     printf("PASS test_note_delete_mid_playback_does_not_crash\n");
     return 0;
 }
@@ -550,7 +550,7 @@ static int test_note_delete_autoload_song(void) {
     if (!probe) { song_path = "bin/s1.sng"; probe = fopen(song_path, "rb"); }
     if (!probe) {
         fprintf(stderr, "SKIP test_note_delete_autoload_song (no %s)\n", song_path);
-        free(arr); freeParamList(gpl); free(pl); free(as);
+        free(arr); freeParamList(gpl); free(pl); freeApplicationState(as);
         return 0;
     }
     fclose(probe);
@@ -576,7 +576,7 @@ static int test_note_delete_autoload_song(void) {
                 incrementSequencer(seq, pl, arr);
                 if (seq->running[0]) {
                     int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
-                    if (note[0] != OFF) {
+                    if (note != NULL && note[0] != OFF) {
                         Voice *v = getFreeVoice(e.vm, 0);
                         triggerVoice(v, note);
                     }
@@ -607,7 +607,7 @@ static int test_note_delete_autoload_song(void) {
     free(arr);
     freeParamList(gpl);
     free(pl);
-    free(as);
+    freeApplicationState(as);
     return 0;
 }
 
@@ -644,7 +644,7 @@ static int test_last_used_note_poisoning(void) {
                 "pattern note stays a valid pitch after ADD-via-lastUsedNote");
 
     free(pl);
-    free(as);
+    freeApplicationState(as);
     printf("PASS test_last_used_note_poisoning\n");
     return 0;
 }

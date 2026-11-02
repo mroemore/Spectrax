@@ -152,6 +152,14 @@ void swapListElements(List* list, ListElement* a, ListElement* b){
 }
 
 void freeList(List* list) {
+    /* Destructors must tolerate NULL, like free(). This is not theoretical:
+     * createList() returns NULL under allocation failure, and initGuiNode's
+     * cleanup path calls freeList on both of the lists it just tried to create
+     * -- so creating any GUI node during memory pressure segfaulted here
+     * (TESTING.md I36). */
+    if(!list) {
+        return;
+    }
     ListElement* current = list->head;
     while (current != NULL) {
         ListElement* next = current->next;

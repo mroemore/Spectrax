@@ -7,6 +7,7 @@ BiquadFilter* createBiquadFilter(BiquadType type){
         return NULL;
     }
     bf->type = type;
+    bf->processSample = NULL;
     for(int i = 0; i < state_count; i++){
         bf->states[i] = 0.0f;
     }
@@ -23,6 +24,12 @@ BiquadFilter* createBiquadFilter(BiquadType type){
         case kTransposeCanonical:
             bf->processSample = processKTransposeCanonical;
             break;
+        default:
+            /* Unknown BiquadType: leave processSample NULL so a caller that
+             * somehow passes an out-of-range type gets a null dispatch rather
+             * than an uninitialised function pointer. */
+            free(bf);
+            return NULL;
     }
 
     return bf;

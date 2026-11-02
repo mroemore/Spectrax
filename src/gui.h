@@ -58,8 +58,10 @@ typedef struct {
 } InstrumentGui;
 
 void createArrangerGraph(Arranger *a, PatternList *pl);
+void destroyArrangerGraph(void);
 void arrangerGraphControlInput(int keymapping);
 void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPattern, int *selectedStep);
+void destroyPatternGraph();
 void navigatePatternGraph(int keymapping);
 void rebuildPatternGraph();
 void setPatternPage(int page);
@@ -347,6 +349,7 @@ void DrawGUI(int currentScene);
 RenderTexture2D createPresentTarget(void);
 void presentFrame(RenderTexture2D gfx);
 InstrumentGui *getInstrumentGui(void);
+void freeInstrumentGui(void);
 
 /* True when a non-passive overlay layer (picker / confirm / editor) is up
  * over the instrument base graph. While one is up, arrows belong to the

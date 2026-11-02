@@ -19,9 +19,16 @@ ApplicationState *createApplicationState() {
 	as->inputState = createInputState(INPUT_TYPE_KEYBOARD);
 	if(!as->inputState) {
 		printf("ERROR: couldn't create input state.\n");
+		free(as);
 		return NULL;
 	}
 	return as;
+}
+
+void freeApplicationState(ApplicationState *appState) {
+	if(!appState) return;
+	freeInputState(appState->inputState);
+	free(appState);
 }
 
 void incrementScene(ApplicationState *appState) {

@@ -1,0 +1,29 @@
+# ThreadSanitizer suppressions.
+#
+# Only for genuinely uninstrumentable third-party internals. A suppression
+# here silences a real check, so each one needs a reason — and the first
+# question should always be whether the first-party code can avoid the pattern
+# instead. meson/matrix.sh runs the race detectors against the concurrency
+# suite only (see the header), which is first-party and calls no raylib/GL
+# code, so this file is expected to stay close to empty. If it grows, that is
+# a signal, not a nuisance to suppress away.
+
+# --- libc / pthread internals -------------------------------------------
+# TSan understands glibc's own annotations; these only fire where a library
+# uses a lock pattern TSan cannot model.
+race:__resolv_conf_get
+race:dl_open_worker
+
+# --- PortAudio ----------------------------------------------------------
+# The ALSA/Pulse shims publish state through their own locks without TSan
+# annotations. Only reachable from the real audio device path, which the
+# concurrency suite deliberately avoids.
+race:Pa_*
+race:pa_*
+
+# --- raylib / GL --------------------------------------------------------
+# Mesa/GLX/GLFW touch driver-global state (current context, extension
+# strings) that is genuinely thread-affine but not TSan-annotated.
+race:glX*
+race:egl*
+race:*GetProcAddress*

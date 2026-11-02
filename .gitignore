@@ -23,6 +23,8 @@ build/
 builddir/
 build-cov/
 build-gc/
+build-fuzz/
+build-matrix-*/
 meson-private/
 src/tools/nav_harness/nav_harness
 src/tools/nav_harness/*.o

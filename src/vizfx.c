@@ -176,20 +176,41 @@ static Color modStripColor(ModType type) {
 	}
 }
 
-void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height) {
-	ms->voicePool = voicePool;
-	ms->voiceCount = voiceCount;
-	ms->width = width;
-	ms->height = height;
-	ms->pingActive = false;
-	ms->ping = LoadRenderTexture(width, height);
-	ms->pong = LoadRenderTexture(width, height);
+/* Allocate the ping/pong pair on first use. Split out of initModStrip so that
+ * *constructing* a ModStrip — which happens when a GUI node is built, before
+ * any frame exists — touches no GL. LoadRenderTexture dispatches through
+ * rlgl's function-pointer table, which is NULL before InitWindow, so the old
+ * eager version segfaulted through address zero in any headless caller.
+ *
+ * The black clear is not cosmetic: updateModStripTexture's first act is to
+ * blit one buffer over the other, so whichever is not the clear target would
+ * show uninitialised GPU memory on frame 1. */
+static void ensureModStripLoaded(ModStrip *ms) {
+	if(!ms || ms->loaded) {
+		return;
+	}
+	ms->ping = LoadRenderTexture(ms->width, ms->height);
+	ms->pong = LoadRenderTexture(ms->width, ms->height);
 	BeginTextureMode(ms->ping);
 	ClearBackground(BLACK);
 	EndTextureMode();
 	BeginTextureMode(ms->pong);
 	ClearBackground(BLACK);
 	EndTextureMode();
+	ms->loaded = true;
+}
+
+void initModStrip(ModStrip *ms, Voice **voicePool, int voiceCount, int width, int height) {
+	ms->voicePool = voicePool;
+	ms->voiceCount = voiceCount;
+	ms->width = width;
+	ms->height = height;
+	ms->pingActive = false;
+	ms->ping = (RenderTexture2D){ 0 };
+	ms->pong = (RenderTexture2D){ 0 };
+	/* Not loaded yet. ensureModStripLoaded() does the GPU work on the first
+	 * updateModStripTexture() / drawModStrip(). */
+	ms->loaded = false;
 }
 
 static ModList *selectVoiceModList(ModStrip *ms) {
@@ -218,6 +239,9 @@ void drawModStrip(ModStrip *ms, Rectangle dest) {
 	if(!ms) {
 		return;
 	}
+	/* Backstop for the case the main loop never updated this strip: present
+	 * something valid rather than a zeroed RenderTexture2D. */
+	ensureModStripLoaded(ms);
 	RenderTexture2D present = ms->pingActive ? ms->ping : ms->pong;
 	DrawTexturePro(present.texture, (Rectangle){ 0, 0, ms->width, ms->height },
 	               dest, (Vector2){ 0, 0 }, 0.0f, WHITE);
@@ -228,6 +252,7 @@ void updateModStripTexture(ModStrip *ms) {
 	if(!ms) {
 		return;
 	}
+	ensureModStripLoaded(ms);
 	float t = GetTime();
 	float tht_x = 1.8f * sinf(0.6f * t) + 1.2f * sinf(1.5f * t) + 0.8f * sinf(3.1f * t);
 	float tht_y = 1.1f * sinf(17.5f * t) + 1.1f * sinf(1.8f * t) + 0.6f * sinf(3.3f * t);
@@ -239,9 +264,21 @@ void updateModStripTexture(ModStrip *ms) {
 
 	BeginTextureMode(tgt);
 	ClearBackground(BLACK);
+	/* The feedback tint pulses between roughly 225 and 273 around a base of
+	 * 249 and must never exceed 255. This used to be fmaxf(249 + x*8, 255),
+	 * which is not a clamp at all: fmaxf returns the *larger* argument, so any
+	 * value above 255 was passed straight into a Color's unsigned char. That
+	 * is undefined behaviour, and on x86 it wrapped -- so the strip flashed
+	 * near-black at the top of its cycle instead of staying near-white.
+	 * Clamping to the byte range is what the arithmetic always meant.
+	 * (Found by UBSan via test_modstrip_lazy_draw; TESTING.md I42.) */
 	DrawTexturePro(src.texture, (Rectangle){ 0, 0, ms->width, ms->height },
 	               (Rectangle){ dx, dy, ms->width -dx, ms->height-dy },
-	               (Vector2){ 0, 0 }, 0.0f, (Color){ fmaxf(249.0f + tht_x * 8.0f, 255.0f), fmaxf(249.0 + 8.0f * tht_y, 255.0f), fmax(255.0f + clr_mod * 5.0f, 255.0f), 255 });
+	               (Vector2){ 0, 0 }, 0.0f,
+	               (Color){ fminf(fmaxf(249.0f + tht_x * 8.0f, 0.0f), 255.0f),
+	                        fminf(fmaxf(249.0f + 8.0f * tht_y, 0.0f), 255.0f),
+	                        fminf(fmaxf(255.0f + clr_mod * 5.0f, 0.0f), 255.0f),
+	                        255 });
 
 	ModList *modList = selectVoiceModList(ms);
 	if(modList && modList->count > 0) {
@@ -328,8 +365,17 @@ void updateModStripTextures(void) {
 }
 
 void freeModStrip(ModStrip *ms) {
+	/* UnloadRenderTexture dereferences rlgl's state, so calling it on the
+	 * zeroed ping/pong of a never-drawn strip would crash rather than no-op.
+	 * The loaded flag is what makes the lazy construction symmetric. */
+	if(!ms || !ms->loaded) {
+		return;
+	}
 	UnloadRenderTexture(ms->ping);
 	UnloadRenderTexture(ms->pong);
+	ms->ping = (RenderTexture2D){ 0 };
+	ms->pong = (RenderTexture2D){ 0 };
+	ms->loaded = false;
 }
 
 void initMixRing(MixRing *r) {

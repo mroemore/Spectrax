@@ -65,6 +65,9 @@ extern bool g_pickerEditHeld;
 void guiSetRouteEraseMode(bool on);
 void guiSetPickerEditHeld(bool on);
 bool guiRouteEraseMode(void);
+/* Resets every piece of picker state (atten editor, pending double-tap). Every
+ * path that closes a picker must call it. */
+void guiPickerClosed(void);
 
 /* Probe-only: drive the picker exactly once against the first
  * routable dial of the selected instrument. Returns true if the route

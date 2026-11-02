@@ -50,10 +50,14 @@ void initFFT(Fft *fft, int fftSize, int framesPerBuffer, int toAverage, bool rem
 	fft->framesPerBuffer = framesPerBuffer;
 	fft->overlapFrames = (fftSize / fft->bufferCount);
 	fft->cfg = kiss_fftr_alloc(fft->fftSize, 0, 0, 0);
-	fft->tbuf = (kiss_fft_scalar *)malloc(sizeof(kiss_fft_scalar) * fft->fftSize * fft->bufferCount);
-	fft->fbuf = (kiss_fft_cpx *)malloc(sizeof(kiss_fft_cpx) * fft->freqCount);
-	fft->vals = (float *)malloc(sizeof(float) * fft->maxRows * fft->freqCount);
-	fft->cpxvals = (kiss_fft_cpx *)malloc(sizeof(kiss_fft_cpx) * fft->freqCount * fft->maxRows);
+	/* Zero the transform buffers: processFFTData() reads them before they are
+	 * fully populated, so malloc garbage would leak uninitialised values into
+	 * the spectrum (valgrind: "conditional jump depends on uninitialised
+	 * value" in sqrtf). calloc makes silence the default. */
+	fft->tbuf = (kiss_fft_scalar *)calloc((size_t)fft->fftSize * fft->bufferCount, sizeof(kiss_fft_scalar));
+	fft->fbuf = (kiss_fft_cpx *)calloc((size_t)fft->freqCount, sizeof(kiss_fft_cpx));
+	fft->vals = (float *)calloc((size_t)fft->maxRows * fft->freqCount, sizeof(float));
+	fft->cpxvals = (kiss_fft_cpx *)calloc((size_t)fft->freqCount * fft->maxRows, sizeof(kiss_fft_cpx));
 	fft->window = hannWindow;
 	fft->selectedWf = WFT_HANN;
 	fft->windowFuncName = wfNames[fft->selectedWf];

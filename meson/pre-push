@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# meson/pre-push — fast local gate. Install as .git/hooks/pre-push:
+#
+#   ln -sf ../../meson/pre-push .git/hooks/pre-push
+#
+# Runs only the cheap tier (build + suite + coverage gate). It must fail
+# loudly rather than exit 0 unconditionally — an earlier project hook ended in
+# `|| true`, so it could never block a push (see TESTING.md I22).
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "pre-push: not in a git tree" >&2; exit 0; }
+
+if [ ! -x "$ROOT/meson/check.sh" ]; then
+  echo "pre-push: meson/check.sh missing; skipping" >&2
+  exit 0
+fi
+
+echo "pre-push: running fast tier (./meson/check.sh --quiet)"
+if ! "$ROOT/meson/check.sh" --quiet; then
+  echo
+  echo "pre-push: fast tier FAILED — push blocked." >&2
+  echo "  Fix it, or bypass once with: git push --no-verify" >&2
+  echo "  Full tier (matrix/fuzz/mutation): ./meson/check.sh --full" >&2
+  exit 1
+fi
+echo "pre-push: fast tier passed."

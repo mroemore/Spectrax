@@ -19,6 +19,7 @@ typedef struct {
 
 void initApplicationState();
 ApplicationState *createApplicationState();
+void freeApplicationState(ApplicationState *appState);
 
 void incrementScene(ApplicationState *appState);
 void decrementScene(ApplicationState *appState);

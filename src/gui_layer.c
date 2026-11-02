@@ -28,6 +28,7 @@
 #include "graph_gui.h"
 #include "gui.h"
 #include "theme.h"
+#include "verify.h"
 
 void initLayerStack(LayerStack *stack) {
 	stack->layers = NULL;
@@ -35,12 +36,33 @@ void initLayerStack(LayerStack *stack) {
 	stack->capacity = 0;
 }
 
+/* Free the resources a Layer owns (its graph when ownsGraph, and its name),
+ * but not the Layer struct itself. Shared by destroyLayer (heap-allocated
+ * Layer) and destroyLayerStack, whose array entries are Layer *values* living
+ * inside stack->layers — passing those interior pointers to free() is an
+ * invalid free (found by test_gui_layer). */
+static void destroyLayerContents(Layer *layer) {
+	if(layer->ownsGraph && layer->graph) {
+		if(layer->graph->root) {
+			freeGuiNode(layer->graph->root);
+		}
+		free(layer->graph);
+		layer->graph = NULL;
+	}
+	if(layer->name) {
+		free(layer->name);
+		layer->name = NULL;
+	}
+}
+
 void destroyLayerStack(LayerStack *stack) {
 	if(!stack) {
 		return;
 	}
 	for(int i = 0; i < stack->count; i++) {
-		destroyLayer(&stack->layers[i]);
+		/* Entries are Layer values stored in stack->layers, so free their
+		 * contents in place — NOT the interior pointer (destroyLayer). */
+		destroyLayerContents(&stack->layers[i]);
 	}
 	free(stack->layers);
 	stack->layers = NULL;
@@ -50,6 +72,9 @@ void destroyLayerStack(LayerStack *stack) {
 
 Layer *createLayer(Graph *graph, int x, int y, int w, int h, const char *name, bool dim, bool ownsGraph) {
 	Layer *l = (Layer *)malloc(sizeof(Layer));
+	if(!l) {
+		return NULL;
+	}
 	l->graph = graph;
 	l->x = x;
 	l->y = y;
@@ -66,17 +91,7 @@ void destroyLayer(Layer *layer) {
 	if(!layer) {
 		return;
 	}
-	if(layer->ownsGraph && layer->graph) {
-		if(layer->graph->root) {
-			freeGuiNode(layer->graph->root);
-		}
-		free(layer->graph);
-		layer->graph = NULL;
-	}
-	if(layer->name) {
-		free(layer->name);
-		layer->name = NULL;
-	}
+	destroyLayerContents(layer);
 	free(layer);
 }
 
@@ -103,6 +118,9 @@ Layer *popLayer(LayerStack *stack) {
 		return NULL;
 	}
 	Layer *out = (Layer *)malloc(sizeof(Layer));
+	if(!out) {
+		return NULL;
+	}
 	*out = stack->layers[--stack->count];
 	return out;
 }
@@ -163,6 +181,9 @@ Layer *popTopNonPassiveLayer(LayerStack *stack) {
 		 * down by one slot (these are always passive by construction:
 		 * ROUTELINES), then shrink the count. */
 		Layer *out = (Layer *)malloc(sizeof(Layer));
+		if(!out) {
+			return NULL;
+		}
 		*out = *l;
 		for(int j = i; j < stack->count - 1; j++) {
 			stack->layers[j] = stack->layers[j + 1];
@@ -171,6 +192,20 @@ Layer *popTopNonPassiveLayer(LayerStack *stack) {
 		return out;
 	}
 	return NULL;
+}
+
+void popLayerFree(LayerStack *stack) {
+	Layer *l = popLayer(stack);
+	if(l) {
+		destroyLayer(l);
+	}
+}
+
+void popTopNonPassiveLayerFree(LayerStack *stack) {
+	Layer *l = popTopNonPassiveLayer(stack);
+	if(l) {
+		destroyLayer(l);
+	}
 }
 
 void layerStackDraw(const LayerStack *stack) {
@@ -197,7 +232,8 @@ void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
 		return;
 	}
 	Layer *l = &stack->layers[index];
-	if(!l || !l->graph) {
+	ALWAYS(l != NULL);         /* index is bounds-checked above; l can't be null */
+	if(!l->graph) {
 		return;
 	}
 	Graph *g = l->graph;
@@ -216,8 +252,10 @@ void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
 	/* KM_SELECT pops the topmost non-passive layer — universal "back /
 	 * cancel" for modal overlays. The picker bookkeeping reset runs
 	 * here so cancel and confirm-on-dest both end up with a clean
-	 * state (the gradient overlay re-syncs next frame). */
-	if(isKeyJustPressed(is, KM_SELECT) && stack->count > 0) {
+	 * state (the gradient overlay re-syncs next frame). The index is
+	 * already bounds-checked against count, so the count guard is
+	 * implicit. */
+	if(isKeyJustPressed(is, KM_SELECT)) {
 		Layer *popped = popTopNonPassiveLayer(stack);
 		if(popped && popped->name && strcmp(popped->name, "ROUTE") == 0) {
 			extern int g_routePickerCount;
@@ -227,7 +265,9 @@ void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
 			extern bool g_routeErase;
 			g_routeErase = false;
 		}
-		free(popped);
+		/* Free the layer's owned graph + name too, not just the copy: the
+		 * old free(popped) leaked both on every SELECT-pop (test_gui_layer). */
+		destroyLayer(popped);
 		return;
 	}
 	/* KM_EDIT (z) activates the selected node's action callback. */

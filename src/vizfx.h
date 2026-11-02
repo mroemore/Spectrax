@@ -51,6 +51,10 @@ typedef struct {
 	int width;
 	int height;
 	bool pingActive;
+	/* The ping/pong pair is GPU state, allocated on first use rather than by
+	 * initModStrip. Construction therefore touches no GL, which is what lets
+	 * a ModStripGuiNode be created in a headless test (TESTING.md I41). */
+	bool loaded;
 } ModStrip;
 
 void collapseBufferToColumn(const float *samples, int bufferSize, unsigned char *lo, unsigned char *hi, int columnHeight, float gain);

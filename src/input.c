@@ -23,6 +23,12 @@ InputState *createInputState(InputDeviceType type) {
 	return state;
 }
 
+void freeInputState(InputState *state) {
+	if(!state) return;
+	free(state->inputHistory);
+	free(state);
+}
+
 void updateInputState(InputState *state) {
 	for(int i = 0; i < KEY_MAPPING_COUNT; i++) {
 		state->keys[i].wasPressed = state->keys[i].isPressed;
