@@ -1,0 +1,91 @@
+# Anbernic RG35XX SP — clamshell, Allwinner H700, Cortex-A53, Mali-G31 MP2,
+# 1 GB RAM, 3.5" IPS 640x480.
+#
+# Sources for every value are recorded in
+# docs/superpowers/specs/2026-10-22-rg35xxsp-tooling-design.md section 5.1.
+# Values marked "probed" below are still open and are listed in [probes].
+
+[device]
+id        = "rg35xxsp"
+vendor    = "Anbernic"
+model     = "RG35XX SP"
+soc       = "Allwinner H700"
+arch      = "aarch64"        # ROCKNIX H700 kernel is aarch64 (linux.aarch64.conf)
+cpu_core  = "cortex-a53"     # sun50i-h616.dtsi: compatible = "arm,cortex-a53" x4
+cpu_mhz   = 1500             # OPP table tops out at 1512 MHz; ES offers a 1.5 GHz OC
+cores     = 4
+gpu       = "Mali-G31 MP2"   # DT node: "allwinner,sun50i-h616-mali", "arm,mali-bifrost"
+ram_mb    = 1024             # Anbernic: 1 GB. ROCKNIX wiki says LPDDR4.
+ram_type  = "DDR4"           # RESOLVED 2026-10-30: the device runs the
+                             # ROCKNIX-H700.aarch64-20261001-DDR4 image
+                             # correctly (boots, WiFi, audio all work), and
+                             # that image's SP DTB programs the DRAM rail
+                             # reg_dcdc3 = 0x10c8e0 = 1.1V (DDR4/LPDDR4).
+                             # The DDR4 image ships a separate
+                             # rg35xx-2024-ddr3.dtbo overlay for DDR3L
+                             # boards (1.2V). The earlier "DDR3" value here
+                             # was Anbernic's spec, never probe-verified.
+storage   = "microSD"        # ROCKNIX wiki: no eMMC
+
+[cfw]
+family          = "rocknix"
+hostname        = "RG35XX-SP"
+user            = "root"
+password        = ""
+password_source = "user-set"  # stock default password is rocknix; user may change it in ES
+                               # NOTE: NOT regenerated per boot. Root's home is /storage
+                               # (writable ext4), and /storage/.ssh/authorized_keys persists
+                               # across boots (tmpfiles only creates the .ssh directory).
+                               # Verified on device 2026-10-24.
+ssh_enabled_by_default = false # ROCKNIX ships with SSH off; enable it in ES
+
+[display]
+width  = 640
+height = 480
+scale  = 1.0
+native = true                 # the panel is 640x480, matching the Spectrax surface
+
+[audio]
+# Measured on a real unit (ROCKNIX 20261001, 2026-10-22). The codec is
+# 192 kHz native and exposes no 44100 device at all, so the engine runs at
+# whatever rate the opened stream reports rather than a compile-time 44100.
+device        = "dmix"        # hw:0,0 is 192000 (no plug layer); sysdefault reports INT_MAX
+sample_rate   = 48000         # dmix; PortAudio's ALSA backend selects it
+periods_max   = 1             # the dmix plugin and the H700 codec both report 1 period
+engine_follows_device_rate = true
+
+[gpu]
+driver     = "panfrost"       # ROCKNIX wiki: Panfrost, GL 3.1 / GLES 3.1
+api        = "gles3"
+helper     = ""               # no GPU-switch helper is known on this device
+compositor = "sway"           # ROCKNIX uses Sway (Wayland)
+platform   = "drm"
+
+[paths]
+storage_root = "/storage"     # ROCKNIX writable root
+ports_dir    = "/storage/roms/ports"
+data_dir     = "/storage/roms/ports/spectrax"
+runs_dir     = "/storage/roms/ports/spectrax/runs"
+
+[transport]
+order       = ["usb-gadget", "wifi-ssh", "sd"]
+mdns_names  = ["rocknix.local", "rg35xxsp.local"]
+usb_gadget_host_ip   = "169.254.170.1"   # ROCKNIX usbgadget default
+usb_gadget_device_ip = "169.254.170.2"
+last_ip      = "192.168.68.109"  # DHCP lease after the 2026-10-30 reflash
+
+[build]
+cross_file = "meson/cross/aarch64-linux-gnu.ini"
+libdir     = "lib/aarch64"
+incdir     = "include/aarch64"
+c_args     = ["-mcpu=cortex-a53", "-mtune=cortex-a53", "-O3",
+              "-ftree-vectorize", "-ffast-math", "-flto"]
+
+[probes]
+# Resolved on a real unit 2026-10-22: userspace_arch aarch64, ports_dir
+# /storage/roms/ports, display_mode 640x480 native, audio_device dmix@48000.
+# Resolved 2026-10-30 after the reflash onto a healthy 32GB card: ram_type
+# DDR4 (the DDR4 image boots and runs correctly; its SP DTB programs the
+# DRAM rail at 1.1V). usb_gadget verified separately via the CDC-NCM link.
+# Still open: cpu_governor, lid_switch.
+needed = ["cpu_governor", "lid_switch"]

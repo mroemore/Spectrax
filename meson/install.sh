@@ -16,6 +16,16 @@ SOURCE_ROOT="${MESON_SOURCE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BUILD_ROOT="${MESON_BUILD_ROOT:-$(pwd)}"
 BIN="$SOURCE_ROOT/bin"
 
+# The target lib dir (arg 1). A cross build targets a device and must not
+# overwrite the host binaries in bin/; the deploy takes the binaries
+# straight from the build directory.
+TARGET_LIBDIR="${1:-lib/linux}"
+if [ "$TARGET_LIBDIR" != "lib/linux" ]; then
+    echo "cross build ($TARGET_LIBDIR): skipping the bin/ install"
+    echo "cross build ($TARGET_LIBDIR): the device deploy uses $BUILD_ROOT directly"
+    exit 0
+fi
+
 mkdir -p "$BIN"
 
 for rel in \
@@ -23,7 +33,8 @@ for rel in \
     "src/tools/nav_harness/nav_harness" \
     "src/tools/instrument_harness/instrument_harness" \
     "src/tools/sample_analyser/inspectro_wavget" \
-    "src/tools/vizulobe/vizulobe"; do
+    "src/tools/vizulobe/vizulobe" \
+    "src/tools/bench/spectrax_bench"; do
     src="$BUILD_ROOT/$rel"
     if [ -f "$src" ]; then
         # cp + mv (not a direct cp): a running copy of the binary keeps the

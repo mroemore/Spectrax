@@ -1,9 +1,10 @@
 #include "oscillator.h"
 
-/* Rate the audio stream actually runs at; every phase increment divides by
- * it. Set from the opened stream (see openAudioStream in main.c) before the
- * callback runs. */
+/* g_sampleRate (the rate the audio stream actually runs at) is defined in
+ * samplerate.c, so that a single definition can be shared with targets that
+ * do not link the oscillator -- see src/samplerate.c. */
 #include "modsystem.h"
+#include "sintab.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@ float sawtooth_wave(float phase) {
 }
 
 float sine_wave(float phase, float mod) {
-	return sinf(TWO_PI * (phase + mod));
+	return sinTab(phase + mod);
 }
 
 float sine_fm(Operator *ops[4], float frequency) {
@@ -57,7 +58,7 @@ float sine_op(Operator *op, float frequency, float mod) {
 	float phase_inc = opFrequencyAt(op, frequency) / SAMPLE_RATE;
 	float feedbackLevel = getParameterValue(op->feedbackAmount) * op->lastVal;
 	op->phase = fmodf(op->phase + phase_inc, 1.0f);
-	float a = sinf(TWO_PI * (op->phase + mod));
+	float a = sinTab(op->phase + mod);
 	float lvl = getParameterValue(op->outLevel) * getParameterValue(op->level);
 	return a * lvl;
 }

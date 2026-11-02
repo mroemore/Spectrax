@@ -1,7 +1,12 @@
 # vizulobe — audio-reactive visualisation sandbox.
 # Build: ninja -C build vizulobe
 
-cjson = dependency('libcjson')
+# The system libcjson via pkg-config on a native build; the vendored copy
+# on a cross build, where no target pkg-config exists.
+cjson = dependency('libcjson', required: false)
+if not cjson.found()
+  cjson = cjson_dep
+endif
 vizulobe_inc_dir = meson.current_source_dir() / '..' / '..' / '..' / 'include'
 
 vizulobe_core = static_library('vizulobe_core',

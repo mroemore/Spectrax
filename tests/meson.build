@@ -23,6 +23,7 @@ test_names = [
   'test_gui_inst_mod_picker',
   'test_modstrip_lazy',
   'test_gui_arranger_fault',
+  'test_bench_report',
 ]
 
 # The GUI/UI sources now live in src/libspectrax_gui.a (see src/meson.build,
@@ -95,6 +96,10 @@ foreach name : test_names
     # gui_test_libs, not bare vizfx: vizfx.c calls getColourScheme(), which
     # lives in gui_core.c.
     link_libs = gui_test_libs
+  elif name == 'test_bench_report'
+    # The report writer is bench code, compiled into the test directly.
+    extra_srcs = files('../src/tools/bench/bench_report.c')
+    extra_incs = [inc, cjson_inc, include_directories('../src/tools/bench')]
   elif name == 'test_gui_arranger_fault'
     # --wrap=malloc so createInstChipGuiNode / createArrangerCellGuiNode's OOM
     # guards are reachable. gui_lib leads because gui_arranger.o references
@@ -129,6 +134,20 @@ exe = executable('test_sequencer',
   dependencies: system_deps,
 )
 test('test_sequencer', exe)
+
+# Device-profile loader/linter contract (host-side, no device needed).
+test('test_device_profile',
+  find_program('dsp/test_device_profile.sh'),
+  args: [],
+)
+
+# Cross-compile + qemu-user smoke test. The first run cross-builds the
+# device target, so it gets a generous timeout.
+test('test_qemu_smoke',
+  find_program('dsp/test_qemu_smoke.sh'),
+  args: [],
+  timeout: 900,
+)
 
 # vizfx tests are standalone (pure buffer-scroller data ops).
 exe = executable('test_vizfx',

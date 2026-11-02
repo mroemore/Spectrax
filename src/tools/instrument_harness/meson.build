@@ -15,7 +15,7 @@ executable('instrument_harness',
   '../../distortion.c',
   '../../dataviz.c',
   link_with: [core_lib, seq_lib, vizfx_lib],
-  c_args: ['-DSPECTRAX_HARNESS'],
+  c_args: ['-DSPECTRAX_HARNESS'] + x11_cargs,
   include_directories: inc,
   dependencies: system_deps,
 )

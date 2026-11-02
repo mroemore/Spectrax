@@ -26,11 +26,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-/* raylib and X11 both define a `Font` typedef — rename X11's away */
+/* raylib and X11 both define a `Font` typedef — rename X11's away.
+ * The X11 screenshot path is host-only: a DRM/KMS device build has no X
+ * server, so the whole block is compiled out there. */
+#ifdef SPECTRAX_HAVE_X11
 #define Font _X11_Font
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #undef Font
+#endif
 
 #include "graph_gui.h"
 #include "input.h"
@@ -240,6 +244,7 @@ static int buildLayout(Layout *lay, int seed, int maxDepth) {	rng_state = (uint3
  * (XGetImage). GetWindowHandle() returns the GLFW struct, not the X Window
  * id — locate the window by walking the root's children.
  */
+#ifdef SPECTRAX_HAVE_X11
 static Window findWin(Display *dpy, int w, int h) {
 	Window root = DefaultRootWindow(dpy);
 	Window parent;
@@ -294,6 +299,12 @@ static int shotX11(const char *path) {
 	free(pix);
 	return ok ? 0 : 1;
 }
+#else
+static int shotX11(const char *path) {
+	(void)path;
+	return 1;
+}
+#endif
 
 static void mkdirs(const char *path) {
 	char buf[512];

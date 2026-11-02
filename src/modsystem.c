@@ -1,4 +1,5 @@
 #include "modsystem.h"
+#include "sintab.h"
 // #include "envelope.h"
 
 #include <math.h>
@@ -1042,7 +1043,7 @@ Mod *createLFO(ParamList *paramList, ModList *modList, int index, float rate, in
 
 void generateSine(void *self) {
 	Mod *lfo = (Mod *)self;
-	float value = sinf(getParameterValue(lfo->data.lfo.phase) * TWO_PI);
+	float value = sinTab(getParameterValue(lfo->data.lfo.phase));
 	setParameterBaseValue(lfo->output, value);
 	setParameterValue(lfo->output, value);
 }
