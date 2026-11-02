@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* The word lengths the laws use. */
 #define SAMPLER_ULAW_LEVELS 127    /* levels per sign, plus the sign */
@@ -125,5 +127,217 @@ float samplerQuantize(float x, int bits, SamplerQuantLaw law) {
 			return clampUnit(compand(x, SAMPLER_COMPAND12_MU, SAMPLER_COMPAND12_LEVELS));
 		default:
 			return x;
+	}
+}
+
+/* ------------------------------------------------------------------ */
+/* The bake: band-limited resampling, then the coding law.             */
+/* ------------------------------------------------------------------ */
+
+/* The resampling filter's taps. The bake is a load-time operation, so the
+ * tap count costs nothing per sample of output; what it buys is the
+ * stopband. A windowed sinc's transition band is roughly 3.3/N of the
+ * Nyquist, so the taps have to be enough to push the source's own high
+ * frequencies well down before they fold back in. */
+#define BAKE_SINC_TAPS 32
+
+/* The kernel's cutoff, as a fraction of the lower of the two rates. 0.47
+ * sits just below the target's Nyquist, so a decimation rejects everything
+ * that would alias and an upsampling rejects everything above the source's
+ * own Nyquist. */
+#define BAKE_SINC_CUTOFF 0.47f
+
+/* The windowed-sinc kernel at offset `t` seconds, for a cutoff of `fc` Hz.
+ * sinc(x) = sin(pi*x)/(pi*x), so sin(pi*x) comes from the canonical sine
+ * table as canonicalSin(x/2). */
+static float bakeKernel(double t, double fc) {
+	double x = 2.0 * fc * t;
+	double s;
+	if(fabs(x) < 1e-12) {
+		s = 1.0;
+	} else {
+		s = canonicalSin((float)(x * 0.5)) / (3.14159265358979323846 * x);
+	}
+	/* The Hann window over the taps, in the periodic form: it vanishes at
+	 * both ends, which is what keeps the sidelobes down. */
+	return (float)(s);
+}
+
+static float bakeWindow(int k) {
+	/* 0.5 * (1 - cos(2*pi*(k+0.5)/taps)) */
+	return (float)(0.5 * (1.0 - (double)canonicalCos(((double)k + 0.5) / (double)BAKE_SINC_TAPS)));
+}
+
+bool bakeSamplerCharacter(const Sample *src, int rate, int bits, SamplerQuantLaw law, BakedSample *out) {
+	if(!out) {
+		return false;
+	}
+	out->data = NULL;
+	out->length = 0;
+	out->rate = 0;
+	out->srcBit = 0;
+	out->bits = 0;
+	out->law = SQL_OFF;
+	out->src = NULL;
+	if(!src || !src->data || src->length <= 0) {
+		return false;
+	}
+	int srcRate = (src->sampleRate > 0) ? src->sampleRate : 44100;
+	if(rate <= 0) {
+		rate = srcRate;
+	}
+	if(rate < 1) {
+		return false;
+	}
+	int outLen;
+	if(rate == srcRate) {
+		outLen = src->length;
+	} else {
+		outLen = (int)(((long)src->length * (long)rate) / (long)srcRate);
+	}
+	if(outLen <= 0) {
+		return false;
+	}
+	float *data = (float *)malloc(sizeof(float) * (size_t)outLen);
+	if(!data) {
+		return false;
+	}
+	if(rate == srcRate) {
+		/* The identity path: an exact copy, no resampling rounding. */
+		memcpy(data, src->data, sizeof(float) * (size_t)src->length);
+	} else {
+		double fc = BAKE_SINC_CUTOFF * (double)((srcRate < rate) ? srcRate : rate);
+		for(int m = 0; m < outLen; m++) {
+			double srcPos = (double)m * (double)srcRate / (double)rate;
+			int centre = (int)floor(srcPos);
+			double sum = 0.0;
+			double wsum = 0.0;
+			for(int k = 0; k < BAKE_SINC_TAPS; k++) {
+				int idx = centre - BAKE_SINC_TAPS / 2 + k;
+				/* The edges mirror rather than replicate: a replicated
+				 * edge is a step, and the filter rings off a step
+				 * hard enough to overshoot the source's own range
+				 * by 5% on the first samples -- a click at the
+				 * sample's onset. A mirrored edge is continuous, so
+				 * the ringing stays inside the signal. */
+				if(idx < 0) {
+					idx = -idx - 1;
+				}
+				if(idx >= src->length) {
+					idx = 2 * src->length - 2 - idx;
+				}
+				if(idx < 0) {
+					idx = 0;
+				}
+				if(idx >= src->length) {
+					idx = src->length - 1;
+				}
+				double t = ((double)idx - srcPos) / (double)srcRate;
+				double w = (double)bakeKernel(t, fc) * (double)bakeWindow(k);
+				sum += w * (double)src->data[idx];
+				wsum += w;
+			}
+			data[m] = (wsum != 0.0) ? (float)(sum / wsum) : 0.0f;
+		}
+	}
+	/* The coding law comes last: degrade once, at record time. */
+	for(int i = 0; i < outLen; i++) {
+		data[i] = samplerQuantize(data[i], bits, law);
+	}
+	out->data = data;
+	out->length = outLen;
+	out->rate = rate;
+	out->srcBit = src->bit;
+	out->bits = bits;
+	out->law = law;
+	out->src = src;
+	return true;
+}
+
+void freeBakedSample(BakedSample *b) {
+	if(!b) {
+		return;
+	}
+	if(b->data) {
+		free(b->data);
+	}
+	b->data = NULL;
+	b->length = 0;
+	b->rate = 0;
+	b->srcBit = 0;
+	b->bits = 0;
+	b->law = SQL_OFF;
+	b->src = NULL;
+}
+
+bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, SamplerQuantLaw law) {
+	if(!b || !b->data || !src || !src->data) {
+		return false;
+	}
+	if(rate <= 0) {
+		rate = (src->sampleRate > 0) ? src->sampleRate : 44100;
+	}
+	return b->rate == rate && b->bits == bits && b->law == law &&
+	       b->src == src && b->srcBit == src->bit;
+}
+
+/* ------------------------------------------------------------------ */
+/* The machine profiles.                                               */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+	int rate;
+	int bits;
+	SamplerQuantLaw law;
+	SamplerInterp interp;
+	int filterOn;
+	float cutoff;
+	float res;
+} SamplerProfileDef;
+
+/* The table is the corpus's machine ground truth:
+ *
+ *   SP-1200  12-bit linear at 26040, drop-sample, SSM2044 filter
+ *   MPC60    12-bit companded at 40000, drop-sample, no filter
+ *   S950     12-bit linear at 30000, varispeed, a switched-cap character
+ *   Mirage   8-bit at 27000, varispeed, the CEM3328 cascade
+ *   SK-1     8-bit at 9380, varispeed, no filter
+ *   CLEAN    no degradation: keep the source's own rate and word
+ */
+static const SamplerProfileDef SAMPLER_PROFILES[SMP_PROFILE_COUNT] = {
+	/* CLEAN   */ { 0, 24, SQL_OFF, SPI_LINEAR, 0, 20000.0f, 0.0f },
+	/* SP1200  */ { 26040, 12, SQL_TRUNC, SPI_DROPSAMPLE, 1, 12000.0f, 0.05f },
+	/* MPC60   */ { 40000, 12, SQL_COMPAND12, SPI_DROPSAMPLE, 0, 20000.0f, 0.0f },
+	/* S950    */ { 30000, 12, SQL_TRUNC, SPI_LINEAR, 1, 16000.0f, 0.1f },
+	/* MIRAGE  */ { 27000, 8, SQL_TRUNC, SPI_LINEAR, 1, 8000.0f, 0.2f },
+	/* SK1     */ { 9380, 8, SQL_TRUNC, SPI_LINEAR, 0, 20000.0f, 0.0f },
+};
+
+void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQuantLaw *law,
+                          SamplerInterp *interp, int *filterOn, float *cutoff, float *res) {
+	if(profile < 0 || profile >= SMP_PROFILE_COUNT) {
+		profile = SMP_CLEAN;
+	}
+	const SamplerProfileDef *d = &SAMPLER_PROFILES[profile];
+	if(rate) {
+		*rate = d->rate;
+	}
+	if(bits) {
+		*bits = d->bits;
+	}
+	if(law) {
+		*law = d->law;
+	}
+	if(interp) {
+		*interp = d->interp;
+	}
+	if(filterOn) {
+		*filterOn = d->filterOn;
+	}
+	if(cutoff) {
+		*cutoff = d->cutoff;
+	}
+	if(res) {
+		*res = d->res;
 	}
 }

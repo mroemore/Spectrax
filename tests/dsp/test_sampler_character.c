@@ -198,6 +198,422 @@ static int test_quant_bits_clamp(void) {
 	return 0;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Task 2: the bake -- band-limited decimation plus the coding law.     */
+/* ------------------------------------------------------------------ */
+
+/* The residual after removing the best-fit fundamental at `freq`.
+ *
+ * The bake resamples, and a resampling filter has a passband response and a
+ * phase, so the output is not the ideal sine even before it is quantized.
+ * Fitting the fundamental out (a two-unknown least squares) leaves only what
+ * the quantizer did. */
+static double residualRms(const float *data, int len, float freq, float sr) {
+	double cc = 0, cs = 0, ss = 0, yc = 0, ys = 0;
+	for(int i = 0; i < len; i++) {
+		double t = (double)i / (double)sr;
+		double c = cos(2.0 * M_PI * (double)freq * t);
+		double s = sin(2.0 * M_PI * (double)freq * t);
+		cc += c * c;
+		cs += c * s;
+		ss += s * s;
+		yc += (double)data[i] * c;
+		ys += (double)data[i] * s;
+	}
+	double det = cc * ss - cs * cs;
+	if(det == 0.0) {
+		return 0.0;
+	}
+	double a = (yc * ss - ys * cs) / det;
+	double b = (ys * cc - yc * cs) / det;
+	double sum = 0;
+	for(int i = 0; i < len; i++) {
+		double t = (double)i / (double)sr;
+		double fit = a * cos(2.0 * M_PI * (double)freq * t) + b * sin(2.0 * M_PI * (double)freq * t);
+		double e = (double)data[i] - fit;
+		sum += e * e;
+	}
+	return sqrt(sum / (double)len);
+}
+
+/* The amplitude of the component at `freq`, by direct correlation. */
+static float toneAmplitude(const float *data, int len, float freq, float sr) {
+	double re = 0, im = 0;
+	for(int i = 0; i < len; i++) {
+		double t = (double)i / (double)sr;
+		re += (double)data[i] * cos(2.0 * M_PI * (double)freq * t);
+		im -= (double)data[i] * sin(2.0 * M_PI * (double)freq * t);
+	}
+	return (float)(2.0 * sqrt(re * re + im * im) / (double)len);
+}
+
+static int test_bake_null_source(void) {
+	BakedSample b;
+	memset(&b, 0xAB, sizeof(b));
+	if(bakeSamplerCharacter(NULL, 26040, 12, SQL_TRUNC, &b)) {
+		printf("FAIL: baking a NULL source succeeded\n");
+		return 1;
+	}
+	if(b.data != NULL || b.length != 0) {
+		printf("FAIL: baking a NULL source left data behind\n");
+		return 1;
+	}
+	printf("PASS test_bake_null_source\n");
+	return 0;
+}
+
+static int test_bake_identity_exact(void) {
+	const int N = 512;
+	Sample src;
+	float data[512];
+	for(int i = 0; i < N; i++) {
+		data[i] = (float)i / (float)N;
+	}
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 44100;
+	src.bit = 16;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	if(!bakeSamplerCharacter(&src, 44100, 24, SQL_OFF, &b)) {
+		printf("FAIL: the identity bake failed\n");
+		return 1;
+	}
+	if(b.length != N) {
+		printf("FAIL: the identity bake has length %d, want %d\n", b.length, N);
+		freeBakedSample(&b);
+		return 1;
+	}
+	if(memcmp(b.data, data, sizeof(data)) != 0) {
+		printf("FAIL: the identity bake is not an exact copy\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	if(b.rate != 44100 || b.srcBit != 16) {
+		printf("FAIL: the identity bake reports rate=%d srcBit=%d\n", b.rate, b.srcBit);
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_bake_identity_exact\n");
+	return 0;
+}
+
+static int test_bake_upsample_length(void) {
+	const int N = 256;
+	Sample src;
+	float data[256];
+	for(int i = 0; i < N; i++) {
+		data[i] = 0.5f;
+	}
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 22050;
+	src.bit = 16;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	if(!bakeSamplerCharacter(&src, 44100, 24, SQL_OFF, &b)) {
+		printf("FAIL: the upsampling bake failed\n");
+		return 1;
+	}
+	if(b.length != N * 2) {
+		printf("FAIL: the upsampling bake has length %d, want %d\n", b.length, N * 2);
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_bake_upsample_length\n");
+	return 0;
+}
+
+static int test_bake_bandlimit(void) {
+	/* One second of a 1 kHz + 18 kHz two-tone at 44100, baked down to the
+	 * SP-1200's 26040. The 18 kHz component is above the bake's cutoff and
+	 * must be gone; the 1 kHz one must survive at its own amplitude. */
+	const int N = 44100;
+	float *data = (float *)malloc(sizeof(float) * N);
+	if(!data) {
+		printf("FAIL: out of memory\n");
+		return 1;
+	}
+	for(int i = 0; i < N; i++) {
+		double t = (double)i / 44100.0;
+		data[i] = (float)(0.5 * sin(2.0 * M_PI * 1000.0 * t) + 0.5 * sin(2.0 * M_PI * 18000.0 * t));
+	}
+	Sample src;
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 44100;
+	src.bit = 16;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	if(!bakeSamplerCharacter(&src, 26040, 24, SQL_OFF, &b)) {
+		printf("FAIL: the band-limit bake failed\n");
+		free(data);
+		return 1;
+	}
+	float low = toneAmplitude(b.data, b.length, 1000.0f, 26040.0f);
+	float high = toneAmplitude(b.data, b.length, 18000.0f, 26040.0f);
+	float lowDb = 20.0f * log10f(low / 0.5f);
+	float highDb = 20.0f * log10f(high / 0.5f + 1e-12f);
+	if(lowDb < -0.5f || lowDb > 0.5f) {
+		printf("FAIL: the 1 kHz component is %.2f dB, want within 0.5 dB\n", (double)lowDb);
+		freeBakedSample(&b);
+		free(data);
+		return 1;
+	}
+	if(highDb > -40.0f) {
+		printf("FAIL: the 18 kHz component is %.2f dB, want at most -40 dB\n", (double)highDb);
+		freeBakedSample(&b);
+		free(data);
+		return 1;
+	}
+	freeBakedSample(&b);
+	free(data);
+	printf("PASS test_bake_bandlimit\n");
+	return 0;
+}
+
+static int test_bake_trunc_floor(void) {
+	/* A 1260 Hz full-scale sine. 1260 divides both 44100 and 26040, so
+	 * the source and the baked copy each hold a whole number of periods.
+	 *
+	 * The measurement compares two bakes of the same source at the same
+	 * rate -- one quantized to 12 bits with truncation, one not quantized
+	 * at all -- so the difference is exactly the quantizer's error and the
+	 * resampling filter's own deviation cancels. */
+	const int N = 26040;
+	float *data = (float *)malloc(sizeof(float) * N);
+	if(!data) {
+		printf("FAIL: out of memory\n");
+		return 1;
+	}
+	for(int i = 0; i < N; i++) {
+		double t = (double)i / 44100.0;
+		data[i] = (float)sin(2.0 * M_PI * 1260.0 * t);
+	}
+	Sample src;
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 44100;
+	src.bit = 16;
+
+	BakedSample quant, plain;
+	memset(&quant, 0, sizeof(quant));
+	memset(&plain, 0, sizeof(plain));
+	if(!bakeSamplerCharacter(&src, 26040, 12, SQL_TRUNC, &quant) ||
+	   !bakeSamplerCharacter(&src, 26040, 24, SQL_OFF, &plain)) {
+		printf("FAIL: the bakes failed\n");
+		free(data);
+		return 1;
+	}
+	if(quant.length != plain.length) {
+		printf("FAIL: the two bakes have different lengths\n");
+		freeBakedSample(&quant);
+		freeBakedSample(&plain);
+		free(data);
+		return 1;
+	}
+	/* The first and last filter-length samples are the resampling filter's
+	 * transient: its support runs past the ends of the source, so the
+	 * edges are interpolated from a mirrored signal and the filter rings
+	 * there a little. The interior is the bake's steady state, and that is
+	 * what the quantizer's error is measured over. */
+	const int edge = 64;
+	double sum = 0.0;
+	int n = 0;
+	for(int i = edge; i < quant.length - edge; i++) {
+		double e = (double)quant.data[i] - (double)plain.data[i];
+		sum += e * e;
+		n++;
+	}
+	double rms = sqrt(sum / (double)n);
+	double delta = 2.0 / 4096.0;
+	/* Truncation's error spans a whole step, not half of one, so its RMS
+	 * is Delta/sqrt(3) -- twice the Delta/sqrt(12) that rounding's is. The
+	 * plan's expectation was the rounding one. */
+	double expect = delta / sqrt(3.0);
+	if(rms < expect * 0.4 || rms > expect * 2.0) {
+		printf("FAIL: the residual RMS is %g, want between %g and %g\n",
+		       rms, expect * 0.4, expect * 2.0);
+		freeBakedSample(&quant);
+		freeBakedSample(&plain);
+		free(data);
+		return 1;
+	}
+	freeBakedSample(&quant);
+	freeBakedSample(&plain);
+	free(data);
+	printf("PASS test_bake_trunc_floor\n");
+	return 0;
+}
+
+static int test_baked_matches(void) {
+	const int N = 128;
+	float data[128];
+	for(int i = 0; i < N; i++) {
+		data[i] = 0.25f;
+	}
+	Sample src;
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 44100;
+	src.bit = 16;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	if(!bakeSamplerCharacter(&src, 26040, 12, SQL_TRUNC, &b)) {
+		printf("FAIL: the bake failed\n");
+		return 1;
+	}
+	if(!bakedMatches(&b, &src, 26040, 12, SQL_TRUNC)) {
+		printf("FAIL: a freshly baked sample does not match itself\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	if(bakedMatches(&b, &src, 44100, 12, SQL_TRUNC)) {
+		printf("FAIL: a different rate still matches\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	if(bakedMatches(&b, &src, 26040, 8, SQL_TRUNC)) {
+		printf("FAIL: different bits still match\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	if(bakedMatches(&b, &src, 26040, 12, SQL_OFF)) {
+		printf("FAIL: a different law still matches\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	Sample other = src;
+	other.length = N - 1;
+	if(bakedMatches(&b, &other, 26040, 12, SQL_TRUNC)) {
+		printf("FAIL: a different source still matches\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_baked_matches\n");
+	return 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Task 3: the machine profiles.                                       */
+/* ------------------------------------------------------------------ */
+
+static int test_profile_table_complete(void) {
+	for(int p = 0; p < SMP_PROFILE_COUNT; p++) {
+		int rate = 0, bits = 0, filterOn = 0;
+		float cutoff = 0, res = 0;
+		SamplerQuantLaw law = SQL_OFF;
+		SamplerInterp interp = SPI_LINEAR;
+		samplerProfileConfig((SamplerProfile)p, &rate, &bits, &law, &interp, &filterOn, &cutoff, &res);
+		if(rate != 0 && (rate < 2000 || rate > 48000)) {
+			printf("FAIL: profile %d has rate %d\n", p, rate);
+			return 1;
+		}
+		if(bits < 1 || bits > 24) {
+			printf("FAIL: profile %d has bits %d\n", p, bits);
+			return 1;
+		}
+		if(law < 0 || law >= SQL_COUNT || interp < 0 || interp >= SPI_INTERP_COUNT) {
+			printf("FAIL: profile %d has a bad enum\n", p);
+			return 1;
+		}
+		if(filterOn != 0 && filterOn != 1) {
+			printf("FAIL: profile %d has filterOn %d\n", p, filterOn);
+			return 1;
+		}
+		if(cutoff < 20.0f || cutoff > 20000.0f) {
+			printf("FAIL: profile %d has cutoff %g\n", p, (double)cutoff);
+			return 1;
+		}
+		if(res < 0.0f || res > 0.9f) {
+			printf("FAIL: profile %d has res %g\n", p, (double)res);
+			return 1;
+		}
+	}
+	printf("PASS test_profile_table_complete\n");
+	return 0;
+}
+
+static int test_profile_values(void) {
+	struct {
+		SamplerProfile p;
+		int rate;
+		int bits;
+		SamplerQuantLaw law;
+		SamplerInterp interp;
+		int filterOn;
+		float cutoff;
+		float res;
+	} cases[] = {
+		{ SMP_CLEAN, 0, 24, SQL_OFF, SPI_LINEAR, 0, 20000.0f, 0.0f },
+		{ SMP_SP1200, 26040, 12, SQL_TRUNC, SPI_DROPSAMPLE, 1, 12000.0f, 0.05f },
+		{ SMP_MPC60, 40000, 12, SQL_COMPAND12, SPI_DROPSAMPLE, 0, 20000.0f, 0.0f },
+		{ SMP_S950, 30000, 12, SQL_TRUNC, SPI_LINEAR, 1, 16000.0f, 0.1f },
+		{ SMP_MIRAGE, 27000, 8, SQL_TRUNC, SPI_LINEAR, 1, 8000.0f, 0.2f },
+		{ SMP_SK1, 9380, 8, SQL_TRUNC, SPI_LINEAR, 0, 20000.0f, 0.0f },
+	};
+	for(size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		int rate = 0, bits = 0, filterOn = 0;
+		float cutoff = 0, res = 0;
+		SamplerQuantLaw law = SQL_OFF;
+		SamplerInterp interp = SPI_LINEAR;
+		samplerProfileConfig(cases[i].p, &rate, &bits, &law, &interp, &filterOn, &cutoff, &res);
+		if(rate != cases[i].rate || bits != cases[i].bits || law != cases[i].law ||
+		   interp != cases[i].interp || filterOn != cases[i].filterOn ||
+		   cutoff != cases[i].cutoff || res != cases[i].res) {
+			printf("FAIL: profile %d is rate=%d bits=%d law=%d interp=%d filter=%d cutoff=%g res=%g\n",
+			       (int)cases[i].p, rate, bits, (int)law, (int)interp, filterOn,
+			       (double)cutoff, (double)res);
+			return 1;
+		}
+	}
+	printf("PASS test_profile_values\n");
+	return 0;
+}
+
+static int test_profile_clean_is_passthrough(void) {
+	/* The CLEAN profile's rate is 0, meaning "keep the source's own rate",
+	 * so baking it is the identity path: the same length, and the same
+	 * samples when no law is applied. */
+	const int N = 256;
+	float data[256];
+	for(int i = 0; i < N; i++) {
+		data[i] = (float)i / 256.0f - 0.5f;
+	}
+	Sample src;
+	src.data = data;
+	src.length = N;
+	src.sampleRate = 30000;
+	src.bit = 16;
+	int rate = 0, bits = 0, filterOn = 0;
+	float cutoff = 0, res = 0;
+	SamplerQuantLaw law = SQL_OFF;
+	SamplerInterp interp = SPI_LINEAR;
+	samplerProfileConfig(SMP_CLEAN, &rate, &bits, &law, &interp, &filterOn, &cutoff, &res);
+	if(rate != 0) {
+		printf("FAIL: CLEAN's rate is %d, want 0 (keep the source's)\n", rate);
+		return 1;
+	}
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	if(!bakeSamplerCharacter(&src, src.sampleRate, bits, law, &b)) {
+		printf("FAIL: the CLEAN bake failed\n");
+		return 1;
+	}
+	if(b.length != N || memcmp(b.data, data, sizeof(data)) != 0) {
+		printf("FAIL: the CLEAN bake is not a pass-through\n");
+		freeBakedSample(&b);
+		return 1;
+	}
+	freeBakedSample(&b);
+	printf("PASS test_profile_clean_is_passthrough\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_quant_off_passthrough();
@@ -207,6 +623,15 @@ int main(void) {
 	fails += test_quant_ulaw_roundtrip();
 	fails += test_quant_compand12();
 	fails += test_quant_bits_clamp();
+	fails += test_bake_null_source();
+	fails += test_bake_identity_exact();
+	fails += test_bake_upsample_length();
+	fails += test_bake_bandlimit();
+	fails += test_bake_trunc_floor();
+	fails += test_baked_matches();
+	fails += test_profile_table_complete();
+	fails += test_profile_values();
+	fails += test_profile_clean_is_passthrough();
 	if(fails) {
 		fprintf(stderr, "%d sampler-character test(s) failed\n", fails);
 		return 1;

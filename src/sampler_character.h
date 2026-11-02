@@ -1,6 +1,10 @@
 #ifndef SPECTRAX_SAMPLER_CHARACTER_H
 #define SPECTRAX_SAMPLER_CHARACTER_H
 
+#include <stdbool.h>
+
+#include "sample.h"
+
 /* The sampler character engine.
  *
  * A sampler's character is a chain, not a bit depth: degrade ONCE at record
@@ -30,6 +34,76 @@ typedef enum {
 	SQL_COMPAND12,/* 12-bit companded, approximating the MPC60's storage */
 	SQL_COUNT
 } SamplerQuantLaw;
+
+/* The baked (degraded) copy of a sample.
+ *
+ * The bake is the "record time" stage of the character chain: the source is
+ * resampled to the machine's rate (band-limited, so nothing above the
+ * target's Nyquist is folded back in), and then quantized to the machine's
+ * word and coding law.
+ *
+ * The fields beyond the data are the cache key: a baked copy is only valid
+ * for the source it came from and the settings it was baked with. */
+typedef struct {
+	float *data;
+	int length;
+	int rate;      /* the baked rate */
+	int srcBit;    /* the source's bit depth (bits per frame) */
+	int bits;      /* the word length the bake quantized to */
+	SamplerQuantLaw law; /* the coding law the bake applied */
+	const Sample *src;   /* the source it was baked from */
+} BakedSample;
+
+/* The interpolators a machine profile can use.
+ *
+ * Drop-sample is not a shortcut, it is the SP-1200's actual tuning
+ * algorithm: an integer-address accumulator whose fractional increment is
+ * truncated when indexing, so a sample may repeat on a pitch-down and
+ * never stalls. Linear interpolation is the varispeed class. */
+typedef enum {
+	SPI_DROPSAMPLE,
+	SPI_LINEAR,
+	SPI_INTERP_COUNT
+} SamplerInterp;
+
+/* The machine profiles. Each one is a set of defaults for the chain's
+ * stages; every stage stays dialable afterwards, so a profile sets the
+ * character and the dials refine it. */
+typedef enum {
+	SMP_CLEAN,   /* no degradation at all */
+	SMP_SP1200,  /* 12-bit at 26040, drop-sample, SSM2044 filter */
+	SMP_MPC60,   /* 12-bit companded at 40000, drop-sample, no filter */
+	SMP_S950,    /* 12-bit at 30000, varispeed, a switched-cap character */
+	SMP_MIRAGE,  /* 8-bit at 27000, varispeed, the CEM3328 cascade */
+	SMP_SK1,     /* 8-bit at 9380, varispeed, no filter */
+	SMP_PROFILE_COUNT
+} SamplerProfile;
+
+/* Fill in a profile's defaults. Any output pointer may be NULL.
+ *
+ * `rate` of 0 means "keep the source's own rate", which is what the CLEAN
+ * profile asks for: a fixed rate would resample every source for no
+ * reason. */
+void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQuantLaw *law,
+                          SamplerInterp *interp, int *filterOn, float *cutoff, float *res);
+
+/* Build the degraded copy of a sample.
+ *
+ * `rate` is the baked rate; 0 means "keep the source's own". `bits` is the
+ * word length and `law` the coding law. The bake is band-limited: the
+ * resampling filter's cutoff sits below the target's Nyquist, so nothing
+ * above it is folded back in. The crudeness comes from the truncation and
+ * the drop-sample reads, not from a sloppy bake.
+ *
+ * Returns false and leaves `out` empty if the source is unusable. */
+bool bakeSamplerCharacter(const Sample *src, int rate, int bits, SamplerQuantLaw law, BakedSample *out);
+
+/* Release a baked copy and reset it. Safe on an already-freed or a
+ * zeroed struct. */
+void freeBakedSample(BakedSample *b);
+
+/* True when `b` is the bake of `src` under the given settings. */
+bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, SamplerQuantLaw law);
 
 /* Quantize one sample.
  *
