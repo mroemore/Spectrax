@@ -11,6 +11,7 @@ core_sources = files(
   'modsystem.c',
   'oscillator.c',
   'sintab.c',
+  'canonical_math.c',
   'devicerate.c',
   'wavetable.c',
   'dstruct.c',
