@@ -71,6 +71,12 @@ typedef struct Parameter {
 	struct ModConnection *modulators;
 	int modulator_count;
 	ParamCallback onChange;
+	/* True when this parameter is a modulation source's output. Such a
+	 * parameter has no modulators of its own, but the modulation pass
+	 * still has to refresh it: a source that stops generating (an
+	 * envelope that has run out) leaves its last value behind, and the
+	 * refresh is what clears it. */
+	bool isModOutput;
 } Parameter;
 
 typedef struct EnvelopeStage {

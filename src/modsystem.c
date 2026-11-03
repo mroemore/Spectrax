@@ -447,6 +447,14 @@ bool removeModulation(ParamList *list, ModList *modList, Parameter *destination,
 				conn->next->previous = conn->previous;
 			}
 			destination->modulator_count--;
+			/* The destination may have just lost its last modulator, in
+			 * which case its value is its base value again. The modulation
+			 * pass no longer re-derives it (it skips the parameters nothing
+			 * modulates), so the reset happens here -- once, where the
+			 * disconnection happens. */
+			if(destination->modulator_count <= 0 && !destination->isModOutput) {
+				setParameterValue(destination, destination->baseValue);
+			}
 			/* An MT_ATTEN connection source OWNS conn->amount (it is
 			 * the attenuator's amount param, list-owned by the
 			 * attenuator and freed with it) - do NOT free it here.
@@ -1263,6 +1271,9 @@ void initMod(Mod *mod, ParamList *paramList, const char *name, ModType type, Mod
 	strncpy(mod->name, name, MAX_NAME_LEN);
 	mod->type = type;
 	mod->output = createParameter(paramList, "output", 0.0f, 0.0f, 1.0f);
+	/* The output is a modulation source: the pass has to keep refreshing it
+	 * even though nothing modulates it. */
+	mod->output->isModOutput = true;
 	mod->generate = generateEnvelope;
 	mod->dependency_count = 0;
 	mod->processed = false;
@@ -1693,8 +1704,23 @@ void processModulations(ParamList *paramList, ModList *modList, float deltaTime)
 	}
 
 	for(int i = 0; i < paramList->count; i++) {
-		ModConnection *conn = paramList->params[i]->modulators;
-		float finalValue = paramList->params[i]->baseValue;
+		Parameter *param = paramList->params[i];
+		ModConnection *conn = param->modulators;
+		if(!conn && !param->isModOutput) {
+			/* Nothing modulates this parameter and it is not a source, so
+			 * its value is its base value -- and the base value's setter
+			 * keeps the two in step (setParameterBaseValue writes both).
+			 * Walking the rest of the list to re-derive what is already
+			 * there is the cost this pass used to pay per sample, per
+			 * voice, for every parameter on the panel that nothing is
+			 * routed to.
+			 *
+			 * A source's output is NOT skipped: a source that stops
+			 * generating (an envelope that has run out) leaves its last
+			 * value behind, and the refresh is what clears it. */
+			continue;
+		}
+		float finalValue = param->baseValue;
 
 		while(conn != NULL) {
 			float modValue = getParameterValue(conn->source->output);
@@ -1721,7 +1747,7 @@ void processModulations(ParamList *paramList, ModList *modList, float deltaTime)
 			ModConnection *next = conn->next;
 			conn = next;
 		}
-		setParameterValue(paramList->params[i], finalValue);
+		setParameterValue(param, finalValue);
 	}
 }
 
