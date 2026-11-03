@@ -110,6 +110,25 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
 - [ ] **C4 — the voice-type gating.** GRAIN and SPECTRAL cannot make a sound; grey
       them out, and make the granular buffer's allocation lazy.
 
+### The review's findings
+
+A whole-branch review found two Critical and four Important problems, all
+now fixed (`ff562e9`): the stream was opened with the buffer size in
+PortAudio's *rate* slot (both are numbers, so it compiled — and the app
+then exited, because every candidate failed the rate check); the
+governor's ceiling was pinned at boot, so the VOICES dial did nothing; the
+pattern's velocities were never initialised, so an older file loaded over a
+session with velocities left them in place (a criterion-C violation); the
+device profile was loaded without clamping, so a profile saying zero voices
+left the pool empty and the allocator handed out a voice slot that was never
+allocated; the tempo's step durations were a data race between the audio
+thread's per-sample read and the GUI's write (now atomic — the tsan rung of
+the matrix fails without the fix); and the sample-pool test never actually
+forced the arena to grow.
+
+The stream's opening now lives in `src/audio_device.{c,h}`, where a test can
+ask a real device what it negotiated.
+
 ### Phase D — the C contract and the gate
 
 - [x] **D1 — the canonical synthesis spec.** `docs/superpowers/specs/2026-11-03-canonical-synthesis-spec.md`:
@@ -172,7 +191,7 @@ plan:
 
 Each phase is evidenced by harness numbers, not narrative: the meson suite's count,
 the coverage gate's verdict, and the scripted fixtures' results. The landed work
-currently stands at **63/63 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
+currently stands at **59/59 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
 and **13/15 scripted fixtures** (the two failures, `chip_meta` and `save_overwrite`,
 are pre-existing and confirmed on the pre-consolidation branch). The golden
 render's hash is `efb6e5e8a5e51c85`, identical on the x86-64 host and under
