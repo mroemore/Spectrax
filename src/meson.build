@@ -21,6 +21,7 @@ core_sources = files(
   'notes.c',
   'sample.c',
   'sampler_character.c',
+  'device_budget.c',
   'graph_gui.c',
   'gui_style.c',
   'io.c',

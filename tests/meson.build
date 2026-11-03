@@ -19,6 +19,7 @@ test_names = [
   'test_sampler_character',
   'test_golden_render',
   'test_voice_isolation',
+  'test_device_budget',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -81,6 +82,9 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_device_budget'
+    # The budget's profile is written with cjson.
+    link_libs = [core_lib]
   elif name == 'test_voice_isolation'
     # The voices live in the voice manager, and the sequencer's helpers are
     # pulled in transitively.

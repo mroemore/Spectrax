@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include "portaudio.h"
@@ -27,6 +28,7 @@
 #include "vizfx.h"
 #include "main.h"
 #include "audio.h"
+#include "device_budget.h"
 
 /* Task 9: --probe-route flag. Off by default; when enabled, the frame
  * loop walks the visible instrument graph, picks the first ROUTE action
@@ -324,11 +326,107 @@ static volatile unsigned long g_audioCallbacks = 0;
  * One environment variable overrides the device search:
  *   SPECTRAX_AUDIO_DEVICE  ALSA/PortAudio device substring to try first
  */
+/* The device's budget: what the engine may do on this machine. It is a
+ * budget, not a quality tier -- every lever in it is output-neutral, so
+ * a smaller budget means less work, never a different sound. */
+static DeviceBudget g_deviceBudget;
+static int g_deviceBudgetLoaded = 0;
+
+/* The available memory, in bytes. The sample pool's ceiling is a
+ * fraction of it. */
+static long availableRamBytes(void) {
+	long pages = sysconf(_SC_AVPHYS_PAGES);
+	long pageSize = sysconf(_SC_PAGESIZE);
+	if(pages <= 0 || pageSize <= 0) {
+		return 0;
+	}
+	return pages * pageSize;
+}
+
+/* Measure this device's cost for one voice's synthesis, in nanoseconds
+ * per output sample.
+ *
+ * The measurement is what makes the budget a measurement rather than a
+ * guess. The scene is the app's own first instrument with one voice
+ * triggered, rendered through the voice-level path -- not the callback,
+ * because the callback also advances the sequencer, and a calibration
+ * must not move the song.
+ *
+ * The cost of one voice is what the budget is about: the voices are
+ * summed, so the cost grows with the voice count. */
+static long measureVoiceCostNanos(paTestData *data) {
+	VoiceManager *vm = data->voiceManager;
+	if(!vm || vm->voiceCount[0] < 1) {
+		return 0;
+	}
+	Voice *v = vm->voicePools[0][0];
+	if(!v) {
+		return 0;
+	}
+	int note[NOTE_INFO_SIZE] = { 0, 4 }; /* C4 */
+	triggerVoice(v, note);
+	const int frames = 8192;
+	struct timespec t0;
+	struct timespec t1;
+	clock_gettime(CLOCK_MONOTONIC, &t0);
+	for(int f = 0; f < frames; f++) {
+		syncVoiceGraph(v);
+		processModulations(v->paramList, v->modList, 1.0f / (float)SPECTRAX_ENGINE_RATE);
+		OutVal o = generateVoice(vm, v, 440.0f / (float)SPECTRAX_ENGINE_RATE, 440.0f);
+		(void)o;
+	}
+	clock_gettime(CLOCK_MONOTONIC, &t1);
+	long nanos = (t1.tv_sec - t0.tv_sec) * 1000000000L + (t1.tv_nsec - t0.tv_nsec);
+	return nanos / frames;
+}
+
+/* Load the device's budget, or derive one from a fresh measurement.
+ *
+ * The measurement needs the voice manager, so it runs after the
+ * application is built. Its result is written to the profile, and the
+ * next start reads it: the calibration is a first-run thing, not a
+ * per-start cost. */
+static void calibrateDevice(paTestData *data, const char *cfgDir) {
+	DeviceBudget budget;
+	if(!g_deviceBudgetLoaded) {
+		deviceBudgetDefaults(&budget);
+	} else {
+		budget = g_deviceBudget;
+	}
+	if(budget.nanosPerVoiceSample > 0) {
+		/* Already measured. */
+		return;
+	}
+	long nanos = measureVoiceCostNanos(data);
+	if(nanos <= 0) {
+		return;
+	}
+	/* The deadline at the engine's rate with a 256-frame buffer: 5.33 ms. */
+	int deadlineNanos = (int)(1000000000L * 256L / SPECTRAX_ENGINE_RATE);
+	DeviceBudget measured;
+	deviceBudgetDerive(&measured, nanos, deadlineNanos, 75, availableRamBytes(), 0);
+	if(deviceBudgetStore(cfgDir, &measured)) {
+		g_deviceBudget = measured;
+		g_deviceBudgetLoaded = 1;
+		printf("calibrated: %ld ns per voice-sample, %d voices per channel, %d-frame buffer\n",
+		       nanos, measured.voicesPerChannel, measured.bufferFrames);
+	}
+}
+
 static PaError openAudioStream(PaStream **stream, paTestData *data) {
+    /* The buffer size is a latency knob, not a parameter of the sound: the
+     * engine's control rate is scheduled in samples, so every size here
+     * produces identical output. The budget picks the first one. */
+    unsigned long want_buf = (unsigned long)(g_deviceBudgetLoaded ? g_deviceBudget.bufferFrames : 256);
     static const struct {
         const char *dev;   /* NULL = PortAudio's default output device */
         unsigned long buf;
     } tries[] = {
+        /* The budget's buffer size, on the default device. The buffer is a
+         * latency knob, not a parameter of the sound: the engine's control
+         * rate is scheduled in samples, so every size produces identical
+         * output. */
+        {NULL, 0},
         {"spx48000", 256},
         {"dmix", 256},
         {"dmix", 512},
@@ -362,6 +460,8 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
         const char *dev_name = tries[i].dev;
         if(want_dev && i == 0) dev_name = want_dev;
         else if(want_dev && tries[i].dev) continue;
+        /* A zero buffer means the budget's choice. */
+        unsigned long buf = tries[i].buf ? tries[i].buf : want_buf;
 
         if(dev_name == NULL) {
             out.device = Pa_GetDefaultOutputDevice();
@@ -382,7 +482,7 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
                  di ? di->name : "(none)",
                  di ? di->defaultSampleRate : -1.0, want,
                  out.suggestedLatency, tries[i].buf);
-        last = Pa_OpenStream(stream, NULL, &out, want,
+        last = Pa_OpenStream(stream, NULL, &out, buf,
                              tries[i].buf, paNoFlag, patestCallback, data);
         if(last == paNoError) {
             /* Start it here so a device that opens but never runs can be
@@ -604,6 +704,9 @@ int main(int argc, char **argv) {
 
 	initApplication(&data, &appState, NULL);
 	initModSystem();
+
+	/* First run on this device: measure it and write the profile. */
+	calibrateDevice(&data, cfgDir);
 
 	err = Pa_Initialize();
 	if(err != paNoError)
@@ -1109,6 +1212,20 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	Settings *settings = malloc(sizeof(Settings));
 	createSettings(settings);
 	loadSettingsJson(cfgPath, settings, settings->themeFile, sizeof(settings->themeFile));
+
+	/* The device's budget caps what the app asks for. It is loaded before
+	 * the voice manager and the arranger are built, because the channel
+	 * count and the voice count are theirs to honour. */
+	deviceBudgetDefaults(&g_deviceBudget);
+	if(deviceBudgetLoad(data->configDir, &g_deviceBudget)) {
+		g_deviceBudgetLoaded = 1;
+	}
+	if(g_deviceBudget.enabledChannels < settings->enabledChannels) {
+		settings->enabledChannels = g_deviceBudget.enabledChannels;
+	}
+	if(g_deviceBudget.voicesPerChannel < settings->defaultVoiceCount) {
+		settings->defaultVoiceCount = g_deviceBudget.voicesPerChannel;
+	}
 	if(settings->themeFile[0] == '\0') {
 		strncpy(settings->themeFile, "clr.json", sizeof(settings->themeFile) - 1);
 		settings->themeFile[sizeof(settings->themeFile) - 1] = '\0';
