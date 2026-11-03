@@ -45,7 +45,7 @@ meson setup "$cross" --cross-file "$cross/cross.ini" --buildtype=release \
         tail -20 "$cross/setup.log" >&2
         exit 1
     }
-meson compile -C "$cross" test_voice spectrax_bench > "$cross/compile.log" 2>&1 || {
+meson compile -C "$cross" test_voice spectrax_bench test_golden_render > "$cross/compile.log" 2>&1 || {
     echo "FAIL: cross build failed" >&2
     tail -20 "$cross/compile.log" >&2
     exit 1
@@ -53,6 +53,8 @@ meson compile -C "$cross" test_voice spectrax_bench > "$cross/compile.log" 2>&1 
 
 test_bin="$cross/tests/test_voice"
 [ -x "$test_bin" ] || { echo "FAIL: test_voice not built" >&2; exit 1; }
+golden_bin="$cross/tests/test_golden_render"
+[ -x "$golden_bin" ] || { echo "FAIL: test_golden_render not built" >&2; exit 1; }
 bench_bin="$cross/src/tools/bench/spectrax_bench"
 [ -x "$bench_bin" ] || { echo "FAIL: spectrax_bench not built" >&2; exit 1; }
 
@@ -92,6 +94,16 @@ LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$test_bin" > "$tmp_out/voice.log" 2>
     exit 1
 }
 
+# The golden render: the same scene must hash the same on the host and on
+# the target's architecture. This is criterion C's cross-architecture claim,
+# checked rather than asserted.
+echo "== $golden_bin under $qemu =="
+LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$golden_bin" > "$tmp_out/golden.log" 2>&1 || {
+    echo "FAIL: test_golden_render failed under $qemu" >&2
+    tail -20 "$tmp_out/golden.log" >&2
+    exit 1
+}
+
 echo "== $bench_bin under $qemu =="
 LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$bench_bin" --bench=fileio \
     --device "$device" --out="$tmp_out/report" > "$tmp_out/bench.log" 2>&1 || {
@@ -104,4 +116,4 @@ LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$bench_bin" --bench=fileio \
     exit 1
 }
 
-echo "OK: test_voice and spectrax_bench passed under $qemu"
+echo "OK: test_voice, test_golden_render and spectrax_bench passed under $qemu"
