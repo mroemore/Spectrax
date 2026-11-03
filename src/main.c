@@ -28,6 +28,7 @@
 #include "vizfx.h"
 #include "main.h"
 #include "audio.h"
+#include "audio_device.h"
 #include "device_budget.h"
 #include "device_calibrate.h"
 
@@ -401,9 +402,9 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
                  dev_name ? dev_name : "(default)", (int)out.device,
                  di ? di->name : "(none)",
                  di ? di->defaultSampleRate : -1.0, want,
-                 out.suggestedLatency, tries[i].buf);
-        last = Pa_OpenStream(stream, NULL, &out, buf,
-                             tries[i].buf, paNoFlag, patestCallback, data);
+                 out.suggestedLatency, buf);
+        last = audioDeviceOpenStream(stream, &out, want, buf,
+                                     patestCallback, data);
         if(last == paNoError) {
             /* Start it here so a device that opens but never runs can be
              * rejected before we commit to it. */
@@ -476,12 +477,12 @@ static PaError openAudioStream(PaStream **stream, paTestData *data) {
                 TraceLog(LOG_INFO,
                          "audio: device=%s buffer=%lu rate=%.0f latency=%.4f",
                          dev_name ? dev_name : "(default)",
-                         tries[i].buf, si->sampleRate, si->outputLatency);
+                         buf, si->sampleRate, si->outputLatency);
             }
             return paNoError;
         }
         TraceLog(LOG_WARNING, "audio: open failed for %s buffer=%lu (%s)",
-                 dev_name ? dev_name : "(default)", tries[i].buf,
+                 dev_name ? dev_name : "(default)", buf,
                  Pa_GetErrorText(last));
     }
 

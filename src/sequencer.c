@@ -204,6 +204,12 @@ int addPattern(PatternList *patternList, int patternSize, int notes[][NOTE_INFO_
 			patternList->patterns[patternList->pattern_count].notes[i][j] = notes[i][j];
 		}
 	}
+	/* The velocities start unset, for every step -- not only the steps
+	 * the pattern has. A step that is not set yet still reads as unset,
+	 * and the array is never left holding whatever was in the memory. */
+	for(int i = 0; i < MAX_SEQUENCE_LENGTH; i++) {
+		patternList->patterns[patternList->pattern_count].velocity[i] = 0;
+	}
 	patternList->pattern_count++;
 	return patternList->pattern_count - 1;
 }

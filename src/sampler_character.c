@@ -411,10 +411,10 @@ int samplerVelocityStartSkipFrames(int velocity, int sampleLength) {
 	 *
 	 * The fraction is the corpus's rule made concrete, and it is pinned
 	 * as an integer division so the result is the same number on every
-	 * platform (criterion C). A quarter of one percent of the sample per
-	 * unit of velocity: at the top of the range the read starts about
-	 * 0.32% into the sample, which skips a recorded attack's worth of
-	 * material without running into the body of the sound.
+	 * platform (criterion C). A tenth of one percent of the sample per
+	 * unit of velocity: at the top of the range the read starts 0.1%
+	 * into the sample, which skips a recorded attack's worth of material
+	 * without running into the body of the sound.
 	 *
 	 * The softest hit skips nothing, so it gets the whole transient. */
 	long skip = ((long)sampleLength * (long)velocity) / 127000L;

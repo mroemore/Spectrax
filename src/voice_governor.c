@@ -25,7 +25,6 @@ void governorDefaults(VoiceGovernor *g) {
 	g->lowWatermark = GOVERNOR_LOW_WATERMARK;
 	g->smoothedUtilization = 0.0;
 	g->lastUtilization = 0.0;
-	g->refused = 0;
 	g->stolen = 0;
 	g->lastStolenAge = GOVERNOR_VICTIM_NONE;
 	g->enabled = true;
@@ -47,6 +46,29 @@ void governorInit(VoiceGovernor *g, int voices) {
 	g->floor = 1;
 }
 
+void governorSetCeiling(VoiceGovernor *g, int voices) {
+	if(!g) {
+		return;
+	}
+	if(voices < 1) {
+		voices = 1;
+	}
+	if(voices > GOVERNOR_MAX_VOICES) {
+		voices = GOVERNOR_MAX_VOICES;
+	}
+	g->ceiling = voices;
+	/* The limit is the ceiling minus the narrowing, so a pool that grew
+	 * allows more voices without handing back the ones the governor took
+	 * for the load. */
+	g->limit = voices - g->narrowing;
+	if(g->limit < g->floor) {
+		g->limit = g->floor;
+	}
+	if(g->limit > g->ceiling) {
+		g->limit = g->ceiling;
+	}
+}
+
 void governorObserve(VoiceGovernor *g, double utilization) {
 	if(!g || !g->enabled) {
 		return;
@@ -58,13 +80,19 @@ void governorObserve(VoiceGovernor *g, double utilization) {
 	g->smoothedUtilization += (utilization - g->smoothedUtilization) * GOVERNOR_SMOOTHING;
 
 	if(g->smoothedUtilization > g->highWatermark) {
-		if(g->limit > g->floor) {
-			g->limit--;
+		/* The machine is struggling: take a voice away. */
+		if(g->narrowing < g->ceiling - g->floor) {
+			g->narrowing++;
 		}
 	} else if(g->smoothedUtilization < g->lowWatermark) {
-		if(g->limit < g->ceiling) {
-			g->limit++;
+		/* It is comfortable: give one back. */
+		if(g->narrowing > 0) {
+			g->narrowing--;
 		}
+	}
+	g->limit = g->ceiling - g->narrowing;
+	if(g->limit < g->floor) {
+		g->limit = g->floor;
 	}
 }
 
@@ -78,12 +106,6 @@ int governorLimit(const VoiceGovernor *g) {
 void governorSetEnabled(VoiceGovernor *g, bool enabled) {
 	if(g) {
 		g->enabled = enabled;
-	}
-}
-
-void governorNoteRefused(VoiceGovernor *g) {
-	if(g) {
-		g->refused++;
 	}
 }
 

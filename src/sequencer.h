@@ -1,6 +1,7 @@
 #ifndef SEQUENCER_H
 #define SEQUENCER_H
 
+#include <stdatomic.h>
 #include "modsystem.h"
 #include "settings.h"
 #include "appstate.h"
@@ -41,8 +42,24 @@ typedef struct {
 typedef struct
 {
 	bool loop;
-	int samplesPerOddStep;
-	int samplesPerEvenStep;
+	/* The step durations, in samples.
+	 *
+	 * They are atomic because the audio thread reads them once per
+	 * sample -- the step boundary is checked per sample, so a note fires
+	 * on the sample it belongs to -- while the GUI thread writes them
+	 * when the BPM or the swing changes. A plain int would be a data
+	 * race: undefined behaviour, and the thread sanitizer (the repo's
+	 * matrix gate) reports it.
+	 *
+	 * An atomic rather than a lock: the audio callback already holds
+	 * g_audioLock for the whole buffer, and a write that took that lock
+	 * would have to come from a path that does not already hold it --
+	 * which the parameter's own onChange callback cannot promise.
+	 * Relaxed ordering is enough: the two values are a pair the GUI
+	 * writes together, and the worst a reader can see is one buffer's
+	 * worth of the old tempo. */
+	atomic_int samplesPerOddStep;
+	atomic_int samplesPerEvenStep;
 	int currentSamplesPerStep;
 	int samplesElapsed;
 	bool swingStep;

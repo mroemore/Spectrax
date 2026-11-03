@@ -179,6 +179,48 @@ static int test_an_older_file_loads_with_unset_velocities(void) {
 	return 0;
 }
 
+/* A file with no velocity information must clear the velocities the
+ * destination already had: a step the file says nothing about plays at
+ * the last session's velocity otherwise, which changes both its level
+ * and where its sample starts. */
+static int test_an_older_file_clears_the_destination(void) {
+	const char *path = ".tmp_files/test_note_velocity_old2.sng";
+	ParamList *pl = createParamList();
+	Arranger *ar = (Arranger *)calloc(1, sizeof(Arranger));
+	PatternList *pat = (PatternList *)calloc(1, sizeof(PatternList));
+	if(!pl || !ar || !pat) {
+		printf("FAIL: the environment\n");
+		return 1;
+	}
+	ar->tempoSettings.bpm = createParameterPro(pl, "BPM", 120.0f, 1.0f, 1000.0f, 1.0f, 10.0f, NULL, NULL);
+	ar->enabledChannels = 1;
+	int notes[2][NOTE_INFO_SIZE] = { { A, 4 }, { C, 5 } };
+	addPattern(pat, 2, notes);
+	ASSERT_EQ(saveSequencerState(path, ar, pat, NULL), SEQ_OK, "the song is saved");
+
+	/* The destination already has a velocity on its first step. */
+	PatternList *dst = (PatternList *)calloc(1, sizeof(PatternList));
+	Arranger *ar2 = (Arranger *)calloc(1, sizeof(Arranger));
+	ParamList *pl2 = createParamList();
+	ar2->tempoSettings.bpm = createParameterPro(pl2, "BPM", 120.0f, 1.0f, 1000.0f, 1.0f, 10.0f, NULL, NULL);
+	addPattern(dst, 2, notes);
+	ASSERT_TRUE(setStepVelocity(dst, 0, 0, 99), "the destination has a velocity");
+	ASSERT_EQ(getCurrentStepVelocity(dst, 0, 0), 99, "the destination's velocity is set");
+
+	/* Loading the file (which has no velocities) must clear it. */
+	ASSERT_EQ(loadSequencerState(path, ar2, dst, NULL), SEQ_OK, "the song loads");
+	ASSERT_EQ(getCurrentStepVelocity(dst, 0, 0), NOTE_VELOCITY_FULL,
+	          "the file's silence about the velocity clears it");
+	free(dst);
+	free(ar2);
+	free(pl2);
+	free(pat);
+	free(ar);
+	free(pl);
+	printf("PASS test_an_older_file_clears_the_destination\n");
+	return 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* The trigger path.                                                  */
 /* ------------------------------------------------------------------ */
@@ -348,6 +390,7 @@ int main(void) {
 	fails += test_the_velocity_can_be_set();
 	fails += test_the_velocity_survives_the_file();
 	fails += test_an_older_file_loads_with_unset_velocities();
+	fails += test_an_older_file_clears_the_destination();
 	fails += test_the_trigger_carries_the_velocity();
 	fails += test_the_mpc60_velocity_rules();
 	fails += test_the_allocation_does_not_choke();

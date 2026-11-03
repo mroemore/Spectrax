@@ -174,6 +174,41 @@ static int test_the_default_mask_permits_only_the_working_types(void) {
 	return 0;
 }
 
+/* A profile is the user's file: every number in it is clamped into the
+ * range the engine can honour. The voice count matters most -- a profile
+ * that says zero voices would leave the channel's voice pool empty, and
+ * the allocator would hand out a voice slot that was never allocated. */
+static int test_a_profile_is_clamped(void) {
+	char dir[256];
+	snprintf(dir, sizeof(dir), "/tmp/spectrax-budget-clamp-%d", (int)getpid());
+	mkdir(dir, 0755);
+	/* Write a profile with hostile numbers by hand. */
+	char path[512];
+	snprintf(path, sizeof(path), "%s/device-profile.json", dir);
+	FILE *f = fopen(path, "w");
+	if(!f) {
+		printf("FAIL: cannot write the profile\n");
+		rmdir(dir);
+		return 1;
+	}
+	fputs("{\"version\":1,\"voices_per_channel\":0,\"enabled_channels\":-4,"
+	      "\"buffer_frames\":999,\"voice_types\":3,\"sample_pool_bytes\":-1,"
+	      "\"nanos_per_voice_sample\":-1}", f);
+	fclose(f);
+	DeviceBudget b;
+	ASSERT_TRUE(deviceBudgetLoad(dir, &b), "the profile loads");
+	ASSERT_TRUE(b.voicesPerChannel >= 1, "the voice count is at least one");
+	ASSERT_TRUE(b.enabledChannels >= 1, "the channel count is at least one");
+	ASSERT_TRUE(b.bufferFrames == DEVICE_BUDGET_BUFFER_MIN ||
+	            b.bufferFrames == DEVICE_BUDGET_BUFFER_MID ||
+	            b.bufferFrames == DEVICE_BUDGET_BUFFER_MAX, "the buffer is one of the three");
+	ASSERT_TRUE(b.samplePoolBytes > 0, "the pool's ceiling is positive");
+	ASSERT_TRUE(b.nanosPerVoiceSample >= 0, "the measurement is not negative");
+	rmdir(dir);
+	printf("PASS test_a_profile_is_clamped\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_the_defaults_are_sane();
@@ -186,6 +221,7 @@ int main(void) {
 	fails += test_a_missing_profile_is_not_measured();
 	fails += test_the_voice_type_mask_is_enforced();
 	fails += test_the_default_mask_permits_only_the_working_types();
+	fails += test_a_profile_is_clamped();
 	if(fails) {
 		fprintf(stderr, "%d device-budget test(s) failed\n", fails);
 		return 1;

@@ -85,10 +85,11 @@ float canonicalExp(float x) {
 	if(x != x) {
 		return x; /* NaN in, NaN out. */
 	}
-	if(x > 88.0f) {
-		/* exp(88) is about 1.6e38 and FLT_MAX is 3.4e38, so anything
-		 * above this overflows a float. The clamp is a deliberate
-		 * saturation, not an exact result. */
+	if(x > 88.7f) {
+		/* ln(FLT_MAX) is about 88.72, so exp(x) overflows a float just
+		 * above that. The clamp is a deliberate saturation, not an exact
+		 * result -- and it starts where the overflow actually is, so the
+		 * representable values below it are not truncated. */
 		return FLT_MAX;
 	}
 	if(x < CANON_EXP_FLUSH_BELOW) {

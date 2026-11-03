@@ -168,6 +168,38 @@ void deviceBudgetProfilePath(char *out, size_t outSize, const char *configDir) {
  * no new dependency is needed. */
 #include "cJSON.h"
 
+/* Clamp a number from the profile into a range. */
+static int clampInt(int value, int lo, int hi) {
+	if(value < lo) {
+		return lo;
+	}
+	if(value > hi) {
+		return hi;
+	}
+	return value;
+}
+
+static long clampLong(long value, long lo, long hi) {
+	if(value < lo) {
+		return lo;
+	}
+	if(value > hi) {
+		return hi;
+	}
+	return value;
+}
+
+/* The buffer size must be one of the three the ladder offers: the
+ * engine's control rate is scheduled in samples, so any size works, but
+ * only these three are ones the app knows how to ask for. */
+static int clampBuffer(int frames) {
+	if(frames == DEVICE_BUDGET_BUFFER_MIN || frames == DEVICE_BUDGET_BUFFER_MID ||
+	   frames == DEVICE_BUDGET_BUFFER_MAX) {
+		return frames;
+	}
+	return DEVICE_BUDGET_BUFFER_MID;
+}
+
 bool deviceBudgetLoad(const char *configDir, DeviceBudget *out) {
 	if(!out) {
 		return false;
@@ -230,12 +262,19 @@ bool deviceBudgetLoad(const char *configDir, DeviceBudget *out) {
 		cJSON *n = cJSON_GetObjectItem(root, "nanos_per_voice_sample");
 		if(cJSON_IsNumber(v) && cJSON_IsNumber(c) && cJSON_IsNumber(b) &&
 		   cJSON_IsNumber(t) && cJSON_IsNumber(s) && cJSON_IsNumber(n)) {
-			out->voicesPerChannel = v->valueint;
-			out->enabledChannels = c->valueint;
-			out->bufferFrames = b->valueint;
+			/* Every number in the profile is the user's file, so every
+			 * one is clamped into the range the engine can honour.
+			 *
+			 * The voice count matters most: a profile that says zero
+			 * voices would leave the channel's voice pool empty, and the
+			 * allocator would then hand out a voice slot that was never
+			 * allocated. */
+			out->voicesPerChannel = clampInt(v->valueint, 1, 16);
+			out->enabledChannels = clampInt(c->valueint, 1, 16);
+			out->bufferFrames = clampBuffer(b->valueint);
 			out->voiceTypes = t->valueint;
-			out->samplePoolBytes = (long)s->valuedouble;
-			out->nanosPerVoiceSample = (long)n->valuedouble;
+			out->samplePoolBytes = clampLong((long)s->valuedouble, 1024L * 1024L, 512L * 1024L * 1024L);
+			out->nanosPerVoiceSample = clampLong((long)n->valuedouble, 0, 100000000L);
 			ok = true;
 		}
 	}

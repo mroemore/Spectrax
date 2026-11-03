@@ -24,6 +24,7 @@ test_names = [
   'test_voice_governor',
   'test_note_velocity',
   'test_sample_pool',
+  'test_audio_device',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -86,6 +87,10 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_audio_device'
+    # The stream's opening: PortAudio.
+    link_libs = [core_lib]
+    link_with = [portaudio]
   elif name == 'test_sample_pool'
     # The sample pool is a leaf module.
     link_libs = [core_lib]

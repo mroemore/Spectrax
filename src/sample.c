@@ -153,11 +153,18 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 	printf("%zu samples, %zu memoryUsed \n", sp->sampleCount, sp->memoryUsed);
 }
 
+/* Release a sample's own memory.
+ *
+ * NOT the sample's data: the data lives in the pool's arena, and the
+ * pool owns it. free()ing an interior pointer corrupts the heap -- and
+ * the arena now moves when it grows, so a pointer into it is only valid
+ * until the next sample arrives. The pool's teardown frees the arena
+ * once, at the end. */
 void freeSample(Sample *sample) {
-	if(sample->data) {
-		free(sample->data);
-		sample->data = NULL;
+	if(!sample) {
+		return;
 	}
+	sample->data = NULL;
 	sample->length = 0;
 	sample->sampleRate = 0;
 }

@@ -33,10 +33,17 @@
 #define GOVERNOR_MAX_VOICES 16
 
 typedef struct {
-	/* How many voices may sound at once on a channel. */
+	/* How many voices may sound at once on a channel: the ceiling minus
+	 * the narrowing the load has caused. */
 	int limit;
-	/* The largest the limit may grow to. */
+	/* The largest the limit may grow to: the voice pool's size. */
 	int ceiling;
+	/* How many voices the load has taken away from the ceiling. Kept
+	 * separately from the limit so that the pool growing does not undo
+	 * the narrowing: the limit is ceiling - narrowing, so a bigger pool
+	 * allows more voices while the machine is still struggling, without
+	 * handing back the voices the governor took. */
+	int narrowing;
 	/* The smallest it may shrink to: at least one voice, or the engine
 	 * would go silent rather than merely degraded. */
 	int floor;
@@ -50,9 +57,6 @@ typedef struct {
 	 * smoothed value the decision is made on. */
 	double lastUtilization;
 	double smoothedUtilization;
-	/* How many notes have been asked for and refused because the limit
-	 * was reached. */
-	unsigned long refused;
 	/* How many voices have been stolen to make room. */
 	unsigned long stolen;
 	/* The age of the voice stolen last, for the tests. */
@@ -76,6 +80,16 @@ void governorDefaults(VoiceGovernor *g);
  * sound at once. */
 void governorInit(VoiceGovernor *g, int voices);
 
+/* The pool's size changed -- the user dialled the voice count, or a preset
+ * resized it. The governor's ceiling follows it, and its limit follows the
+ * ceiling if it was above it.
+ *
+ * Without this the governor keeps the voice count it was built with, and
+ * the pool's own dial does nothing: the governor's limit is below the
+ * pool's size, so every note past the limit steals a voice that the pool
+ * had room for. */
+void governorSetCeiling(VoiceGovernor *g, int voices);
+
 /* Report the callback's cost for the buffer just rendered.
  *
  * `utilization` is the fraction of the deadline the callback used (0.0 for
@@ -90,9 +104,6 @@ int governorLimit(const VoiceGovernor *g);
 
 /* Put the governor in force, or take it out of force. */
 void governorSetEnabled(VoiceGovernor *g, bool enabled);
-
-/* Note that a note was refused because the limit was reached. */
-void governorNoteRefused(VoiceGovernor *g);
 
 /* Note that a voice was stolen to make room, and how old it was. */
 void governorNoteStolen(VoiceGovernor *g, long age);

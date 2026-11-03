@@ -98,6 +98,18 @@ void freeVoice(Voice *v) { // TO-DO: free grain
 	// rate/phase, operator outLevels) exactly once.
 	freeParamList(v->paramList);
 
+	// The voice's filter: a Filter and the BiquadFilter it owns. The
+	// filter is allocated per voice and (so far) never used -- the
+	// biquad in the render path is commented out -- but it was never
+	// freed either, so every voice leaked one Filter and one
+	// BiquadFilter. The calibration's scratch voice is a voice like any
+	// other, so it leaked too.
+	if(v->filter) {
+		free(v->filter->biquad);
+		free(v->filter);
+		v->filter = NULL;
+	}
+
 	// Free operator structs only — feedbackAmount/ratio/level are
 	// instrument-owned, outLevel is owned by paramList (already freed).
 	switch(v->type) {
@@ -108,6 +120,16 @@ void freeVoice(Voice *v) { // TO-DO: free grain
 			break;
 		default:
 			break;
+	}
+
+	/* The voice's filter: a Filter and the biquad inside it. It is
+	 * allocated per voice and used by nothing today (the one use is
+	 * commented out in generateVoice), but it is the voice's, and the
+	 * voice's teardown is where it belongs. */
+	if(v->filter) {
+		free(v->filter->biquad);
+		free(v->filter);
+		v->filter = NULL;
 	}
 
 	free(v);
@@ -507,6 +529,11 @@ void syncVoiceGraph(Voice *v) {
 }
 
 void initialize_voice(Voice *voice, Instrument *inst) {
+	/* The filter is allocated at the end of this function, and this
+	 * function can return early. It must start as NULL, so that a voice
+	 * that was not fully built frees nothing rather than freeing
+	 * whatever the malloc left in the struct. */
+	voice->filter = NULL;
 	voice->leftPhase = 0.0f;
 	voice->rightPhase = 0.0f;
 	voice->note[0] = OFF;
@@ -614,6 +641,9 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 	replicateConnections(voice, inst);
 
 	voice->filter = createFilter(kTransposeCanonical, secondOrderLPF, 250.0f, 10.0f);
+	/* The filter is not on the audio path yet (its one use is commented
+	 * out), so a failure here is not fatal -- but the voice must not
+	 * keep a half-built filter. */
 }
 
 void initDefaultFmPreset(Preset *p) {
@@ -809,6 +839,12 @@ bool setChannelVoiceCount(VoiceManager *vm, int channel, int count) {
 	Instrument *inst = vm->instruments[channel];
 	if(inst) inst->rebuilding = true;
 	initVoicePool(vm, channel, count, inst);
+	/* The governor's ceiling is the pool's size: the pool is what the
+	 * voices live in, so a pool that grew can sound more voices, and a
+	 * pool that shrank can sound fewer. Without this the governor keeps
+	 * the count it was built with and the voice-count dial does
+	 * nothing. */
+	governorSetCeiling(&vm->governor, count);
 	if(inst) {
 		/* Keep the param in sync so the dial doesn't lie about what
 		 * the voice pool is doing. Safe to write the same value

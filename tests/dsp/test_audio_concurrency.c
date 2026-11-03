@@ -228,6 +228,38 @@ static int test_volume_race(void) {
 	return 0;
 }
 
+/* The tempo's step durations.
+ *
+ * The audio thread reads them once per sample -- the step boundary is
+ * checked per sample, so a note fires on the sample it belongs to --
+ * while the GUI thread writes them when the BPM changes. That is a data
+ * race unless the values are atomic, and the thread sanitizer is the
+ * only tool in the matrix that can see it: a race reads as "both
+ * branches taken, all green" to every other checker.
+ *
+ * This test is what the sanitizer rung runs. */
+static void *bpm_thread(void *arg) {
+	(void)arg;
+	Arranger *ar = g_data.arranger;
+	for(int i = 0; i < 2000; i++) {
+		/* The BPM dial's path: the parameter's value changes, and its
+		 * onChange callback recomputes the step durations. */
+		setParameterBaseValue(ar->tempoSettings.bpm, 90.0f + (float)(i % 60));
+	}
+	return NULL;
+}
+
+static int test_tempo_race(void) {
+	pthread_t audio;
+	pthread_t gui;
+	pthread_create(&audio, NULL, audio_thread, NULL);
+	pthread_create(&gui, NULL, bpm_thread, NULL);
+	pthread_join(audio, NULL);
+	pthread_join(gui, NULL);
+	printf("PASS test_tempo_race\n");
+	return 0;
+}
+
 int main(void) {
 	int rc = 0;
 	if(make_env() != 0) {
@@ -237,6 +269,7 @@ int main(void) {
 	rc |= test_typecycle_race();
 	rc |= test_rebuild_race();
 	rc |= test_volume_race();
+	rc |= test_tempo_race();
 	if(rc != 0) {
 		fprintf(stderr, "FAILED (audio concurrency)\n");
 		return 1;

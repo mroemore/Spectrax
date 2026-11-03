@@ -92,8 +92,12 @@ static int test_the_samples_survive_the_arena_growing(void) {
 		printf("FAIL: createSamplePool\n");
 		return 1;
 	}
-	const int len = 64;
-	const int count = 40;
+	/* The arena starts at 64 KiB, so the samples have to exceed that for
+	 * the growth -- and the pointer fix-up that goes with it -- to happen
+	 * at all. A test that stayed under it would pass with the fix-up
+	 * deleted. */
+	const int len = 4096; /* 16 KiB per sample */
+	const int count = 12; /* 192 KiB in all: three growths */
 	for(int n = 0; n < count; n++) {
 		float *data = (float *)malloc(sizeof(float) * len);
 		for(int i = 0; i < len; i++) {
@@ -119,6 +123,13 @@ static int test_the_samples_survive_the_arena_growing(void) {
 				return 1;
 			}
 		}
+	}
+	/* The arena really did grow: the test would pass with the fix-up
+	 * deleted if it had not. */
+	if(sp->allocatedBytes <= 65536) {
+		printf("FAIL: the arena did not grow (allocated %zu bytes)\n", sp->allocatedBytes);
+		freeSamplePool(sp);
+		return 1;
 	}
 	freeSamplePool(sp);
 	printf("PASS test_the_samples_survive_the_arena_growing\n");

@@ -115,10 +115,7 @@ static int test_the_limits_bind(void) {
 static int test_the_counters_record_what_happened(void) {
 	VoiceGovernor g;
 	governorInit(&g, 4);
-	ASSERT_EQ(g.refused, 0, "nothing refused to start with");
 	ASSERT_EQ(g.stolen, 0, "nothing stolen to start with");
-	governorNoteRefused(&g);
-	ASSERT_EQ(g.refused, 1, "a refusal is counted");
 	governorNoteStolen(&g, 4711);
 	ASSERT_EQ(g.stolen, 1, "a steal is counted");
 	ASSERT_EQ(g.lastStolenAge, 4711, "the stolen voice's age is recorded");
@@ -378,6 +375,93 @@ static int test_a_disabled_governor_does_not_steal(void) {
 	return 0;
 }
 
+/* The governor's ceiling follows the pool's size.
+ *
+ * The user dials the voice count up; the pool grows; and the governor
+ * must let those voices sound. Without this the governor keeps the count
+ * it was built with, the pool's dial does nothing, and a second note
+ * steals the first one even though there was room for it. */
+static int test_the_ceiling_follows_the_pool(void) {
+	GovEnv e;
+	if(govSetup(&e, 1) != 0) {
+		printf("FAIL: could not build the scene\n");
+		return 1;
+	}
+	/* The governor starts at the pool's size. */
+	ASSERT_EQ(governorLimit(&e.vm->governor), 1, "the governor starts at the pool's size");
+
+	/* The user dials the voice count up to four. */
+	ASSERT_TRUE(setChannelVoiceCount(e.vm, 0, 4), "the voice count is set");
+	ASSERT_EQ(e.vm->voiceCount[0], 4, "the pool holds four voices");
+	ASSERT_EQ(governorLimit(&e.vm->governor), 4, "the governor's limit follows the pool");
+
+	/* Two simultaneous notes must get two voices, not the same one. */
+	Voice *a = govStart(&e, 100);
+	Voice *b = govStart(&e, 200);
+	if(!a || !b || a == b) {
+		printf("FAIL: two notes took the same voice\n");
+		govTeardown(&e);
+		return 1;
+	}
+	govTeardown(&e);
+	printf("PASS test_the_ceiling_follows_the_pool\n");
+	return 0;
+}
+
+/* And the other way: a pool that shrank cannot sound more voices than it
+ * holds. */
+static int test_a_shrunken_pool_lowers_the_limit(void) {
+	GovEnv e;
+	if(govSetup(&e, 4) != 0) {
+		printf("FAIL: could not build the scene\n");
+		return 1;
+	}
+	ASSERT_TRUE(setChannelVoiceCount(e.vm, 0, 2), "the voice count is set");
+	ASSERT_EQ(governorLimit(&e.vm->governor), 2, "the limit follows the pool down");
+	govTeardown(&e);
+	printf("PASS test_a_shrunken_pool_lowers_the_limit\n");
+	return 0;
+}
+
+/* The ceiling is clamped: a pool of zero voices would leave the channel
+ * with nothing to sound, and more than the maximum is not a pool size
+ * the engine has. */
+static int test_the_ceiling_is_clamped(void) {
+	VoiceGovernor g;
+	governorInit(&g, 4);
+	governorSetCeiling(&g, 0);
+	ASSERT_EQ(g.ceiling, 1, "a ceiling of zero becomes one");
+	governorSetCeiling(&g, 999);
+	ASSERT_EQ(g.ceiling, GOVERNOR_MAX_VOICES, "a ceiling past the maximum is clamped");
+	printf("PASS test_the_ceiling_is_clamped\n");
+	return 0;
+}
+
+/* A negative utilisation is not a thing: it would be a measurement that
+ * went wrong, and it must not pull the smoothed value below zero. */
+static int test_a_negative_utilisation_is_clamped(void) {
+	VoiceGovernor g;
+	governorInit(&g, 4);
+	governorObserve(&g, -0.5);
+	ASSERT_TRUE(g.lastUtilization >= 0.0, "the measured value is not negative");
+	printf("PASS test_a_negative_utilisation_is_clamped\n");
+	return 0;
+}
+
+/* The narrowing stops at the floor: the engine always keeps at least one
+ * voice, however badly the machine is doing. */
+static int test_the_narrowing_stops_at_the_floor(void) {
+	VoiceGovernor g;
+	governorInit(&g, 2);
+	for(int i = 0; i < 500; i++) {
+		governorObserve(&g, 1.0);
+	}
+	ASSERT_EQ(governorLimit(&g), 1, "the limit is the floor");
+	ASSERT_EQ(g.narrowing, 1, "the narrowing stops at the ceiling less the floor");
+	printf("PASS test_the_narrowing_stops_at_the_floor\n");
+	return 0;
+}
+
 int main(void) {
 	initModSystem();
 	int fails = 0;
@@ -391,6 +475,11 @@ int main(void) {
 	fails += test_a_note_at_the_limit_steals_the_oldest();
 	fails += test_a_steal_leaves_the_survivor_alone();
 	fails += test_a_disabled_governor_does_not_steal();
+	fails += test_the_ceiling_follows_the_pool();
+	fails += test_a_shrunken_pool_lowers_the_limit();
+	fails += test_the_ceiling_is_clamped();
+	fails += test_a_negative_utilisation_is_clamped();
+	fails += test_the_narrowing_stops_at_the_floor();
 	fails += test_the_steal_picks_the_oldest();
 	fails += test_the_steal_picks_the_only_voice();
 	fails += test_the_steal_finds_nothing();

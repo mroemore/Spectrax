@@ -178,6 +178,18 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 				return SEQ_ERROR_READ;
 				printf("error reading pattern data\n");
 			}
+			/* The velocities start unset, for every pattern the file
+			 * holds. The VELO chunk (if the file has one) sets them
+			 * afterwards; a file without one leaves every step unset, so
+			 * it plays as it did before velocity existed.
+			 *
+			 * Without this the destination's previous velocities would
+			 * survive the load, and a step the file says nothing about
+			 * would play at the last session's velocity -- which changes
+			 * both its level and where its sample starts. */
+			for(int v = 0; v < MAX_SEQUENCE_LENGTH; v++) {
+				p->velocity[v] = 0;
+			}
 			/* pattern_size is attacker-controlled and every consumer treats
 			 * it as a step count into fixed-size arrays (Pattern.notes is
 			 * MAX_SEQUENCE_LENGTH rows, and gui_pattern.c's stepData[] /

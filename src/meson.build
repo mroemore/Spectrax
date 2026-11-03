@@ -7,6 +7,7 @@
 core_sources = files(
   'voice.c',
   'audio.c',
+  'audio_device.c',
   'dataviz.c',
   'modsystem.c',
   'oscillator.c',
