@@ -104,6 +104,46 @@ LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$golden_bin" > "$tmp_out/golden.log"
     exit 1
 }
 
+# The scalar leg of the golden gate: the same source, compiled without the
+# vectorizer, must produce the same hash.
+#
+# The claim is that the compiler's auto-vectorization is safe under strict
+# floating point: reassociation is forbidden, so an elementwise vectorised
+# expression produces the same bits as the scalar one. On aarch64 the
+# vectorized code is NEON, so this compares NEON against scalar on the same
+# architecture -- the leg that the host-versus-ARM comparison cannot make.
+#
+# The comparison is exact. If the two disagree in the last bit, the
+# engine is not the same engine on the two machines, and the
+# cross-architecture contract is void.
+echo "== $golden_bin under $qemu, without the vectorizer =="
+scalar_dir="build-$device-scalar"
+mkdir -p "$scalar_dir"
+sed "s/'\-ftree-vectorize'/'\-ftree-vectorize', '\-fno-tree-vectorize'/" \
+    "$cross/cross.ini" > "$scalar_dir/cross.ini"
+if ! grep -q "fno-tree-vectorize" "$scalar_dir/cross.ini"; then
+    echo "FAIL: could not add -fno-tree-vectorize to the scalar cross file" >&2
+    exit 1
+fi
+meson setup "$scalar_dir" --cross-file "$scalar_dir/cross.ini" --buildtype=release \
+    > "$scalar_dir/setup.log" 2>&1 || {
+    echo "FAIL: meson setup $scalar_dir failed" >&2
+    tail -20 "$scalar_dir/setup.log" >&2
+    exit 1
+}
+meson compile -C "$scalar_dir" test_golden_render > "$scalar_dir/compile.log" 2>&1 || {
+    echo "FAIL: the scalar cross build failed" >&2
+    tail -20 "$scalar_dir/compile.log" >&2
+    exit 1
+}
+scalar_golden="$scalar_dir/tests/test_golden_render"
+[ -x "$scalar_golden" ] || { echo "FAIL: the scalar golden test was not built" >&2; exit 1; }
+LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$scalar_golden" > "$tmp_out/golden-scalar.log" 2>&1 || {
+    echo "FAIL: the scalar golden render failed under $qemu" >&2
+    tail -20 "$tmp_out/golden-scalar.log" >&2
+    exit 1
+}
+
 echo "== $bench_bin under $qemu =="
 LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$bench_bin" --bench=fileio \
     --device "$device" --out="$tmp_out/report" > "$tmp_out/bench.log" 2>&1 || {
@@ -116,4 +156,4 @@ LD_LIBRARY_PATH=/lib "$qemu" -L "$sysroot" "$bench_bin" --bench=fileio \
     exit 1
 }
 
-echo "OK: test_voice, test_golden_render and spectrax_bench passed under $qemu"
+echo "OK: test_voice, test_golden_render (vectorized and scalar) and spectrax_bench passed under $qemu"
