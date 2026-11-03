@@ -189,3 +189,95 @@ Deferred, with the reason:
   OTA cascade is deferred to the GUI phase.
 - Task 7 (character panel) and Task 8 (coverage + fixtures): the GUI phase — not
   started, by the human partner's instruction.
+
+---
+
+## Continuation (2026-11-03): the canonical core's remaining tasks
+
+The plan's own task log continues above; this is the second session's
+record, on the canonical-core plan (docs/superpowers/plans/2026-11-02-adaptive-arm-handheld.md).
+
+Commits (branch `pattern-mod`):
+`b15d703` the plan and design on the repo's convention ·
+`f17ece6` the last libm calls off the audio path, and strict FP everywhere ·
+`ca2e86c` the random modulator gets its own generator ·
+`6798e1a` the golden render.
+
+### Done
+
+- **A6 — the strict FP flags and the no-libm lint.** The audio path's remaining
+  inexact calls are gone: `powf` in the attenuator's square root, in `applyCurve`
+  and in the curve table; `expf` in the envelope's slew; `sinf`/`cosf` in the
+  biquad's coefficients; `sin` in the BLEP's sine and the granular window. The
+  lint's file list now covers the whole audio path plus the bake.
+  `-ffast-math` is gone from the host build, both cross templates, both device
+  profiles and the vendored kissfft build; `-ffp-contract=off` replaces it.
+- **A5 — the per-voice PRNG.** The `MT_RND` modulator's global `rand()` is
+  replaced by a per-entity xorshift32 (`CanonicalRng`): every modulator seeds its
+  own, a voice's clone starts from the source's state, and the granular
+  processor's grain positions have their own.
+- **A7 (the golden half) — the golden render.** `tests/dsp/test_golden_render.c`
+  renders a canonical scene headlessly and hashes the samples; the hash is
+  compared exactly against `tests/golden/voice.render.hash`. The qemu smoke test
+  cross-compiles it and runs it under qemu-aarch64, so the host and the ARM
+  build are compared by the suite: **they match** (`efb6e5e8a5e51c85`). The test
+  renders twice and requires equal hashes, so a render that depended on
+  uninitialised memory would fail (meson runs the suite with a random
+  MALLOC_PERTURB_).
+
+### Rulings
+
+- **A6: Ruling:** the strict-FP flag is added to the *whole project*, not to the
+  audio path's files. The audio path's determinism cannot depend on which
+  translation unit a function landed in, and a file-scoped flag would let a
+  change in a header silently relax it. — *Why:* the invariant is about the
+  output, not about the files. — *Cost if wrong:* a couple of files lose an
+  FMA contraction they could have had.
+- **A7: Ruling:** the golden comparison is exact, and the hash is FNV-1a rather
+  than SHA-256. The comparison's purpose is to catch a difference, not to
+  withstand an adversary, and a strong hash would be a dependency the tree does
+  not otherwise have. — *Why:* the gate's value is in being *run*, and a
+  dependency is a thing that can be missing on a device. — *Cost if wrong:* a
+  collision could hide a difference; a 64-bit hash over 64 kB makes that
+  vanishingly unlikely for an accidental change.
+
+### What A3 (the control rate) actually needs — the analysis, for the next session
+
+The buffer size is currently a synthesis input in three places, not one:
+
+1. **The global modulation pass** runs once per buffer with
+   `deltaTime = 1.0f / framesPerBuffer` (audio.c). The song-level parameters it
+   writes are the instruments' base values, which the voices then sync — so the
+   value a global mod produces depends on the buffer size.
+2. **The sequencer's step advance** happens when
+   `tempoSettings.samplesElapsed >= stepSamples`, checked once per buffer. The
+   note therefore fires at a *buffer boundary*, up to a whole buffer late, so the
+   onset moves with the buffer size.
+3. **The voice's modulation pass** is already per sample, with the canonical
+   rate — so it is already buffer-size neutral.
+
+So A3 is two changes, not one:
+- the global mod pass must run on a fixed control tick, scheduled from an
+  *absolute* sample position (a per-buffer position would make the tick's phase
+  depend on the buffer size, which is the same bug one level down);
+- the render loop must check for a step boundary *per sample*, not per buffer, so
+  the note's onset lands on the sample it belongs to.
+
+The test that proves it: the golden render, driven through
+`renderAudioBuffer` at 128, 256 and 512 frames, must produce the same hash. That
+needs the full `paTestData`, so the golden test grows a second entry point
+rather than a new binary.
+
+### Still outstanding
+
+- A3 (above), A4 (the compiled modulation plan).
+- A7's second half: the corpus's scripted checks — the sweep alias, the THD+N
+  notch, the impulse 4-pole decay, the white-noise-through-envelope cutoff
+  trajectory — all of which are the *sampler's filter*'s checks, so they belong
+  with the OTA cascade in the GUI phase.
+- C1-C4 (the device profile's measured layer, the auto-calibration, the budgets,
+  the governor, the voice-type gating), D1-D3 (the canonical spec, the isolation
+  tests, the gate — the gate's hash half is done), E1 (the sequencer velocity).
+- The boundary resampler: a device that cannot run at 48000 is refused by the
+  stream open rather than resampled.
+- The pattern-track editor's unit tests (166 untested lines in gui_pattern.c).
