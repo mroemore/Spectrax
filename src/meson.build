@@ -22,6 +22,7 @@ core_sources = files(
   'sample.c',
   'sampler_character.c',
   'device_budget.c',
+  'device_calibrate.c',
   'graph_gui.c',
   'gui_style.c',
   'io.c',
