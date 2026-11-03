@@ -23,6 +23,7 @@
 #include <ctype.h>
 
 #include "canonical_math.h"
+#include "modsystem.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 
@@ -497,6 +498,102 @@ static int test_canonical_exact_points(void) {
 	return 0;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* The audio path's random source.                                    */
+/* ------------------------------------------------------------------ */
+
+/* The random modulator must not depend on the process-global RNG: a voice's
+ * output may not depend on the order of unrelated work. Two identically
+ * built modulators therefore produce the same sequence, whatever the
+ * global rand() does in between. */
+static int test_the_random_mod_ignores_the_global_rng(void) {
+	initModSystem();
+	/* Separate parameter lists: two mods sharing one list would share the
+	 * phase parameter, and then only one of them would draw. */
+	ParamList *plQuiet = createParamList();
+	ParamList *plLoud = createParamList();
+	ModList *ml = createModList();
+	/* The drunk shape draws on every call, which keeps the test about the
+	 * RNG rather than about the phase's wrap. */
+	Mod *quiet = createRandom(plQuiet, ml, 0, 1.0f, RT_DRK, "quiet");
+	Mod *loud = createRandom(plLoud, ml, 1, 1.0f, RT_DRK, "loud");
+	if(!quiet || !loud) {
+		printf("FAIL: createRandom returned NULL\n");
+		return 1;
+	}
+	float quietSeq[8];
+	float loudSeq[8];
+	for(int i = 0; i < 8; i++) {
+		generateDrunk(quiet);
+		quietSeq[i] = getParameterValue(quiet->output);
+
+		/* The same, but with the global RNG hammered in between. */
+		for(int k = 0; k < 1000; k++) {
+			(void)rand();
+		}
+		generateDrunk(loud);
+		loudSeq[i] = getParameterValue(loud->output);
+	}
+	for(int i = 0; i < 8; i++) {
+		if(quietSeq[i] != loudSeq[i]) {
+			printf("FAIL: the random mod's value %d differs: %g vs %g\n",
+			       i, (double)quietSeq[i], (double)loudSeq[i]);
+			return 1;
+		}
+	}
+	printf("PASS test_the_random_mod_ignores_the_global_rng\n");
+	return 0;
+}
+
+/* The PRNG itself: reproducible for a seed, and different for different
+ * seeds. */
+static int test_the_rng_is_reproducible(void) {
+	CanonicalRng a, b, c;
+	canonicalRngSeed(&a, 0x12345678u);
+	canonicalRngSeed(&b, 0x12345678u);
+	canonicalRngSeed(&c, 0x87654321u);
+	int differs = 0;
+	for(int i = 0; i < 64; i++) {
+		uint32_t x = canonicalRngNext(&a);
+		uint32_t y = canonicalRngNext(&b);
+		uint32_t z = canonicalRngNext(&c);
+		if(x != y) {
+			printf("FAIL: the same seed gave %u and %u at step %d\n", x, y, i);
+			return 1;
+		}
+		if(x != z) {
+			differs++;
+		}
+	}
+	if(differs < 60) {
+		printf("FAIL: two different seeds gave the same sequence too often (%d of 64)\n", differs);
+		return 1;
+	}
+	printf("PASS test_the_rng_is_reproducible\n");
+	return 0;
+}
+
+/* The uniform draws stay in range. */
+static int test_the_rng_draws_stay_in_range(void) {
+	CanonicalRng rng;
+	canonicalRngSeed(&rng, 0x9E3779B9u);
+	for(int i = 0; i < 10000; i++) {
+		float u = canonicalRngUniform(&rng);
+		if(!(u >= 0.0f && u < 1.0f)) {
+			printf("FAIL: canonicalRngUniform gave %g\n", (double)u);
+			return 1;
+		}
+		float s = canonicalRngSigned(&rng);
+		if(!(s >= -1.0f && s < 1.0f)) {
+			printf("FAIL: canonicalRngSigned gave %g\n", (double)s);
+			return 1;
+		}
+	}
+	printf("PASS test_the_rng_draws_stay_in_range\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_canonical_module_calls_no_inexact_libm();
@@ -509,6 +606,9 @@ int main(void) {
 	fails += test_canonical_one_pole_coef_matches_golden();
 	fails += test_canonical_sin_is_period_exact();
 	fails += test_canonical_exact_points();
+	fails += test_the_rng_is_reproducible();
+	fails += test_the_rng_draws_stay_in_range();
+	fails += test_the_random_mod_ignores_the_global_rng();
 	if(fails) {
 		fprintf(stderr, "%d canonical-math test(s) failed\n", fails);
 		return 1;

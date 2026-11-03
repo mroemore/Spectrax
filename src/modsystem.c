@@ -824,6 +824,10 @@ void initRandDefaults(Mod *rnd, ParamList *paramList, float rate, RandomType typ
 	RndState *r = &rnd->data.rnd;
 	r->lastPhase = 0.0f;
 	r->lastRandom = 0.0f;
+	/* Every modulator gets its own generator, seeded from a fixed
+	 * constant: two identically built modulators then produce the same
+	 * sequence, on every platform and every run. */
+	canonicalRngSeed(&r->rng, 0x9E3779B9u);
 	r->rate = createParameter(paramList, "RNG rate", rate, 0.1f, 100.0f);
 	r->phase = createParameter(paramList, "RNG phase", 0.0f, 0.0f, 1.0f);
 	r->shape = createParameterPro(paramList, "RNG shape", (float)type, 0.0f, (float)(RT_COUNT - 1), 1.0f, 1.0f, rnd, cbRandShapeOnChange);
@@ -1072,7 +1076,7 @@ void generateRandom(void *self) {
 	float phase = getParameterValue(r->phase);
 
 	if(phase < r->lastPhase) {
-		r->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		r->lastRandom = canonicalRngSigned(&r->rng);
 	}
 
 	r->lastPhase = phase;
@@ -1085,8 +1089,8 @@ void generateDrunk(void *self) {
 	RndState *r = &rnd->data.rnd;
 	float phase = getParameterValue(r->phase);
 
-	r->lastRandom = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-	r->lastRandom *= 0.5f * ((float)rand() / (float)RAND_MAX);
+	r->lastRandom = canonicalRngSigned(&r->rng);
+	r->lastRandom *= 0.5f * canonicalRngUniform(&r->rng);
 	r->lastPhase = phase;
 	setParameterBaseValue(rnd->output, rnd->output->currentValue + r->lastRandom);
 	setParameterValue(rnd->output, rnd->output->currentValue + r->lastRandom);
@@ -1328,6 +1332,11 @@ Mod *cloneMod(ParamList *voicePl, ModList *voiceMl, const Mod *src) {
 			const RndState *sr = &src->data.rnd;
 			r->lastPhase = 0.0f;
 			r->lastRandom = 0.0f;
+			/* The clone starts from the source's generator state, so
+			 * every voice of an instrument draws the same sequence --
+			 * deterministic, and independent of how many voices there
+			 * are or what else the program is doing. */
+			r->rng = sr->rng;
 			if(sr->rate) {
 				r->rate = createParameter(voicePl, sr->rate->name, sr->rate->baseValue, sr->rate->minValue, sr->rate->maxValue);
 			}

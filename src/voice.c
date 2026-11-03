@@ -1594,11 +1594,14 @@ GranularProcessor *createGranularProcessor(Sample *s) {
 		gp->grainWindow[i] = canonicalSin((float)i / GRAIN_WINDOW_SIZE);
 		gp->windowIndex[i] = 0;
 	}
+	/* The grain positions come from the canonical generator, not the
+	 * global rand(): a voice's output may not depend on the order of
+	 * unrelated work. */
+	CanonicalRng grainRng;
+	canonicalRngSeed(&grainRng, 0x85EBCA6Bu);
 	for(int i = 0; i < GRAIN_COUNT; i++) {
-		/* Scale in floating point: rand() * GRANULAR_BUFFER_SIZE overflows
-		 * int (signed overflow, UB — caught by UBSan). */
-		float startPos = (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f;
-		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", (float)rand() * GRANULAR_BUFFER_SIZE / 4.0f, 0.0f, (float)GRANULAR_BUFFER_SIZE);
+		float startPos = canonicalRngUniform(&grainRng) * (float)GRANULAR_BUFFER_SIZE / 4.0f;
+		gp->grainStartPos[i] = createParameter(gp->paramList, "gPos", startPos, 0.0f, (float)GRANULAR_BUFFER_SIZE);
 		gp->grainReadPos[i] = startPos;
 	}
 

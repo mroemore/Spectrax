@@ -1,6 +1,8 @@
 #ifndef SPECTRAX_CANONICAL_MATH_H
 #define SPECTRAX_CANONICAL_MATH_H
 
+#include <stdint.h>
+
 /* Deterministic replacements for the inexact libm transcendentals.
  *
  * Criterion C says a voice's output must be a pure function of its settings:
@@ -51,5 +53,32 @@ float canonicalPow(float x, float y);
 /* The one-pole smoothing coefficient 1 - exp(-2*pi*fc/sr): the factor a
  * one-pole filter moves its state by per sample at cutoff fc. */
 float canonicalOnePoleCoef(float fc, float sr);
+
+/* The audio path's random source.
+ *
+ * The global rand() is not usable here: a voice's output must not depend on
+ * the order of unrelated work, and rand()'s state is process-global, so a
+ * voice's random values would shift with every other rand() call anywhere in
+ * the program. This is a xorshift32 with a per-entity state: three shifts
+ * and three xors, all exact, so the sequence is the same on every platform.
+ *
+ * The state belongs to the entity that draws from it -- a voice's modulator,
+ * a bake -- so two entities never share a sequence. */
+typedef struct {
+	uint32_t state;
+} CanonicalRng;
+
+/* Seed the generator. A seed of 0 is remapped, because xorshift cannot
+ * leave the zero state. */
+void canonicalRngSeed(CanonicalRng *rng, uint32_t seed);
+
+/* The next 32 random bits. */
+uint32_t canonicalRngNext(CanonicalRng *rng);
+
+/* A draw in [0, 1). */
+float canonicalRngUniform(CanonicalRng *rng);
+
+/* A draw in [-1, 1). */
+float canonicalRngSigned(CanonicalRng *rng);
 
 #endif

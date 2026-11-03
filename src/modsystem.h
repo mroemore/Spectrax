@@ -8,6 +8,7 @@
 
 #include "settings.h"
 #include "wavetable.h"
+#include "canonical_math.h"
 
 #define MAX_MODS 128
 #define MAX_PARAMS 1024
@@ -121,6 +122,10 @@ typedef struct {
 	Parameter *shape; /* routable: onChange syncs shapeValue + base.generate */
 	int shapeValue;
 	Parameter *playMode;
+	/* The generator's own state. The global rand() is not usable here: a
+	 * voice's output may not depend on the order of unrelated work, and
+	 * rand()'s state is process-global. */
+	CanonicalRng rng;
 } RndState;
 
 /* Shape modes for a PatternState. */

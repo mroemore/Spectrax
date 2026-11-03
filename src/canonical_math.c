@@ -143,3 +143,40 @@ float canonicalOnePoleCoef(float fc, float sr) {
 	double g = 1.0 - canonExpDouble(-2.0 * 3.14159265358979323846 * (double)fc / (double)sr);
 	return (float)g;
 }
+
+/* ------------------------------------------------------------------ */
+/* The audio path's random source.                                    */
+/* ------------------------------------------------------------------ */
+
+void canonicalRngSeed(CanonicalRng *rng, uint32_t seed) {
+	if(!rng) {
+		return;
+	}
+	/* A xorshift cannot leave the zero state, so zero is remapped. */
+	rng->state = (seed != 0) ? seed : 0x9E3779B9u;
+}
+
+uint32_t canonicalRngNext(CanonicalRng *rng) {
+	if(!rng) {
+		return 0;
+	}
+	uint32_t x = rng->state;
+	if(x == 0) {
+		x = 0x9E3779B9u;
+	}
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	rng->state = x;
+	return x;
+}
+
+float canonicalRngUniform(CanonicalRng *rng) {
+	/* The top 24 bits give a float in [0, 1) exactly: 24 bits is the
+	 * float mantissa, so every draw is representable. */
+	return (float)(canonicalRngNext(rng) >> 8) / 16777216.0f;
+}
+
+float canonicalRngSigned(CanonicalRng *rng) {
+	return canonicalRngUniform(rng) * 2.0f - 1.0f;
+}
