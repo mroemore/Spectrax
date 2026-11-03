@@ -97,11 +97,13 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
       user's config directory). The app measures itself on its first run -- the
       app's own first instrument, one voice, through the voice-level path, timed
       -- and writes the profile. `9308852`.
-- [~] **C2 — the budget consumption.** The channel count and the voice count are
+- [x] **C2 — the budget consumption.** The channel count and the voice count are
       capped before the voice manager and the arranger are built; the buffer
-      size is the stream open's first choice. Still to come: the permitted voice
-      types (the GUI's job) and the sample-pool ceiling (the pool's storage is
-      a fixed array today).
+      size is the stream open's first choice. The permitted voice types are
+      enforced by the engine (`setInstrumentVoiceType` refuses a type the
+      device does not offer), and the sample pool's ceiling is the budget's
+      number -- the pool no longer mallocs a fixed 32 MB arena up front, it
+      grows as samples arrive. `015c36f`.
 - [ ] **C3 — the runtime governor.** The callback-time utilisation drives the voice
       slots' grant and withdrawal, with a pinned stealing policy that cannot alter a
       surviving voice's output.
@@ -119,10 +121,14 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
       compares the voice's own stream, **not** differenced mixes: (a + b) - a is
       not b in floating point. Each render gets its own scene, because a voice's
       state advances as it is rendered. `62c919a`.
-- [~] **D3 — the cross-architecture golden gate.** The hash half is done: the
-      golden render runs under qemu-aarch64 in the test suite and matches the
-      host's. Still to come: the armhf leg, the scalar-vs-NEON leg, and the
-      per-voice isolation test that the gate should carry.
+- [x] **D3 — the cross-architecture golden gate.** The golden render runs under
+      qemu-aarch64 in the test suite and matches the host's; and the gate now
+      also builds the target *without the vectorizer* and requires the same
+      hash -- the vectorized build has 6619 vector instructions in the golden
+      test and the scalar one has none, and they agree bit for bit. The gate
+      was verified by breaking it. The armhf leg stays deferred (the Miyoo
+      Mini is best-effort, much later, by the human partner's decision).
+      `cc93944`.
 
 ### Phase E — the sequencer velocity
 
@@ -166,7 +172,7 @@ plan:
 
 Each phase is evidenced by harness numbers, not narrative: the meson suite's count,
 the coverage gate's verdict, and the scripted fixtures' results. The landed work
-currently stands at **54/54 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
+currently stands at **63/63 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
 and **13/15 scripted fixtures** (the two failures, `chip_meta` and `save_overwrite`,
 are pre-existing and confirmed on the pre-consolidation branch). The golden
 render's hash is `efb6e5e8a5e51c85`, identical on the x86-64 host and under
