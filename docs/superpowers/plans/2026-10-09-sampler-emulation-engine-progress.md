@@ -281,3 +281,75 @@ rather than a new binary.
 - The boundary resampler: a device that cannot run at 48000 is refused by the
   stream open rather than resampled.
 - The pattern-track editor's unit tests (166 untested lines in gui_pattern.c).
+
+### Continuation (2026-11-03, second pass): A3, A4, C1, D1, D2
+
+Commits: `5d93b5f` A3 · `f506a22` A4 · `62c919a` D2 · `10416b2` D1 ·
+`9308852` C1/C2 · `7272fb9` the budget's coverage floor.
+
+- **A3 — the buffer size is a latency knob.** Two places made it a synthesis
+  input: the global modulation pass ran once per buffer with
+  `deltaTime = 1/framesPerBuffer`, and the sequencer's step boundary was
+  checked per buffer (so a note fired at the next buffer's start). Both are
+  per sample now. The golden render drives the real callback at 128, 256 and
+  512 frames and requires one hash; before the change the 512-frame render
+  differed from the other two.
+- **A4 — the modulation pass's cost, not its data structure.** The pass
+  re-derived every parameter on the instrument once per sample per voice,
+  including the ones nothing was routed to. It now skips them -- with two
+  conditions the existing tests caught: a source's output must still be
+  refreshed, and a parameter that loses its last modulator must go back to
+  its base value. Measured (spectrax_bench --bench=mod, before and after):
+  a graph with no routes 0.130 -> 0.033 ms (-75%); 16 routes 0.619 -> 0.360
+  (-42%); 128 routes 2.852 -> 2.017 (-29%). The flat tuple array the plan
+  described was not needed: the cost was the re-derivation, not the walk.
+- **C1/C2 — the device's budget.** `src/device_budget.{c,h}` derives the
+  voices, the pool's ceiling and the buffer size from a measurement, and
+  stores them in a versioned JSON profile in the user's config directory. The
+  app measures itself on its first run (its own first instrument, one voice,
+  through the voice-level path -- not the callback, which would move the
+  song) and writes the profile. The channel count and the voice count are
+  capped before the voice manager is built; the buffer size is the stream
+  open's first choice.
+- **D1 — the canonical synthesis spec.** `docs/superpowers/specs/2026-11-03-canonical-synthesis-spec.md`.
+- **D2 — the voice isolation test.** The voices' streams are compared, not
+  differenced mixes: (a + b) - a is not b in floating point.
+
+### Rulings
+
+- **A3: Ruling:** the step boundary is checked per sample rather than per
+  buffer, and the song-level modulation pass runs per sample too. Neither is
+  a performance question -- both are correctness: a note must fire on the
+  sample it belongs to. The cost is the song-level pass running per sample
+  rather than per buffer, which the A4 work more than paid for.
+  — *Why:* the buffer size must not be a parameter of the sound. — *Cost if
+  wrong:* a slower song-level path on a device that has many song-level mods.
+- **A4: Ruling:** the pass skips the parameters that are neither modulated nor
+  a source's output, and the disconnection resets a destination to its base
+  value. The source's output is *not* skipped: a source that stops generating
+  leaves its last value behind, and the refresh is what clears it.
+  — *Why:* the existing tests (test_modsystem, test_mod_voice) failed on the
+  first version of the skip, which is how both conditions were found.
+  — *Cost if wrong:* a source that stops generating leaves a stale value.
+- **D2: Ruling:** the isolation test compares the voice's own stream rather
+  than a difference of mixes, and each render gets its own scene. The first
+  version of the test rendered the same scene twice and failed for that
+  reason -- a voice's state advances as it is rendered -- which is worth
+  knowing: the test's own bug looked exactly like the bug it was written to
+  find. — *Cost if wrong:* none; the formulation is the right one.
+- **C1: Ruling:** the profile is a JSON file in the user's config directory,
+  not a TOML in `devices/`. The static device facts stay in `devices/<id>.toml`
+  (they ship with the app); the measured half is written at runtime, so it
+  belongs with the user's own files. — *Cost if wrong:* a second format to
+  read.
+
+### Still outstanding
+
+- **C3** the runtime governor: the callback's utilisation drives the voice
+  slots' grant and withdrawal.
+- **C2's remainder** the permitted voice types (the GUI's job) and the
+  sample-pool ceiling (the pool's storage is a fixed array today).
+- **E1** the sequencer's note velocity into the voice.
+- **D3's remaining legs** the armhf leg (deferred: the Miyoo Mini is
+  best-effort, much later, by the human partner's decision) and the
+  scalar-versus-NEON leg.
