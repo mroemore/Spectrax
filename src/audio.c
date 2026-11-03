@@ -120,8 +120,15 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 	clock_t start, end;
 	double cpu_time_used;
 	start = clock();
-	int stepSamples = data->arranger->tempoSettings.swingStep ? data->arranger->tempoSettings.samplesPerOddStep : data->arranger->tempoSettings.samplesPerEvenStep;
-	if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
+	/* The step boundary is checked inside the sample loop, not here: a
+	 * note must fire on the sample it belongs to. Checking it once per
+	 * buffer made the note fire at the next buffer's start -- up to a
+	 * whole buffer late -- so the onset moved with the callback's buffer
+	 * size. The buffer size is a latency knob, not a parameter of the
+	 * sound. */
+	for(i = 0; i < framesPerBuffer; i++) {
+		int stepSamples = data->arranger->tempoSettings.swingStep ? data->arranger->tempoSettings.samplesPerOddStep : data->arranger->tempoSettings.samplesPerEvenStep;
+		if(data->arranger->tempoSettings.samplesElapsed >= stepSamples) {
 		data->arranger->tempoSettings.samplesElapsed = 0;
 		if(data->arranger->playing) {
 			if(g_probeTempo) {
@@ -164,16 +171,20 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 				? data->arranger->tempoSettings.samplesPerOddStep
 				: data->arranger->tempoSettings.samplesPerEvenStep;
 		}
-	}
+		}
 
-	/* Task 2.4: audio comes solely from the per-voice mod graphs. The
-	 * instrument's own modLists no longer run in the audio path (their
-	 * sources/dests are the control plane; voices carry the copies and
-	 * syncVoiceGraph pulls live baseValues every buffer). */
-	// process song-level param changes:
-	processModulations(data->globalParameters, data->modList, 1.0f / framesPerBuffer);
+		/* Task 2.4: audio comes solely from the per-voice mod graphs. The
+		 * instrument's own modLists no longer run in the audio path (their
+		 * sources/dests are the control plane; voices carry the copies and
+		 * syncVoiceGraph pulls live baseValues every buffer).
+		 *
+		 * The song-level pass runs per sample, like the voices' own. It used
+		 * to run once per buffer with deltaTime = 1/framesPerBuffer, which
+		 * made the song-level mods advance by a buffer's worth of time at a
+		 * time: their phase was a staircase whose step was the buffer size,
+		 * and the buffer size was therefore a parameter of the sound. */
+		processModulations(data->globalParameters, data->modList, 1.0f / SPECTRAX_ENGINE_RATE);
 
-	for(i = 0; i < framesPerBuffer; i++) {
 		float left_output = 0.0f;
 		float right_output = 0.0f;
 

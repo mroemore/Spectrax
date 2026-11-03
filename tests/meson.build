@@ -83,6 +83,11 @@ foreach name : test_names
   elif name == 'test_golden_render'
     # The recorded hash lives in the repo, so the test needs the root.
     test_c_args = ['-DSPECTRAX_REPO_ROOT="' + meson.project_source_root() + '"']
+    # The callback render needs the same surface as the concurrency test:
+    # seq_lib for the sequencer, the GUI lib for the draw helpers the
+    # arranger pulls in transitively, and vizfx for the scroller and the
+    # mix ring the callback pushes into.
+    link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]
   elif name == 'test_canonical_math'
     # The contract test greps the canonical sources, so it needs their path.
     test_c_args = ['-DSPECTRAX_SRC_DIR="' + meson.project_source_root() + '/src"']

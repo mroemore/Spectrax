@@ -28,6 +28,8 @@
 
 #include "settings.h"
 #include "voice.h"
+#include "audio.h"
+#include "fft.h"
 #include "modsystem.h"
 #include "notes.h"
 
@@ -199,11 +201,187 @@ static int test_the_render_matches_the_recorded_hash(void) {
 	return 0;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* The same scene through the real callback, at three buffer sizes.    */
+/* ------------------------------------------------------------------ */
+
+/* The callback is where the buffer size can leak into the output: the
+ * sequencer's step advance and the global modulation pass both used to be
+ * checked once per buffer, so a note fired at a buffer boundary and the
+ * song-level mods advanced by a buffer's worth of time at a time. The
+ * render must be identical whatever the buffer size is -- that is what
+ * makes the callback's buffer size a latency knob rather than a quality
+ * knob. */
+typedef struct {
+	paTestData data;
+	SamplePool *sp;
+	WavetablePool *wtp;
+} CallbackEnv;
+
+static int callbackSetup(CallbackEnv *e) {
+	memset(e, 0, sizeof(*e));
+	e->sp = createSamplePool();
+	if(!e->sp) {
+		return 1;
+	}
+	e->wtp = createWavetablePool();
+	if(!e->wtp) {
+		return 1;
+	}
+	initPresetBank(&e->data.presetBank);
+	Preset p;
+	initDefaultFmPreset(&p);
+	addPresetToBank(&e->data.presetBank, p);
+
+	Settings settings;
+	memset(&settings, 0, sizeof(settings));
+	settings.enabledChannels = 1;
+	settings.defaultVoiceCount = 2;
+	settings.defaultBPM = 120;
+
+	e->data.samplePool = e->sp;
+	e->data.wavetablePool = e->wtp;
+	e->data.globalParameters = createParamList();
+	e->data.modList = createModList();
+	e->data.voiceManager = createVoiceManager(&settings, e->sp, e->wtp, &e->data.presetBank);
+	if(!e->data.voiceManager) {
+		return 1;
+	}
+	e->data.arranger = createArranger(&settings, e->data.voiceManager, NULL, e->data.globalParameters);
+	if(!e->data.arranger) {
+		return 1;
+	}
+	e->data.arranger->enabledChannels = 1;
+	e->data.arranger->playing = true;
+	e->data.arranger->tempoSettings.samplesPerEvenStep = 256;
+	e->data.arranger->tempoSettings.samplesPerOddStep = 256;
+	e->data.patternList = createPatternList(NULL);
+	if(!e->data.patternList) {
+		return 1;
+	}
+	static int notes[4][NOTE_INFO_SIZE];
+	for(int i = 0; i < 4; i++) {
+		notes[i][0] = i;
+		notes[i][1] = 4;
+	}
+	int pat = addPattern(e->data.patternList, 4, notes);
+	if(pat != 0) {
+		return 1;
+	}
+	e->data.arranger->song[0][0] = pat;
+	e->data.sequencer = createSequencer(e->data.arranger);
+	if(!e->data.sequencer) {
+		return 1;
+	}
+	initFFT(&e->data.spectrogram.fft, 512, 256, 1, false, false);
+	return 0;
+}
+
+static void callbackTeardown(CallbackEnv *e) {
+	if(e->data.voiceManager) {
+		freeVoiceManager(e->data.voiceManager);
+		e->data.voiceManager = NULL;
+	}
+	if(e->sp) {
+		freeSamplePool(e->sp);
+		e->sp = NULL;
+	}
+	if(e->wtp) {
+		freeWavetablePool(e->wtp);
+		e->wtp = NULL;
+	}
+}
+
+/* Render the scene through the real callback, in buffers of
+ * `framesPerBuffer` frames, and return the hash of the samples. */
+static uint64_t goldenRenderCallback(int framesPerBuffer) {
+	CallbackEnv e;
+	if(callbackSetup(&e) != 0) {
+		return 0;
+	}
+	const int totalFrames = 8192;
+	float *buf = (float *)malloc(sizeof(float) * (size_t)framesPerBuffer * 2);
+	if(!buf) {
+		callbackTeardown(&e);
+		return 0;
+	}
+	uint64_t h = FNV_OFFSET;
+	int done = 0;
+	while(done < totalFrames) {
+		renderAudioBuffer(&e.data, buf, (unsigned long)framesPerBuffer);
+		h = hashBytes(h, buf, sizeof(float) * (size_t)framesPerBuffer * 2);
+		done += framesPerBuffer;
+	}
+	free(buf);
+	callbackTeardown(&e);
+	return h;
+}
+
+/* The render must not depend on the buffer size. */
+static int test_the_render_is_buffer_size_neutral(void) {
+	uint64_t at128 = goldenRenderCallback(128);
+	uint64_t at256 = goldenRenderCallback(256);
+	uint64_t at512 = goldenRenderCallback(512);
+	if(at128 == 0 || at256 == 0 || at512 == 0) {
+		printf("FAIL: the callback render produced nothing\n");
+		return 1;
+	}
+	if(at128 != at256 || at128 != at512) {
+		printf("FAIL: the render depends on the buffer size: %016llx (128), %016llx (256), %016llx (512)\n",
+		       (unsigned long long)at128, (unsigned long long)at256, (unsigned long long)at512);
+		return 1;
+	}
+	printf("PASS test_the_render_is_buffer_size_neutral\n");
+	return 0;
+}
+
+/* And the callback's render is recorded, so a change in the engine's
+ * output is visible in the diff rather than only in the ears. */
+static int test_the_callback_render_matches_the_recorded_hash(void) {
+	char path[1024];
+	snprintf(path, sizeof(path), "%s/tests/golden/callback.render.hash", SPECTRAX_REPO_ROOT);
+	uint64_t got = goldenRenderCallback(256);
+	if(getenv("SPECTRAX_GOLDEN_RECORD")) {
+		FILE *w = fopen(path, "w");
+		if(!w) {
+			printf("FAIL: cannot write %s\n", path);
+			return 1;
+		}
+		fprintf(w, "%016llx\n", (unsigned long long)got);
+		fclose(w);
+		printf("RECORDED %016llx into %s\n", (unsigned long long)got, path);
+		return 0;
+	}
+	FILE *f = fopen(path, "r");
+	if(!f) {
+		printf("FAIL: cannot read %s\n", path);
+		return 1;
+	}
+	unsigned long long want = 0;
+	if(fscanf(f, "%llx", &want) != 1) {
+		fclose(f);
+		printf("FAIL: %s does not hold a hash\n", path);
+		return 1;
+	}
+	fclose(f);
+	if(got != (uint64_t)want) {
+		printf("FAIL: the callback render hashes %016llx, the recorded value is %016llx\n",
+		       (unsigned long long)got, want);
+		printf("      (if this is an intentional change, update %s)\n", path);
+		return 1;
+	}
+	printf("PASS test_the_callback_render_matches_the_recorded_hash\n");
+	return 0;
+}
+
 int main(void) {
 	initModSystem();
 	int fails = 0;
 	fails += test_the_render_is_reproducible();
 	fails += test_the_render_matches_the_recorded_hash();
+	fails += test_the_render_is_buffer_size_neutral();
+	fails += test_the_callback_render_matches_the_recorded_hash();
 	if(fails) {
 		fprintf(stderr, "%d golden-render test(s) failed\n", fails);
 		return 1;
