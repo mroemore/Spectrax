@@ -274,6 +274,21 @@ static int callbackSetup(CallbackEnv *e) {
 	if(!e->data.sequencer) {
 		return 1;
 	}
+	/* The runtime governor is out of force here.
+	 *
+	 * The governor is a load policy: it narrows the number of voices that
+	 * may sound when the callback is missing its deadline, so that a
+	 * struggling machine sheds voices instead of glitching. That is
+	 * criterion B -- the budget adapting -- and it is deliberately
+	 * load-dependent.
+	 *
+	 * The golden render is criterion C: the engine's output must be the
+	 * same bits on every machine. A load-dependent policy cannot be in
+	 * that path, or the hash would differ between a fast desktop and a
+	 * slow handheld for reasons that have nothing to do with the
+	 * synthesis. The policy itself is checked by
+	 * tests/dsp/test_voice_governor.c. */
+	governorSetEnabled(&e->data.voiceManager->governor, false);
 	initFFT(&e->data.spectrogram.fft, 512, 256, 1, false, false);
 	return 0;
 }

@@ -21,6 +21,7 @@ test_names = [
   'test_voice_isolation',
   'test_device_budget',
   'test_device_calibrate',
+  'test_voice_governor',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -83,6 +84,9 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_voice_governor'
+    # The governor is a standalone policy module.
+    link_libs = [core_lib]
   elif name == 'test_device_calibrate'
     # The calibration renders a voice, so it needs the voice manager and
     # the preset bank.

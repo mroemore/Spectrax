@@ -119,6 +119,13 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 	float max_output = 0.0f;
 	clock_t start, end;
 	double cpu_time_used;
+	/* The governor's own measurement: the wall-clock time this callback
+	 * took, measured around it. clock() is not usable here -- it counts
+	 * the CPU time of every thread in the process, so the GUI's rendering
+	 * would be counted against the audio callback's deadline. */
+	struct timespec wallStart;
+	struct timespec wallEnd;
+	clock_gettime(CLOCK_MONOTONIC, &wallStart);
 	start = clock();
 	/* The step boundary is checked inside the sample loop, not here: a
 	 * note must fire on the sample it belongs to. Checking it once per
@@ -285,5 +292,22 @@ void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuff
 	end = clock();
 	cpu_time_used = (((double)(end - start)) / CLOCKS_PER_SEC) * 1000.0f;
 	pushTimeGraphMeasurement(&data->timeGraph, cpu_time_used);
+
+	/* The governor: how much of its deadline the callback used, as a
+	 * fraction. The deadline is the buffer's duration at the engine's
+	 * rate, so a callback that finishes in time scores below 1.
+	 *
+	 * The measurement is the callback's own wall-clock duration, not the
+	 * process's CPU time: the GUI renders on another thread, and its
+	 * cost is not the audio callback's. */
+	clock_gettime(CLOCK_MONOTONIC, &wallEnd);
+	if(data->voiceManager) {
+		double elapsedMs = ((double)(wallEnd.tv_sec - wallStart.tv_sec) * 1000.0) +
+		                   ((double)(wallEnd.tv_nsec - wallStart.tv_nsec) / 1000000.0);
+		double deadlineMs = (1000.0 * (double)framesPerBuffer) / (double)SPECTRAX_ENGINE_RATE;
+		if(deadlineMs > 0.0) {
+			governorObserve(&data->voiceManager->governor, elapsedMs / deadlineMs);
+		}
+	}
 	pthread_mutex_unlock(&g_audioLock);
 }

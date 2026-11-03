@@ -33,6 +33,10 @@ VoiceManager *createVoiceManager(Settings *settings, SamplePool *sp, WavetablePo
 	vm->wavetablePool = wtp;
 	vm->samplePool = sp;
 	vm->enabledChannels = settings->enabledChannels;
+	/* The governor starts at the pool's size: the pool is the ceiling, and
+	 * the governor narrows it when the callback's measured cost says the
+	 * machine is struggling. */
+	governorInit(&vm->governor, settings->defaultVoiceCount);
 
 	// Initialize voiceCount to 0 for all channels
 	for(int i = 0; i < MAX_SEQUENCER_CHANNELS; i++) {
@@ -245,9 +249,55 @@ Voice *getFreeVoice(VoiceManager *vm, int seqChannel) {
 	int voiceIndex = 0;
 	switch(vm->voiceAllocation[seqChannel]) {
 		case VA_FREE_OR_ZERO:
+			/* The governor's limit: how many voices may sound at once on
+			 * this channel. At the limit, a note takes the *oldest*
+			 * sounding voice -- the one that has had its turn -- rather
+			 * than a free one. The choice is pinned, so the same notes
+			 * always take the same voice, on every machine.
+			 *
+			 * The steal only changes which voices sound. It never touches
+			 * a voice's parameters, so a voice that survives sounds
+			 * exactly as it would have without it (criterion C). */
+			int activeCount = 0;
+			int poolFull = 1;
 			for(int i = 0; i < vm->voiceCount[seqChannel]; i++) {
-				if(vm->voicePools[seqChannel][i]->active == 0) {
+				Voice *v = vm->voicePools[seqChannel][i];
+				if(v->active) {
+					activeCount++;
+				} else {
+					poolFull = 0;
 					voiceIndex = i;
+				}
+			}
+			/* A voice is taken when the pool is full, or when the
+			 * governor's limit is below the number already sounding.
+			 *
+			 * The victim is the OLDEST sounding voice -- the one that has
+			 * had its turn. The choice is pinned, so the same notes
+			 * always take the same voice, on every machine and every
+			 * run: an arbitrary victim would make the engine's output
+			 * depend on the order the voices happened to be in.
+			 *
+			 * The steal only changes which voices sound. It never touches
+			 * a voice's parameters, so a voice that survives sounds
+			 * exactly as it would have without it (criterion C). */
+			int limit = vm->governor.enabled ? governorLimit(&vm->governor) : vm->voiceCount[seqChannel];
+			if(activeCount > 0 && (poolFull || activeCount >= limit)) {
+				long ages[MAX_VOICES_PER_CHANNEL];
+				int indexes[MAX_VOICES_PER_CHANNEL];
+				int n = 0;
+				for(int i = 0; i < vm->voiceCount[seqChannel]; i++) {
+					Voice *v = vm->voicePools[seqChannel][i];
+					if(v->active) {
+						ages[n] = v->samplesElapsed;
+						indexes[n] = i;
+						n++;
+					}
+				}
+				long victim = governorPickVictim(ages, n);
+				if(victim >= 0) {
+					governorNoteStolen(&vm->governor, ages[victim]);
+					return vm->voicePools[seqChannel][indexes[victim]];
 				}
 			}
 			break;

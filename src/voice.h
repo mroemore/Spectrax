@@ -9,6 +9,7 @@
 #include "sample.h"
 #include "notes.h"
 #include "modsystem.h"
+#include "voice_governor.h"
 #include "blit_synth.h"
 #include "filters.h"
 #include "fft.h"
@@ -342,6 +343,11 @@ typedef enum {
 } AllocationBehaviour;
 
 typedef struct VoiceManager {
+	/* The runtime governor: how many voices may sound at once, and how
+	 * that number moves with the callback's measured cost. It only ever
+	 * changes how many voices sound -- never what a voice sounds -- so a
+	 * voice's output stays a pure function of its settings. */
+	VoiceGovernor governor;
 	Voice *voicePools[MAX_SEQUENCER_CHANNELS][MAX_VOICES_PER_CHANNEL];
 	Instrument *instruments[MAX_SEQUENCER_CHANNELS];
 	VoiceType voiceTypes[MAX_SEQUENCER_CHANNELS];
