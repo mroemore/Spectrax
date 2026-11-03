@@ -54,6 +54,24 @@ typedef struct {
  * desktop uses. */
 void deviceBudgetDefaults(DeviceBudget *out);
 
+/* The voice types this device may offer.
+ *
+ * This is the engine's copy of the budget's mask, so the engine can
+ * refuse a voice type the device does not permit even when the request
+ * does not come from the GUI (a preset that names one, a script, a
+ * saved session). The GUI greys the others out; this is what makes the
+ * refusal real.
+ *
+ * It is a module-level setting rather than a parameter of every call,
+ * because it is a property of the device, set once at startup. */
+void deviceBudgetSetPermittedVoiceTypes(int mask);
+int deviceBudgetPermittedVoiceTypes(void);
+
+/* The budget's bit for a voice type. The engine's VoiceType enum and the
+ * budget's mask are separate enumerations, so the mapping lives in one
+ * place rather than being assumed to match. */
+int deviceBudgetMaskForVoiceType(int voiceType);
+
 /* Derive a budget from a measurement.
  *
  * `nanosPerVoiceSample` is the measured cost of one voice's synthesis

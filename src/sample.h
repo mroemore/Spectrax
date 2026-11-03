@@ -45,15 +45,33 @@ typedef struct {
 typedef float (*GetSampleFunc)(Sample *sample, float *samplePosition, float phaseIncrement, int loop);
 
 typedef struct {
+	/* The arena the samples' data lives in. It is allocated when the
+	 * first sample arrives and grown as more arrive, up to
+	 * capacityBytes -- it is not allocated up front, because the largest
+	 * sample in the tree is far smaller than the ceiling and a device
+	 * with one sample in it should not pay for the ceiling. */
 	char *sampleData;
+	/* How much of the arena is in use. */
 	size_t memoryUsed;
+	/* How much of the arena is allocated. */
+	size_t allocatedBytes;
+	/* The ceiling: the most the pool may hold. The device's budget sets
+	 * it, because on a small device the pool is the largest single
+	 * allocation the engine makes. */
+	size_t capacityBytes;
 	Sample **samples;
 	size_t sampleCount;
 	size_t maxSamples;
 } SamplePool;
 
+/* Create the pool. The ceiling defaults to MAX_SAMPLE_POOL_BYTES. */
+SamplePool *createSamplePool(void);
+
+/* Create the pool with a ceiling: the most it may hold, in bytes. The
+ * device's budget sets it. */
+SamplePool *createSamplePoolWithCapacity(size_t capacityBytes);
+
 void loadSample(SamplePool *sp, const char *name, float *data, int bit, int sampleSr, int length);
-SamplePool *createSamplePool();
 void freeSamplePool(SamplePool *sp);
 void freeSample(Sample *sample);
 float getSampleValueFwd(Sample *sample, float *samplePosition, float phaseIncrement, int loop);

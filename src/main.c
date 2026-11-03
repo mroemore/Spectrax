@@ -1156,6 +1156,9 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	if(g_deviceBudget.voicesPerChannel < settings->defaultVoiceCount) {
 		settings->defaultVoiceCount = g_deviceBudget.voicesPerChannel;
 	}
+	/* The voice types this device may offer. The engine refuses the
+	 * others, so the GUI's greying out is backed by a real refusal. */
+	deviceBudgetSetPermittedVoiceTypes(g_deviceBudget.voiceTypes);
 	if(settings->themeFile[0] == '\0') {
 		strncpy(settings->themeFile, "clr.json", sizeof(settings->themeFile) - 1);
 		settings->themeFile[sizeof(settings->themeFile) - 1] = '\0';
@@ -1172,7 +1175,12 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 		return;
 	}
 
-	data->samplePool = createSamplePool();
+	/* The sample pool's ceiling is the device's budget. The pool used to
+	 * malloc a fixed 32 MB arena whether the device had a sample in it or
+	 * not; the budget's number is what this device can spare. */
+	long poolBytes = g_deviceBudgetLoaded ? g_deviceBudget.samplePoolBytes : 0;
+	data->samplePool = (poolBytes > 0) ? createSamplePoolWithCapacity((size_t)poolBytes)
+	                                   : createSamplePool();
 	if(!data->samplePool) {
 		printf("samplePool creation failed.\n");
 		return;

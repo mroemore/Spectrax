@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #include "device_budget.h"
+#include "voice.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
 #define ASSERT_EQ(a, b, m) do { if((a) != (b)) { \
@@ -139,6 +140,40 @@ static int test_a_missing_profile_is_not_measured(void) {
 	return 0;
 }
 
+/* The permitted voice types: the engine refuses a type the device does
+ * not offer, so the GUI's greying out is backed by something real. */
+static int test_the_voice_type_mask_is_enforced(void) {
+	int saved = deviceBudgetPermittedVoiceTypes();
+	/* Only the FM type is permitted. */
+	deviceBudgetSetPermittedVoiceTypes(DEVICE_BUDGET_VOICE_FM);
+	ASSERT_EQ(deviceBudgetPermittedVoiceTypes(), DEVICE_BUDGET_VOICE_FM,
+	          "the mask is remembered");
+	ASSERT_EQ(deviceBudgetMaskForVoiceType(VOICE_TYPE_FM), DEVICE_BUDGET_VOICE_FM,
+	          "the FM type's bit");
+	ASSERT_EQ(deviceBudgetMaskForVoiceType(VOICE_TYPE_SAMPLE), DEVICE_BUDGET_VOICE_SAMPLE,
+	          "the sampler type's bit");
+	/* A type outside the enum has no bit. */
+	ASSERT_EQ(deviceBudgetMaskForVoiceType(VOICE_TYPE_COUNT), 0,
+	          "a type past the end has no bit");
+	deviceBudgetSetPermittedVoiceTypes(saved);
+	printf("PASS test_the_voice_type_mask_is_enforced\n");
+	return 0;
+}
+
+/* The default mask permits the three types that work, and not the two
+ * that cannot make a sound. */
+static int test_the_default_mask_permits_only_the_working_types(void) {
+	DeviceBudget b;
+	deviceBudgetDefaults(&b);
+	ASSERT_TRUE((b.voiceTypes & DEVICE_BUDGET_VOICE_SAMPLE) != 0, "the sampler type");
+	ASSERT_TRUE((b.voiceTypes & DEVICE_BUDGET_VOICE_FM) != 0, "the FM type");
+	ASSERT_TRUE((b.voiceTypes & DEVICE_BUDGET_VOICE_BLEP) != 0, "the BLEP type");
+	ASSERT_TRUE((b.voiceTypes & DEVICE_BUDGET_VOICE_GRAIN) == 0, "not the granular type");
+	ASSERT_TRUE((b.voiceTypes & DEVICE_BUDGET_VOICE_SPECTRAL) == 0, "not the spectral type");
+	printf("PASS test_the_default_mask_permits_only_the_working_types\n");
+	return 0;
+}
+
 int main(void) {
 	int fails = 0;
 	fails += test_the_defaults_are_sane();
@@ -149,6 +184,8 @@ int main(void) {
 	fails += test_the_sample_pool_scales_with_the_memory();
 	fails += test_the_profile_round_trips();
 	fails += test_a_missing_profile_is_not_measured();
+	fails += test_the_voice_type_mask_is_enforced();
+	fails += test_the_default_mask_permits_only_the_working_types();
 	if(fails) {
 		fprintf(stderr, "%d device-budget test(s) failed\n", fails);
 		return 1;

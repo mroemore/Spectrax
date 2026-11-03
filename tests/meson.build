@@ -23,6 +23,7 @@ test_names = [
   'test_device_calibrate',
   'test_voice_governor',
   'test_note_velocity',
+  'test_sample_pool',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -85,6 +86,9 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_sample_pool'
+    # The sample pool is a leaf module.
+    link_libs = [core_lib]
   elif name == 'test_note_velocity'
     # The velocity reaches the voice through the sequencer and the file.
     link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]

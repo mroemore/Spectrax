@@ -7,6 +7,7 @@
 #include "blit_synth.h"
 #include "modsystem.h"
 #include "sample.h"
+#include "device_budget.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -711,6 +712,16 @@ static void freeInstrument(Instrument *inst) {
 bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt) {
 	if(!vm || channel < 0 || channel >= vm->enabledChannels) return false;
 	if(vt != VOICE_TYPE_SAMPLE && vt != VOICE_TYPE_FM && vt != VOICE_TYPE_BLEP) return false;
+	/* The device's budget says which voice types this machine may offer.
+	 * GRAIN and SPECTRAL cannot make a sound at all (their generators are
+	 * a stub and an uninitialised buffer), and the budget may forbid
+	 * more than that on a constrained device. The GUI greys the others
+	 * out; this is what makes the refusal real, so a preset or a script
+	 * cannot smuggle one in. */
+	int permitted = deviceBudgetPermittedVoiceTypes();
+	if(permitted != 0 && (permitted & deviceBudgetMaskForVoiceType(vt)) == 0) {
+		return false;
+	}
 	pthread_mutex_lock(&g_audioLock);
 	Instrument *old = vm->instruments[channel];
 	if(old) old->rebuilding = true;

@@ -1,4 +1,5 @@
 #include "device_budget.h"
+#include "voice.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -27,6 +28,31 @@
 #define DEVICE_BUDGET_MAX_VOICES 16
 #define DEVICE_BUDGET_MIN_CHANNELS 1
 #define DEVICE_BUDGET_MAX_CHANNELS 16
+
+/* The device's permitted voice types. See device_budget.h. */
+static int g_permittedVoiceTypes = DEVICE_BUDGET_DEFAULT_VOICE_TYPES;
+
+void deviceBudgetSetPermittedVoiceTypes(int mask) {
+	g_permittedVoiceTypes = mask;
+}
+
+int deviceBudgetPermittedVoiceTypes(void) {
+	return g_permittedVoiceTypes;
+}
+
+/* The budget's bitmask and the engine's VoiceType enum have to agree.
+ * The mapping is here rather than in the header so the enum's order is
+ * not the mask's order by accident. */
+int deviceBudgetMaskForVoiceType(int voiceType) {
+	switch(voiceType) {
+		case VOICE_TYPE_SAMPLE: return DEVICE_BUDGET_VOICE_SAMPLE;
+		case VOICE_TYPE_FM: return DEVICE_BUDGET_VOICE_FM;
+		case VOICE_TYPE_BLEP: return DEVICE_BUDGET_VOICE_BLEP;
+		case VOICE_TYPE_GRAIN: return DEVICE_BUDGET_VOICE_GRAIN;
+		case VOICE_TYPE_SPECTRAL: return DEVICE_BUDGET_VOICE_SPECTRAL;
+		default: return 0;
+	}
+}
 
 void deviceBudgetDefaults(DeviceBudget *out) {
 	if(!out) {

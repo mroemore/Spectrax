@@ -4,9 +4,14 @@
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdbool.h>
 #include "settings.h"
 
-SamplePool *createSamplePool() {
+SamplePool *createSamplePool(void) {
+	return createSamplePoolWithCapacity(MAX_SAMPLE_POOL_BYTES);
+}
+
+SamplePool *createSamplePoolWithCapacity(size_t capacityBytes) {
 	// printf("creating sample pool.\n");
 
 	SamplePool *sp = (SamplePool *)malloc(sizeof(SamplePool));
@@ -14,25 +19,74 @@ SamplePool *createSamplePool() {
 		printf("could not allocate memory for sample pool struct.\n");
 		return NULL;
 	}
-	sp->sampleData = (char *)malloc(MAX_SAMPLE_POOL_BYTES);
-	if(!sp->sampleData) {
-		free(sp);
-		printf("could not allocate memory for sample pool data.\n");
-		return NULL;
-	}
-
+	/* The arena is NOT allocated here. The pool used to malloc the whole
+	 * ceiling up front -- 32 MB by default -- whether the device had one
+	 * sample in it or none. On a 128 MB handheld that is a quarter of the
+	 * RAM, held for the app's whole life, and the pool is the largest
+	 * single allocation the engine makes.
+	 *
+	 * It is allocated when the first sample arrives and grown as more
+	 * arrive, up to the ceiling. */
+	sp->sampleData = NULL;
 	sp->memoryUsed = 0;
+	sp->allocatedBytes = 0;
+	sp->capacityBytes = capacityBytes;
 	sp->samples = malloc(sizeof(Sample *) * MAX_LOADED_SAMPLES);
 	sp->sampleCount = 0;
 	sp->maxSamples = MAX_LOADED_SAMPLES;
 	if(!sp->samples) {
-		free(sp->sampleData);
 		free(sp);
 		printf("could not allocate memory for sample within pool.\n");
 		return NULL;
 	}
 	printf("\t-> DONE.\n");
 	return sp;
+}
+
+/* Make room for `needed` more bytes in the arena, growing it if it must.
+ *
+ * The arena is one block, so growing it moves the memory every loaded
+ * sample points into: the samples' data pointers have to be fixed up
+ * afterwards, or they would point into the freed block.
+ *
+ * Returns false when the pool's ceiling would be passed, or when the
+ * allocation fails. */
+static bool samplePoolReserve(SamplePool *sp, size_t needed) {
+	if(sp->memoryUsed + needed > sp->capacityBytes) {
+		return false;
+	}
+	if(sp->sampleData && sp->memoryUsed + needed <= sp->allocatedBytes) {
+		return true;
+	}
+	/* Grow geometrically, so a pool that receives a hundred samples does
+	 * not reallocate a hundred times. */
+	size_t want = sp->allocatedBytes ? sp->allocatedBytes : 65536;
+	while(want < sp->memoryUsed + needed) {
+		if(want > sp->capacityBytes / 2) {
+			want = sp->capacityBytes;
+			break;
+		}
+		want *= 2;
+	}
+	if(want > sp->capacityBytes) {
+		want = sp->capacityBytes;
+	}
+	char *grown = (char *)realloc(sp->sampleData, want);
+	if(!grown) {
+		return false;
+	}
+	/* Fix up the samples that pointed into the old block. The offsets
+	 * are computed from the old base, before it was replaced. */
+	for(size_t i = 0; i < sp->sampleCount; i++) {
+		Sample *s = sp->samples[i];
+		if(s && s->data && sp->sampleData) {
+			size_t offset = (size_t)((char *)s->data - sp->sampleData);
+			s->data = (float *)(grown + offset);
+		}
+	}
+	sp->sampleData = grown;
+	sp->allocatedBytes = want;
+	return true;
 }
 
 void freeSamplePool(SamplePool *sp) {
@@ -59,7 +113,11 @@ void loadSample(SamplePool *sp, const char *name, float *data, int bit, int samp
 	 * that would run past the end instead of overflowing it. Also refuse once
 	 * the sample table is full — the previous code wrote samples[maxSamples]
 	 * out of bounds (found by P3 review). */
-	if(length < 0 || sp->memoryUsed + dataSize > (size_t)MAX_SAMPLE_POOL_BYTES) {
+	if(length < 0 || sp->memoryUsed + dataSize > sp->capacityBytes) {
+		printf("Sample pool exhausted\n");
+		return;
+	}
+	if(!samplePoolReserve(sp, dataSize)) {
 		printf("Sample pool exhausted\n");
 		return;
 	}
