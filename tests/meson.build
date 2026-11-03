@@ -18,6 +18,7 @@ test_names = [
   'test_canonical_math',
   'test_sampler_character',
   'test_golden_render',
+  'test_voice_isolation',
   'test_filters',
   'test_gui_layer',
   'test_gui_pattern',
@@ -80,6 +81,10 @@ foreach name : test_names
     # test_layout validates the SHIPPED config, not a fixture: compile the
     # repo path in so the test can never drift onto a stale copy.
     test_c_args = ['-DSPECTRAX_SRC_LAYOUT_JSON="' + meson.project_source_root() + '/src/layout.json"']
+  elif name == 'test_voice_isolation'
+    # The voices live in the voice manager, and the sequencer's helpers are
+    # pulled in transitively.
+    link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]
   elif name == 'test_golden_render'
     # The recorded hash lives in the repo, so the test needs the root.
     test_c_args = ['-DSPECTRAX_REPO_ROOT="' + meson.project_source_root() + '"']
