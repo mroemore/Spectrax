@@ -43,5 +43,11 @@ src/sampler_character.c  66
 # round-trip are covered by tests/dsp/test_device_budget.c. The
 # uncovered branches are the file's own error paths.
 src/device_budget.c         57
+# The calibration and the governor: their arithmetic and their decisions are
+# covered by tests/dsp/test_device_calibrate.c and
+# tests/dsp/test_voice_governor.c. The uncovered branches are the files'
+# own error paths.
+src/device_calibrate.c     53
+src/voice_governor.c       75
 src/canonical_math.c     51
 src/sintab.c             85
