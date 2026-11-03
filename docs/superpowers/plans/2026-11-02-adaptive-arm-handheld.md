@@ -39,25 +39,39 @@ done.
       `canonicalOnePoleCoef`, all fixed sequences of correctly-rounded IEEE-754
       operations; the sine table rebuilt from a double-precision Taylor series.
       `0c2e075`.
-- [ ] **A3 — the control rate in samples.** The global modulation pass currently runs
-      once per buffer with `deltaTime = 1/framesPerBuffer`, so the callback's buffer
-      size is a synthesis input. The control tick must be a fixed sample count,
-      scheduled independently of the buffer size, with a pinned interpolation.
+- [ ] **A3 — the control rate in samples.** The buffer size is a synthesis input
+      in two places: the global modulation pass runs once per buffer with
+      `deltaTime = 1/framesPerBuffer`, and the sequencer's step advance is
+      checked per buffer, so a note fires at a buffer boundary and its onset
+      moves with the buffer size. The control tick must be a fixed sample count
+      scheduled from an *absolute* sample position (a per-buffer position would
+      be the same bug one level down), and the render loop must check for a step
+      boundary per sample. The proof is the golden render, driven through
+      `renderAudioBuffer` at 128, 256 and 512 frames, producing one hash.
+      *Analysis recorded in the sampler's ledger.*
 - [ ] **A4 — the compiled modulation plan.** `processModulations` walks every
       parameter slot and every modulator linked list per sample; replace it with a
       flat, dirty-rebuilt array of `(dest, source, op, amount)` tuples and direct
       field access.
-- [ ] **A5 — the per-voice PRNG.** The `MT_RND` modulator calls the global `rand()`
-      per sample, so a voice's output depends on the order of unrelated work. A
-      pinned xorshift32 seeded per entity, reused for the quantizer's dither.
-- [ ] **A6 — the strict FP flags and the no-libm lint.** The cross files still set
-      `-ffast-math`; drop it, add `-ffp-contract=off`, and extend the lint to the
-      whole audio path (`powf` in the envelope curve, `sinf`/`cosf` in the filter
-      coefficients, `sin` in the blit synthesiser).
-- [ ] **A7 — the golden and scripted verification harness.** A golden SHA-256 over a
-      canonical render, plus the corpus's scripted checks: a 4–8× sweep (aliases
-      appear as reflected downward streaks), THD+N by the notch method, the impulse
-      4-pole decay count, and the white-noise-through-envelope cutoff trajectory.
+- [x] **A5 — the per-voice PRNG.** The `MT_RND` modulator's global `rand()` is
+      replaced by a per-entity xorshift32 (`CanonicalRng`): every modulator seeds
+      its own, a voice's clone starts from the source's state, and the granular
+      processor's grain positions have their own. `ca2e86c`.
+- [x] **A6 — the strict FP flags and the no-libm lint.** The audio path's
+      remaining inexact calls are gone (`powf` in the attenuator's square root, in
+      `applyCurve` and in the curve table; `expf` in the envelope's slew;
+      `sinf`/`cosf` in the biquad's coefficients; `sin` in the BLEP's sine and the
+      granular window), and the lint covers the whole audio path plus the bake.
+      `-ffast-math` is gone everywhere; `-ffp-contract=off` replaces it.
+      `f17ece6`.
+- [~] **A7 — the golden and scripted verification harness.** The golden half is
+      done: `tests/dsp/test_golden_render.c` renders a canonical scene headlessly
+      and hashes it, the hash is compared exactly against a recorded value, and
+      the qemu smoke test runs the same test under qemu-aarch64 — **the host and
+      the ARM build produce the same hash**. The corpus's scripted checks (the
+      sweep alias, the THD+N notch, the impulse decay, the cutoff trajectory) are
+      the sampler's *filter's* checks, so they belong with the OTA cascade in the
+      GUI phase. `6798e1a`.
 
 ### Phase B — the sampler rebuild
 
@@ -97,8 +111,10 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
 - [ ] **D2 — the per-voice isolation tests.** Compare the per-voice output buffers,
       **not** differenced mixes: the corpus's later per-channel bus saturation is
       non-linear, so `mix(all) − mix(all−V) ≠ solo(V)`.
-- [ ] **D3 — the cross-architecture golden gate.** x86_64, aarch64 and armhf
-      (qemu-user), scalar and NEON, wired into the project test gate.
+- [~] **D3 — the cross-architecture golden gate.** The hash half is done: the
+      golden render runs under qemu-aarch64 in the test suite and matches the
+      host's. Still to come: the armhf leg, the scalar-vs-NEON leg, and the
+      per-voice isolation test that the gate should carry.
 
 ### Phase E — the sequencer velocity
 
@@ -142,6 +158,8 @@ plan:
 
 Each phase is evidenced by harness numbers, not narrative: the meson suite's count,
 the coverage gate's verdict, and the scripted fixtures' results. The landed work
-currently stands at **51/51 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
+currently stands at **52/52 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
 and **13/15 scripted fixtures** (the two failures, `chip_meta` and `save_overwrite`,
-are pre-existing and confirmed on the pre-consolidation branch).
+are pre-existing and confirmed on the pre-consolidation branch). The golden
+render's hash is `efb6e5e8a5e51c85`, identical on the x86-64 host and under
+qemu-aarch64.
