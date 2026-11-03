@@ -39,5 +39,9 @@ src/gui_style.c      60
 # exponent overflow, the non-positive logarithm and the NaN input, none of
 # which the tree's callers reach.
 src/sampler_character.c  66
+# The device's budget: the derivation's arithmetic and the profile's
+# round-trip are covered by tests/dsp/test_device_budget.c. The
+# uncovered branches are the file's own error paths.
+src/device_budget.c         57
 src/canonical_math.c     51
 src/sintab.c             85
