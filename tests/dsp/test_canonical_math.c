@@ -338,9 +338,14 @@ static int containsCall(const char *line, const char *name) {
 }
 
 static int test_canonical_module_calls_no_inexact_libm(void) {
-	/* The bake lives on the audio path too -- its output is read by the
-	 * voice -- so it is under the same invariant. */
-	static const char *const FILES[] = {"canonical_math.c", "sintab.c", "sampler_character.c"};
+	/* Every file on the audio path, plus the bake (whose output the audio
+	 * path reads). The list is the invariant's scope: a file that is not
+	 * listed is a file whose maths nobody has checked. */
+	static const char *const FILES[] = {
+		"canonical_math.c", "sintab.c", "sampler_character.c",
+		"audio.c", "voice.c", "oscillator.c", "modsystem.c", "filters.c",
+		"blit_synth.c", "sample.c", "sequencer.c", "wavetable.c", "notes.c",
+	};
 	for(size_t fi = 0; fi < sizeof(FILES) / sizeof(FILES[0]); fi++) {
 		char path[512];
 		snprintf(path, sizeof(path), "%s/%s", SPECTRAX_SRC_DIR, FILES[fi]);

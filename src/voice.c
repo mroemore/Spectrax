@@ -1,4 +1,5 @@
 #include "voice.h"
+#include "canonical_math.h"
 #include "fft.h"
 #include "kiss_fft.h"
 #include "kiss_fftr.h"
@@ -1590,7 +1591,7 @@ GranularProcessor *createGranularProcessor(Sample *s) {
 	gp->mainEnv = createAD(gp->paramList, gp->modList, 0.05, 10.5, "gEnv");
 	gp->sample = s;
 	for(int i = 0; i < GRAIN_WINDOW_SIZE; i++) {
-		gp->grainWindow[i] = sin(((float)i / GRAIN_WINDOW_SIZE) * TWO_PI);
+		gp->grainWindow[i] = canonicalSin((float)i / GRAIN_WINDOW_SIZE);
 		gp->windowIndex[i] = 0;
 	}
 	for(int i = 0; i < GRAIN_COUNT; i++) {

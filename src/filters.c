@@ -1,4 +1,5 @@
 #include "filters.h"
+#include "canonical_math.h"
 
 BiquadFilter* createBiquadFilter(BiquadType type){
     BiquadFilter* bf = (BiquadFilter*)malloc(sizeof(BiquadFilter));
@@ -122,8 +123,9 @@ Filter* createFilter(BiquadType bfType, FilterType fType, float freq, float q){
         case secondOrderLPF:
             angle = (TWOPI * freq) / PA_SR;
             d = 1 / q;
-            anglesin = sinf(angle);
-            anglecos = cosf(angle);
+            /* The angle is in radians; the canonical sine takes cycles. */
+            anglesin = canonicalSin(angle * (1.0f / TWOPI));
+            anglecos = canonicalCos(angle * (1.0f / TWOPI));
             beta = 0.5f * (
                 (1.0f - (d / 2.0f) * anglesin) /
                 (1.0f + (d / 2.0f) * anglesin)
@@ -140,8 +142,9 @@ Filter* createFilter(BiquadType bfType, FilterType fType, float freq, float q){
         case secondOrderHPF:
             angle = (TWOPI * freq) / PA_SR;
             d = 1 / q;
-            anglesin = sinf(angle);
-            anglecos = cosf(angle);
+            /* The angle is in radians; the canonical sine takes cycles. */
+            anglesin = canonicalSin(angle * (1.0f / TWOPI));
+            anglecos = canonicalCos(angle * (1.0f / TWOPI));
             beta = 0.5f * (
                 (1.0f - (d / 2.0f) * anglesin) /
                 (1.0f + (d / 2.0f) * anglesin)

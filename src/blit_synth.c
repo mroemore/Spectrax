@@ -1,4 +1,5 @@
 #include "blit_synth.h"
+#include "canonical_math.h"
 #include <math.h>
 #include <stdint.h>
 
@@ -21,7 +22,7 @@ float poly_blep(float phaseIncrement, float t) {
 		return 0.0f;
 }
 
-float noblep_sine(float phase) { return sin(TWOPI * phase); }
+float noblep_sine(float phase) { return canonicalSin(phase); }
 
 float blep_tri(float phase, float increment) {
 	float value = 0.0f;      // Init output to avoid nasty surprises

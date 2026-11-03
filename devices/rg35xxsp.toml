@@ -82,7 +82,7 @@ cross_file = "meson/cross/aarch64-linux-gnu.ini"
 libdir     = "lib/aarch64"
 incdir     = "include/aarch64"
 c_args     = ["-mcpu=cortex-a53", "-mtune=cortex-a53", "-O3",
-              "-ftree-vectorize", "-ffast-math", "-flto"]
+              "-ftree-vectorize", "-ffp-contract=off", "-flto"]
 
 [probes]
 # Resolved on a real unit 2026-10-22: userspace_arch aarch64, ports_dir

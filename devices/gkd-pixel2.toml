@@ -66,7 +66,7 @@ cross_file = "meson/cross/aarch64-linux-gnu.ini"
 libdir     = "lib/aarch64"
 incdir     = "include/aarch64"
 c_args     = ["-mcpu=cortex-a35", "-mtune=cortex-a35", "-O3",
-              "-ftree-vectorize", "-ffast-math", "-flto"]
+              "-ftree-vectorize", "-ffp-contract=off", "-flto"]
 
 [probes]
 needed = ["userspace_arch", "ports_dir", "gpu_driver", "gpu_helper"]

@@ -237,9 +237,9 @@ echo "building kissfft for $arch"
 mkdir -p "$work/kissfft-obj"
 # Compiled against the repository's own headers so the archive matches the
 # ABI the application sees (include/kiss_fft.h, include/kiss_fftr.h).
-"$cc" -c -O3 -ffast-math -I"$repo_root/include" -I"$work/kissfft" \
+"$cc" -c -O3 -ffp-contract=off -I"$repo_root/include" -I"$work/kissfft" \
     -o "$work/kissfft-obj/kiss_fft.o"  "$work/kissfft/kiss_fft.c"
-"$cc" -c -O3 -ffast-math -I"$repo_root/include" -I"$work/kissfft" \
+"$cc" -c -O3 -ffp-contract=off -I"$repo_root/include" -I"$work/kissfft" \
     -o "$work/kissfft-obj/kiss_fftr.o" "$work/kissfft/kiss_fftr.c"
 "$ar" rcs "$out_lib/libkissfft-float.a" "$work"/kissfft-obj/*.o
 

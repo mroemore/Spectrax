@@ -1,5 +1,6 @@
 #include "modsystem.h"
 #include "sintab.h"
+#include "canonical_math.h"
 // #include "envelope.h"
 
 #include <math.h>
@@ -31,9 +32,9 @@ void generateCurve(float *data, size_t length, float curve, int steepnessFactor)
 		if(fabsf(curve - 0.5f) < epsilon) {
 			data[i] = t;
 		} else if(curve > 0.5f) {
-			data[i] = powf(t, curve * 2 * steepnessFactor);
+			data[i] = canonicalPow(t, curve * 2 * steepnessFactor);
 		} else if(curve < 0.5f) {
-			data[i] = 1.0f - powf(1 - t, (1 - curve) * 2 * steepnessFactor);
+			data[i] = 1.0f - canonicalPow(1 - t, (1 - curve) * 2 * steepnessFactor);
 		}
 	}
 }
@@ -283,7 +284,10 @@ static void modGenerateAtten(void *self) {
 		v = fmaxf(v, 0.0f);
 	}
 	if(m->data.atten.attenCurve && getParameterValueAsInt(m->data.atten.attenCurve) == 1) {
-		v = copysignf(powf(fabsf(v), 0.5f), v);
+		/* The sign-preserving square root. canonicalPow is exp(y*log(x)),
+		 * which is the same curve libm's powf draws, to within an ULP --
+		 * and the same bits on every platform, which powf is not. */
+		v = copysignf(canonicalPow(fabsf(v), 0.5f), v);
 	}
 	setParameterValue(m->output, v);
 }
@@ -964,7 +968,7 @@ void generatePattern(void *self) {
 			 * slews toward target independently of stepProgress. */
 			float tc = 1.0f - getParameterValue(p->slew);
 			tc = (tc < 0.01f) ? 0.01f : tc;
-			p->currentValue += (target - p->currentValue) * (1.0f - expf(-1.0f / tc));
+			p->currentValue += (target - p->currentValue) * (1.0f - canonicalExp(-1.0f / tc));
 			break;
 		}
 		default:
@@ -1166,9 +1170,9 @@ float applyCurve(float x, float curvature) {
 
 	// Apply exponential curve
 	if(curve_amount > 0) {
-		return powf(x, 1.0f + curve_amount);
+		return canonicalPow(x, 1.0f + curve_amount);
 	} else {
-		return 1.0f - powf(1.0f - x, 1.0f - curve_amount);
+		return 1.0f - canonicalPow(1.0f - x, 1.0f - curve_amount);
 	}
 }
 

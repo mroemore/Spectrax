@@ -11,6 +11,17 @@ project('spectrax', 'c',
 
 cc = meson.get_compiler('c')
 
+# Criterion C: a voice's output must be the same bits on every machine.
+# FMA contraction is the one thing that would break that silently -- the
+# compiler may fuse a*b+c into an FMA on a machine that has one, and not on
+# one that does not, and the two differ in the last bit. -ffp-contract=off
+# forbids it. -ffast-math is not used anywhere: it permits reassociation,
+# which breaks the same invariant far worse.
+#
+# The flag applies to the whole project: the audio path's determinism
+# cannot depend on which translation unit a function landed in.
+add_project_arguments('-ffp-contract=off', language: 'c')
+
 # Coverage builds enable testcase() and disable assert()/ALWAYS()/NEVER()
 # assertions (via NDEBUG). Both would otherwise compile to decision edges no
 # test can take, i.e. uncoverable branches at every site. Run the suite under
