@@ -70,7 +70,7 @@ static int isoSetup(IsoEnv *e) {
 		if(!v) {
 			return 1;
 		}
-		triggerVoice(v, note);
+		triggerVoice(v, note, NOTE_VELOCITY_FULL);
 	}
 	return 0;
 }

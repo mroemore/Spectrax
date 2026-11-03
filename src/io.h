@@ -14,6 +14,10 @@
 #define ARRANGER_SECTION "ARRG"
 #define CHIP_LABELS_SECTION "LABL"
 #define PATTERN_TRACKS_SECTION "PTRK"
+/* The per-step velocities (VELO). Optional: a file written before
+ * velocity existed has no such chunk, and every step then reads as unset
+ * (which plays at full -- see NOTE_VELOCITY_FULL). */
+#define VELOCITY_SECTION "VELO"
 #define PRESET_MAGIC_HEADER "IPBH"
 #define PRESET_MAGIC_HEADER_V2 "IPB2"
 #define PRESET_MAGIC_HEADER_V3 "IPB3"

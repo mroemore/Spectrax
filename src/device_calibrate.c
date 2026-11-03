@@ -54,7 +54,7 @@ long deviceCalibrateMeasureVoiceCost(VoiceManager *vm, int channel) {
 	memset(v, 0, sizeof(*v));
 	initialize_voice(v, inst);
 	int note[NOTE_INFO_SIZE] = { A, 4 };
-	triggerVoice(v, note);
+	triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
 	struct timespec t0;
 	struct timespec t1;

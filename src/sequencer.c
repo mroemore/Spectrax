@@ -308,6 +308,34 @@ bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteInde
 	return OFF == patternList->patterns[patternIndex].notes[noteIndex][0];
 }
 
+int getCurrentStepVelocity(PatternList *patternList, int patternIndex, int noteIndex) {
+	if(!patternList || patternIndex < 0 || patternIndex >= MAX_PATTERNS
+	   || noteIndex < 0 || noteIndex >= MAX_SEQUENCE_LENGTH) {
+		/* Out of range: no step, so no velocity -- and full, so a caller
+		 * that ignores the bounds still plays a note at full. */
+		return NOTE_VELOCITY_FULL;
+	}
+	int v = patternList->patterns[patternIndex].velocity[noteIndex];
+	/* Zero means unset. A value out of range (a corrupt file) reads as
+	 * unset too, rather than as a silent or a loud note. */
+	if(v <= 0 || v > NOTE_VELOCITY_FULL) {
+		return NOTE_VELOCITY_FULL;
+	}
+	return v;
+}
+
+bool setStepVelocity(PatternList *patternList, int patternIndex, int noteIndex, int velocity) {
+	if(!patternList || patternIndex < 0 || patternIndex >= MAX_PATTERNS
+	   || noteIndex < 0 || noteIndex >= MAX_SEQUENCE_LENGTH) {
+		return false;
+	}
+	if(velocity < 1 || velocity > NOTE_VELOCITY_FULL) {
+		return false;
+	}
+	patternList->patterns[patternIndex].velocity[noteIndex] = velocity;
+	return true;
+}
+
 void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]) {
 	patternList->patterns[patternIndex].notes[noteIndex][0] = note[0];
 	patternList->patterns[patternIndex].notes[noteIndex][1] = note[1];
@@ -363,7 +391,10 @@ void advanceSequencerStep(Sequencer *sequencer, PatternList *patternList, Arrang
 		if(sequencer->running[c] && trigger) {
 			int *note = getCurrentStep(patternList, sequencer->pattern_index[c], sequencer->playhead_index[c]);
 			if(note != NULL && note[0] != OFF) {
-				trigger(ctx, c, note);
+				/* The velocity comes from the same step as the note. */
+				int velocity = getCurrentStepVelocity(patternList, sequencer->pattern_index[c],
+				                                     sequencer->playhead_index[c]);
+				trigger(ctx, c, note, velocity);
 			}
 		}
 	}

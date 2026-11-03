@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "sample.h"
+#include "settings.h"
 
 /* The sampler character engine.
  *
@@ -109,6 +110,29 @@ void freeBakedSample(BakedSample *b);
 
 /* True when `b` is the bake of `src` under the given settings. */
 bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, SamplerQuantLaw law);
+
+/* The MPC60's velocity rules.
+ *
+ * The corpus (article id 23) on the MPC60: "Velocity moves the sample's
+ * start address as well as envelope attack. Hard hits skip more of the
+ * attack, soft hits get the whole transient. Nobody emulates this, and it
+ * is acoustically consequential."
+ *
+ * These two functions are that rule, and nothing else:
+ *
+ * - `samplerVelocityLevel` is the hit's loudness. The MPC60's fadeout is
+ *   not a fader but a quality control, so the level is not linear in the
+ *   velocity: a soft hit is quiet *and* its quietness is part of the
+ *   machine's character. The curve is pinned here so it is the same
+ *   number on every platform.
+ * - `samplerVelocityStartSkipFrames` is how far into the baked sample the
+ *   read starts. A hard hit skips more of the recorded attack; a soft one
+ *   gets the whole transient, so it skips nothing.
+ *
+ * The skip is in the *baked* sample's frames. `sampleLength` is the
+ * baked length, and the skip never runs past its end. */
+float samplerVelocityLevel(int velocity);
+int samplerVelocityStartSkipFrames(int velocity, int sampleLength);
 
 /* The per-output-sample advance, in baked frames.
  *

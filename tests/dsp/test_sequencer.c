@@ -289,9 +289,10 @@ static int test_note_cut_paste(void) {
  * the fired sequence must be A[0..3] then B[0..3] with step 0 first. */
 static int g_firedPitches[32];
 static int g_firedCount;
-static void recordTrigger(void *ctx, int channel, const int *note) {
+static void recordTrigger(void *ctx, int channel, const int *note, int velocity) {
 	(void)ctx;
 	(void)channel;
+	(void)velocity;
 	g_firedPitches[g_firedCount++] = note[0];
 }
 

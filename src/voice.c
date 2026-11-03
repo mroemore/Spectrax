@@ -152,7 +152,11 @@ OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency
 	} else {
 		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd);
 	}
-	out.L = v * 0.5f;
+	/* The MPC60's level: the velocity is the hit's loudness, and the
+	 * curve is the machine's, not a fader's. A note with no velocity
+	 * information plays at full, so it sounds exactly as it did before
+	 * velocity existed. */
+	out.L = v * 0.5f * samplerVelocityLevel(currentVoice->velocity);
 	out.R = out.L;
 	return out;
 }
@@ -245,6 +249,29 @@ void initVoicePool(VoiceManager *vm, int channelIndex, int voiceCount, Instrumen
 	// printf("voice count of %i for channel %i, from starting input of %i", vm->voiceCount[channelIndex], channelIndex, voiceCount);
 }
 
+/* True when the voice's envelope has run out, so it is silent but still
+ * holds its slot.
+ *
+ * The corpus's MPC60 rule: "No choking. Repeated strikes of a drum are all
+ * voiced - earlier strikes are not cut off." A voice that has finished is
+ * the one to sacrifice -- it makes no sound, so cutting it costs nothing,
+ * while cutting a sounding voice cuts its note off mid-flight. */
+static bool voiceHasFinished(const Voice *v) {
+	if(!v || !v->active) {
+		return true;
+	}
+	for(int i = 0; i < v->cloneCount; i++) {
+		const Mod *m = v->clones[i];
+		if(m && m->type == MT_ENV) {
+			/* An envelope that has run its course is not triggered. */
+			return !m->data.env.isTriggered;
+		}
+	}
+	/* No envelope: the voice has no natural end, so it never counts as
+	 * finished. */
+	return false;
+}
+
 Voice *getFreeVoice(VoiceManager *vm, int seqChannel) {
 	int voiceIndex = 0;
 	switch(vm->voiceAllocation[seqChannel]) {
@@ -284,17 +311,19 @@ Voice *getFreeVoice(VoiceManager *vm, int seqChannel) {
 			int limit = vm->governor.enabled ? governorLimit(&vm->governor) : vm->voiceCount[seqChannel];
 			if(activeCount > 0 && (poolFull || activeCount >= limit)) {
 				long ages[MAX_VOICES_PER_CHANNEL];
+				bool finished[MAX_VOICES_PER_CHANNEL];
 				int indexes[MAX_VOICES_PER_CHANNEL];
 				int n = 0;
 				for(int i = 0; i < vm->voiceCount[seqChannel]; i++) {
 					Voice *v = vm->voicePools[seqChannel][i];
 					if(v->active) {
 						ages[n] = v->samplesElapsed;
+						finished[n] = voiceHasFinished(v);
 						indexes[n] = i;
 						n++;
 					}
 				}
-				long victim = governorPickVictim(ages, n);
+				long victim = governorPickVictim(ages, finished, n);
 				if(victim >= 0) {
 					governorNoteStolen(&vm->governor, ages[victim]);
 					return vm->voicePools[seqChannel][indexes[victim]];
@@ -322,18 +351,32 @@ void incrementSampleParam(Parameter *sampleIndex, float delta) {
 	index += (int)delta;
 }
 
-void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]) {
+void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE], int velocity) {
 	/* A new note starts the sample from the beginning, whichever
 	 * interpolator is reading it. The voice's type data is a union, so
 	 * this is only written for a sampler voice: writing the sampler's
-	 * fields for an FM voice would land on the operator array. */
+	 * fields for an FM voice would land on the operator array.
+	 *
+	 * The MPC60's rule: velocity moves the sample's start address, so a
+	 * harder hit skips more of the recorded attack. The skip is in the
+	 * *baked* sample's frames, and the bake's rate is what the read
+	 * path's address counts in. */
 	if(voice->type == VOICE_TYPE_SAMPLE) {
-		voice->vd.sampler.samplePosition = 0.0f;
-		voice->vd.sampler.dsAddr = 0;
+		int skip = 0;
+		const SamplerInstrumentData *sid = &voice->instrumentRef->id.sampler;
+		if(sid->baked && sid->baked->length > 0) {
+			skip = samplerVelocityStartSkipFrames(velocity, sid->baked->length);
+		}
+		voice->vd.sampler.samplePosition = (float)skip;
+		voice->vd.sampler.dsAddr = (uint32_t)skip;
 		voice->vd.sampler.dsPhase = 0.0;
 	}
 	voice->note[0] = note[0];
 	voice->note[1] = note[1];
+	/* An unset or out-of-range velocity plays at full, so a note with
+	 * no velocity information sounds exactly as it did before velocity
+	 * existed. */
+	voice->velocity = (velocity >= 1 && velocity <= NOTE_VELOCITY_FULL) ? velocity : NOTE_VELOCITY_FULL;
 	voice->leftPhase = 0.0f;
 	voice->rightPhase = 0.0f;
 	voice->samplesElapsed = 0;

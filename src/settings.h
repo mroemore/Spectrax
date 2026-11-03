@@ -25,6 +25,15 @@ extern float g_deviceRate;
 #define MAX_SONG_LENGTH 255
 #define MAX_SEQUENCE_LENGTH 24
 #define NOTE_INFO_SIZE 2 // One for note index, one for octave index
+
+/* The velocity convention: 1..127, with 127 the loudest. Zero means
+ * "unset", and an unset velocity plays at full -- a note with no
+ * velocity information must sound exactly as it did before velocity
+ * existed, or every existing song would change.
+ *
+ * It lives here rather than in sequencer.h because sequencer.h includes
+ * voice.h, and the voice needs it. */
+#define NOTE_VELOCITY_FULL 127
 #define TWOPI (2.0f * M_PI)
 
 #define SCREEN_W 640 // 640

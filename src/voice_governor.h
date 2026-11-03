@@ -103,10 +103,21 @@ void governorNoteStolen(VoiceGovernor *g, long age);
  * know about voices.
  *
  * Returns -1 when there is nothing to steal. */
-long governorPickVictim(const long *ages, int count);
-
 /* The ages a caller should offer: how long each sounding voice has been
- * sounding, in samples. The oldest (the largest) goes first. */
+ * sounding, in samples. The oldest (the largest) goes first.
+ *
+ * `finished` says which of those voices have already finished -- their
+ * envelope has run out, so they are silent but still hold their slot.
+ * A finished voice is taken before a sounding one: the corpus's MPC60
+ * rule is "no choking. Repeated strikes of a drum are all voiced -
+ * earlier strikes are not cut off", so a voice that is still sounding
+ * must not be sacrificed while a silent one is available.
+ *
+ * The order is total and pinned: finished before sounding, and within
+ * each group the oldest (the largest age) first. The same set of voices
+ * therefore always picks the same victim, on every platform and run. */
+long governorPickVictim(const long *ages, const bool *finished, int count);
+
 #define GOVERNOR_VICTIM_NONE (-1)
 
 #endif

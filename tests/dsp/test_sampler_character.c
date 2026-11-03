@@ -1138,7 +1138,7 @@ static int test_sampler_voice_plays_at_the_written_pitch(void) {
 		free(data);
 		return 1;
 	}
-	triggerVoice(v, note);
+	triggerVoice(v, note, NOTE_VELOCITY_FULL);
 	const int RENDER = 8192;
 	float *out = (float *)malloc(sizeof(float) * RENDER);
 	if(!out) {

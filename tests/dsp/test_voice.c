@@ -193,7 +193,7 @@ static int test_fm_voice_renders_after_trigger(void) {
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 0);
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
     float maxAbs = render_voice(&e, v, 2048);
     /* Attack is ~0.1s (4410 samples at 1x) so 2048 samples still lands in
@@ -215,7 +215,7 @@ static int test_fm_voice_envelope_attack_then_silence(void) {
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 0);
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
     int total = 5 * SPECTRAX_ENGINE_RATE; /* 5 s */
     float phaseInc = 440.0f / (float)SPECTRAX_ENGINE_RATE;
@@ -249,7 +249,7 @@ static int test_sample_voice_renders(void) {
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 1);
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
     float maxAbs = render_voice(&e, v, 512);
     ASSERT_TRUE(maxAbs > 1e-4f, "sample voice silent after trigger");
@@ -277,7 +277,7 @@ static int test_blep_voice_square_renders(void) {
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 2);
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
     float maxAbs = render_voice(&e, v, 512);
     ASSERT_TRUE(maxAbs > 1e-3f, "BLEP voice silent after trigger");
@@ -296,7 +296,7 @@ static int test_blep_default_shape_is_silent_bug(void) {
 
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 2);
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
     /* Pins actual behaviour of the pre-existing phase bug: voice.c:94-113
      * (generateBlep) never advances leftPhase; blep_saw(0, inc) == 0. */
@@ -320,7 +320,7 @@ static int test_polyphony_all_voices_sound(void) {
         int note[NOTE_INFO_SIZE] = { midiNotes[i], 4 };
         Voice *v = getFreeVoice(e.vm, 0);
         ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-        triggerVoice(v, note);
+        triggerVoice(v, note, NOTE_VELOCITY_FULL);
         float maxAbs = render_voice(&e, v, 1024);
         ASSERT_TRUE(maxAbs > 1e-4f, "a triggered voice rendered silence");
     }
@@ -483,7 +483,7 @@ static int test_note_delete_mid_playback_does_not_crash(void) {
             int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
             if (note != NULL && note[0] != OFF) {
                 Voice *v = getFreeVoice(e.vm, 0);
-                triggerVoice(v, note);
+                triggerVoice(v, note, NOTE_VELOCITY_FULL);
             }
         }
         /* render one "buffer" for the channel the way patestCallback does */
@@ -578,7 +578,7 @@ static int test_note_delete_autoload_song(void) {
                     int *note = getCurrentStep(pl, seq->pattern_index[0], seq->playhead_index[0]);
                     if (note != NULL && note[0] != OFF) {
                         Voice *v = getFreeVoice(e.vm, 0);
-                        triggerVoice(v, note);
+                        triggerVoice(v, note, NOTE_VELOCITY_FULL);
                     }
                 }
                 for (int i = 0; i < stepSamples; i++) {

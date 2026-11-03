@@ -151,7 +151,7 @@ static int test_a_disabled_governor_ignores_the_load(void) {
 static int test_the_steal_picks_the_oldest(void) {
 	long ages[4] = { 100, 5000, 200, 900 };
 	/* The oldest is the largest age. */
-	ASSERT_EQ(governorPickVictim(ages, 4), 1, "the oldest voice is stolen");
+	ASSERT_EQ(governorPickVictim(ages, NULL, 4), 1, "the oldest voice is stolen");
 	printf("PASS test_the_steal_picks_the_oldest\n");
 	return 0;
 }
@@ -159,16 +159,16 @@ static int test_the_steal_picks_the_oldest(void) {
 /* With one voice, that voice is the victim. */
 static int test_the_steal_picks_the_only_voice(void) {
 	long ages[1] = { 42 };
-	ASSERT_EQ(governorPickVictim(ages, 1), 0, "the only voice is stolen");
+	ASSERT_EQ(governorPickVictim(ages, NULL, 1), 0, "the only voice is stolen");
 	printf("PASS test_the_steal_picks_the_only_voice\n");
 	return 0;
 }
 
 /* With no voices, there is nothing to steal. */
 static int test_the_steal_finds_nothing(void) {
-	ASSERT_EQ(governorPickVictim(NULL, 0), GOVERNOR_VICTIM_NONE, "no voice, no victim");
+	ASSERT_EQ(governorPickVictim(NULL, NULL, 0), GOVERNOR_VICTIM_NONE, "no voice, no victim");
 	long ages[2] = { 1, 2 };
-	ASSERT_EQ(governorPickVictim(ages, 2) >= 0, 1, "there is a victim");
+	ASSERT_EQ(governorPickVictim(ages, NULL, 2) >= 0, 1, "there is a victim");
 	printf("PASS test_the_steal_finds_nothing\n");
 	return 0;
 }
@@ -178,9 +178,9 @@ static int test_the_steal_finds_nothing(void) {
  * order the voices happen to be listed in). */
 static int test_the_steal_is_pinned(void) {
 	long ages[3] = { 100, 100, 50 };
-	ASSERT_EQ(governorPickVictim(ages, 3), 0, "a tie goes to the lowest index");
+	ASSERT_EQ(governorPickVictim(ages, NULL, 3), 0, "a tie goes to the lowest index");
 	long other[3] = { 50, 100, 100 };
-	ASSERT_EQ(governorPickVictim(other, 3), 1, "the oldest is the same voice whatever the order");
+	ASSERT_EQ(governorPickVictim(other, NULL, 3), 1, "the oldest is the same voice whatever the order");
 	printf("PASS test_the_steal_is_pinned\n");
 	return 0;
 }
@@ -243,7 +243,7 @@ static Voice *govStart(GovEnv *e, int age) {
 	if(!v) {
 		return NULL;
 	}
-	triggerVoice(v, note);
+	triggerVoice(v, note, NOTE_VELOCITY_FULL);
 	v->samplesElapsed = age;
 	return v;
 }

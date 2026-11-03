@@ -79,6 +79,47 @@ SequencerFileResult saveSequencerState(const char *filename, Arranger *arranger,
 		}
 	}
 
+	/* VELO: the per-step velocities. Optional and trailing, like LABL and
+	 * PTRK, so a file without it loads unchanged.
+	 *
+	 * Only written when a step actually has a velocity: a song that never
+	 * uses velocity stays byte-identical to what it was before velocity
+	 * existed, which is what keeps the old files and the fixtures
+	 * unchanged.
+	 *
+	 * The body is the pattern count, then one int per step per pattern --
+	 * the same shape the PATT chunk uses for the notes, so the two line
+	 * up step for step. */
+	if(patterns != NULL) {
+		bool anyVelocity = false;
+		for(int i = 0; i < patterns->pattern_count && !anyVelocity; i++) {
+			for(int j = 0; j < MAX_SEQUENCE_LENGTH; j++) {
+				if(patterns->patterns[i].velocity[j] != 0) {
+					anyVelocity = true;
+					break;
+				}
+			}
+		}
+		if(anyVelocity) {
+			if(!writeChunkHeader(file, VELOCITY_SECTION)) {
+				fclose(file);
+				return SEQ_ERROR_WRITE;
+			}
+			int count = patterns->pattern_count;
+			if(fwrite(&count, sizeof(int), 1, file) != 1) {
+				fclose(file);
+				return SEQ_ERROR_WRITE;
+			}
+			for(int i = 0; i < patterns->pattern_count; i++) {
+				if(fwrite(patterns->patterns[i].velocity, sizeof(int), MAX_SEQUENCE_LENGTH, file)
+				   != MAX_SEQUENCE_LENGTH) {
+					fclose(file);
+					return SEQ_ERROR_WRITE;
+				}
+			}
+		}
+	}
+
 	fclose(file);
 	return SEQ_OK;
 }
@@ -322,6 +363,53 @@ SequencerFileResult loadSequencerState(const char *filename, Arranger *arranger,
 			}
 		} else {
 			fseek(file, ptrkPos, SEEK_SET);
+		}
+		/* VELO (the per-step velocities) is OPTIONAL — files written
+		 * before velocity existed have no such chunk, and every step then
+		 * reads as unset (which plays at full). Peek the magic; on a
+		 * match read the body, else rewind so any future trailing chunk
+		 * still reads from the right offset.
+		 *
+		 * The chunk is read after the patterns, so the pattern count is
+		 * known: the body is the count, then one int per step per
+		 * pattern. */
+		long veloPos = ftell(file);
+		char velo_magic[4];
+		if(fread(velo_magic, 1, 4, file) == 4 && memcmp(velo_magic, VELOCITY_SECTION, 4) == 0) {
+			int count = 0;
+			if(fread(&count, sizeof(int), 1, file) != 1) {
+				fclose(file);
+				printf("error reading velocity count (VELO)\n");
+				return SEQ_ERROR_READ;
+			}
+			if(count < 0 || count > MAX_PATTERNS) {
+				fclose(file);
+				return SEQ_ERROR_FORMAT;
+			}
+			for(int i = 0; i < count; i++) {
+				int velocities[MAX_SEQUENCE_LENGTH];
+				if(fread(velocities, sizeof(int), MAX_SEQUENCE_LENGTH, file) != MAX_SEQUENCE_LENGTH) {
+					fclose(file);
+					printf("error reading velocities (VELO)\n");
+					return SEQ_ERROR_READ;
+				}
+				/* A pattern that was not written (the file holds more
+				 * patterns than the destination has) is skipped rather
+				 * than written past the end. */
+				if(patterns == NULL || i >= patterns->pattern_count) {
+					continue;
+				}
+				for(int j = 0; j < MAX_SEQUENCE_LENGTH; j++) {
+					/* An out-of-range velocity in the file reads as
+					 * unset, not as a value the engine would act on. */
+					if(velocities[j] < 0 || velocities[j] > NOTE_VELOCITY_FULL) {
+						velocities[j] = 0;
+					}
+					patterns->patterns[i].velocity[j] = velocities[j];
+				}
+			}
+		} else {
+			fseek(file, veloPos, SEEK_SET);
 		}
 	} else {
 		// V1 / legacy file: no LABL chunk. Default every channel's chip

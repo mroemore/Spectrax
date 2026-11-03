@@ -20,6 +20,14 @@ typedef struct {
 typedef struct {
 	int pattern_size;
 	int notes[MAX_SEQUENCE_LENGTH][NOTE_INFO_SIZE];
+	/* Each step's velocity. Zero means unset; see NOTE_VELOCITY_FULL.
+	 *
+	 * This is a separate array rather than a third note column because
+	 * the note columns are the song file's layout (PATT writes exactly
+	 * MAX_SEQUENCE_LENGTH * NOTE_INFO_SIZE ints per pattern), and the
+	 * velocity is saved in its own optional chunk so an older file
+	 * loads unchanged. */
+	int velocity[MAX_SEQUENCE_LENGTH];
 } Pattern;
 
 typedef struct {
@@ -136,7 +144,12 @@ Sequencer *createSequencer(Arranger *arranger);
  * @param channel The channel whose note is firing.
  * @param note The note data (pitch/octave) at the current step.
  */
-typedef void (*StepTriggerFn)(void *ctx, int channel, const int *note);
+/* The trigger callback: the note that fired, and its velocity.
+ *
+ * The velocity is the step's, from the pattern -- the corpus's MPC60
+ * finding is that it moves the sample's start address as well as the
+ * envelope's attack, so a voice has to be told it. */
+typedef void (*StepTriggerFn)(void *ctx, int channel, const int *note, int velocity);
 
 /**
  * @brief Advance the sequencer one step and fire notes (trigger-before-advance).
@@ -214,6 +227,19 @@ bool currentNoteIsBlank(PatternList *patternList, int patternIndex, int noteInde
  * @param note New note data.
  */
 void setCurrentNote(PatternList *patternList, int patternIndex, int noteIndex, int note[NOTE_INFO_SIZE]);
+
+/* A step's velocity, and how to set it.
+ *
+ * `getCurrentStepVelocity` returns NOTE_VELOCITY_FULL for a step with no
+ * velocity set, so a caller never has to know whether the step was ever
+ * given one.
+ *
+ * `setStepVelocity` refuses a velocity outside 1..NOTE_VELOCITY_FULL and
+ * refuses an out-of-range pattern or step: it returns false rather than
+ * clamping silently, so a caller cannot believe it set something it did
+ * not. */
+int getCurrentStepVelocity(PatternList *patternList, int patternIndex, int noteIndex);
+bool setStepVelocity(PatternList *patternList, int patternIndex, int noteIndex, int velocity);
 /**
  * @brief Edits the current note in a pattern.
  * @param patternList Pointer to the PatternList.

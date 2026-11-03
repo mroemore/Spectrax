@@ -99,10 +99,10 @@ void probeTempoState(paTestData *data) {
 
 /* advanceSequencerStep trigger callback: allocate a voice for the fired
  * note. Runs on the audio thread inside the render lock. */
-static void triggerSequencerNote(void *ctx, int channel, const int *note) {
+static void triggerSequencerNote(void *ctx, int channel, const int *note, int velocity) {
 	VoiceManager *vm = (VoiceManager *)ctx;
 	Voice *voice = getFreeVoice(vm, channel);
-	triggerVoice(voice, note);
+	triggerVoice(voice, note, velocity);
 }
 
 void renderAudioBuffer(paTestData *data, float *out, unsigned long framesPerBuffer) {

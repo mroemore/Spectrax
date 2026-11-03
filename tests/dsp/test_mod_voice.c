@@ -736,7 +736,7 @@ static int test_runtime_envelope_add_does_not_rebuild_voices(void) {
     int note[NOTE_INFO_SIZE] = { A, 4 };
     Voice *v = getFreeVoice(e.vm, 0);
     ASSERT_TRUE(v != NULL, "getFreeVoice() returned NULL");
-    triggerVoice(v, note);
+    triggerVoice(v, note, NOTE_VELOCITY_FULL);
     ASSERT_EQ(v->active, 1, "voice is active after trigger");
     ASSERT_TRUE(v->note[0] != OFF, "voice has a real note after trigger");
     int noteBefore = v->note[0];

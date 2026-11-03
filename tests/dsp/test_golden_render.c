@@ -122,7 +122,7 @@ static uint64_t goldenRender(void) {
 		goldenTeardown(&e);
 		return 0;
 	}
-	triggerVoice(v, note);
+	triggerVoice(v, note, NOTE_VELOCITY_FULL);
 
 	float *out = (float *)malloc(sizeof(float) * GOLDEN_FRAMES * 2);
 	if(!out) {

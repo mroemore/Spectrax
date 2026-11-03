@@ -94,18 +94,21 @@ void governorNoteStolen(VoiceGovernor *g, long age) {
 	}
 }
 
-long governorPickVictim(const long *ages, int count) {
+long governorPickVictim(const long *ages, const bool *finished, int count) {
 	if(!ages || count <= 0) {
 		return GOVERNOR_VICTIM_NONE;
 	}
 	long best = -1;
 	long bestAge = -1;
+	bool bestFinished = false;
 	for(int i = 0; i < count; i++) {
-		/* The oldest voice -- the one that has been sounding longest --
-		 * goes. A tie goes to the lowest index, so the choice does not
-		 * depend on the order the voices happen to be listed in. */
-		if(ages[i] > bestAge) {
+		bool isFinished = finished ? finished[i] : false;
+		/* A finished voice goes first: it is silent, so cutting it costs
+		 * nothing audible, while a sounding voice's note is cut off. */
+		if(best < 0 || (isFinished && !bestFinished) ||
+		   (isFinished == bestFinished && ages[i] > bestAge)) {
 			bestAge = ages[i];
+			bestFinished = isFinished;
 			best = i;
 		}
 	}

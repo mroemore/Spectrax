@@ -134,7 +134,7 @@ int bench_audio_run(const BenchOptions *opts, BenchReport *r) {
         for (int v_i = 0; v_i < vm->voiceCount[c]; v_i++) {
             Voice *v = vm->voicePools[c][v_i];
             if (v) {
-                triggerVoice(v, (const int[]){ 57, 0 });
+                triggerVoice(v, (const int[]){ 57, 0 }, NOTE_VELOCITY_FULL);
                 v->active = 1;
             }
         }

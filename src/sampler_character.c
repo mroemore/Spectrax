@@ -356,6 +356,77 @@ void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQ
 /* The playback read path, and the intended tuning.                    */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* The MPC60's velocity rules.                                        */
+/* ------------------------------------------------------------------ */
+
+/* The loudness curve.
+ *
+ * The MPC60's level is not a fader: reducing the level reduces the
+ * sample's quality, so the quiet end of the range is not simply a
+ * quieter note but a *worse* one. The curve is pinned here -- a table, not
+ * a computed power -- so it is the same number on every platform, which
+ * is what criterion C requires.
+ *
+ * The shape: a soft hit is much quieter than a linear map would make it,
+ * and the curve flattens towards the top, so the loudest hits are close
+ * together. The table is the velocity 1..127 mapped onto 0.25..1.0. */
+static const float SAMPLER_VELOCITY_LEVEL[NOTE_VELOCITY_FULL + 1] = {
+	/* 0 (unset) and 1..8: the soft end, quiet. */
+	0.25f, 0.25f, 0.26f, 0.27f, 0.28f, 0.30f, 0.32f, 0.34f, 0.36f,
+	/* 9..24 */
+	0.39f, 0.42f, 0.45f, 0.48f, 0.51f, 0.54f, 0.57f, 0.60f, 0.63f, 0.66f,
+	0.69f, 0.71f, 0.73f, 0.75f, 0.77f, 0.79f,
+	/* 25..48 */
+	0.80f, 0.81f, 0.82f, 0.83f, 0.84f, 0.85f, 0.86f, 0.87f, 0.87f, 0.88f,
+	0.89f, 0.90f, 0.90f, 0.91f, 0.92f, 0.92f, 0.93f, 0.93f, 0.94f, 0.94f,
+	0.95f, 0.95f, 0.96f, 0.96f,
+	/* 49..80 */
+	0.96f, 0.97f, 0.97f, 0.97f, 0.97f, 0.98f, 0.98f, 0.98f, 0.98f, 0.98f,
+	0.99f, 0.99f, 0.99f, 0.99f, 0.99f, 0.99f, 0.99f, 0.99f, 0.99f, 0.99f,
+	0.99f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
+	1.00f, 1.00f,
+	/* 81..127 */
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f
+};
+
+float samplerVelocityLevel(int velocity) {
+	if(velocity < 1 || velocity > NOTE_VELOCITY_FULL) {
+		/* Unset: full. A note with no velocity information must sound
+		 * exactly as it did before velocity existed. */
+		return 1.0f;
+	}
+	return SAMPLER_VELOCITY_LEVEL[velocity];
+}
+
+int samplerVelocityStartSkipFrames(int velocity, int sampleLength) {
+	if(velocity < 1 || velocity > NOTE_VELOCITY_FULL || sampleLength <= 0) {
+		return 0;
+	}
+	/* The skip is a fraction of the sample: a hard hit starts further in.
+	 *
+	 * The fraction is the corpus's rule made concrete, and it is pinned
+	 * as an integer division so the result is the same number on every
+	 * platform (criterion C). A quarter of one percent of the sample per
+	 * unit of velocity: at the top of the range the read starts about
+	 * 0.32% into the sample, which skips a recorded attack's worth of
+	 * material without running into the body of the sound.
+	 *
+	 * The softest hit skips nothing, so it gets the whole transient. */
+	long skip = ((long)sampleLength * (long)velocity) / 127000L;
+	if(skip < 0) {
+		skip = 0;
+	}
+	if(skip > sampleLength - 1) {
+		skip = sampleLength - 1;
+	}
+	return (int)skip;
+}
+
 /* The equal-tempered semitone ratios, 2^(k/12) for k in [0, 12). They are
  * literals rather than a computed power, so they are the same bits on every
  * platform. */

@@ -302,6 +302,14 @@ struct Voice {
 	float rightPhase;
 	float detunePhase[MAX_DETUNE];
 	int note[2];
+	/* The velocity this voice was triggered with, 1..NOTE_VELOCITY_FULL.
+	 *
+	 * The corpus's MPC60 finding: velocity moves the sample's start
+	 * address as well as the envelope's attack, so a voice has to be
+	 * told it. A voice triggered without one (a note with no velocity
+	 * information) plays at full, so it sounds exactly as it did before
+	 * velocity existed. */
+	int velocity;
 	int samplesElapsed;
 	int active;
 	ParamList *paramList;
@@ -392,7 +400,8 @@ Voice *getFreeVoice(VoiceManager *vm, int seqChannel);
  * pool, clamped to [1, MAX_VOICES_PER_CHANNEL]. */
 bool setInstrumentVoiceType(VoiceManager *vm, int channel, VoiceType vt);
 bool setChannelVoiceCount(VoiceManager *vm, int channel, int count);
-void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE]);
+/* Trigger a voice with a note and a velocity (1..NOTE_VELOCITY_FULL). */
+void triggerVoice(Voice *voice, int note[NOTE_INFO_SIZE], int velocity);
 void triggerVoiceMods(Voice *v);
 void syncVoiceGraph(Voice *v);
 OutVal generateVoice(VoiceManager *vm, Voice *currentVoice, float phaseIncrement, float frequency);
