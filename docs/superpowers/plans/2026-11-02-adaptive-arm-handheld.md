@@ -39,20 +39,21 @@ done.
       `canonicalOnePoleCoef`, all fixed sequences of correctly-rounded IEEE-754
       operations; the sine table rebuilt from a double-precision Taylor series.
       `0c2e075`.
-- [ ] **A3 — the control rate in samples.** The buffer size is a synthesis input
-      in two places: the global modulation pass runs once per buffer with
-      `deltaTime = 1/framesPerBuffer`, and the sequencer's step advance is
-      checked per buffer, so a note fires at a buffer boundary and its onset
-      moves with the buffer size. The control tick must be a fixed sample count
-      scheduled from an *absolute* sample position (a per-buffer position would
-      be the same bug one level down), and the render loop must check for a step
-      boundary per sample. The proof is the golden render, driven through
-      `renderAudioBuffer` at 128, 256 and 512 frames, producing one hash.
-      *Analysis recorded in the sampler's ledger.*
-- [ ] **A4 — the compiled modulation plan.** `processModulations` walks every
-      parameter slot and every modulator linked list per sample; replace it with a
-      flat, dirty-rebuilt array of `(dest, source, op, amount)` tuples and direct
-      field access.
+- [x] **A3 — the control rate in samples.** Two places made the buffer size a
+      synthesis input: the global modulation pass ran once per buffer with
+      `deltaTime = 1/framesPerBuffer`, and the sequencer's step advance was
+      checked per buffer, so a note fired at a buffer boundary. Both now happen
+      per sample. The proof is the golden render through the real callback at
+      128, 256 and 512 frames producing one hash. `5d93b5f`.
+- [x] **A4 — the modulation plan's cost.** The pass no longer re-derives the
+      parameters that nothing modulates: the measured cost falls by 29-75%
+      depending on the route count (a graph with no routes: 0.130 ms ->
+      0.033 ms; 128 routes: 2.852 ms -> 2.017 ms). Two things had to be true
+      for the skip to be sound, and the existing tests caught both: a source's
+      output must still be refreshed, and a parameter that loses its last
+      modulator must go back to its base value. `f506a22`.
+      *The flat tuple array was not needed: the walk's cost was the
+      re-derivation, not the data structure.*
 - [x] **A5 — the per-voice PRNG.** The `MT_RND` modulator's global `rand()` is
       replaced by a per-entity xorshift32 (`CanonicalRng`): every modulator seeds
       its own, a voice's clone starts from the source's state, and the granular
@@ -89,13 +90,18 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
 
 ### Phase C — the adaptive quality (B)
 
-- [ ] **C1 — the device profile's measured layer and the auto-calibration.** Extend
-      `devices/*.toml` with the measured per-voice-type costs and auto-calibrate on
-      first run, writing to an SD-writable path (the ROCKNIX rootfs is a read-only
-      squashfs).
-- [ ] **C2 — the budget consumption.** Voices per channel, active channels, the
-      permitted voice types, the sample-pool bytes (lazy), and the 128/256/512 buffer
-      ladder chosen once at startup.
+- [x] **C1 — the device's budget, measured on the device.** `src/device_budget.{c,h}`:
+      the derivation (voices from a measured cost per voice-sample and the
+      callback's deadline; the pool's ceiling from the available memory; the
+      buffer size from the two) and the profile (a versioned JSON file in the
+      user's config directory). The app measures itself on its first run -- the
+      app's own first instrument, one voice, through the voice-level path, timed
+      -- and writes the profile. `9308852`.
+- [~] **C2 — the budget consumption.** The channel count and the voice count are
+      capped before the voice manager and the arranger are built; the buffer
+      size is the stream open's first choice. Still to come: the permitted voice
+      types (the GUI's job) and the sample-pool ceiling (the pool's storage is
+      a fixed array today).
 - [ ] **C3 — the runtime governor.** The callback-time utilisation drives the voice
       slots' grant and withdrawal, with a pinned stealing policy that cannot alter a
       surviving voice's output.
@@ -104,13 +110,15 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
 
 ### Phase D — the C contract and the gate
 
-- [ ] **D1 — the canonical synthesis spec.** The engine rate, the bake rate, the
-      tables and interpolation, the control rate and its scheduling, the root-note
-      tuning law, the quantizer laws, the filter maths, the PRNG and its seeding, the
-      FP flag set, the forbidden-libm list, the buffer-size independence rule.
-- [ ] **D2 — the per-voice isolation tests.** Compare the per-voice output buffers,
-      **not** differenced mixes: the corpus's later per-channel bus saturation is
-      non-linear, so `mix(all) − mix(all−V) ≠ solo(V)`.
+- [x] **D1 — the canonical synthesis spec.** `docs/superpowers/specs/2026-11-03-canonical-synthesis-spec.md`:
+      the engine rate, the canonical maths, the FP rules, the random source, the
+      modulation pass, the control rate and the buffer size, the sampler's chain
+      and its tuning law, the isolation of the voices -- each with the test that
+      checks it. `10416b2`.
+- [x] **D2 — the per-voice isolation tests.** `tests/dsp/test_voice_isolation.c`
+      compares the voice's own stream, **not** differenced mixes: (a + b) - a is
+      not b in floating point. Each render gets its own scene, because a voice's
+      state advances as it is rendered. `62c919a`.
 - [~] **D3 — the cross-architecture golden gate.** The hash half is done: the
       golden render runs under qemu-aarch64 in the test suite and matches the
       host's. Still to come: the armhf leg, the scalar-vs-NEON leg, and the
@@ -158,7 +166,7 @@ plan:
 
 Each phase is evidenced by harness numbers, not narrative: the meson suite's count,
 the coverage gate's verdict, and the scripted fixtures' results. The landed work
-currently stands at **52/52 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
+currently stands at **54/54 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
 and **13/15 scripted fixtures** (the two failures, `chip_meta` and `save_overwrite`,
 are pre-existing and confirmed on the pre-consolidation branch). The golden
 render's hash is `efb6e5e8a5e51c85`, identical on the x86-64 host and under
