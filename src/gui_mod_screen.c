@@ -1,9 +1,10 @@
-/* gui_mod_screen.c -- the modulation screen's graph.
+/* gui_mod_screen.c -- the modulation screen's graph and its layer.
  *
  * The screen is two panes: the source list on the left, the selected
- * source's detail on the right. This module builds the graph only — the
- * screen's layer, its input handling and its route picker are the later
- * tasks of the phase. The graph's shape:
+ * source's detail on the right. This module builds the graph and owns
+ * the screen's layer -- the full-graph overlay the screen is pushed as
+ * over the instrument screen. The route picker is a later task of the
+ * phase. The graph's shape:
  *
  *   root (vertical)
  *     MODHEADER (horizontal, weight 2)
@@ -19,9 +20,15 @@
  *           MODROUTE_<i>   one row per route
  *           MOD_ADDRUTE    the "+ ROUTE" button
  *
- * The rows carry no actions yet: the screen is a graph until the layer
- * and the picker land, so every button here is inert (a NULL callback)
- * and the cursor still moves over them. */
+ * The rows carry no actions yet: the route picker lands with the next
+ * task, so every button but the back button is inert (a NULL callback)
+ * and the cursor still moves over them. The back button closes the
+ * screen.
+ *
+ * The screen is a layer: openModScreen() builds the graph and pushes it
+ * as a "MOD" layer over the instrument screen, closeModScreen() pops
+ * it. The layer stack's own SELECT gesture pops it too, so the screen
+ * has two ways back. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +37,7 @@
 #include "gui.h"
 #include "gui_internal.h"
 #include "gui_inst_internal.h"
+#include "gui_layer.h"
 #include "gui_mod_screen.h"
 #include "gui_style.h"
 #include "modsystem.h"
@@ -42,6 +50,11 @@
 /* The header's title and the source rows' names. */
 #define MOD_TITLE_LEN 64
 #define MOD_NAME_LEN  32
+
+/* The header's back button: closes the screen. The layer stack pops a
+ * layer on the SELECT back gesture too, so the button is the second
+ * way out -- the one the user aims at. */
+static void cbModScreenBack(void *ctx);
 
 /* The source at a source position (0-based over the non-attenuator
  * mods), or NULL. */
@@ -292,7 +305,7 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 		free(g);
 		return NULL;
 	}
-	GuiNode *back = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODBACK", 0, NULL, NULL);
+	GuiNode *back = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODBACK", 0, cbModScreenBack, NULL);
 	if(back) {
 		guiNodeSetText(back, "BACK");
 		appendItem(header, back, 1);
@@ -359,4 +372,124 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 		changeGraphSelection(g, selectedRow);
 	}
 	return g;
+}
+
+/* ---- the screen as a layer ---------------------------------------------- */
+
+/* The screen is a full-graph layer pushed over the instrument screen.
+ * The layer stack routes the input to the topmost non-passive layer, so
+ * pushing the screen is what makes it modal: the instrument screen's
+ * own input (its channel cycling and page navigation) does not fire
+ * while the screen is up, because the layer consumes the input stream
+ * first (handlePresetUiInput routes to the layer and returns true).
+ *
+ * The layer's name is "MOD" -- distinct from the stack's other named
+ * layers ("ROUTE", "ROUTELINES"), so the stack's name-keyed bookkeeping
+ * (the route picker's counters) never fires on the modulation screen.
+ *
+ * The overlay stack owns the Layer structs: pushLayer copies the Layer
+ * into the stack's array and frees the caller's copy, and the array
+ * moves when the stack grows or an entry is popped. So the pointer
+ * below is a cache, refreshed from the stack (by the layer's name)
+ * before every use -- it is never held across a push or a pop. That is
+ * also how the module notices that the stack popped the screen's layer
+ * itself: the SELECT back gesture pops it without telling anybody. */
+
+/* The screen's layer name on the overlay stack. */
+#define MOD_LAYER_NAME "MOD"
+
+/* The screen's layer on the instrument GUI's overlay stack, or NULL
+ * when the screen is closed.
+ *
+ * The handle is refreshed from the stack rather than held across a
+ * push or a pop, because the stack owns the Layer structs: pushLayer
+ * copies the Layer into the stack's array and frees the caller's copy,
+ * the array moves when the stack grows, and popping an entry shifts
+ * the ones above it down. The stack also pops the screen's layer
+ * itself on the SELECT back gesture, without telling this module --
+ * so the only way to know whether the screen is still up is to ask
+ * the stack. modScreenLayer() does that, and every use of modLayer
+ * goes through it first. */
+static Layer *modLayer = NULL;
+
+/* Refresh the screen's layer handle from the overlay stack. */
+static void modScreenLayer(void) {
+	InstrumentGui *ig = getInstrumentGui();
+	modLayer = ig ? findLayerByName(&ig->overlayLayers, MOD_LAYER_NAME) : NULL;
+}
+
+/* True while the screen's layer is up. */
+bool modScreenIsOpen(void) {
+	modScreenLayer();
+	return modLayer != NULL;
+}
+
+/* Open the modulation screen for the selected instrument: build its
+ * graph and push it as a layer over the instrument screen. */
+void openModScreen(void) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig || !ig->vm) {
+		return;
+	}
+	Instrument *inst = getSelectedInstInstrument();
+	if(!inst) {
+		return;
+	}
+	/* Already open: the screen is one layer at a time, so opening it
+	 * again is a no-op rather than a second copy stacked over the
+	 * first. */
+	if(modScreenIsOpen()) {
+		return;
+	}
+	/* The channel the screen shows: the title names the instrument's
+	 * voice type and its channel ("FM1"). The instrument carries the
+	 * channel it sits on. */
+	int channel = (inst->metaChannel >= 0) ? inst->metaChannel : 0;
+	Graph *g = createModScreenGraph(inst, ig->vm, channel, true);
+	if(!g) {
+		return;
+	}
+	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, MOD_LAYER_NAME, true, true);
+	if(!layer) {
+		/* The layer could not be allocated: the graph is ours still,
+		 * and the layer would have owned it. */
+		freeGuiNode(g->root);
+		free(g);
+		return;
+	}
+	/* The stack takes ownership of the layer -- and of the graph and the
+	 * name the layer holds -- so the Layer* must not be used after
+	 * this. */
+	pushLayer(&ig->overlayLayers, layer);
+}
+
+/* Close the modulation screen: pop its layer and free the graph and the
+ * name the layer owns. */
+void closeModScreen(void) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return;
+	}
+	modScreenLayer();
+	if(!modLayer) {
+		return;
+	}
+	/* Only the topmost non-passive layer can be popped. The screen's
+	 * layer is that one whenever the screen is the modal on top --
+	 * which is the case whenever the screen's own BACK button can be
+	 * pressed. Popping a different layer would destroy that modal's
+	 * graph, so the top is checked first. */
+	if(topNonPassiveLayer(&ig->overlayLayers) != modLayer) {
+		return;
+	}
+	popTopNonPassiveLayerFree(&ig->overlayLayers);
+	modLayer = NULL;
+}
+
+/* The header's back button: closes the screen. The layer stack pops a
+ * layer on the SELECT back gesture too, so the button is the second way
+ * out -- the one the user aims at. */
+static void cbModScreenBack(void *ctx) {
+	(void)ctx;
+	closeModScreen();
 }

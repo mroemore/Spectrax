@@ -20,6 +20,8 @@
 #include <string.h>
 
 #include "gui.h"
+#include "gui_inst_internal.h"
+#include "gui_layer.h"
 #include "gui_mod_screen.h"
 #include "graph_gui.h"
 #include "modsystem.h"
@@ -62,6 +64,8 @@ typedef struct {
 	PresetBank pb;
 	VoiceManager *vm;
 	Instrument *inst;
+	InputState *is;
+	int selected;
 } Env;
 
 static int make_env(Env *e) {
@@ -96,6 +100,17 @@ static int make_env(Env *e) {
 	ASSERT_TRUE(e->vm != NULL, "createVoiceManager");
 	e->inst = e->vm->instruments[0];
 	ASSERT_TRUE(e->inst != NULL, "the channel's instrument");
+
+	e->is = createInputState(INPUT_TYPE_KEYBOARD);
+	ASSERT_TRUE(e->is != NULL, "createInputState");
+
+	/* The screen is a layer on the instrument GUI's overlay stack, so
+	 * the GUI has to exist for the layer tests. The instrument GUI's
+	 * graphs are built from the same voice manager, and the mod-strip
+	 * render textures are allocated lazily, so this is headless. */
+	e->selected = 0;
+	createInstrumentGui(e->vm, &e->selected, 0);
+	ASSERT_TRUE(getInstrumentGui() != NULL, "createInstrumentGui");
 	return 0;
 }
 
@@ -103,6 +118,8 @@ static void free_env(Env *e) {
 	if(!e) {
 		return;
 	}
+	freeInputState(e->is);
+	freeInstrumentGui();
 	freeVoiceManager(e->vm);
 	freeSamplePool(e->sp);
 	freeWavetablePool(e->wtp);
@@ -565,6 +582,221 @@ static int test_pattern_selection(void) {
 	return 0;
 }
 
+/* ---- the screen as a layer ------------------------------------------------ */
+
+/* The screen is a layer on the instrument screen's overlay stack: opening
+ * it pushes the layer, closing it pops the layer, and the layer stack's
+ * own SELECT gesture closes it too (the universal back gesture). */
+
+static int test_layer_lifecycle(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+	ASSERT_TRUE(ig != NULL, "the instrument GUI exists");
+	ASSERT_TRUE(layerStackIsEmpty(&ig->overlayLayers), "the layer stack starts empty");
+	ASSERT_TRUE(!modScreenIsOpen(), "the screen starts closed");
+
+	openModScreen();
+	ASSERT_TRUE(modScreenIsOpen(), "the screen is open");
+	ASSERT_TRUE(!layerStackIsEmpty(&ig->overlayLayers), "the screen pushed a layer");
+	Layer *top = topLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL, "a layer is on top of the stack");
+	ASSERT_TRUE(top->name && strcmp(top->name, "MOD") == 0, "the layer is named MOD");
+	ASSERT_TRUE(top->dim, "the layer dims the instrument screen behind it");
+	ASSERT_TRUE(top->ownsGraph, "the layer owns the screen's graph");
+	ASSERT_TRUE(top->graph && top->graph->root, "the layer carries the screen's graph");
+	ASSERT_TRUE(findGuiNodeNamed(top->graph->root, "MODLIST") != NULL,
+	            "the layer's graph is the modulation screen's");
+
+	closeModScreen();
+	ASSERT_TRUE(!modScreenIsOpen(), "the screen is closed");
+	ASSERT_TRUE(layerStackIsEmpty(&ig->overlayLayers), "the layer stack is empty again");
+
+	free_env(&e);
+	printf("PASS test_layer_lifecycle\n");
+	return 0;
+}
+
+/* The screen's own BACK button closes the screen, through the layer
+ * stack's input path (EDIT fires the selected node's action). */
+static int test_back_button_closes(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+	openModScreen();
+	Layer *top = topLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL, "the screen pushed a layer");
+	GuiNode *back = findGuiNodeNamed(top->graph->root, "MODBACK");
+	ASSERT_TRUE(back != NULL, "the header holds the back button");
+	ASSERT_TRUE(back->actionCb != NULL, "the back button carries an action");
+	changeGraphSelection(top->graph, back);
+
+	/* EDIT fires the action: the layer pops and the screen is closed. */
+	e.is->keys[KM_EDIT].isPressed = true;
+	e.is->keys[KM_EDIT].wasPressed = false;
+	layerStackInputLayer(&ig->overlayLayers, 0, e.is);
+	ASSERT_TRUE(!modScreenIsOpen(), "the back button closed the screen");
+	ASSERT_TRUE(layerStackIsEmpty(&ig->overlayLayers), "the layer stack is empty again");
+
+	free_env(&e);
+	printf("PASS test_back_button_closes\n");
+	return 0;
+}
+
+/* SELECT is the universal back gesture: the layer stack pops the
+ * screen's layer, and the screen knows it is closed afterwards. */
+static int test_select_closes(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+	openModScreen();
+	ASSERT_TRUE(modScreenIsOpen(), "the screen is open");
+
+	e.is->keys[KM_SELECT].isPressed = true;
+	e.is->keys[KM_SELECT].wasPressed = false;
+	layerStackInputLayer(&ig->overlayLayers, 0, e.is);
+	ASSERT_TRUE(!modScreenIsOpen(), "SELECT closed the screen");
+	ASSERT_TRUE(layerStackIsEmpty(&ig->overlayLayers), "the layer stack is empty again");
+
+	free_env(&e);
+	printf("PASS test_select_closes\n");
+	return 0;
+}
+
+/* The screen's graph is built from the selection as it stands when the
+ * screen opens: set the selection first, open second, and the screen
+ * shows that source. This is the contract Task 4 relies on when it
+ * opens the screen focused on the modulator the user picked. */
+static int test_selection_is_read_at_open(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+
+	/* Pick a source that is not the first one. */
+	int lfoPos = -1;
+	for(int i = 0; i < modSourceCount(e.inst->modList); i++) {
+		Mod *m = sourceAt(e.inst, i);
+		if(m && m->type == MT_LFO) {
+			lfoPos = i;
+			break;
+		}
+	}
+	ASSERT_TRUE(lfoPos >= 0, "the patch has an LFO source");
+	ASSERT_TRUE(lfoPos != 0, "the LFO is not the first source");
+
+	modScreenSetSelectedSource(lfoPos);
+	ASSERT_EQ(modScreenSelectedSource(), lfoPos, "the LFO is selected");
+
+	openModScreen();
+	Layer *top = topLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL && top->graph != NULL, "the screen pushed a layer");
+	ASSERT_EQ(modScreenSelectedSource(), lfoPos,
+	          "the screen kept the selection it was opened with");
+	/* The detail pane shows the LFO's own dials -- the source that was
+	 * selected when the screen opened. */
+	GuiNode *detail = findGuiNodeNamed(top->graph->root, "MODDETAIL");
+	ASSERT_TRUE(detail != NULL, "the detail pane exists");
+	ASSERT_TRUE(findGuiNodeNamed(detail, "RATE") != NULL,
+	            "the detail pane holds the LFO's RATE dial");
+
+	closeModScreen();
+	free_env(&e);
+	printf("PASS test_selection_is_read_at_open\n");
+	return 0;
+}
+
+/* The screen is modal: while its layer is up, the instrument screen's own
+ * input is captured by the layer, so the instrument screen's channel
+ * cycling and page navigation do not fire. That is what makes the layer
+ * the whole mechanism -- no change to main.c is needed.
+ *
+ * handlePresetUiInput is the instrument screen's input entry point: it
+ * routes the whole stream to the topmost non-passive layer and returns
+ * true, which stops the rest of the instrument screen's input. */
+static int test_layer_captures_instrument_input(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+	openModScreen();
+	ASSERT_TRUE(modScreenIsOpen(), "the screen is open");
+
+	/* The instrument screen's global gestures are gated on "no modal
+	 * layer is up" (instrumentLayerModalActive). The screen's layer is
+	 * a non-passive layer, so the gate is closed while it is up. */
+	ASSERT_TRUE(instrumentLayerModalActive(),
+	            "the screen's layer counts as a modal layer");
+
+	/* The instrument screen's input goes to the layer, and the
+	 * instrument screen reports it as consumed. */
+	Graph *instGraph = getSelectedInstGraph();
+	ASSERT_TRUE(instGraph != NULL, "the instrument screen has a graph");
+	GuiNode *before = instGraph->selected;
+
+	e.is->keys[KM_DOWN].isPressed = true;
+	e.is->keys[KM_DOWN].wasPressed = false;
+	bool consumed = handlePresetUiInput(e.is, e.inst);
+	e.is->keys[KM_DOWN].isPressed = false;
+
+	ASSERT_TRUE(consumed, "the instrument screen's input was consumed by the layer");
+	ASSERT_TRUE(instGraph->selected == before,
+	            "the instrument screen's cursor did not move");
+
+	/* The layer's own graph took the arrow instead. */
+	Layer *top = topLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL && top->graph != NULL, "the screen's layer is up");
+	ASSERT_TRUE(top->graph->selected != NULL, "the screen's graph has a cursor");
+
+	free_env(&e);
+	printf("PASS test_layer_captures_instrument_input\n");
+	return 0;
+}
+
+/* A button on the instrument screen reaches the screen: the button
+ * carries the callback, the instrument screen's action dispatch fires it
+ * on EDIT, and the screen opens as a layer. (Task 4 wires the
+ * modulation line to the same callback.) */
+static int test_button_reaches_open_mod_screen(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	InstrumentGui *ig = getInstrumentGui();
+	Graph *instGraph = getSelectedInstGraph();
+	ASSERT_TRUE(instGraph != NULL, "the instrument screen has a graph");
+	ASSERT_TRUE(instGraph->selected != NULL, "the instrument screen has a cursor");
+
+	/* The button carries the callback, the way the instrument screen's
+	 * buttons carry theirs. */
+	instGraph->selected->actionCb = cbOpenModScreen;
+	instGraph->selected->actionCtx = NULL;
+
+	e.is->keys[KM_EDIT].isPressed = true;
+	e.is->keys[KM_EDIT].wasPressed = false;
+	bool consumed = handlePresetUiInput(e.is, e.inst);
+	e.is->keys[KM_EDIT].isPressed = false;
+
+	ASSERT_TRUE(consumed, "the instrument screen's input was consumed");
+	ASSERT_TRUE(modScreenIsOpen(), "the button opened the modulation screen");
+	Layer *top = topLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL, "the screen pushed a layer");
+	ASSERT_TRUE(top->name && strcmp(top->name, "MOD") == 0,
+	            "the screen pushed the MOD layer");
+
+	free_env(&e);
+	printf("PASS test_button_reaches_open_mod_screen\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_graph_shape() != 0) {
 		return 1;
@@ -588,6 +820,24 @@ int main(void) {
 		return 1;
 	}
 	if(test_null_instrument() != 0) {
+		return 1;
+	}
+	if(test_layer_lifecycle() != 0) {
+		return 1;
+	}
+	if(test_back_button_closes() != 0) {
+		return 1;
+	}
+	if(test_select_closes() != 0) {
+		return 1;
+	}
+	if(test_layer_captures_instrument_input() != 0) {
+		return 1;
+	}
+	if(test_selection_is_read_at_open() != 0) {
+		return 1;
+	}
+	if(test_button_reaches_open_mod_screen() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_mod_screen)\n");

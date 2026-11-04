@@ -144,6 +144,11 @@ bool guiPickerEditorInput(InputState *is);
 bool guiPickerHeldAmountAdjust(InputState *is);
 void cbOpenRouteLayer(void *ctx);
 void cbOpenClearAllLayer(void *ctx);
+/* Task 2: the action that opens the modulation screen (gui_mod_screen.c)
+ * as a layer over the instrument screen. A button on the instrument
+ * screen carries it, and the instrument screen's action dispatch fires
+ * it on EDIT. */
+void cbOpenModScreen(void *ctx);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);

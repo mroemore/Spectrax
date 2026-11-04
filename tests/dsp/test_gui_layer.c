@@ -427,6 +427,35 @@ static int test_input_select_route_bookkeeping(void) {
 	return 0;
 }
 
+/* A layer named "MOD" -- the modulation screen's layer -- pops on SELECT
+ * like any other, but must NOT touch the route picker's bookkeeping: the
+ * stack's name-keyed reset fires only for the layer named "ROUTE", so the
+ * two screens cannot clobber each other's state. */
+static int test_input_select_mod_layer_keeps_picker_state(void) {
+	LayerStack s;
+	initLayerStack(&s);
+	InputState *is = createInputState(INPUT_TYPE_KEYBOARD);
+
+	Graph *g = tiny_graph("leaf", NULL);
+	pushLayer(&s, createLayer(g, 0, 0, 0, 0, "MOD", false, true));
+
+	g_routePickerCount = 2;
+	g_routeErase = true;
+	press_once(is, KM_SELECT);
+	layerStackInput(&s, is);
+	release(is, KM_SELECT);
+	ASSERT_TRUE(s.count == 0);
+	/* The layer popped ... */
+	ASSERT_TRUE(g_routePickerCount == 2);
+	/* ... but the picker state is untouched. */
+	ASSERT_TRUE(g_routeErase == true);
+
+	freeInputState(is);
+	destroyLayerStack(&s);
+	printf("PASS test_input_select_mod_layer_keeps_picker_state\n");
+	return 0;
+}
+
 /* layerStackInput direct guards: NULL stack and an empty stack are no-ops. */
 static int test_input_stack_guards(void) {
 	InputState *is = createInputState(INPUT_TYPE_KEYBOARD);
@@ -655,6 +684,7 @@ int main(void) {
 	rc |= test_input_edit_fires_action();
 	rc |= test_input_all_arrows_and_select_nonroute();
 	rc |= test_input_select_route_bookkeeping();
+	rc |= test_input_select_mod_layer_keeps_picker_state();
 	rc |= test_input_stack_guards();
 	rc |= test_pop_free_variants();
 	rc |= test_draw_noop_paths();

@@ -109,6 +109,12 @@ static int clampSelectedInstrument(void) {
  * Without this the GUI leaked on every rebuild -- valgrind found it while
  * testing the module (TESTING.md I40).
  *
+ * The overlay stack is destroyed too: it holds the modal layers (the
+ * route picker, the modulation screen), and destroyLayerStack frees each
+ * layer's graph and name along with the stack's own array. Without it the
+ * stack's array leaked on every teardown -- valgrind found it while
+ * testing the modulation screen.
+ *
  * Note the VoiceManager is *not* touched: it is process-lifetime state, and
  * gui_inst_mod.c's g_sourceCtx[] keeps Instrument pointers into it. */
 void freeInstrumentGui(void) {
@@ -123,6 +129,7 @@ void freeInstrumentGui(void) {
 			igui->instrumentScreenGraphs[i] = NULL;
 		}
 	}
+	destroyLayerStack(&igui->overlayLayers);
 	free(igui);
 	igui = NULL;
 }
@@ -1281,6 +1288,16 @@ static void cbOpenLoadList(void *ctx) {
 		return;
 	}
 	guiOpenLoadList();
+}
+
+/* Task 2: the modulation screen is a layer over the instrument screen
+ * (gui_mod_screen.c), so opening it is an ordinary action on the
+ * instrument screen: a button carries this callback and the action
+ * dispatch in handlePresetUiInput fires it on EDIT. Task 4 wires the
+ * modulation line to it; until then no button carries it. */
+void cbOpenModScreen(void *ctx) {
+	(void)ctx;
+	openModScreen();
 }
 
 /* Task 9: scrollable preset-load-list node. The list contents live in
