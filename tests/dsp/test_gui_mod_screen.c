@@ -299,9 +299,18 @@ static int test_selection_state(void) {
 	}
 	Instrument *inst = e.inst;
 
+	modScreenSetSelectedSource(-1);
+	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "createModScreenGraph returns a graph");
+	/* The setter validates an index against the screen's instrument,
+	 * which the build is what tells it: build first, then select. */
 	modScreenSetSelectedSource(2);
 	ASSERT_EQ(modScreenSelectedSource(), 2, "the selection is settable");
-	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	freeGuiNode(g->root);
+	free(g);
+
+	/* A rebuild keeps the selection. */
+	g = createModScreenGraph(inst, e.vm, 0, true);
 	ASSERT_TRUE(g != NULL, "createModScreenGraph returns a graph");
 	ASSERT_EQ(modScreenSelectedSource(), 2, "a rebuild keeps the selection");
 	/* The selected source's own dials are in the detail pane: an
@@ -315,13 +324,13 @@ static int test_selection_state(void) {
 	freeGuiNode(g->root);
 	free(g);
 
-	/* A selection that no longer exists falls back to the first
-	 * source; an explicit "none" reads back as none. */
+	/* An explicit "none" reads back as none, and the next build falls
+	 * back to the first source. */
 	modScreenSetSelectedSource(-1);
 	ASSERT_EQ(modScreenSelectedSource(), -1, "no selection reads back as -1");
 	g = createModScreenGraph(inst, e.vm, 0, true);
 	ASSERT_TRUE(g != NULL, "createModScreenGraph returns a graph");
-	ASSERT_EQ(modScreenSelectedSource(), 0, "a stale selection falls back to the first source");
+	ASSERT_EQ(modScreenSelectedSource(), 0, "no selection falls back to the first source");
 	freeGuiNode(g->root);
 	free(g);
 
@@ -367,9 +376,15 @@ static int test_source_dials(void) {
 	}
 	ASSERT_TRUE(lfoPos >= 0, "the patch has an LFO source");
 
-	modScreenSetSelectedSource(lfoPos);
+	/* Build first: the setter validates an index against the screen's
+	 * instrument, which the build is what tells it. */
+	modScreenSetSelectedSource(-1);
 	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
 	ASSERT_TRUE(g != NULL, "createModScreenGraph returns a graph");
+	modScreenSetSelectedSource(lfoPos);
+	ASSERT_EQ(modScreenSelectedSource(), lfoPos, "the LFO is selected");
+	g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the graph is rebuilt");
 	GuiNode *detail = findGuiNodeNamed(g->root, "MODDETAIL");
 	ASSERT_TRUE(detail != NULL, "the detail pane exists");
 	/* An LFO's own dials are its RATE and its SHAPE. */
@@ -464,17 +479,89 @@ static int test_focus(void) {
 	freeGuiNode(g->root);
 	free(g);
 
-	/* A selection past the end of the source list falls back to the
-	 * first source. */
+	/* A selection past the end of the source list is refused: the
+	 * selection stays where it was. */
 	modScreenSetSelectedSource(9999);
+	ASSERT_EQ(modScreenSelectedSource(), 0, "an index past the end is refused");
 	g = createModScreenGraph(inst, e.vm, 0, true);
 	ASSERT_TRUE(g != NULL, "the graph is rebuilt");
-	ASSERT_EQ(modScreenSelectedSource(), 0, "a stale selection falls back to the first source");
+	ASSERT_EQ(modScreenSelectedSource(), 0, "the selection is still the first source");
+	freeGuiNode(g->root);
+	free(g);
+
+	/* A selection whose source is gone falls back to the first source
+	 * the screen can show. */
+	addRuntimeSource(inst);
+	int runtimePos = modSourceCount(inst->modList) - 1;
+	modScreenSetSelectedSource(runtimePos);
+	ASSERT_EQ(modScreenSelectedSource(), runtimePos, "the runtime source is selected");
+	ASSERT_TRUE(removeSource(inst, runtimePos), "the runtime source is removed");
+	g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the graph is rebuilt");
+	ASSERT_EQ(modScreenSelectedSource(), 0, "a selection whose source is gone falls back");
+	ASSERT_TRUE(g->selected != NULL, "the screen still has a cursor");
 	freeGuiNode(g->root);
 	free(g);
 
 	free_env(&e);
 	printf("PASS test_focus\n");
+	return 0;
+}
+
+/* ---- the pattern sources are not selectable sources -------------------- */
+
+static int test_pattern_selection(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+	int count = modSourceCount(inst->modList);
+	int patternPos = -1;
+	for(int i = 0; i < count; i++) {
+		Mod *m = sourceAt(inst, i);
+		if(m && m->type == MT_PATTERN) {
+			patternPos = i;
+			break;
+		}
+	}
+	ASSERT_TRUE(patternPos >= 0, "the instrument has pattern sources");
+
+	/* The screen learns its instrument when it is built. */
+	modScreenSetSelectedSource(-1);
+	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "createModScreenGraph returns a graph");
+	ASSERT_TRUE(g->selected != NULL, "the screen has a cursor");
+	freeGuiNode(g->root);
+	free(g);
+
+	/* The pattern sources share the one grouped row, so they are not
+	 * selectable sources: the setter refuses one and the selection
+	 * stays where it was. */
+	modScreenSetSelectedSource(0);
+	ASSERT_EQ(modScreenSelectedSource(), 0, "the first source is selected");
+	modScreenSetSelectedSource(patternPos);
+	ASSERT_EQ(modScreenSelectedSource(), 0, "a pattern source is refused");
+
+	/* A source that BECOMES a pattern source leaves the selection
+	 * pointing at nothing the screen can show: the build falls back to
+	 * a source it can show, so the screen always has a cursor. */
+	Mod *first = sourceAt(inst, 0);
+	ASSERT_TRUE(first != NULL, "the first source exists");
+	ASSERT_TRUE(changeModType(inst->modList, first, MT_PATTERN, inst->paramList),
+	          "the first source becomes a pattern source");
+	g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the graph is rebuilt");
+	ASSERT_TRUE(g->selected != NULL, "the screen still has a cursor");
+	ASSERT_TRUE(g->selected && g->selected->name
+	            && strcmp(g->selected->name, "MODSRC_1") == 0,
+	            "the cursor fell back to a source the screen can show");
+	ASSERT_EQ(modScreenSelectedSource(), 1, "the selection fell back too");
+	freeGuiNode(g->root);
+	free(g);
+
+	free_env(&e);
+	printf("PASS test_pattern_selection\n");
 	return 0;
 }
 
@@ -495,6 +582,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_focus() != 0) {
+		return 1;
+	}
+	if(test_pattern_selection() != 0) {
 		return 1;
 	}
 	if(test_null_instrument() != 0) {

@@ -43,18 +43,62 @@
 #define MOD_TITLE_LEN 64
 #define MOD_NAME_LEN  32
 
+/* The source at a source position (0-based over the non-attenuator
+ * mods), or NULL. */
+static Mod *modSourceAt(Instrument *inst, int pos) {
+	if(!inst || !inst->modList) {
+		return NULL;
+	}
+	int mi = modIndexAt(inst->modList, pos);
+	return (mi >= 0) ? inst->modList->mods[mi] : NULL;
+}
+
+/* A source the screen can show: the attenuators are connection-internal
+ * and the pattern sources share the one grouped row, so neither has a
+ * source row of its own. */
+static bool isSelectableSource(Mod *m) {
+	return m && m->type != MT_ATTEN && m->type != MT_PATTERN;
+}
+
+/* The first source the screen can show, or -1 when it has none. */
+static int firstSelectableSource(Instrument *inst) {
+	int count = inst ? modSourceCount(inst->modList) : 0;
+	for(int i = 0; i < count; i++) {
+		if(isSelectableSource(modSourceAt(inst, i))) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 /* The selected source's index within the instrument's source list, or -1
  * when no source is selected. The selection is screen state: it outlives
  * the graph, so a rebuild does not throw the user back to the first
  * source. */
 static int g_modScreenSource = -1;
 
+/* The instrument the screen is showing. The selection is validated
+ * against it, and the screen holds one graph at a time (the selected
+ * instrument's), so the pointer stays live for as long as the screen
+ * does. */
+static Instrument *g_modScreenInst = NULL;
+
 int modScreenSelectedSource(void) {
 	return g_modScreenSource;
 }
 
 void modScreenSetSelectedSource(int idx) {
-	g_modScreenSource = (idx < 0) ? -1 : idx;
+	if(idx < 0) {
+		g_modScreenSource = -1;
+		return;
+	}
+	/* The pattern sources share the one grouped row, so they are not
+	 * selectable sources: an index naming one is refused and the
+	 * selection stays where it was. */
+	if(g_modScreenInst && !isSelectableSource(modSourceAt(g_modScreenInst, idx))) {
+		return;
+	}
+	g_modScreenSource = idx;
 }
 
 /* The header's title: the instrument's name. An instrument that has
@@ -73,12 +117,8 @@ static void modScreenTitle(char *buf, size_t len, Instrument *inst, int channel)
  * internal — they never appear as rows — and the pattern sources are
  * grouped into the one MODSRC_PTN row. */
 static GuiNode *appendSourceRow(GuiNode *container, Instrument *inst, int idx) {
-	Mod *mod = NULL;
-	if(inst && inst->modList) {
-		int mi = modIndexAt(inst->modList, idx);
-		mod = (mi >= 0) ? inst->modList->mods[mi] : NULL;
-	}
-	if(!mod || mod->type == MT_ATTEN || mod->type == MT_PATTERN) {
+	Mod *mod = modSourceAt(inst, idx);
+	if(!isSelectableSource(mod)) {
 		return NULL;
 	}
 	char name[MOD_NAME_LEN];
@@ -120,14 +160,7 @@ static void appendPatternRow(GuiNode *container, Instrument *inst) {
 		}
 		guiNodeSetText(btn, (m && m->name) ? m->name : tag);
 		char sub[24];
-		if(m && m->type == MT_PATTERN) {
-			PatternState *p = &m->data.pattern;
-			int len = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
-			int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
-			snprintf(sub, sizeof(sub), "L%d %s", len, patternShapeAbbrev(shape));
-		} else {
-			snprintf(sub, sizeof(sub), "--");
-		}
+		patternTrackSummary(m, sub, sizeof(sub));
 		guiNodeSetSublabel(btn, sub);
 		appendItem(row, btn, 1);
 	}
@@ -157,36 +190,22 @@ static void appendSourceDials(GuiNode *container, Mod *mod) {
 	}
 	switch(mod->type) {
 		case MT_ENV: {
-			EnvState *e = &mod->data.env;
-			static const char *stageName[2] = {
-				"ATK",
-				"DEC",
-			};
-			for(int s = 0; s < 2; s++) {
-				/* Each stage keeps its rate dial and its curve dial
-				 * together, the way the instrument screen's env
-				 * stage box does. */
-				GuiNode *stage = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "ENV_STAGE", 0, 0);
-				if(!stage) {
-					continue;
-				}
-				appendDial(stage, stageName[s], e->stages[s].duration, 2);
-				appendDial(stage, "CRV", e->stages[s].curvature, 1);
-				applyLayout(stage, "env-stage");
-				appendItem(container, stage, 2);
-			}
+			/* The envelope's stage boxes are shared with the instrument
+			 * screen (appendEnvStageDials in gui_inst_internal.h), so
+			 * both screens show the same widget. */
+			appendEnvStageDials(container, mod, false);
 			break;
 		}
 		case MT_LFO: {
 			LfoState *l = &mod->data.lfo;
-			appendDial(container, "RATE", l->rate, 2);
-			appendDial(container, "SHAPE", l->shape, 2);
+			appendDial(container, "RATE", l->rate, 8);
+			appendDial(container, "SHAPE", l->shape, 8);
 			break;
 		}
 		case MT_RND: {
 			RndState *r = &mod->data.rnd;
-			appendDial(container, "RATE", r->rate, 2);
-			appendDial(container, "SHAPE", r->shape, 2);
+			appendDial(container, "RATE", r->rate, 8);
+			appendDial(container, "SHAPE", r->shape, 8);
 			break;
 		}
 		default:
@@ -249,14 +268,20 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 		return NULL;
 	}
 
+	/* The screen shows one instrument at a time, so the selection is
+	 * validated against it. */
+	g_modScreenInst = inst;
+
 	/* The selected source: the screen keeps its selection across a
 	 * rebuild, so a rebuild does not throw the user back to the first
-	 * source. A selection that no longer exists falls back to the first
-	 * source (or to none, when the instrument has no sources). */
+	 * source. A selection that names no source the screen can show (it
+	 * is out of range, or it names a pattern source, which share the
+	 * one grouped row) falls back to the first source the screen can
+	 * show. */
 	int count = inst ? modSourceCount(inst->modList) : 0;
 	int src = g_modScreenSource;
-	if(src < 0 || src >= count) {
-		src = count > 0 ? 0 : -1;
+	if(src < 0 || src >= count || !isSelectableSource(modSourceAt(inst, src))) {
+		src = firstSelectableSource(inst);
 	}
 	g_modScreenSource = src;
 
@@ -274,7 +299,7 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 	}
 	char title[MOD_TITLE_LEN];
 	modScreenTitle(title, sizeof(title), inst, channel);
-	GuiNode *titleNode = createTextGuiNode(0, 0, 100, 100, title, "MODTITLE");
+	GuiNode *titleNode = createTextGuiNode(0, 0, 100, 100, title, NULL);
 	if(titleNode) {
 		/* A text node is created without a name; give it one so the
 		 * screen's chrome can be found by name. */
@@ -318,16 +343,14 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 
 	/* The detail pane: the selected source's own dials, then its
 	 * routes. */
-	Mod *sel = NULL;
-	if(src >= 0 && inst && inst->modList) {
-		int mi = modIndexAt(inst->modList, src);
-		sel = (mi >= 0) ? inst->modList->mods[mi] : NULL;
-	}
+	Mod *sel = (src >= 0) ? modSourceAt(inst, src) : NULL;
 	appendSourceDials(detail, sel);
 	GuiNode *routes = createGuiNode(0, 0, 100, 100, 2, na_vertical, "MODROUTES", 0, 0);
 	if(routes) {
 		appendRouteRows(routes, inst, sel);
-		appendItem(detail, routes, 8);
+		/* The route list shares the pane with the source's dials: the
+		 * dials take a quarter each, the routes the other half. */
+		appendItem(detail, routes, 16);
 	}
 
 	/* The cursor starts on the selected source's row: the screen opens

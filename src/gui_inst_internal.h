@@ -8,7 +8,10 @@
  * (gui_mod_screen.c) shares the mod-source helpers below with the
  * instrument screen's mod-source UI. */
 
+#include <stdio.h>
 #include "gui.h"
+#include "gui_internal.h"
+#include "gui_style.h"
 
 /* A connection is "from src" when its source IS src, or when it routes
  * through src's attenuator (MT_ATTEN with input == src). Line drawing,
@@ -47,6 +50,76 @@ static inline const char *patternShapeAbbrev(int shape) {
 		case SH_SLEW:   return "SLEW";
 		case SH_CURVE:  return "CUR";
 		default:        return "?";
+	}
+}
+
+/* A pattern track's summary for a row's sublabel: its length and its
+ * shape ("L4 HLD"), or "--" when the track has no pattern mod.
+ * Shared: the instrument screen's pattern row and the modulation
+ * screen's pattern row must show the same summary. */
+static inline void patternTrackSummary(Mod *m, char *buf, size_t len) {
+	if(!buf || len == 0) {
+		return;
+	}
+	if(m && m->type == MT_PATTERN) {
+		PatternState *p = &m->data.pattern;
+		int trackLen = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
+		int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
+		snprintf(buf, len, "L%d %s", trackLen, patternShapeAbbrev(shape));
+	} else {
+		snprintf(buf, len, "--");
+	}
+}
+
+/* An envelope source's own stage dials: one box per stage, holding the
+ * stage's rate dial ("ATK" / "DEC") and its small curve dial ("CRV").
+ * The box is the app's styled wrapper (drawWrapperNode), so both
+ * screens show the same widget.
+ *
+ * `selected` marks the first stage's rate dial as the cursor's target,
+ * the way the instrument screen's source row does. The stage boxes are
+ * appended with weight 8: the instrument screen's row layout overrides
+ * it, and the modulation screen's detail pane lays them out by it.
+ *
+ * Shared: the instrument screen's mod-source row and the modulation
+ * screen's detail pane. */
+static inline void appendEnvStageDials(GuiNode *container, Mod *mod, bool selected) {
+	if(!container || !mod || mod->type != MT_ENV) {
+		return;
+	}
+	EnvState *e = &mod->data.env;
+	static const struct {
+		const char *rateName;
+	} stageCfg[2] = {
+		{ "ATK" },
+		{ "DEC" },
+	};
+	for(int s = 0; s < 2; s++) {
+		GuiNode *stageBox = createGuiNode(0, 0, 100, 100, 0, na_horizontal, "ENV_STAGE", 0, 0);
+		if(!stageBox) {
+			continue;
+		}
+		stageBox->drawable = true;
+		stageBox->draw = drawWrapperNode;
+		GuiNode *rateDial = createDialGuiNode(0, 0, 100, 100, 0,
+		                                      na_horizontal,
+		                                      stageCfg[s].rateName,
+		                                      s == 0 ? selected : 0,
+		                                      incParameterBaseValue,
+		                                      e->stages[s].duration);
+		GuiNode *curveDial = createDialGuiNode(0, 0, 100, 100, 0,
+		                                       na_horizontal,
+		                                       "CRV", 0,
+		                                       incParameterBaseValue,
+		                                       e->stages[s].curvature);
+		if(rateDial) {
+			appendItem(stageBox, rateDial, 2);
+		}
+		if(curveDial) {
+			appendItem(stageBox, curveDial, 1);
+		}
+		applyLayout(stageBox, "env-stage");
+		appendItem(container, stageBox, 8);
 	}
 }
 

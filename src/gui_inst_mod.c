@@ -1907,35 +1907,12 @@ void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int id
 			 * stage-rate / stage-curve label styles: ATK/DEC at the
 			 * top-right of the box and CRV centred above the small
 			 * knob. The curve dial paints the curvature glyph in place
-			 * of a numeric (DialStyle.curveIcon). */
-			EnvState *e = &mod->data.env;
-			static const struct {
-				const char *rateName;
-			} stageCfg[2] = {
-				{ "ATK" },
-				{ "DEC" },
-			};
-			for(int s = 0; s < 2; s++) {
-				GuiNode *stageBox = createGuiNode(0, 0, 100, 100, 0,
-				                                  na_horizontal, "ENV_STAGE", 0, 0);
-				stageBox->drawable = true;
-				stageBox->draw = drawWrapperNode;
-				GuiNode *rateDial = createDialGuiNode(0, 0, 100, 100, 0,
-				                                      na_horizontal,
-				                                      stageCfg[s].rateName,
-				                                      s == 0 ? selected : 0,
-				                                      incParameterBaseValue,
-				                                      e->stages[s].duration);
-				GuiNode *curveDial = createDialGuiNode(0, 0, 100, 100, 0,
-				                                       na_horizontal,
-				                                       "CRV", 0,
-				                                       incParameterBaseValue,
-				                                       e->stages[s].curvature);
-				appendItem(stageBox, rateDial, 2);
-				appendItem(stageBox, curveDial, 1);
-				applyLayout(stageBox, "env-stage");
-				appendItem(wrap, stageBox, 8);
-			}
+			 * of a numeric (DialStyle.curveIcon).
+			 *
+			 * The stage boxes are shared with the modulation screen
+			 * (appendEnvStageDials in gui_inst_internal.h), so both
+			 * screens show the same widget. */
+			appendEnvStageDials(wrap, mod, selected);
 			/* A core env row has no TYPE selector / DEL button, so it
 			 * uses the two-box weights layout; a runtime env row keeps
 			 * the full positional mod-source-row weights. */
@@ -2010,14 +1987,7 @@ void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight) {
 		char sub[24];
 		int mi = modIndexAt(inst->modList, firstPat + t);
 		Mod *m = (mi >= 0) ? inst->modList->mods[mi] : NULL;
-		if(m && m->type == MT_PATTERN) {
-			PatternState *p = &m->data.pattern;
-			int len = p->length ? getParameterValueAsInt(p->length) : p->stepCount;
-			int shape = p->shape ? getParameterValueAsInt(p->shape) : SH_HOLD;
-			snprintf(sub, sizeof(sub), "L%d %s", len, patternShapeAbbrev(shape));
-		} else {
-			snprintf(sub, sizeof(sub), "--");
-		}
+		patternTrackSummary(m, sub, sizeof(sub));
 		guiNodeSetSublabel(route, sub);
 		appendItem(wrap, route, 3);
 	}
