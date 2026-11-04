@@ -159,6 +159,13 @@ Parameter *createParameter(ParamList *paramList, const char *name, float initial
 		param->coarseIncrement = 0.10f;
 		param->modulators = NULL;
 		param->modulator_count = 0;
+		/* Task 2.4 (the modulation pass): a parameter is a modulation
+		 * source's output only when initMod claims it. The flag is read
+		 * on the audio path (processModulations) and in removeModulation,
+		 * so it must start at a known value: an uninitialised bool read
+		 * is undefined behaviour and can differ from machine to machine
+		 * (criterion C). */
+		param->isModOutput = false;
 		param->onChange.cbData = NULL;
 		param->onChange.cbFunc = NULL;
 	}
