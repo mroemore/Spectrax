@@ -353,3 +353,24 @@ Commits: `5d93b5f` A3 · `f506a22` A4 · `62c919a` D2 · `10416b2` D1 ·
 - **D3's remaining legs** the armhf leg (deferred: the Miyoo Mini is
   best-effort, much later, by the human partner's decision) and the
   scalar-versus-NEON leg.
+
+### Continuation (2026-11-04): the GUI phase's design and plan
+
+- The GUI phase's design: `docs/superpowers/specs/2026-11-04-gui-phase-design.md`.
+  Eighteen decisions the human partner made across two mockup sessions, and
+  thirteen calls of mine with their costs.
+- Its plan: `docs/superpowers/plans/2026-11-04-gui-phase.md` — eleven tasks in
+  four workstreams: the modulation screen (additive, with the instrument
+  screen's list still in place), the modulation line and the list's removal
+  (the phase's one subtraction, last in that workstream), the sampler's
+  character (the panel, the OTA cascade, the crossfade, the waveform's points,
+  the playback modes, the preview of the bake), and the pattern screen's
+  velocity lane with the voice-type gating and the budget's readout.
+- The human partner's three answers from the builder check: the crossfade is a
+  saved parameter, so the preset format bumps to V5; the route picker is a
+  plain list of names; the route lines are redrawn from the modulation line.
+- The builder's check found three wrong premises in the design, all corrected:
+  the loop points are already honoured by the read path, the waveform draws
+  the source's peak envelope and uses no advance at all (the mismatch is that
+  it shows the source while the voice plays the bake), and GRAIN's granular
+  buffer is already only allocated for a grain voice.
