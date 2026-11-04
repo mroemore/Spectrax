@@ -4,9 +4,51 @@
 /* Cross-module internals for the instrument-screen split: the shell
  * (gui_instrument.c) builds the graph and calls into the per-type row
  * builders and the mod-source UI. Anything here is private to the
- * gui_inst_* modules; public API lives in gui.h. */
+ * gui_inst_* modules; public API lives in gui.h. The modulation screen
+ * (gui_mod_screen.c) shares the mod-source helpers below with the
+ * instrument screen's mod-source UI. */
 
 #include "gui.h"
+
+/* A connection is "from src" when its source IS src, or when it routes
+ * through src's attenuator (MT_ATTEN with input == src). Line drawing,
+ * route matching and erase/toggle detection must follow the attenuator.
+ * Shared: the instrument screen's mod-source UI and the modulation
+ * screen both match a route back to its source. */
+static inline bool connFromSource(ModConnection *c, Mod *src) {
+	if(!c || !src) {
+		return false;
+	}
+	if(c->source == src) {
+		return true;
+	}
+	return c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src;
+}
+
+/* The display tag for a source's type. Shared with the modulation
+ * screen, whose source rows show the tag next to the source's name. */
+static inline const char *modTypeTag(ModType t) {
+	switch(t) {
+		case MT_LFO: return "LFO";
+		case MT_RND: return "RND";
+		case MT_PATTERN: return "PTN";
+		case MT_ATTEN: return "ATTN";
+		default:     return "ENV";
+	}
+}
+
+/* The pattern track's shape, abbreviated for the row's sublabel (the
+ * length+shape summary). Kept short so it fits next to the track's
+ * name without overflowing the cell. */
+static inline const char *patternShapeAbbrev(int shape) {
+	switch(shape) {
+		case SH_HOLD:   return "HLD";
+		case SH_LINEAR: return "LIN";
+		case SH_SLEW:   return "SLEW";
+		case SH_CURVE:  return "CUR";
+		default:        return "?";
+	}
+}
 
 /* shell state shared with the gui_inst_* modules */
 extern InstrumentGui *igui;

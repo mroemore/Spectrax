@@ -13,6 +13,10 @@
 #include "vizfx.h"
 #include "gui_layer.h"
 #include "theme.h"
+/* The modulation screen's graph (the source list and the selected
+ * source's detail). Its own header, so the screen's module keeps its
+ * API to itself; the include is what makes it reachable from gui.h. */
+#include "gui_mod_screen.h"
 
 typedef struct {
 	int x;

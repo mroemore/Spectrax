@@ -73,6 +73,7 @@ gui_sources = files(
   'gui_inst_sample.c',
   'gui_inst_mod.c',
   'gui_inst_blep.c',
+  'gui_mod_screen.c',
   'gui_layer.c',
   'curve_icons.c',
 )

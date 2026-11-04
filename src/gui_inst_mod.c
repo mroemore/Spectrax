@@ -30,7 +30,6 @@ typedef struct DestCtx {
 	int srcIdx;
 	Parameter *dest;
 } DestCtx;
-static bool connFromSource(ModConnection *c, Mod *src);
 
 /* T9: word-wrap a message to fit `r`, centred vertically. Used for the
  * function-held "tap EDIT to clear modulations for …" / "no active
@@ -483,7 +482,6 @@ int guiRouteLinesSource(void) {
 
 
 static void cbRouteToDest(void *ctx);
-static bool connFromSource(ModConnection *c, Mod *src);
 typedef struct DestCtx DestCtx;
 static int findRouteButtonRect(GuiNode *root, Rectangle *out);
 static GuiNode *findDialNodeForParam(GuiNode *node, Parameter *p);
@@ -1620,19 +1618,6 @@ static void buildRouteLineLut(void) {
 }
 
 
-/* A connection is "from src" when its source IS src, or when it routes
- * through src's attenuator (MT_ATTEN with input == src). Line drawing,
- * route matching and erase/toggle detection must follow the attenuator. */
-static bool connFromSource(ModConnection *c, Mod *src) {
-	if(!c || !src) {
-		return false;
-	}
-	if(c->source == src) {
-		return true;
-	}
-	return c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src;
-}
-
 /* Is a dial currently VISIBLE inside its scroll container's viewport?
  * The container reflow stores a row's y as uint16: rows scrolled ABOVE
  * the viewport get a negative offset that wraps to a huge value (e.g.
@@ -1865,32 +1850,8 @@ static void cbCycleSourceType(void *ctx) {
 }
 
 
-static const char *modTypeTag(ModType t) {
-	switch(t) {
-		case MT_LFO: return "LFO";
-		case MT_RND: return "RND";
-		case MT_PATTERN: return "PTN";
-		case MT_ATTEN: return "ATTN";
-		default:     return "ENV";
-	}
-}
-
-
-
-/* Grouped PTN row: shape abbreviation used by the per-button sublabel
- * (length+shape summary). Kept short so it fits next to the ROUTE text
- * without overflowing the cell. */
-static const char *patternShapeAbbrev(int shape) {
-	switch(shape) {
-		case SH_HOLD:   return "HLD";
-		case SH_LINEAR: return "LIN";
-		case SH_SLEW:   return "SLEW";
-		case SH_CURVE:  return "CUR";
-		default:        return "?";
-	}
-}
-
-
+/* One source row in the mod-wrap: the source's own dials plus the
+ * route / type / delete actions. */
 void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected) {
 	Mod *mod = NULL;
 	if(inst && inst->modList) {
