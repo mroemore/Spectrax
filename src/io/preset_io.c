@@ -66,6 +66,42 @@ typedef struct {
 	} pd;
 } PresetV3;
 
+/* V4 (IPB4) is the character chain without the loop's crossfade. The
+ * crossfade is a field appended to the sampler patch, so the union grew
+ * and the old body cannot be read into the current struct by truncation
+ * -- every field after the sampler patch would misalign. The old layout
+ * is mirrored exactly and copied field by field, exactly as
+ * SamplerPatchV3/PresetV3 do for V4. */
+typedef struct {
+	int bitDepth;
+	int sampleRate;
+	bool loopSample;
+	int sampleIndex;
+	SamplePlaybackType playbackType;
+	int loopStartIndex;
+	int loopEndIndex;
+	int profile;
+	int law;
+	int interp;
+	int filterOn;
+	float cutoff;
+	float res;
+	float tune;
+	int root;
+} SamplerPatchV4;
+
+typedef struct {
+	char name[33];
+	VoiceType voiceType;
+	ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+	int modSettingsCount;
+	union {
+		SamplerPatchV4 sampler;
+		FmPatch fm;
+		BlepPatch blep;
+	} pd;
+} PresetV4;
+
 static int cmpPresetPaths(const void *a, const void *b) {
 	const char *const *pa = a;
 	const char *const *pb = b;
@@ -92,7 +128,7 @@ PresetFileResult savePresetFile(const char *filename, Preset *preset) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V4)) {
+	if(!writeChunkHeader(file, PRESET_MAGIC_HEADER_V5)) {
 		fclose(file);
 		return PRESET_ERROR_WRITE;
 	}
@@ -111,7 +147,7 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V4)) {
+	if(readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V5)) {
 		if(fread(&preset, sizeof(Preset), 1, file) != 1) {
 			fclose(file);
 			return PRESET_ERROR_READ;
@@ -120,8 +156,69 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 		addPresetToBank(pb, preset);
 		return PRESET_OK;
 	}
-	/* V3: the current layout minus the character chain. */
+	/* V4: the current layout minus the loop's crossfade. */
 	fclose(file);
+	file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
+	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V4)) {
+		/* fall through to the V3 handling below */
+	} else {
+		PresetV4 v4;
+		memset(&v4, 0, sizeof(v4));
+		if(fread(&v4, sizeof(v4), 1, file) != 1) {
+			fclose(file);
+			return PRESET_ERROR_READ;
+		}
+		fclose(file);
+		Preset migrated;
+		memset(&migrated, 0, sizeof(migrated));
+		memcpy(migrated.name, v4.name, sizeof(migrated.name));
+		migrated.voiceType = v4.voiceType;
+		memcpy(migrated.modSettings, v4.modSettings, sizeof(migrated.modSettings));
+		migrated.modSettingsCount = v4.modSettingsCount;
+		switch(migrated.voiceType) {
+			case VOICE_TYPE_FM:
+				migrated.pd.fm = v4.pd.fm;
+				break;
+			case VOICE_TYPE_SAMPLE:
+				migrated.pd.sampler.bitDepth = v4.pd.sampler.bitDepth;
+				migrated.pd.sampler.sampleRate = v4.pd.sampler.sampleRate;
+				migrated.pd.sampler.loopSample = v4.pd.sampler.loopSample;
+				migrated.pd.sampler.sampleIndex = v4.pd.sampler.sampleIndex;
+				migrated.pd.sampler.playbackType = v4.pd.sampler.playbackType;
+				migrated.pd.sampler.loopStartIndex = v4.pd.sampler.loopStartIndex;
+				migrated.pd.sampler.loopEndIndex = v4.pd.sampler.loopEndIndex;
+				migrated.pd.sampler.profile = v4.pd.sampler.profile;
+				migrated.pd.sampler.law = v4.pd.sampler.law;
+				migrated.pd.sampler.interp = v4.pd.sampler.interp;
+				migrated.pd.sampler.filterOn = v4.pd.sampler.filterOn;
+				migrated.pd.sampler.cutoff = v4.pd.sampler.cutoff;
+				migrated.pd.sampler.res = v4.pd.sampler.res;
+				migrated.pd.sampler.tune = v4.pd.sampler.tune;
+				migrated.pd.sampler.root = v4.pd.sampler.root;
+				/* The crossfade did not exist: no crossfade. */
+				migrated.pd.sampler.crossfadeMs = 0.0f;
+				break;
+			case VOICE_TYPE_BLEP:
+				migrated.pd.blep = v4.pd.blep;
+				break;
+			default:
+				break;
+		}
+		/* Re-save as V5, the way the earlier migrations do, so the file
+		 * on disk carries the current format. */
+		savePresetFile(filename, &migrated);
+		addPresetToBank(pb, migrated);
+		return PRESET_OK;
+	}
+	fclose(file);
+	/* V3: the current layout minus the character chain. */
+	file = fopen(filename, "rb");
+	if(!file) {
+		return PRESET_ERROR_OPEN;
+	}
 	file = fopen(filename, "rb");
 	if(!file) {
 		return PRESET_ERROR_OPEN;
@@ -172,8 +269,8 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 			default:
 				break;
 		}
-		/* Re-save as V4, the way the V1 and V2 migrations do, so the
-		 * file on disk carries the current format. */
+		/* Re-save in the current format, the way the V1 and V2 migrations
+		 * do, so the file on disk carries it. */
 		savePresetFile(filename, &migrated);
 		addPresetToBank(pb, migrated);
 		return PRESET_OK;

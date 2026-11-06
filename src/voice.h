@@ -130,6 +130,8 @@ typedef struct {
 	float res;
 	float tune;
 	int root;
+	/* The loop's crossfade, in milliseconds. Zero is no crossfade. */
+	float crossfadeMs;
 } SamplerPatch;
 
 typedef struct {
@@ -152,6 +154,9 @@ typedef struct {
 	Parameter *res;
 	Parameter *tune;
 	Parameter *root;
+	/* The loop's crossfade length, in milliseconds. Its maximum follows
+	 * the loop's length, so it is re-set when the sample changes. */
+	Parameter *crossfade;
 	/* The baked (degraded) copy of the current sample, rebuilt whenever
 	 * the sample or the chain changes. Null until there is something to
 	 * bake. */

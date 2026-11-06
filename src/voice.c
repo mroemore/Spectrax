@@ -8,6 +8,7 @@
 #include "modsystem.h"
 #include "sample.h"
 #include "device_budget.h"
+#include "sampler_crossfade.h"
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -169,11 +170,24 @@ OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency
 	int srcRate = (id->sample && id->sample->sampleRate > 0) ? id->sample->sampleRate : baked->rate;
 	int loopStart = (int)(((long)getParameterValueAsInt(id->loopStartIndex) * baked->rate) / srcRate);
 	int loopEnd = (int)(((long)getParameterValueAsInt(id->loopEndIndex) * baked->rate) / srcRate);
+	/* The crossfade: the loop's length in frames, and the law the
+	 * material implies. The law is MEASURED once per loop -- off the
+	 * audio path, and cached on the bake. */
+	int xfadeFrames = 0;
+	int fadeLaw = XF_EQUAL_POWER;
+	if(loop) {
+		int loopFrames = loopEnd - loopStart;
+		float xfadeMs = getParameterValue(id->crossfade);
+		xfadeFrames = samplerCrossfadeFrames(xfadeMs, loopFrames, baked->rate);
+		if(xfadeFrames > 0) {
+			fadeLaw = (int)samplerCrossfadeMeasure(baked, loopStart, loopEnd, xfadeFrames);
+		}
+	}
 	float v;
 	if(getParameterValueAsInt(id->interp) == SPI_DROPSAMPLE) {
-		v = getBakedSampleDrop(baked, &vd->dsAddr, &vd->dsPhase, advance, loop, loopStart, loopEnd);
+		v = getBakedSampleDrop(baked, &vd->dsAddr, &vd->dsPhase, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw);
 	} else {
-		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd);
+		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw);
 	}
 	/* The OTA cascade: the character engine's per-voice filter, behind the
 	 * FILTER dial. When the filter is off the state is bypassed AND
@@ -1040,6 +1054,15 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", presetValueOr(p.pd.sampler.res, 0.0f, 0.9f, 0.0f), 0.0f, 0.9f, 0.01f, 0.05f);
 			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", presetValueOr(p.pd.sampler.tune, 0.25f, 8.0f, 1.0f), 0.25f, 8.0f, 0.01f, 0.1f);
 			instrument->id.sampler.root = createParameterEx(instrument->paramList, "root", (float)p.pd.sampler.root, -48.0f, 48.0f, 1.0f, 12.0f);
+			/* The loop's crossfade, in milliseconds. The maximum follows
+			 * the loop's length, so it is re-set when the sample changes
+			 * (the same call the loop points use). The fine step is 1 ms
+			 * and the coarse one 10 ms. */
+			float loopMs = (instrument->id.sampler.sample && instrument->id.sampler.sample->sampleRate > 0)
+			               ? (float)instrument->id.sampler.sample->length * 1000.0f
+			                 / (float)instrument->id.sampler.sample->sampleRate
+			               : 0.0f;
+			instrument->id.sampler.crossfade = createParameterEx(instrument->paramList, "crossfade", (float)p.pd.sampler.crossfadeMs, 0.0f, loopMs, 1.0f, 10.0f);
 			/* The previous bake is freed here rather than orphaned:
 			 * applyInstrumentPreset replaces the whole chain. */
 			if(instrument->id.sampler.baked) {
@@ -1689,6 +1712,15 @@ void updateSampleReferences(void *instrument) {
 	setParameterValue(i->id.sampler.loopStartIndex, 0);
 	setParameterMaxValue(i->id.sampler.loopStartIndex, i->id.sampler.sample->length);
 	setParameterMaxValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length);
+	/* The crossfade's maximum follows the loop's length, in
+	 * milliseconds. A sample of a different length is a different loop,
+	 * and a crossfade that no longer fits is clamped at read time. */
+	if(i->id.sampler.crossfade) {
+		float loopMs = (i->id.sampler.sample->sampleRate > 0)
+		               ? (float)i->id.sampler.sample->length * 1000.0f / (float)i->id.sampler.sample->sampleRate
+		               : 0.0f;
+		setParameterMaxValue(i->id.sampler.crossfade, loopMs);
+	}
 	setParameterBaseValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
 	setParameterValue(i->id.sampler.loopEndIndex, i->id.sampler.sample->length - 1.0);
 	/* A different sample means a different bake. The old one is freed, and

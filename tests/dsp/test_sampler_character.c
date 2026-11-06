@@ -21,6 +21,7 @@
 #include <math.h>
 
 #include "sampler_character.h"
+#include "sampler_crossfade.h"
 #include "settings.h"
 #include "voice.h"
 
@@ -704,7 +705,7 @@ static int test_drop_never_stalls(void) {
 	double phase = 0.0;
 	uint32_t prev = addr;
 	for(int i = 0; i < 500; i++) {
-		getBakedSampleDrop(&b, &addr, &phase, 0.3f, 0, 0, b.length);
+		getBakedSampleDrop(&b, &addr, &phase, 0.3f, 0, 0, b.length, 0, XF_EQUAL_POWER);
 		if(i > 0 && addr <= prev) {
 			printf("FAIL: the drop read stalled at tick %d (addr %u -> %u)\n", i, prev, addr);
 			freeBakedSample(&b);
@@ -724,9 +725,9 @@ static int test_drop_pitch_down_repeats(void) {
 	uint32_t addr = 0;
 	double phase = 0.0;
 	int repeats = 0;
-	float prev = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length);
+	float prev = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
 	for(int i = 1; i < 100; i++) {
-		float v = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length);
+		float v = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
 		if(v == prev) {
 			repeats++;
 		}
@@ -749,7 +750,7 @@ static int test_baked_drop_wrap_short(void) {
 	uint32_t addr = 0;
 	double phase = 0.0;
 	for(int i = 0; i < 1000; i++) {
-		float v = getBakedSampleDrop(&b, &addr, &phase, 2.7f, 1, 0, b.length);
+		float v = getBakedSampleDrop(&b, &addr, &phase, 2.7f, 1, 0, b.length, 0, XF_EQUAL_POWER);
 		if(!(v == b.data[0] || v == b.data[1] || v == b.data[2])) {
 			printf("FAIL: the drop read returned %g, which is not in the bake\n", (double)v);
 			freeBakedSample(&b);
@@ -770,7 +771,7 @@ static int test_linear_interpolates(void) {
 	/* A linear read sits between the two frames it spans. */
 	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
 	float pos = 0.0f;
-	float v = getBakedSampleLinear(&b, &pos, 0.5f, 0, 0, b.length);
+	float v = getBakedSampleLinear(&b, &pos, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
 	/* After the advance the position is 0.5, halfway between frame 0 and
 	 * frame 1. */
 	if(fabsf(v - 0.5f * (b.data[0] + b.data[1])) > 1e-6f) {
@@ -794,7 +795,7 @@ static int test_linear_loops_within_the_region(void) {
 	 * wraps to the region's start when it passes the region's end, the
 	 * way the drop read does. The two interpolators have to agree. */
 	for(int i = 0; i < 8; i++) {
-		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24);
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER);
 		if(fabsf(v - b.data[i + 1]) > 1e-6f) {
 			printf("FAIL: the linear read skipped the head at %d (%g, want %g)\n",
 			       i, (double)v, (double)b.data[i + 1]);
@@ -803,7 +804,7 @@ static int test_linear_loops_within_the_region(void) {
 		}
 	}
 	for(int i = 0; i < 500; i++) {
-		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24);
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER);
 		if(v < minSeen) {
 			minSeen = v;
 		}
@@ -829,7 +830,7 @@ static int test_read_stops_at_the_end_without_looping(void) {
 	float pos = 0.0f;
 	float last = 1.0f;
 	for(int i = 0; i < 64; i++) {
-		last = getBakedSampleLinear(&b, &pos, 1.0f, 0, 0, b.length);
+		last = getBakedSampleLinear(&b, &pos, 1.0f, 0, 0, b.length, 0, XF_EQUAL_POWER);
 	}
 	if(last != 0.0f) {
 		printf("FAIL: the read past the end gave %g, want silence\n", (double)last);

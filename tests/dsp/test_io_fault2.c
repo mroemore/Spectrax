@@ -255,7 +255,7 @@ static int test_preset_io_faults(void) {
 	{
 		char buf[sizeof(Preset) + 16];
 		memset(buf, 0, sizeof(buf));
-		memcpy(buf, PRESET_MAGIC_HEADER_V4, 4);
+		memcpy(buf, PRESET_MAGIC_HEADER_V5, 4);
 		if(write(fd, buf, sizeof(buf)) != (ssize_t)sizeof(buf)) {
 			close(fd);
 			return 1;

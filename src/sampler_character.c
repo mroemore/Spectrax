@@ -1,4 +1,5 @@
 #include "sampler_character.h"
+#include "sampler_crossfade.h"
 #include "canonical_math.h"
 #include "settings.h"
 
@@ -488,8 +489,37 @@ static void loopBounds(const BakedSample *b, int loopStart, int loopEnd, int *st
 	*end = e;
 }
 
+
+/* The crossfade at the read position.
+ *
+ * The crossfade lives in the loop's LAST frames: they fade out while
+ * the loop's FIRST frames fade in, over the same span, so the seam is
+ * a cross rather than a jump. The position alone says where in the
+ * crossfade the read is -- no extra state is needed, and the read path
+ * stays a pure function of the position.
+ *
+ * `outgoing` is the material at the position (the copy leaving) and
+ * `incoming` is the material at the loop's start plus the same offset
+ * (the copy arriving). */
+static float crossfadeAt(const BakedSample *b, int start, int end, int xfadeFrames, int law,
+                         int index, float outgoing) {
+	if(xfadeFrames <= 0 || index < end - xfadeFrames || index >= end) {
+		return outgoing;
+	}
+	int offset = index - (end - xfadeFrames);
+	if(offset < 0 || offset >= xfadeFrames) {
+		return outgoing;
+	}
+	int incomingIndex = start + offset;
+	if(incomingIndex < 0 || incomingIndex >= b->length) {
+		return outgoing;
+	}
+	float phase = (float)offset / (float)xfadeFrames;
+	return samplerCrossfadeMix(outgoing, b->data[incomingIndex], phase, (SamplerFadeLaw)law);
+}
+
 float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
-                          int loop, int loopStart, int loopEnd) {
+                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law) {
 	if(!b || !b->data || b->length <= 0 || !addr || !phase) {
 		return 0.0f;
 	}
@@ -517,11 +547,11 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 		}
 		*addr = (uint32_t)start + ((*addr - (uint32_t)start) % span);
 	}
-	return b->data[*addr];
+	return crossfadeAt(b, start, end, xfadeFrames, law, (int)*addr, b->data[*addr]);
 }
 
 float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
-                            int loop, int loopStart, int loopEnd) {
+                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law) {
 	if(!b || !b->data || b->length <= 0 || !pos) {
 		return 0.0f;
 	}
@@ -556,5 +586,6 @@ float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
 		floorIndex = 0;
 	}
 	float frac = *pos - (float)floorIndex;
-	return b->data[floorIndex] * (1.0f - frac) + b->data[ceilIndex] * frac;
+	float v = b->data[floorIndex] * (1.0f - frac) + b->data[ceilIndex] * frac;
+	return crossfadeAt(b, start, end, xfadeFrames, law, floorIndex, v);
 }

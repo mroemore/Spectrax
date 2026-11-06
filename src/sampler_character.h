@@ -55,6 +55,17 @@ typedef struct {
 	SamplerQuantLaw law; /* the coding law the bake applied */
 	const Sample *src;   /* the source it was baked from */
 	int srcLength;       /* the source's length when it was baked */
+
+	/* The loop crossfade's measured law. The correlation between the
+	 * loop's head and tail is measured ONCE per loop, off the audio
+	 * path, and cached here -- the read path must not measure it per
+	 * sample. The cache is keyed on the loop points it was measured for:
+	 * a bake measured for one loop says nothing about another. */
+	float lawCorrelation;
+	int fadeLaw;          /* the SamplerFadeLaw the measurement implies */
+	int lawLoopStart;
+	int lawLoopEnd;
+	int lawFrames;
 } BakedSample;
 
 /* The interpolators a machine profile can use.
@@ -163,12 +174,12 @@ float samplerAdvance(int noteSemitones, int rootSemitones, float tune, int baked
  * are the loop region in baked frames; when `loop` is zero the read falls
  * silent at the end instead of wrapping. */
 float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
-                          int loop, int loopStart, int loopEnd);
+                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law);
 
 /* The linear-interpolated read: the varispeed class. `pos` is the voice's
  * read position in baked frames. */
 float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
-                            int loop, int loopStart, int loopEnd);
+                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law);
 
 /* Quantize one sample.
  *

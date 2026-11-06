@@ -213,11 +213,11 @@ static int test_save_preset_ok(void) {
     make_preset(&p, 1);
     ASSERT_EQ(savePresetFile(path, &p), PRESET_OK);
 
-    /* Magic header (V4 = IPB4; V1 = IPBH kept for migration only) */
+    /* Magic header (V5 = IPB5; V1 = IPBH kept for migration only) */
     char magic[4];
     ASSERT_EQ(read_magic(path, magic), 0);
-    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V4, 4) == 0,
-                "preset file must start with IPB4 magic (V4 format)");
+    ASSERT_TRUE(memcmp(magic, PRESET_MAGIC_HEADER_V5, 4) == 0,
+                "preset file must start with IPB5 magic (V5 format)");
 
     /* Non-empty, exactly magic + raw struct */
     ASSERT_EQ(file_size(path), (long long)(4 + sizeof(Preset)));
@@ -1187,10 +1187,10 @@ static int test_preset_v1_migration(void) {
     ASSERT_EQ_MSG(pb->presetCount, 1, "v1 preset loaded");
     ASSERT_TRUE(strcmp(pb->patches[0].name, "oldpreset") == 0, "name from filename");
 
-    /* migration re-saved the file as V4: check the header magic */
+    /* migration re-saved the file in the current format: check the header */
     fp = fopen(v1, "rb");
     ASSERT_TRUE(fp != NULL, "open v1 for read");
-    ASSERT_TRUE(readAndVerifyChunkHeader(fp, PRESET_MAGIC_HEADER_V4), "file now V4 after migration");
+    ASSERT_TRUE(readAndVerifyChunkHeader(fp, PRESET_MAGIC_HEADER_V5), "file now V5 after migration");
     fclose(fp);
 
     free(pb);
@@ -1225,6 +1225,109 @@ typedef struct {
         BlepPatch blep;
     } pd;
 } PresetV3Test;
+
+/* Review Focus 3: a preset saved before the crossfade existed (a V4
+ * file, IPB4) opens in a V5 build, and the migration produces a sane
+ * crossfade -- zero, not a garbage length -- and keeps everything else.
+ *
+ * The V4 body is the current layout minus the crossfade, so the test
+ * mirrors it exactly. */
+typedef struct {
+    int bitDepth;
+    int sampleRate;
+    bool loopSample;
+    int sampleIndex;
+    SamplePlaybackType playbackType;
+    int loopStartIndex;
+    int loopEndIndex;
+    int profile;
+    int law;
+    int interp;
+    int filterOn;
+    float cutoff;
+    float res;
+    float tune;
+    int root;
+} SamplerPatchV4Test;
+
+typedef struct {
+    char name[33];
+    VoiceType voiceType;
+    ModPreset modSettings[MAX_ENVELOPES + MAX_LFOS];
+    int modSettingsCount;
+    union {
+        SamplerPatchV4Test sampler;
+        FmPatch fm;
+        BlepPatch blep;
+    } pd;
+} PresetV4Test;
+
+static int test_preset_v4_migration(void) {
+    ensure_tmp_dirs();
+    const char *v4 = TMP_DIR "presetdir/v4old.ipb";
+    remove(v4);
+    PresetV4Test old;
+    memset(&old, 0, sizeof(old));
+    strncpy(old.name, "v4old", sizeof(old.name) - 1);
+    old.voiceType = VOICE_TYPE_SAMPLE;
+    old.modSettingsCount = 0;
+    old.pd.sampler.bitDepth = 12;
+    old.pd.sampler.sampleRate = 26040;
+    old.pd.sampler.loopSample = true;
+    old.pd.sampler.sampleIndex = 3;
+    old.pd.sampler.playbackType = SPT_FORWARD;
+    old.pd.sampler.loopStartIndex = 100;
+    old.pd.sampler.loopEndIndex = 900;
+    old.pd.sampler.profile = SMP_SP1200;
+    old.pd.sampler.law = SQL_TRUNC;
+    old.pd.sampler.interp = SPI_DROPSAMPLE;
+    old.pd.sampler.filterOn = 1;
+    old.pd.sampler.cutoff = 1200.0f;
+    old.pd.sampler.res = 0.3f;
+    old.pd.sampler.tune = 1.25f;
+    old.pd.sampler.root = 7;
+
+    FILE *fp = fopen(v4, "wb");
+    ASSERT_TRUE(fp != NULL, "open v4 for write");
+    ASSERT_TRUE(writeChunkHeader(fp, "IPB4"), "v4 header written");
+    ASSERT_TRUE(fwrite(&old, sizeof(old), 1, fp) == 1, "v4 body written");
+    fclose(fp);
+
+    PresetBank *pb = make_bank();
+    ASSERT_TRUE(loadPresetFile(v4, pb) == PRESET_OK, "v4 load ok");
+    ASSERT_EQ_MSG(pb->presetCount, 1, "v4 preset loaded");
+    ASSERT_TRUE(strcmp(pb->patches[0].name, "v4old") == 0, "name preserved from v4 body");
+    ASSERT_TRUE(pb->patches[0].voiceType == VOICE_TYPE_SAMPLE, "voice type preserved");
+    /* The chain's fields survive the migration. */
+    ASSERT_TRUE(pb->patches[0].pd.sampler.bitDepth == 12, "bit depth preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.sampleRate == 26040, "sample rate preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopSample == true, "loop flag preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.sampleIndex == 3, "sample index preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopStartIndex == 100, "loop start preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.loopEndIndex == 900, "loop end preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.profile == SMP_SP1200, "profile preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.law == SQL_TRUNC, "law preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.interp == SPI_DROPSAMPLE, "interpolator preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.filterOn == 1, "the filter flag preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.cutoff == 1200.0f, "cutoff preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.res == 0.3f, "resonance preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.tune == 1.25f, "tune preserved");
+    ASSERT_TRUE(pb->patches[0].pd.sampler.root == 7, "root preserved");
+    /* The crossfade did not exist: no crossfade. */
+    ASSERT_TRUE(pb->patches[0].pd.sampler.crossfadeMs == 0.0f,
+                "the crossfade migrates to zero, not a garbage length");
+
+    free(pb);
+    /* The migration re-saved the file in the current format. */
+    FILE *again = fopen(v4, "rb");
+    ASSERT_TRUE(again != NULL, "reopen the migrated file");
+    ASSERT_TRUE(readAndVerifyChunkHeader(again, PRESET_MAGIC_HEADER_V5),
+                "the file is V5 after the migration");
+    fclose(again);
+    remove(v4);
+    printf("PASS test_preset_v4_migration\n");
+    return 0;
+}
 
 static int test_preset_v3_migration(void) {
     ensure_tmp_dirs();
@@ -1671,6 +1774,7 @@ int main(void) {
     failed |= test_preset_name_roundtrip();
     failed |= test_preset_v1_migration();
     failed |= test_preset_v2_pitch_migration();
+    failed |= test_preset_v4_migration();
     failed |= test_preset_v3_migration();
     failed |= test_preset_pitch_and_gain_roundtrip();
     failed |= test_preset_ship_dir_migration();
