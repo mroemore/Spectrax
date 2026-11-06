@@ -945,13 +945,25 @@ int main(int argc, char **argv) {
 				}
 				break;
 			case SCENE_INSTRUMENT:
-				if(isKeyJustPressed(appState->inputState, KM_ADD)) {
+				/* Task 2: ADD and REMOVE mutate the instrument, and they are
+				 * read here -- BEFORE handlePresetUiInput, which is what
+				 * routes the input to an open modal layer. So without a gate
+				 * they fire even while a layer owns the screen: REMOVE would
+				 * free the Parameters (removeMod -> freeEnvelope/freeLFO)
+				 * that an open layer's graph still points at -- the
+				 * modulation screen is the first layer that holds
+				 * Parameter pointers, so that is a use-after-free.
+				 *
+				 * instrumentLayerModalActive() is the branch's own gate for
+				 * "a modal layer is up" (see the FUNCTION and SELECT guards
+				 * below), and the same shape fits here. */
+				if(isKeyJustPressed(appState->inputState, KM_ADD) && !instrumentLayerModalActive()) {
 					Instrument *inst = getSelectedInstInstrument();
 					if(inst->voiceType == VOICE_TYPE_FM) {
 						addRuntimeSource(inst);
 					}
 				}
-				if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
+				if(isKeyJustPressed(appState->inputState, KM_REMOVE) && !instrumentLayerModalActive()) {
 					/* Task 4: the mod-wrap now has a header row at index 0,
 					 * so removeSelectedSource's `idx - 1` mapping is correct.
 					 * removeSelectedEnvelope (the no-header walker) is gone. */
