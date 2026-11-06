@@ -56,6 +56,13 @@
  * way out -- the one the user aims at. */
 static void cbModScreenBack(void *ctx);
 
+/* The "+ ROUTE" button's action: opens the destination picker over the
+ * screen. Defined below, with the picker. */
+static void cbModScreenOpenPicker(void *ctx);
+
+/* The "CLEAR ALL" button's action: opens the shared confirmation. */
+static void cbModScreenClearAll(void *ctx);
+
 /* The source at a source position (0-based over the non-attenuator
  * mods), or NULL. */
 static Mod *modSourceAt(Instrument *inst, int pos) {
@@ -259,14 +266,23 @@ static void appendRouteRows(GuiNode *container, Instrument *inst, Mod *src) {
 			idx++;
 		}
 	}
-	/* The "+ ROUTE" button: the destination picker is a later task, so
-	 * the button carries no action yet. Its name stays out of the
-	 * "MODROUTE_<i>" row namespace, so counting the rows by prefix
-	 * counts the routes and nothing else. */
-	GuiNode *add = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MOD_ADDRUTE", 0, NULL, NULL);
+	/* The "+ ROUTE" button: it opens the destination picker, a plain
+	 * list of the instrument's routable parameters. Its name stays out
+	 * of the "MODROUTE_<i>" row namespace, so counting the rows by
+	 * prefix counts the routes and nothing else. */
+	GuiNode *add = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MOD_ADDRUTE", 0, cbModScreenOpenPicker, NULL);
 	if(add) {
 		guiNodeSetText(add, "+ ROUTE");
 		appendItem(container, add, 1);
+	}
+	/* The "CLEAR ALL" button: it opens the shared YES/NO confirmation,
+	 * and confirming removes every route of this source. Its name is
+	 * out of the "MODROUTE_<i>" namespace too, so it is not counted as
+	 * a route. */
+	GuiNode *clear = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MOD_CLEARALL", 0, cbModScreenClearAll, NULL);
+	if(clear) {
+		guiNodeSetText(clear, "CLEAR ALL");
+		appendItem(container, clear, 1);
 	}
 }
 
@@ -492,4 +508,214 @@ void closeModScreen(void) {
 static void cbModScreenBack(void *ctx) {
 	(void)ctx;
 	closeModScreen();
+}
+
+/* ---- the destination picker --------------------------------------------- */
+
+/* The destinations the picker offers: the instrument's routable
+ * parameters, in the instrument graph's order, plus the ones that have
+ * no dial of their own (the gain, the per-operator level and pitch).
+ *
+ * The instrument's OWN graph is walked, not the modulation screen's: the
+ * screen covers the dials, but what can be routed into is a property of
+ * the instrument, and the screen's graph holds the screen's own dials
+ * (the source's stage dials), which are not destinations. */
+int modScreenRouteDestinations(const Instrument *inst, Parameter **out, int max) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return 0;
+	}
+	Graph *instGraph = getSelectedInstGraph();
+	if(!instGraph || !instGraph->root) {
+		return 0;
+	}
+	Parameter *params[MAX_PARAMS];
+	GuiNode *nodes[MAX_PARAMS];
+	Rectangle rects[MAX_PARAMS];
+	int n = 0;
+	collectRoutableDials(instGraph->root, params, nodes, MAX_PARAMS, &n);
+	appendNoDialDests((Instrument *)inst, instGraph->root, params, nodes, rects, MAX_PARAMS, &n);
+	if(n <= 0) {
+		return 0;
+	}
+	/* Copy out what the caller asked for. The RETURN is the total
+	 * number of destinations -- a caller that passes a NULL `out` (or
+	 * a max of 0) is asking how many there are. */
+	if(out) {
+		int copy = (n < max) ? n : max;
+		for(int i = 0; i < copy; i++) {
+			out[i] = params[i];
+		}
+	}
+	return n;
+}
+
+/* One destination's row: the instrument, the source it routes FROM, and
+ * the destination it routes INTO. */
+typedef struct {
+	Instrument *inst;
+	Mod *src;
+	Parameter *dest;
+} ModDestCtx;
+
+/* The picker's rows' contexts. The picker is a layer over the screen, and
+ * its graph is freed when the layer is popped -- so the contexts must
+ * outlive it, exactly as the instrument screen's picker does. */
+static ModDestCtx g_modDestCtx[MAX_PARAMS];
+
+/* The picker layer's name. Distinct from the stack's other named layers
+ * ("MOD", "ROUTE", "ROUTELINES"), so the stack's name-keyed bookkeeping
+ * (the route picker's counters) never fires on it. */
+#define MOD_PICKER_LAYER_NAME "MODPICKER"
+
+/* Route the source into the destination and close the picker. */
+static void cbModScreenRouteToDest(void *ctx) {
+	ModDestCtx *dc = (ModDestCtx *)ctx;
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig || !dc || !dc->inst || !dc->src || !dc->dest) {
+		return;
+	}
+	/* Pop the picker first: the route mutates the instrument, which
+	 * rebuilds the instrument's graph, and the picker layer's graph
+	 * would be freed underneath us. */
+	Layer *top = topNonPassiveLayer(&ig->overlayLayers);
+	if(top && top->name && strcmp(top->name, MOD_PICKER_LAYER_NAME) == 0) {
+		popTopNonPassiveLayerFree(&ig->overlayLayers);
+	}
+	pthread_mutex_lock(&g_audioLock);
+	dc->inst->rebuilding = true;
+	addModulation(dc->inst->paramList, dc->inst->modList, dc->src, dc->dest, 1.0f, MO_ADD);
+	if(dc->inst->vm) {
+		rebuildVoicesForInstrument(dc->inst->vm, dc->inst);
+	}
+	dc->inst->rebuilding = false;
+	pthread_mutex_unlock(&g_audioLock);
+	rebuildInstrumentGraph();
+	/* The screen's route list shows the routes, so it has to be rebuilt
+	 * to show the one just added. */
+	refreshModScreen();
+}
+
+/* Build the destination picker's graph for the screen's selected source:
+ * one action button per destination, named "DEST_<i>", each labelled
+ * with the destination's name.
+ *
+ * It is a PLAIN LIST, not the instrument screen's ghost overlay: that
+ * one pinned a button over each routable dial's rectangle, so it lined up
+ * with the dials behind it. The modulation screen covers those dials, so
+ * there is nothing to point at -- and a list of names says the same thing
+ * without the geometry.
+ *
+ * The caller owns the returned graph and frees it with freeGuiNode(). */
+Graph *createRoutePickerGraph(Instrument *inst, int channel) {
+	(void)channel;
+	if(!inst) {
+		return NULL;
+	}
+	/* The picker routes the screen's SELECTED source, so the screen's
+	 * graph has to have been built (it is what validates the
+	 * selection against the instrument). */
+	Mod *src = (g_modScreenInst == inst && g_modScreenSource >= 0)
+	           ? modSourceAt(inst, g_modScreenSource)
+	           : NULL;
+	if(!src) {
+		return NULL;
+	}
+	Parameter *params[MAX_PARAMS];
+	int n = modScreenRouteDestinations(inst, params, MAX_PARAMS);
+	if(n <= 0) {
+		return NULL;
+	}
+	Graph *g = createGraph(na_vertical);
+	if(!g || !g->root) {
+		return NULL;
+	}
+	GuiNode *first = NULL;
+	for(int i = 0; i < n; i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "DEST_%d", i);
+		g_modDestCtx[i].inst = inst;
+		g_modDestCtx[i].src = src;
+		g_modDestCtx[i].dest = params[i];
+		GuiNode *btn = createActionBtnGuiNode(0, 0, 100, 100, 1, na_horizontal, name, 0,
+		                                      cbModScreenRouteToDest, &g_modDestCtx[i]);
+		if(!btn) {
+			continue;
+		}
+		guiNodeSetText(btn, params[i]->name);
+		appendItem(g->root, btn, 1);
+		if(!first) {
+			first = btn;
+		}
+	}
+	/* The cursor starts on the first destination: the list is the
+	 * screen's whole interface, so the first row is where an
+	 * interaction begins. */
+	if(first) {
+		changeGraphSelection(g, first);
+	}
+	return g;
+}
+
+/* Rebuild the screen's graph in place, so its route list reflects a
+ * change made elsewhere -- a route added by the picker, or the routes the
+ * clear-all removed. The layer keeps its identity and its place on the
+ * stack; only the graph behind it is replaced. */
+void refreshModScreen(void) {
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig || !ig->vm) {
+		return;
+	}
+	modScreenLayer();
+	if(!modLayer) {
+		return;
+	}
+	Instrument *inst = g_modScreenInst;
+	if(!inst) {
+		return;
+	}
+	int channel = (inst->metaChannel >= 0) ? inst->metaChannel : 0;
+	Graph *g = createModScreenGraph(inst, ig->vm, channel, true);
+	if(!g) {
+		return;
+	}
+	/* The layer owns the old graph (it was created with ownsGraph), so
+	 * the old one is freed here rather than left to the layer's
+	 * destructor. */
+	if(modLayer->ownsGraph && modLayer->graph) {
+		freeGuiNode(modLayer->graph->root);
+		free(modLayer->graph);
+	}
+	modLayer->graph = g;
+}
+
+/* The "+ ROUTE" button on the screen's route list: opens the destination
+ * picker as a layer over the screen. */
+static void cbModScreenOpenPicker(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = getInstrumentGui();
+	if(!ig) {
+		return;
+	}
+	Graph *g = createRoutePickerGraph(g_modScreenInst, 0);
+	if(!g) {
+		return;
+	}
+	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, MOD_PICKER_LAYER_NAME, true, true);
+	if(!layer) {
+		freeGuiNode(g->root);
+		free(g);
+		return;
+	}
+	pushLayer(&ig->overlayLayers, layer);
+}
+
+/* The "CLEAR ALL" button on the screen's route list: opens the shared
+ * YES/NO confirmation for the source the screen is showing. */
+static void cbModScreenClearAll(void *ctx) {
+	(void)ctx;
+	if(!g_modScreenInst || g_modScreenSource < 0) {
+		return;
+	}
+	openClearAllForSource(g_modScreenInst, g_modScreenSource);
 }

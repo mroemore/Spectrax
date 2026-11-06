@@ -1,0 +1,42 @@
+# mod_picker.txt - the modulation screen's destination picker.
+#
+# The screen's route list ends with a "+ ROUTE" button. It opens a plain
+# list of the instrument's routable destinations -- not the instrument
+# screen's ghost overlay, which pinned a button over each dial's
+# rectangle, because the modulation screen covers those dials.
+#
+# Picking a destination routes the source into it and closes the picker.
+
+FRAMES 4
+
+# --- Open the modulation screen from the line ------------------------------
+JUMP MODLINE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
+
+# --- The "+ ROUTE" button opens the picker ---------------------------------
+JUMPTL MOD_ADDRUTE
+FRAMES 2
+ASSERT topLayerSelected==MOD_ADDRUTE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
+
+# --- Picking a destination routes the source into it ----------------------
+EDIT
+FRAMES 2
+# The picker is gone and the screen is back on top, with its route list
+# rebuilt to show the new route.
+ASSERT topLayerSelected==MODSRC_0
+
+# --- The back gesture closes the screen ------------------------------------
+# SELECT is the universal back: the layer stack pops the topmost
+# non-passive layer. With the screen gone, the top layer IS the base
+# graph again -- and the route rebuilt it, so its selection is back at
+# the start.
+SELECT
+FRAMES 2
+ASSERT topLayerSelected==RATIO1
+
+QUIT

@@ -19,6 +19,7 @@
 #include "gui_inst_internal.h"
 #include "gui_layer.h"
 #include "gui_mod_screen.h"
+#include "gui_mod_screen.h"
 
 /* Spec #1+2: dest cells in the route picker are now outline-only — no
  * label, no fill, just an osc orange/gold rectangle. The label of the
@@ -1100,6 +1101,10 @@ static void cbClearAllConfirmYes(void *ctx) {
 	rebuildInstrumentGraph();
 	sc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
+	/* The modulation screen's route list shows the routes, so it has to
+	 * be rebuilt to show the ones just removed. It is a no-op when the
+	 * screen is not up. */
+	refreshModScreen();
 	syncRouteLinesOverlay(ig);
 	reselectSourceRoute(sc->idx);
 }
@@ -1135,6 +1140,23 @@ void cbOpenClearAllLayer(void *ctx) {
 	changeGraphSelection(g, noBtn);
 	Layer *layer = createLayer(g, px, py, 300, 90, "CLEARALL", true, true);
 	pushLayer(&ig->overlayLayers, layer);
+}
+
+/* Open the clear-all confirmation for a source POSITION. The shared
+ * YES/NO layer: the instrument screen's ROUTE button opens it (with
+ * FUNCTION+EDIT), and the modulation screen's CLEAR ALL button opens it
+ * for the source it is showing.
+ *
+ * The context is file-static: only one clear-all can be open at a time,
+ * and the layer's buttons capture the pointer for as long as they live. */
+void openClearAllForSource(Instrument *inst, int srcIdx) {
+	static SourceCtx ctx;
+	if(!inst) {
+		return;
+	}
+	ctx.inst = inst;
+	ctx.idx = srcIdx;
+	cbOpenClearAllLayer(&ctx);
 }
 
 
@@ -1217,7 +1239,7 @@ static void collectRoutableDialsRecurse(GuiNode *node, Parameter **outParams, Gu
 }
 
 
-static void collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
+void collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n) {
 	*n = 0;
 	collectRoutableDialsRecurse(node, outParams, outNodes, cap, n);
 }
@@ -1372,9 +1394,9 @@ static void drawPickerGhostLines(void *self) {
  * per-op outLevel/pitch) to the picker collection. Each gets a fallback
  * rect so its dest button pins + nav works: gain/pitch near the mod-wrap
  * area, per-op dests offset below the op's feedback dial. */
-static void appendNoDialDests(Instrument *inst, GuiNode *instGraphRoot,
-                              Parameter **params, GuiNode **nodes, Rectangle *rects,
-                              int cap, int *n) {
+void appendNoDialDests(Instrument *inst, GuiNode *instGraphRoot,
+                       Parameter **params, GuiNode **nodes, Rectangle *rects,
+                       int cap, int *n) {
 	if(!inst) {
 		return;
 	}

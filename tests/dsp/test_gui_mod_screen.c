@@ -307,6 +307,169 @@ static int test_route_rows(void) {
 	return 0;
 }
 
+/* ---- the destination picker --------------------------------------------- */
+
+/* The destinations the picker offers: the routable parameters of the
+ * instrument, in the instrument graph's order, plus the ones that have no
+ * dial of their own (the gain, the per-operator level and pitch). */
+static int test_route_destinations(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+
+	Parameter *out[64];
+	int n = modScreenRouteDestinations(inst, out, 64);
+	ASSERT_TRUE(n > 0, "the instrument has routable destinations");
+	for(int i = 0; i < n; i++) {
+		ASSERT_TRUE(out[i] != NULL, "every destination is a real parameter");
+		ASSERT_TRUE(out[i]->name && out[i]->name[0] != '\0',
+		            "every destination has a name to show");
+	}
+
+	/* The gain is routable even though it has no dial, and so are the
+	 * FM operator's level and pitch. */
+	bool hasGain = false;
+	bool hasOp0Level = false;
+	bool hasOp0Pitch = false;
+	for(int i = 0; i < n; i++) {
+		if(out[i] == inst->gain) {
+			hasGain = true;
+		}
+		Operator *op0 = inst->id.fm.ops[0] ? inst->id.fm.ops[0] : NULL;
+		if(op0) {
+			if(out[i] == op0->outLevel) {
+				hasOp0Level = true;
+			}
+			if(out[i] == op0->pitch) {
+				hasOp0Pitch = true;
+			}
+		}
+	}
+	ASSERT_TRUE(hasGain, "the gain is a destination");
+	ASSERT_TRUE(hasOp0Level, "operator 0's level is a destination");
+	ASSERT_TRUE(hasOp0Pitch, "operator 0's pitch is a destination");
+
+	/* The count must not exceed the cap, and a NULL out is a pure count. */
+	int counted = modScreenRouteDestinations(inst, NULL, 0);
+	ASSERT_EQ(counted, n, "a NULL out counts without writing");
+
+	free_env(&e);
+	printf("PASS test_route_destinations\n");
+	return 0;
+}
+
+/* The picker: a plain list of the destinations, one button each. */
+static int test_route_picker(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+
+	/* The picker is built for the screen's selected source, so the
+	 * screen's graph must exist first. */
+	modScreenSetSelectedSource(-1);
+	Graph *screen = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(screen != NULL, "the modulation screen's graph");
+	freeGuiNode(screen->root);
+	free(screen);
+
+	Parameter *out[64];
+	int n = modScreenRouteDestinations(inst, out, 64);
+	ASSERT_TRUE(n > 0, "the instrument has routable destinations");
+
+	Graph *picker = createRoutePickerGraph(inst, 0);
+	ASSERT_TRUE(picker != NULL, "the picker's graph");
+	ASSERT_TRUE(picker->root != NULL, "the picker has a root");
+
+	/* One button per destination, named DEST_<i>, and each labelled
+	 * with its destination's name. */
+	for(int i = 0; i < n; i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "DEST_%d", i);
+		GuiNode *btn = findChildNamed(picker->root, name);
+		ASSERT_TRUE(btn != NULL, "the picker holds a button per destination");
+		ASSERT_TRUE(btn->text && strcmp(btn->text, out[i]->name) == 0,
+		            "the button shows the destination's name");
+		ASSERT_TRUE(btn->actionCb != NULL, "the button routes when fired");
+	}
+	/* And no more than one per destination. */
+	char name[32];
+	snprintf(name, sizeof(name), "DEST_%d", n);
+	ASSERT_TRUE(findChildNamed(picker->root, name) == NULL,
+	            "the picker holds exactly one button per destination");
+
+	freeGuiNode(picker->root);
+	free(picker);
+	free_env(&e);
+	printf("PASS test_route_picker\n");
+	return 0;
+}
+
+/* ---- the clear-all ------------------------------------------------------ */
+
+/* The route list ends with a CLEAR ALL button: it opens the YES/NO
+ * confirmation, and confirming removes every route of the source. */
+static int test_clear_all(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+	Mod *src = sourceAt(inst, 0);
+	ASSERT_TRUE(src != NULL, "the first source exists");
+
+	/* The source starts with the FM's seeded gain route. */
+	int routes = modSourceRoutes(inst, src, NULL, 0);
+	ASSERT_TRUE(routes > 0, "the source starts with a route");
+
+	/* The route list holds the CLEAR ALL button. */
+	modScreenSetSelectedSource(-1);
+	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the screen's graph");
+	GuiNode *detail = findGuiNodeNamed(g->root, "MODDETAIL");
+	ASSERT_TRUE(detail != NULL, "the detail pane");
+	GuiNode *routes_node = findChildNamed(detail, "MODROUTES");
+	ASSERT_TRUE(routes_node != NULL, "the route list");
+	GuiNode *clearAll = findChildNamed(routes_node, "MOD_CLEARALL");
+	ASSERT_TRUE(clearAll != NULL, "the route list holds a CLEAR ALL button");
+	ASSERT_TRUE(clearAll->actionCb != NULL, "the button opens the confirmation");
+
+	/* Fire it WHILE the graph is alive -- the button lives in the graph,
+	 * so freeing the graph first would leave the call dangling. */
+	clearAll->actionCb(clearAll->actionCtx);
+	freeGuiNode(g->root);
+	free(g);
+
+	/* The confirmation layer is up. */
+	InstrumentGui *ig = getInstrumentGui();
+	ASSERT_TRUE(ig != NULL, "the instrument gui");
+	bool up = false;
+	for(int i = 0; i < ig->overlayLayers.count; i++) {
+		const char *n = ig->overlayLayers.layers[i].name;
+		if(n && strcmp(n, "CLEARALL") == 0) {
+			up = true;
+		}
+	}
+	ASSERT_TRUE(up, "the clear-all confirmation is up");
+
+	/* Confirming it removes every route of the source. */
+	Layer *top = topNonPassiveLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL, "the confirmation is the top layer");
+	GuiNode *yes = findGuiNodeNamed(top->graph->root, "CLEARALL_YES");
+	ASSERT_TRUE(yes != NULL, "the confirmation has a YES button");
+	yes->actionCb(yes->actionCtx);
+
+	ASSERT_EQ(modSourceRoutes(inst, src, NULL, 0), 0,
+	          "confirming removed every route of the source");
+
+	free_env(&e);
+	printf("PASS test_clear_all\n");
+	return 0;
+}
+
 /* ---- the selected source ----------------------------------------------- */
 
 static int test_selection_state(void) {
@@ -802,6 +965,15 @@ int main(void) {
 		return 1;
 	}
 	if(test_route_rows() != 0) {
+		return 1;
+	}
+	if(test_route_destinations() != 0) {
+		return 1;
+	}
+	if(test_route_picker() != 0) {
+		return 1;
+	}
+	if(test_clear_all() != 0) {
 		return 1;
 	}
 	if(test_selection_state() != 0) {

@@ -44,4 +44,24 @@ void openModScreen(void);
 /* Pop the screen's layer and free it. The layer stack's own SELECT
  * gesture (the universal back) also closes the screen. */
 void closeModScreen(void);
+
+/* Rebuild the screen's graph in place, so its route list reflects a
+ * change made elsewhere -- a route added by the picker, or the routes the
+ * clear-all removed. A no-op when the screen is not up. */
+void refreshModScreen(void);
+
+/* The picker's list of destination names for a source: the routable
+ * parameters, in the instrument graph's order, with their display names.
+ *
+ * The count is the number of destinations; up to `max` of them are
+ * written into `out`. A NULL `out` counts without writing. */
+int modScreenRouteDestinations(const Instrument *inst, Parameter **out, int max);
+
+/* Build the destination picker's graph for the screen's selected source:
+ * one action button per destination, named "DEST_<i>", each labelled
+ * with the destination's name.
+ *
+ * The caller owns the returned graph and frees it with
+ * freeGuiNode(graph->root); free(graph);. */
+Graph *createRoutePickerGraph(Instrument *inst, int channel);
 #endif

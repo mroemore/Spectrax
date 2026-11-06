@@ -137,6 +137,26 @@ static inline void appendEnvStageDials(GuiNode *container, Mod *mod, bool select
 	}
 }
 
+/* The routable dials in a graph, with the nodes they live on. A routable
+ * dial is a node whose draw is a dial's and whose Parameter pointer is
+ * set. The count is written through *n.
+ *
+ * Shared: the instrument screen's route picker and the modulation
+ * screen's destination picker both list what can be routed into. */
+void collectRoutableDials(GuiNode *node, Parameter **outParams, GuiNode **outNodes, int cap, int *n);
+
+/* The routable destinations that have NO dial of their own -- the
+ * instrument's gain and the FM operators' level and pitch. They are
+ * appended to the dial list, so a caller that lists destinations gets
+ * all of them. `rects` receives a fallback rectangle for each (the
+ * picker pins its buttons to them); the modulation screen's plain list
+ * ignores the rectangles.
+ *
+ * Shared: the same two callers. */
+void appendNoDialDests(Instrument *inst, GuiNode *instGraphRoot,
+                       Parameter **params, GuiNode **nodes, Rectangle *rects,
+                       int cap, int *n);
+
 /* shell state shared with the gui_inst_* modules */
 extern InstrumentGui *igui;
 
@@ -158,6 +178,10 @@ bool guiPickerEditorInput(InputState *is);
 bool guiPickerHeldAmountAdjust(InputState *is);
 void cbOpenRouteLayer(void *ctx);
 void cbOpenClearAllLayer(void *ctx);
+/* Open the shared clear-all confirmation for a source position. The
+ * modulation screen's CLEAR ALL button and the instrument screen's
+ * FUNCTION+EDIT on a ROUTE button share it. */
+void openClearAllForSource(Instrument *inst, int srcIdx);
 /* Task 2: the action that opens the modulation screen (gui_mod_screen.c)
  * as a layer over the instrument screen. A button on the instrument
  * screen carries it, and the instrument screen's action dispatch fires
