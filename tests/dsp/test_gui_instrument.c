@@ -704,6 +704,35 @@ static int test_dirty_confirm(void) {
 	return 0;
 }
 
+/* The modulation list is gone from the instrument screen: the modulation
+ * screen carries the full interface now, and the instrument screen keeps
+ * one line for the connected modulators. */
+static int test_mod_list_removed(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "the instrument screen has a graph");
+
+	/* The list and its header are gone. */
+	ASSERT_TRUE(find_node_named(g->root, "mod_wrap") == NULL,
+	            "the modulation list is gone from the instrument screen");
+	ASSERT_TRUE(find_node_named(g->root, "mods_hdr") == NULL,
+	            "the modulation list's header is gone");
+	ASSERT_TRUE(find_node_named(g->root, "MODS_ADD") == NULL,
+	            "the list's ADD button is gone -- the modulation screen has it");
+
+	/* And the line is what remains. */
+	ASSERT_TRUE(find_node_named(g->root, "MODLINE") != NULL,
+	            "the modulation line remains");
+
+	free_env(&e);
+	printf("PASS test_mod_list_removed\n");
+	return 0;
+}
+
 /* The modulation line: the instrument screen's one-line slot that cycles
  * through the connected modulators and opens the modulation screen. */
 static int test_mod_line(void) {
@@ -796,6 +825,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_mod_line() != 0) {
+		return 1;
+	}
+	if(test_mod_list_removed() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

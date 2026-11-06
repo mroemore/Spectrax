@@ -5,8 +5,8 @@
 # has an indicator, a LEN/SHAPE/SLEW/POL dial strip and a 4x4 step grid.
 # Selection starts on the LEN dial; RIGHT moves across the strip; DOWN
 # drops into the grid. EDIT+UP on a dial bumps its value, EDIT+UP on a
-# step raises that step. The instrument mod list shows exactly one
-# grouped PTN row with four named route buttons (PTN_ROUTE_1..4).
+# step raises that step. The modulation screen shows exactly one grouped
+# PTN row with four named track buttons (MODPTN_1..4).
 
 SCENE 2
 FRAMES 3
@@ -53,15 +53,20 @@ RELEASE
 FRAMES 3
 ASSERT patpage==0
 
-# --- Back to the instrument scene and JUMP to PTN_ROUTE_1 ---
+# --- Back to the instrument scene: the pattern tracks are on the
+# --- modulation screen now, in one grouped row.
 SCENE 1
 FRAMES 3
 ASSERT scene==1
-JUMP PTN_ROUTE_1
+JUMP MODLINE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
+JUMPTL MODPTN_1
 FRAMES 1
-ASSERT selected==PTN_ROUTE_1
-JUMP PTN_ROUTE_4
+ASSERT topLayerSelected==MODPTN_1
+JUMPTL MODPTN_4
 FRAMES 1
-ASSERT selected==PTN_ROUTE_4
+ASSERT topLayerSelected==MODPTN_4
 
 QUIT

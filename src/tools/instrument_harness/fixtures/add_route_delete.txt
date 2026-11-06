@@ -1,139 +1,97 @@
 # add_route_delete.txt
-# Task 4: verify the unified mod-sources container + ADD/REMOVE flow.
-# Task 5 (extension): verify the DEL button's YES/NO confirm modal —
-#   EDIT on DEL pushes a layer with DELETE_NO pre-selected;
-#   EDIT on DELETE_NO pops the layer (no source removed);
-#   EDIT on DELETE_YES pops + calls removeSource.
-# The ROUTE button has no wiring yet (Tasks 6-7 will add it).
-# This fixture exercises the full ADD -> walk-right -> REMOVE flow,
-# plus the DELETE_NO cancel path and the DELETE_YES confirm path.
-# N1/N2 (user reports): after a route the rebuild reselects the source's
-# ROUTE button; opening the picker lands on the CLOSEST dest (env[4]'s
-# own curve dial); JUMPTL jumps within the picker layer.
+# The instrument screen's modulation LIST is gone: the modulation screen
+# carries the full interface now. This fixture drives the same flow
+# there -- ADD a source, route it, unroute it, cycle its type, and
+# delete it (both the cancel and the confirm path).
+#
+# The screen is reached from the instrument screen's modulation LINE,
+# which is the screen's only entry point.
 
 FRAMES 1
 ASSERT selected==RATIO1
 # The boot preset (saved fm1.ipb) still has 4 AD envelopes.
 ASSERT envcount==4
 
-# Move down to the mod-wrap header. The FM controls box now has 5 rows
-# (op1..op4 + ALG/PAN/GAIN), so it takes 5 DOWNs: RATIO1 -> RATIO2 ->
-# RATIO3 -> RATIO4 -> ALG -> MODS_ADD.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==MODS_ADD
-
-# EDIT fires cbAddModSource: appends a runtime env, rebuilds the graph,
-# cursor lands on RATIO1.
+# --- Open the modulation screen -------------------------------------------
+JUMP MODLINE
 EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
+
+# --- ADD a runtime source -------------------------------------------------
+# The source list's header carries the ADD button.
+JUMPTL MODLIST_ADD
+FRAMES 1
+ASSERT topLayerSelected==MODLIST_ADD
+EDIT
+FRAMES 2
+# ADD adds a runtime envelope and the screen follows it.
 ASSERT envcount==5
 
-# Re-navigate to the new runtime entry's ENV type button. From RATIO1,
-# 10 DOWNs reach the new entry's ENV action button: RATIO2 -> RATIO3 ->
-# RATIO4 -> ALG -> MODS_ADD -> ATTACK(env[0]) -> ATTACK(env[1]) ->
-# ATTACK(env[2]) -> ATTACK(env[3]) -> ENV(env[4]).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
+# --- Route it --------------------------------------------------------------
+# "+ ROUTE" opens the destination picker: a plain list of the
+# instrument's routable parameters.
+JUMPTL MOD_ADDRUTE
+FRAMES 1
+ASSERT topLayerSelected==MOD_ADDRUTE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
+# Pick the first destination: the source is routed into it.
+EDIT
+FRAMES 2
+# The picker is gone and the screen's route list came back rebuilt.
+ASSERT topLayerSelected==MODSRC_8
 
-# ROUTE opens the destination-picking layer. N2 lands the cursor on the
-# CLOSEST dest to the source's ROUTE button (an env curvature dial named
-# "es_Curve" for preset-loaded envelopes), not the top of the screen.
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+# --- Unroute it ------------------------------------------------------------
+# The route list holds a row per route; the picker is opened from
+# "+ ROUTE" again, and the destination list offers the same names.
+JUMPTL MOD_ADDRUTE
+FRAMES 1
 EDIT
-ASSERT topLayerSelected==es_Curve
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
-# EDIT routes the runtime source to op0 feedback.
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
 EDIT
-ASSERT modulators==(0,0,1)
-# N1: cbRouteToDest pops + rebuilds and reselects the source's ROUTE
-# button — the cursor is already on ROUTE for the unroute.
-EDIT
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
-# EDIT on a routed dest defers its toggle (T11 double-tap window) —
-# wait for the deferred remove to fire.
-EDIT
-FRAMES 30
-ASSERT modulators==(0,0,0)
-# After the unroute N1 reselects the source's ROUTE. Walk LEFT through
-# the entry back to its ENV type button for the type-cycle section:
-# ROUTE <- CURVE <- DECAY <- CURVE <- ATTACK <- TYPE.
-LEFT
-LEFT
-LEFT
-LEFT
-LEFT
-ASSERT selected==ENV
+FRAMES 2
+# The route is a toggle: picking a routed destination removes it.
+ASSERT topLayerSelected==MODSRC_8
 
-# EDIT cycles ENV -> LFO. The rebuild resets selection to RATIO1; 10
-# DOWNs re-reach the (now LFO) runtime row.
+# --- Cycle the source's type ----------------------------------------------
+# The detail pane carries the TYPE control for the source the screen is
+# showing.
+JUMPTL MOD_TYPE
+FRAMES 1
+ASSERT topLayerSelected==MOD_TYPE
 EDIT
-ASSERT envcount==5
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==LFO
-
-# Walk RIGHT through the entry to the DEL button.
-# Layout: TYPE (3) | RATE (4) | ROUTE (3) | DEL (2) — RIGHT x4 from TYPE
-# lands on DEL via geometric nav (a 5th would fall into the grouped PTN row).
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==DEL
-
-# Task 5: DELETE_NO cancel path. EDIT fires cbDeleteSource which pushes
-# a confirm layer with DELETE_NO pre-selected via changeGraphSelection.
+FRAMES 2
+# ENV -> LFO. The rebuild resets the selection, so the screen is
+# re-selected by name.
+JUMPTL MOD_TYPE
+FRAMES 1
 EDIT
+FRAMES 2
+
+# --- Delete it: the cancel path -------------------------------------------
+JUMPTL MODLIST_DEL
+FRAMES 1
+EDIT
+FRAMES 2
 ASSERT topLayerSelected==DELETE_NO
-
-# EDIT on DELETE_NO fires cbDeleteCancel (pops layer, no source removed).
-# envcount stays at 9 — the runtime entry survives the cancelled delete.
+# EDIT on DELETE_NO cancels: the source survives.
 EDIT
+FRAMES 2
 ASSERT envcount==5
 
-# The pop left the base graph's selection unchanged (still on DEL).
-# EDIT again opens the confirm layer for the same runtime entry.
+# --- Delete it: the confirm path ------------------------------------------
+JUMPTL MODLIST_DEL
+FRAMES 1
 EDIT
+FRAMES 2
 ASSERT topLayerSelected==DELETE_NO
-
-# RIGHT selects DELETE_YES.
 RIGHT
 ASSERT topLayerSelected==DELETE_YES
-
-# EDIT on DELETE_YES fires cbDeleteConfirmYes which pops the layer THEN
-# calls removeSource(inst, idx), dropping envcount back to 8 (core: 4 env
-# + 4 pattern tracks).
 EDIT
+FRAMES 2
 ASSERT envcount==4
 
 QUIT

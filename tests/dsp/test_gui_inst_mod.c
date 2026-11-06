@@ -368,6 +368,10 @@ static int test_route_erase_mode(void) {
 	return 0;
 }
 
+/* The source rows' ROUTE buttons are gone from the instrument screen:
+ * the modulation list is gone, and the modulation screen carries the
+ * routing instead. The modulation LINE is what remains, and it is
+ * findable by name. */
 static int test_route_node_lookup(void) {
 	Env e;
 	if(make_env(&e) != 0) {
@@ -376,41 +380,26 @@ static int test_route_node_lookup(void) {
 	Graph *g = getSelectedInstGraph();
 	ASSERT_TRUE(g != NULL, "instrument graph exists");
 
-	/* No source routes are shown until one is added, so the lookup has to
-	 * report "not found" rather than hand back an arbitrary node. Adding a
-	 * source is what makes a route node exist. */
-	int srcIdx = -1;
+	/* No source's ROUTE button is on the instrument screen any more.
+	 * (The lookup itself still exists -- the instrument screen's ghost
+	 * picker uses it -- but it finds nothing.) */
 	int count = modSourceCount(inst0(&e)->modList);
-	if(count > 0) {
-		for(int k = 0; k < count; k++) {
-			if(findSourceRouteNode(g->root, k) != NULL) {
-				srcIdx = k;
-				break;
-			}
-		}
+	ASSERT_TRUE(count > 0, "the instrument has sources");
+	for(int k = 0; k < count; k++) {
+		ASSERT_TRUE(findSourceRouteNode(g->root, k) == NULL,
+		            "the source rows' ROUTE buttons are gone from the instrument screen");
 	}
-	if(srcIdx < 0) {
-		addRuntimeSource(inst0(&e));
-		count = modSourceCount(inst0(&e)->modList);
-		for(int k = 0; k < count; k++) {
-			if(findSourceRouteNode(g->root, k) != NULL) {
-				srcIdx = k;
-				break;
-			}
-		}
-	}
-	/* If no route node is findable at all, that is a real finding about the
-	 * graph, so report it rather than skipping. */
-	ASSERT_TRUE(srcIdx >= 0,
-	            "at least one source's route node is present in the graph");
-	ASSERT_TRUE(findSourceRouteNode(g->root, srcIdx) != NULL, "it is findable");
 	/* Out-of-range and negative lookups must miss, not crash. */
 	ASSERT_TRUE(findSourceRouteNode(g->root, -1) == NULL, "negative index misses");
 	ASSERT_TRUE(findSourceRouteNode(g->root, 100000) == NULL, "huge index misses");
-	ASSERT_TRUE(findSourceRouteNode(NULL, srcIdx) == NULL, "NULL node misses");
+	ASSERT_TRUE(findSourceRouteNode(NULL, 0) == NULL, "NULL node misses");
+
+	/* The modulation line is findable by name. */
+	ASSERT_TRUE(findModLineNode(g->root) != NULL, "the modulation line is in the graph");
+	ASSERT_TRUE(findModLineNode(NULL) == NULL, "a NULL graph misses");
 
 	free_env(&e);
-	printf("PASS test_route_node_lookup (found source %d)\n", srcIdx);
+	printf("PASS test_route_node_lookup\n");
 	return 0;
 }
 
@@ -528,61 +517,11 @@ static int test_connected_sources(void) {
 	return 0;
 }
 
-/* REMOVE removes the source under the cursor.
- *
- * The mapping used to subtract a header row that is not inside the
- * mod-wrap (the MODS header is a SIBLING of the mod-wrap), so REMOVE
- * removed the source BEFORE the one under the cursor -- and for the
- * first runtime source it refused outright, because the source it named
- * was a protected core envelope. */
-static int test_remove_selected_source(void) {
-	Env e;
-	if(make_env(&e) != 0) {
-		return 1;
-	}
-	Instrument *i = inst0(&e);
-	int before = modSourceCount(i->modList);
-
-	/* Core sources are protected, so the removal only fires on a runtime
-	 * source. Add one. */
-	addRuntimeSource(i);
-	ASSERT_EQ(modSourceCount(i->modList), before + 1, "a runtime source was added");
-
-	/* The added source is the last one. */
-	int target = before;
-	Mod *victim = modSourceAtPos(i, target);
-	ASSERT_TRUE(victim != NULL, "the target source resolves");
-
-	Graph *g = getSelectedInstGraph();
-	ASSERT_TRUE(g != NULL, "instrument graph");
-	GuiNode *route = findSourceRouteNode(g->root, target);
-	ASSERT_TRUE(route != NULL, "the target source's ROUTE node is in the graph");
-
-	/* Put the cursor on it, the way the player would have it. */
-	changeGraphSelection(g, route);
-
-	removeSelectedSource();
-
-	/* The source count drops by one... */
-	ASSERT_EQ(modSourceCount(i->modList), before, "the source was removed");
-	/* ...and it was the RIGHT one: the source that was at the target
-	 * position is the one that went. */
-	ASSERT_TRUE(modSourceAtPos(i, target) != victim,
-	            "the source under the cursor is the one that was removed");
-
-	free_env(&e);
-	printf("PASS test_remove_selected_source\n");
-	return 0;
-}
-
 int main(void) {
 	if(test_source_lifecycle() != 0) {
 		return 1;
 	}
 	if(test_connected_sources() != 0) {
-		return 1;
-	}
-	if(test_remove_selected_source() != 0) {
 		return 1;
 	}
 	if(test_source_guards() != 0) {

@@ -63,6 +63,12 @@ static void cbModScreenOpenPicker(void *ctx);
 /* The "CLEAR ALL" button's action: opens the shared confirmation. */
 static void cbModScreenClearAll(void *ctx);
 
+/* The source list's ADD and DEL, and the detail pane's TYPE control.
+ * Defined below, with the picker. */
+static void cbModScreenAddSource(void *ctx);
+static void cbModScreenDeleteSource(void *ctx);
+static void cbModScreenCycleType(void *ctx);
+
 /* The source at a source position (0-based over the non-attenuator
  * mods), or NULL. */
 static Mod *modSourceAt(Instrument *inst, int pos) {
@@ -132,6 +138,30 @@ static void modScreenTitle(char *buf, size_t len, Instrument *inst, int channel)
 	snprintf(buf, len, "%s%d", voiceTypeTag(inst ? inst->voiceType : VOICE_TYPE_FM), channel + 1);
 }
 
+/* The context a source row carries: the source POSITION it names. The
+ * row's action selects that source. */
+typedef struct {
+	Instrument *inst;
+	int pos;
+} ModSrcCtx;
+
+/* The source rows' contexts. The screen's graph is rebuilt whenever the
+ * selection changes, so the contexts are rebuilt with it -- but they
+ * have to outlive the graph they are attached to, so they are file
+ * static. */
+static ModSrcCtx g_modSrcCtx[MAX_MOD_SOURCES];
+
+/* A row's action: select that source and rebuild the screen, so the
+ * detail pane follows. */
+static void cbModScreenSelectSource(void *ctx) {
+	ModSrcCtx *sc = (ModSrcCtx *)ctx;
+	if(!sc || !sc->inst) {
+		return;
+	}
+	modScreenSetSelectedSource(sc->pos);
+	refreshModScreen();
+}
+
 /* One row in the source list: a button named "MODSRC_<i>" showing the
  * source's name and its type tag. The attenuators are connection
  * internal — they never appear as rows — and the pattern sources are
@@ -143,7 +173,10 @@ static GuiNode *appendSourceRow(GuiNode *container, Instrument *inst, int idx) {
 	}
 	char name[MOD_NAME_LEN];
 	snprintf(name, sizeof(name), "MODSRC_%d", idx);
-	GuiNode *btn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, name, 0, NULL, NULL);
+	g_modSrcCtx[idx].inst = inst;
+	g_modSrcCtx[idx].pos = idx;
+	GuiNode *btn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, name, 0,
+	                                      cbModScreenSelectSource, &g_modSrcCtx[idx]);
 	if(!btn) {
 		return NULL;
 	}
@@ -359,6 +392,26 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 	appendItem(body, detail, 3);
 	appendItem(g->root, body, 18);
 
+	/* The source list's header: ADD and DEL. The instrument screen's
+	 * list carried them, and the design puts them here -- the screen
+	 * that shows the sources is where they are acted on. */
+	GuiNode *listHdr = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODLISTHDR", 0, 0);
+	if(listHdr) {
+		GuiNode *add = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODLIST_ADD", 0,
+		                                      cbModScreenAddSource, NULL);
+		if(add) {
+			guiNodeSetText(add, "+ ADD");
+			appendItem(listHdr, add, 1);
+		}
+		GuiNode *del = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MODLIST_DEL", 0,
+		                                      cbModScreenDeleteSource, NULL);
+		if(del) {
+			guiNodeSetText(del, "DEL");
+			appendItem(listHdr, del, 1);
+		}
+		appendItem(list, listHdr, 1);
+	}
+
 	/* The source list: one row per source, then the grouped pattern
 	 * row. */
 	GuiNode *selectedRow = NULL;
@@ -373,6 +426,18 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 	/* The detail pane: the selected source's own dials, then its
 	 * routes. */
 	Mod *sel = (src >= 0) ? modSourceAt(inst, src) : NULL;
+	/* The source's TYPE control, first in the pane. The instrument
+	 * screen's source rows carried it, and the rows are gone -- so the
+	 * type is changed from here, for the source the screen is showing.
+	 */
+	if(sel) {
+		GuiNode *typeBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "MOD_TYPE", 0,
+		                                         cbModScreenCycleType, NULL);
+		if(typeBtn) {
+			guiNodeSetText(typeBtn, modTypeTag(sel->type));
+			appendItem(detail, typeBtn, 2);
+		}
+	}
 	appendSourceDials(detail, sel);
 	GuiNode *routes = createGuiNode(0, 0, 100, 100, 2, na_vertical, "MODROUTES", 0, 0);
 	if(routes) {
@@ -718,4 +783,47 @@ static void cbModScreenClearAll(void *ctx) {
 		return;
 	}
 	openClearAllForSource(g_modScreenInst, g_modScreenSource);
+}
+
+/* The source list's ADD: adds a runtime source. The instrument screen's
+ * ADD button does the same thing, so the action is shared. */
+static void cbModScreenAddSource(void *ctx) {
+	(void)ctx;
+	Instrument *inst = g_modScreenInst;
+	if(!inst) {
+		return;
+	}
+	/* The FM's sources are what the runtime sources extend; the other
+	 * voice types have no runtime source list of their own. */
+	if(inst->voiceType != VOICE_TYPE_FM) {
+		return;
+	}
+	cbAddModSource(inst);
+	/* The added source is the last one, so the screen follows it. */
+	int count = modSourceCount(inst->modList);
+	if(count > 0) {
+		modScreenSetSelectedSource(count - 1);
+	}
+	refreshModScreen();
+}
+
+/* The detail pane's TYPE control: cycles the selected source's type and
+ * rebuilds the screen, so its parameters follow the new type. */
+static void cbModScreenCycleType(void *ctx) {
+	(void)ctx;
+	if(!g_modScreenInst || g_modScreenSource < 0) {
+		return;
+	}
+	cycleSourceTypeForSource(g_modScreenInst, g_modScreenSource);
+	refreshModScreen();
+}
+
+/* The source list's DEL: opens the shared delete confirmation for the
+ * screen's selected source. */
+static void cbModScreenDeleteSource(void *ctx) {
+	(void)ctx;
+	if(!g_modScreenInst || g_modScreenSource < 0) {
+		return;
+	}
+	openDeleteConfirmForSource(g_modScreenInst, g_modScreenSource);
 }

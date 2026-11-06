@@ -182,6 +182,13 @@ void cbOpenClearAllLayer(void *ctx);
  * modulation screen's CLEAR ALL button and the instrument screen's
  * FUNCTION+EDIT on a ROUTE button share it. */
 void openClearAllForSource(Instrument *inst, int srcIdx);
+/* Open the shared delete confirmation for a source position. The
+ * modulation screen's DEL and the instrument screen's per-row DEL
+ * button share it. */
+void openDeleteConfirmForSource(Instrument *inst, int srcIdx);
+/* Cycle a source's type (ENV -> LFO -> RND -> ENV). The modulation
+ * screen's detail pane carries it for the source it is showing. */
+void cycleSourceTypeForSource(Instrument *inst, int srcIdx);
 /* Task 2: the action that opens the modulation screen (gui_mod_screen.c)
  * as a layer over the instrument screen. A button on the instrument
  * screen carries it, and the instrument screen's action dispatch fires
@@ -225,6 +232,14 @@ GuiNode *appendModLineNode(Graph *g, GuiNode *container, Instrument *inst, int w
 
 /* The line's selected index, for the test hook and the harness probe. */
 int modLineIndex(const GuiNode *n);
+
+/* The modulation line's node in a graph, or NULL. */
+GuiNode *findModLineNode(GuiNode *root);
+
+/* The source POSITION of the connected modulator the line is showing, or
+ * -1 when nothing is connected. The position is the index space the
+ * modulation screen's selection uses. */
+int modLineSourcePos(const ModLineGuiNode *ml);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);

@@ -227,16 +227,50 @@ void layerStackDraw(const LayerStack *stack) {
 	}
 }
 
-void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
+bool layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
 	if(!stack || index < 0 || index >= stack->count) {
-		return;
+		return false;
 	}
 	Layer *l = &stack->layers[index];
 	ALWAYS(l != NULL);         /* index is bounds-checked above; l can't be null */
 	if(!l->graph) {
-		return;
+		return false;
 	}
 	Graph *g = l->graph;
+	bool dialFired = false;
+	/* EDIT+arrow turns the selected DIAL, exactly as it does on the
+	 * instrument screen (main.c's instrument-scene branch). A layer
+	 * that holds dials -- the modulation screen's detail pane shows the
+	 * selected source's own stage dials -- has to let them be turned,
+	 * or the values it shows could not be changed from there. */
+	if(isKeyHeld(is, KM_EDIT) && !isKeyHeld(is, KM_FUNCTION) && !isKeyHeld(is, KM_SELECT)) {
+		if(isSelectedDialNode(g)) {
+			bool fired = false;
+			if(isKeyJustPressed(is, KM_LEFT)) {
+				g->selected->callback(g->selected->p, -0.1f);
+				fired = true;
+			}
+			if(isKeyJustPressed(is, KM_RIGHT)) {
+				g->selected->callback(g->selected->p, 0.1f);
+				fired = true;
+			}
+			if(isKeyJustPressed(is, KM_UP)) {
+				g->selected->callback(g->selected->p, 2.0f);
+				fired = true;
+			}
+			if(isKeyJustPressed(is, KM_DOWN)) {
+				g->selected->callback(g->selected->p, -2.0f);
+				fired = true;
+			}
+			if(fired) {
+				/* The live state moved away from the last loaded
+				 * snapshot, so the instrument is dirty -- the same
+				 * rule main.c applies when a dial fires. The CALLER
+				 * owns the instrument, so the flag is set there. */
+				dialFired = true;
+			}
+		}
+	}
 	if(isKeyJustPressed(is, KM_UP)) {
 		navigateGraphRefined(g, KM_UP);
 	}
@@ -268,25 +302,26 @@ void layerStackInputLayer(LayerStack *stack, int index, InputState *is) {
 		/* Free the layer's owned graph + name too, not just the copy: the
 		 * old free(popped) leaked both on every SELECT-pop (test_gui_layer). */
 		destroyLayer(popped);
-		return;
+		return dialFired;
 	}
 	/* KM_EDIT (z) activates the selected node's action callback. */
 	if(isKeyJustPressed(is, KM_EDIT) && g->selected && g->selected->actionCb) {
 		g->selected->actionCb(g->selected->actionCtx);
 	}
+	return dialFired;
 }
 
-void layerStackInput(LayerStack *stack, InputState *is) {
+bool layerStackInput(LayerStack *stack, InputState *is) {
 	if(!stack || stack->count == 0) {
-		return;
+		return false;
 	}
 	/* Spec #3 + Spec #6: passive layers (ROUTELINES) are visually
 	 * present but must NOT capture the input pipeline. Walk past them
 	 * to the first non-passive layer and feed input there instead. */
 	Layer *l = topNonPassiveLayer(stack);
 	if(!l) {
-		return;
+		return false;
 	}
 	int idx = (int)(l - stack->layers);
-	layerStackInputLayer(stack, idx, is);
+	return layerStackInputLayer(stack, idx, is);
 }

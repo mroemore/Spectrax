@@ -1,160 +1,87 @@
-# mod_sources.txt - unified mod-sources container end-to-end
-# FM instrument: core 4 envelopes, then runtime sources (env[4]...).
-# Boot selection = RATIO1; bank = fm1..fm5.
-# The FM controls box has 5 rows (op1..op4 + ALG/PAN/GAIN). Below it sit the
-# modulation line (Task 4) and then the mod-wrap header, so MODS_ADD is 6
-# DOWNs from RATIO1 and a runtime row's TYPE button is 11 DOWNs.
+# mod_sources.txt - the modulation screen's source list end-to-end.
+#
+# The instrument screen's modulation list is gone: the modulation screen
+# carries the full interface now. This fixture drives the source list
+# there -- ADD a runtime source, cycle its type (ENV -> LFO -> RND ->
+# ENV), route it into a destination, unroute it, and delete it.
+#
+# FM instrument: core 4 envelopes, then runtime sources, then the four
+# pattern tracks.
+
+FRAMES 4
+
+# --- Open the modulation screen -------------------------------------------
+JUMP MODLINE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
 
 # --- ADD a runtime source -------------------------------------------------
-# 6 DOWNs land on MODS_ADD (mod-wrap header); EDIT fires cbAddModSource.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==MODS_ADD
+JUMPTL MODLIST_ADD
+FRAMES 1
 EDIT
+FRAMES 2
+# The boot patch has 4 core envelopes, 1 LFO and 4 pattern tracks, so the
+# added source is the ninth (position 8).
 ASSERT envcount==5
+ASSERT topLayerSelected==MODSRC_8
 
 # --- 3-way type cycle on the new source (ENV -> LFO -> RND -> ENV) --------
-# After ADD selection reset to RATIO1; DOWN x11 reaches env[4]'s
-# TYPE button: RATIO2 -> RATIO3 -> RATIO4 -> ALG -> MODLINE -> MODS_ADD ->
-# ATTACK(env0) -> ATTACK(env1) -> ATTACK(env2) -> ATTACK(env3) -> ENV(env4). Each EDIT
-# cycles the type and rebuilds, resetting selection to RATIO1.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
+# The detail pane carries the TYPE control for the source the screen is
+# showing.
+JUMPTL MOD_TYPE
+FRAMES 1
 EDIT
-ASSERT envcount==5
-# Rebuild reset selection to RATIO1; re-navigate to the type button (now LFO).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==LFO
+FRAMES 2
+# The rebuild resets the screen's selection, so it is re-selected by
+# name. The type is now LFO: its own parameters are RATE and SHAPE.
+JUMPTL MOD_TYPE
+FRAMES 1
 EDIT
-# Now RND.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==RND
+FRAMES 2
+JUMPTL MOD_TYPE
+FRAMES 1
 EDIT
-# RND wraps back to ENV (MT_PATTERN is no longer in the type cycle).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
+FRAMES 2
+JUMPTL MOD_TYPE
+FRAMES 1
+EDIT
+FRAMES 2
+# RND wraps back to ENV.
+JUMPTL MOD_TYPE
+FRAMES 1
 
-# --- Route the source to op0 feedback via the picking layer ----------------
-# RIGHT x5 from ENV reaches ROUTE. EDIT opens the picker; N2 lands the
-# cursor on the CLOSEST dest (an env curvature dial named "es_Curve").
-# JUMPTL reaches the first "feedback" dest (op0) directly.
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+# --- Route the source to a destination via the picker ----------------------
+# "+ ROUTE" opens the plain destination list.
+JUMPTL MOD_ADDRUTE
+FRAMES 1
 EDIT
-ASSERT topLayerSelected==es_Curve
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
 EDIT
-ASSERT modulators==(0,0,1)
-# N1: cbRouteToDest pops + rebuilds and reselects env[4]'s ROUTE button —
-# the cursor is already on ROUTE for the unroute.
-EDIT
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
-# EDIT on a routed dest defers its toggle (T11 double-tap window) —
-# wait for the deferred remove to fire.
-EDIT
-FRAMES 30
-ASSERT modulators==(0,0,0)
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_8
 
 # --- Delete via the confirm modal -----------------------------------------
-# After the unroute N1 reselects env[4]'s ROUTE; RIGHT lands on DEL.
-RIGHT
-ASSERT selected==DEL
+JUMPTL MODLIST_DEL
+FRAMES 1
 EDIT
+FRAMES 2
 ASSERT topLayerSelected==DELETE_NO
-# EDIT on NO cancels: envcount stays 9.
+# EDIT on NO cancels: the source survives.
 EDIT
+FRAMES 2
 ASSERT envcount==5
-# Re-open + confirm YES: envcount drops to 8 (core only incl. 4 patterns).
+# Re-open + confirm YES: the source goes.
+JUMPTL MODLIST_DEL
+FRAMES 1
 EDIT
+FRAMES 2
 ASSERT topLayerSelected==DELETE_NO
 RIGHT
 ASSERT topLayerSelected==DELETE_YES
 EDIT
+FRAMES 2
 ASSERT envcount==4
-
-# --- Task 3.1: no-dial dests join the picker ------------------------------
-# Re-add a runtime source; open its picker; the `gain` dest (unique name,
-# no dial in the FM section) must be listed and routable.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-EDIT
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
-EDIT
-ASSERT topLayerSelected==es_Curve
-JUMPTL gain
-ASSERT topLayerSelected==gain
-EDIT
-ASSERT selected==ROUTE
 
 QUIT

@@ -1,42 +1,32 @@
 # pagenav.txt - page navigation on the instrument screen.
 # FUNCTION+UP/DOWN: vertical page nav across the 4 groups (META, preset,
-# FM controls, modulators). FUNCTION+LEFT/RIGHT: horizontal row-edge nav.
+# the voice's controls, the modulators). FUNCTION+LEFT/RIGHT: horizontal
+# row-edge nav.
 # SELECT+UP/DOWN = channel cycling; SELECT+LEFT/RIGHT = scene switch.
+#
+# The modulators group is now the modulation LINE alone: the modulation
+# list is gone from the instrument screen, and the line is what stands in
+# its place.
 
 FRAMES 4
 ASSERT selected==RATIO1
 
-# FUNCTION+DOWN -> FM group's lowest (ALG, the bottom row of the FM box).
+# FUNCTION+DOWN -> the voice controls group's lowest (ALG, the bottom row
+# of the FM box).
 HOLD FUNCTION
 DOWN
 RELEASE
 FRAMES 2
 ASSERT selected==ALG
 
-# FUNCTION+DOWN again -> wrap to the modulators group's top (MODLINE, the
-# Task 4 line that sits above the mod-wrap header).
+# FUNCTION+DOWN again -> wrap to the modulators group's top (MODLINE).
 HOLD FUNCTION
 DOWN
 RELEASE
 FRAMES 2
 ASSERT selected==MODLINE
 
-# FUNCTION+DOWN again -> modulators group's lowest (the grouped PTN row's
-# first route button, PTN_ROUTE_1).
-HOLD FUNCTION
-DOWN
-RELEASE
-FRAMES 2
-ASSERT selected==PTN_ROUTE_1
-
-# FUNCTION+UP -> back to the modulators top (MODLINE).
-HOLD FUNCTION
-UP
-RELEASE
-FRAMES 2
-ASSERT selected==MODLINE
-
-# FUNCTION+UP again -> wrap to the previous group's lowest (FM bottom = ALG).
+# FUNCTION+UP -> back to the voice controls group's lowest (ALG).
 HOLD FUNCTION
 UP
 RELEASE

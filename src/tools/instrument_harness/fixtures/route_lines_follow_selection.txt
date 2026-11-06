@@ -1,36 +1,51 @@
-# Bug 2: ROUTELINES overlay must follow the selected source even when the
-# cursor hops between ROUTE buttons via UP/DOWN (not just same-row moves).
+# route_lines_follow_selection.txt - the ROUTELINES overlay must follow
+# the modulation line's selection.
+#
+# The lines used to be anchored to a source's ROUTE button in the
+# modulation list, and were drawn for whichever source that button
+# belonged to. The list is gone; the lines are anchored to the
+# modulation LINE now, and they follow the modulator the line is
+# showing.
+#
+# So the line's LEFT/RIGHT cycles the connected modulators, and the
+# overlay's source follows.
+
 FRAMES 4
-ASSERT selected==RATIO1
-# Route source 0 -> op0 feedback and source 1 -> op0 feedback so both
-# sources have active routes (per the user's repro). Then walk the ROUTE
-# buttons and assert the overlay ctx follows each hop.
-# From RATIO1: DOWN x6 -> MODS_ADD; DOWN -> ATK(env0); RIGHT x4 -> ROUTE(env0)
-# (6 DOWNs, not 5: the Task 4 modulation line is a row above the mod-wrap
-# header.)
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ATK
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+
+# --- The line is the overlay's anchor -------------------------------------
+JUMP MODLINE
 FRAMES 2
+ASSERT selected==MODLINE
 ASSERT routelinesrc==0
-# Geometric nav: the ROUTE column is vertically aligned, so DOWN from
-# env0 ROUTE lands directly on env1 ROUTE. The overlay ctx must follow.
-DOWN
-ASSERT selected==ROUTE
+
+# --- RIGHT cycles the line, and the overlay follows -----------------------
+RIGHT
 FRAMES 2
+ASSERT modline_index==1
 ASSERT routelinesrc==1
-# UP -> back to env0 ROUTE; the overlay is already up — ctx must refresh to 0.
-UP
-ASSERT selected==ROUTE
+
+RIGHT
 FRAMES 2
+ASSERT modline_index==2
+ASSERT routelinesrc==2
+
+# --- LEFT cycles back -----------------------------------------------------
+LEFT
+FRAMES 2
+ASSERT modline_index==1
+ASSERT routelinesrc==1
+
+# --- The overlay follows the line all the way round ----------------------
+LEFT
+FRAMES 2
+ASSERT modline_index==0
+ASSERT routelinesrc==0
+RIGHT
+FRAMES 2
+RIGHT
+FRAMES 2
+RIGHT
+FRAMES 2
+# The line wraps round to the first connected modulator.
+ASSERT modline_index==0
 ASSERT routelinesrc==0

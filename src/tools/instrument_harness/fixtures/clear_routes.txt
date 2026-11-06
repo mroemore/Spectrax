@@ -1,70 +1,61 @@
-# clear_routes.txt - T12: KM_FUNCTION + KM_EDIT on a source's ROUTE button
-# pushes the clear-all confirm (NO default). EDIT on NO cancels and leaves
-# the base graph on the ROUTE button; RIGHT to YES + EDIT clears all of the
-# source's routes. N1 (user report): the confirm's YES reselects the
-# source's ROUTE button after its rebuild (so the cursor does not jump to
-# the top of the screen). The route-removal semantics are asserted at the
-# unit level (test_modsystem's removeModulationsForSource tests); this
-# fixture covers the UI flow.
-# FM instrument: boot selection = RATIO1; bank = fm1..fm5.
+# clear_routes.txt - the modulation screen's CLEAR ALL: the route list's
+# last button opens the clear-all confirm (NO default). EDIT on NO
+# cancels; RIGHT to YES + EDIT clears every route of the source.
+#
+# The instrument screen's modulation list is gone -- the clear-all moved
+# to the modulation screen with the rest of the interface.
+#
+# The route-removal semantics are asserted at the unit level
+# (test_modsystem's removeModulationsForSource tests); this fixture
+# covers the UI flow.
 
-# --- ADD a runtime source so it has a ROUTE button ------------------------
-# 5 DOWNs reach MODS_ADD (FM box has 5 rows now).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==MODS_ADD
-EDIT
-ASSERT envcount==5
+FRAMES 4
 
-# --- Navigate to the runtime source's ROUTE (RIGHT x5 from ENV type) -----
-# From RATIO1: 10 DOWNs reach ENV(env[4]).
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
+# --- Open the modulation screen -------------------------------------------
+JUMP MODLINE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
 
-# --- Route op0 feedback (N2 lands the picker on an env curvature dial; JUMPTL to fb) --
+# --- Route the selected source into a destination -------------------------
+# "+ ROUTE" opens the destination picker; picking one routes the source
+# into it.
+JUMPTL MOD_ADDRUTE
+FRAMES 1
 EDIT
-ASSERT topLayerSelected==es_Curve
-JUMPTL feedback
-ASSERT topLayerSelected==feedback
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
 EDIT
-# N1: the route's rebuild reselects the source's ROUTE button.
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
 
-# --- KM_FUNCTION + KM_EDIT opens the clear-all confirm (NO default) -------
-HOLD FUNCTION
+# --- CLEAR ALL opens the confirm (NO default) -----------------------------
+# The route list's last button.
+JUMPTL MOD_CLEARALL
+FRAMES 1
+ASSERT topLayerSelected==MOD_CLEARALL
 EDIT
+FRAMES 2
 ASSERT topLayerSelected==CLEARALL_NO
 
-# --- EDIT again on NO cancels: confirm closes, base stays on ROUTE --------
+# --- EDIT again on NO cancels: the confirm closes -------------------------
+# The screen's own selection is where it was -- the confirm was opened
+# from the CLEAR ALL button.
 EDIT
-RELEASE
-ASSERT selected==ROUTE
+FRAMES 2
+ASSERT topLayerSelected==MOD_CLEARALL
 
-# --- Re-open and confirm YES clears; N1 reselects the source's ROUTE ------
-HOLD FUNCTION
+# --- Re-open and confirm YES clears every route of the source -----------
+JUMPTL MOD_CLEARALL
+FRAMES 1
 EDIT
+FRAMES 2
 ASSERT topLayerSelected==CLEARALL_NO
 RIGHT
 ASSERT topLayerSelected==CLEARALL_YES
 EDIT
-RELEASE
-ASSERT selected==ROUTE
+FRAMES 2
+# The screen comes back with an empty route list.
+JUMPTL MOD_CLEARALL
+FRAMES 1
+ASSERT topLayerSelected==MOD_CLEARALL

@@ -470,6 +470,105 @@ static int test_clear_all(void) {
 	return 0;
 }
 
+/* ---- the source list's own actions --------------------------------------- */
+
+/* The source list carries the actions the instrument screen's list used
+ * to carry -- ADD and DEL -- and its rows SELECT their source. Without
+ * them the screen could not do what the instrument screen's list did,
+ * and removing that list would take the ability away. */
+static int test_source_list_actions(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+	int before = modSourceCount(inst->modList);
+
+	modScreenSetSelectedSource(-1);
+	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the screen's graph");
+	GuiNode *list = findGuiNodeNamed(g->root, "MODLIST");
+	ASSERT_TRUE(list != NULL, "the source list");
+
+	/* The list's header carries ADD and DEL. */
+	GuiNode *add = findGuiNodeNamed(list, "MODLIST_ADD");
+	ASSERT_TRUE(add != NULL, "the source list carries an ADD button");
+	ASSERT_TRUE(add->actionCb != NULL, "the ADD button acts");
+	GuiNode *del = findGuiNodeNamed(list, "MODLIST_DEL");
+	ASSERT_TRUE(del != NULL, "the source list carries a DEL button");
+	ASSERT_TRUE(del->actionCb != NULL, "the DEL button acts");
+
+	/* A row selects its source. */
+	GuiNode *row = findChildNamed(list, "MODSRC_1");
+	ASSERT_TRUE(row != NULL, "the list holds a row per source");
+	ASSERT_TRUE(row->actionCb != NULL, "the row selects its source");
+	row->actionCb(row->actionCtx);
+	ASSERT_EQ(modScreenSelectedSource(), 1, "the row selected its source");
+
+	/* ADD adds a runtime source. */
+	add->actionCb(add->actionCtx);
+	ASSERT_EQ(modSourceCount(inst->modList), before + 1, "ADD added a source");
+
+	freeGuiNode(g->root);
+	free(g);
+	free_env(&e);
+	printf("PASS test_source_list_actions\n");
+	return 0;
+}
+
+/* The source list's DEL: it opens the shared delete confirmation, and
+ * confirming removes THE SELECTED source -- the one under the cursor,
+ * not its neighbour. */
+static int test_delete_selected_source(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+
+	/* Add a runtime source, so there is a removable one (core sources
+	 * are protected from removal). */
+	int before = modSourceCount(inst->modList);
+	addRuntimeSource(inst);
+	ASSERT_EQ(modSourceCount(inst->modList), before + 1, "a runtime source was added");
+	int target = before;
+	Mod *victim = sourceAt(inst, target);
+	ASSERT_TRUE(victim != NULL, "the target source resolves");
+
+	/* Select it on the screen. */
+	modScreenSetSelectedSource(-1);
+	Graph *g = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(g != NULL, "the screen's graph");
+	modScreenSetSelectedSource(target);
+	GuiNode *list = findGuiNodeNamed(g->root, "MODLIST");
+	ASSERT_TRUE(list != NULL, "the source list");
+	GuiNode *del = findGuiNodeNamed(list, "MODLIST_DEL");
+	ASSERT_TRUE(del != NULL, "the source list carries a DEL button");
+	del->actionCb(del->actionCtx);
+	freeGuiNode(g->root);
+	free(g);
+
+	/* The confirmation is up. */
+	InstrumentGui *ig = getInstrumentGui();
+	ASSERT_TRUE(ig != NULL, "the instrument gui");
+	Layer *top = topNonPassiveLayer(&ig->overlayLayers);
+	ASSERT_TRUE(top != NULL, "the confirmation is the top layer");
+	ASSERT_TRUE(top->name && strcmp(top->name, "DELETE") == 0,
+	            "the delete confirmation is up");
+	GuiNode *yes = findGuiNodeNamed(top->graph->root, "DELETE_YES");
+	ASSERT_TRUE(yes != NULL, "the confirmation has a YES button");
+
+	/* Confirming removes the source that was selected. */
+	yes->actionCb(yes->actionCtx);
+	ASSERT_EQ(modSourceCount(inst->modList), before, "the source was removed");
+	ASSERT_TRUE(sourceAt(inst, target) != victim,
+	            "the source that was selected is the one that went");
+
+	free_env(&e);
+	printf("PASS test_delete_selected_source\n");
+	return 0;
+}
+
 /* ---- the selected source ----------------------------------------------- */
 
 static int test_selection_state(void) {
@@ -974,6 +1073,12 @@ int main(void) {
 		return 1;
 	}
 	if(test_clear_all() != 0) {
+		return 1;
+	}
+	if(test_source_list_actions() != 0) {
+		return 1;
+	}
+	if(test_delete_selected_source() != 0) {
 		return 1;
 	}
 	if(test_selection_state() != 0) {

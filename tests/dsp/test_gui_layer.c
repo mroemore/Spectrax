@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "gui_layer.h"
+#include "gui_internal.h"
 #include "graph_gui.h"
 #include "input.h"
 
@@ -365,6 +366,107 @@ static int test_input_edit_fires_action(void) {
 	return 0;
 }
 
+/* EDIT+arrow turns the layer's selected DIAL. A layer that holds dials
+ * -- the modulation screen's detail pane shows the selected source's own
+ * stage dials -- has to let them be turned, or the values it shows
+ * could not be changed from there. */
+static int g_dialDelta = 0;
+static void on_dial(Parameter *p, float delta) {
+	(void)p;
+	g_dialDelta += (int)(delta * 100.0f);
+}
+
+static int test_input_edit_arrow_turns_dial(void) {
+	LayerStack s;
+	initLayerStack(&s);
+	InputState *is = createInputState(INPUT_TYPE_KEYBOARD);
+	ASSERT_TRUE(is != NULL);
+
+	/* A real dial: the value callback and the dial's own draw. */
+	Graph *g = createGraph(na_vertical);
+	ParamList *pl = createParamList();
+	ASSERT_TRUE(pl != NULL);
+	Parameter *p = createParameter(pl, "v", 0.5f, 0.0f, 1.0f);
+	ASSERT_TRUE(p != NULL);
+	GuiNode *dial = createDialGuiNode(0, 0, 10, 10, 1, na_vertical, "d", true,
+	                                  on_dial, p);
+	ASSERT_TRUE(dial != NULL);
+	appendItem(g->root, dial, 1);
+	g->selected = dial;
+
+	pushLayer(&s, createLayer(g, 0, 0, 0, 0, "modal", false, true));
+
+	/* EDIT held + RIGHT turns the dial up. */
+	g_dialDelta = 0;
+	is->keys[KM_EDIT].isPressed = true;
+	is->keys[KM_EDIT].wasPressed = true;
+	press_once(is, KM_RIGHT);
+	layerStackInput(&s, is);
+	release(is, KM_RIGHT);
+	ASSERT_TRUE(g_dialDelta > 0);
+
+	/* EDIT held + LEFT turns it down. */
+	g_dialDelta = 0;
+	press_once(is, KM_LEFT);
+	layerStackInput(&s, is);
+	release(is, KM_LEFT);
+	ASSERT_TRUE(g_dialDelta < 0);
+
+	/* UP and DOWN take the coarse step. */
+	g_dialDelta = 0;
+	press_once(is, KM_UP);
+	layerStackInput(&s, is);
+	release(is, KM_UP);
+	ASSERT_TRUE(g_dialDelta > 0);
+	g_dialDelta = 0;
+	press_once(is, KM_DOWN);
+	layerStackInput(&s, is);
+	release(is, KM_DOWN);
+	ASSERT_TRUE(g_dialDelta < 0);
+
+	/* EDIT held with no arrow: nothing is turned, and the layer says so. */
+	g_dialDelta = 0;
+	ASSERT_TRUE(!layerStackInput(&s, is));
+
+	/* Without EDIT held, the arrow NAVIGATES -- it does not turn the
+	 * dial. */
+	g_dialDelta = 0;
+	release(is, KM_EDIT);
+	press_once(is, KM_RIGHT);
+	layerStackInput(&s, is);
+	release(is, KM_RIGHT);
+	ASSERT_TRUE(g_dialDelta == 0);
+
+	/* FUNCTION and SELECT held suppress the turn: FUNCTION+arrows is
+	 * page navigation and SELECT+arrows is the scene switch. */
+	is->keys[KM_EDIT].isPressed = true;
+	is->keys[KM_EDIT].wasPressed = true;
+	is->keys[KM_FUNCTION].isPressed = true;
+	is->keys[KM_FUNCTION].wasPressed = true;
+	g_dialDelta = 0;
+	press_once(is, KM_RIGHT);
+	layerStackInput(&s, is);
+	release(is, KM_RIGHT);
+	ASSERT_TRUE(g_dialDelta == 0);
+	release(is, KM_FUNCTION);
+
+	is->keys[KM_SELECT].isPressed = true;
+	is->keys[KM_SELECT].wasPressed = true;
+	g_dialDelta = 0;
+	press_once(is, KM_RIGHT);
+	layerStackInput(&s, is);
+	release(is, KM_RIGHT);
+	ASSERT_TRUE(g_dialDelta == 0);
+	release(is, KM_SELECT);
+	release(is, KM_EDIT);
+
+	freeInputState(is);
+	destroyLayerStack(&s);
+	freeParamList(pl);
+	printf("PASS test_input_edit_arrow_turns_dial\n");
+	return 0;
+}
+
 /* Each arrow key routes through navigateGraphRefined; KM_SELECT on a layer
  * NOT named ROUTE still pops (and does not touch the picker counters). */
 static int test_input_all_arrows_and_select_nonroute(void) {
@@ -682,6 +784,7 @@ int main(void) {
 	rc |= test_input_layer_bounds();
 	rc |= test_input_skips_passive();
 	rc |= test_input_edit_fires_action();
+	rc |= test_input_edit_arrow_turns_dial();
 	rc |= test_input_all_arrows_and_select_nonroute();
 	rc |= test_input_select_route_bookkeeping();
 	rc |= test_input_select_mod_layer_keeps_picker_state();

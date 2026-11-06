@@ -504,6 +504,12 @@ typedef struct {
 	Instrument *inst;
 	int srcIdx;
 	Mod *srcMod;
+	/* The modulation LINE's index -- the index into the connected
+	 * modulators, which is what the harness asserts. `srcIdx` is the
+	 * source POSITION, which is a different index space (the pattern
+	 * sources share one row, so the positions run ahead of the
+	 * connected list). */
+	int lineIdx;
 } RouteLinesCtx;
 
 static RouteLinesCtx g_routeLinesCtx;
@@ -511,7 +517,7 @@ static RouteLinesCtx g_routeLinesCtx;
 /* test hook: which source's routes the ROUTELINES overlay is currently
  * showing (srcIdx in g_routeLinesCtx). -1 if never set. */
 int guiRouteLinesSource(void) {
-	return g_routeLinesCtx.srcIdx;
+	return g_routeLinesCtx.lineIdx;
 }
 
 
@@ -1183,6 +1189,19 @@ static void cbDeleteSource(void *ctx) {
 	pushLayer(&ig->overlayLayers, layer);
 }
 
+/* Open the delete confirmation for a source POSITION. The shared YES/NO
+ * layer: the instrument screen's per-row DEL button opens it, and the
+ * modulation screen's DEL opens it for the source it is showing. */
+void openDeleteConfirmForSource(Instrument *inst, int srcIdx) {
+	static SourceCtx ctx;
+	if(!inst) {
+		return;
+	}
+	ctx.inst = inst;
+	ctx.idx = srcIdx;
+	cbDeleteSource(&ctx);
+}
+
 /* Task 6: route-destination picker.
  *
  * cbOpenRouteLayer (actionCb on the ROUTE button) walks the instrument
@@ -1715,8 +1734,17 @@ static void drawRouteLinesNode(void *self) {
 	if(!base || !base->root) {
 		return;
 	}
-	Rectangle anchor = { 0, 0, 0, 0 };
-	findSourceRouteRect(base->root, rc->srcIdx, &anchor);
+	/* The anchor is the MODULATION LINE's rectangle. The lines used to
+	 * be anchored to a source's ROUTE button, which lived in the
+	 * modulation list -- and that list is gone from the instrument
+	 * screen. The line stands in its place: it shows the modulator the
+	 * user is looking at, and the lines show what that modulator does
+	 * to the dials they can see. */
+	GuiNode *line = findModLineNode(base->root);
+	if(!line) {
+		return;
+	}
+	Rectangle anchor = { line->x, line->y, line->w, line->h };
 	if(anchor.width <= 0.0f || anchor.height <= 0.0f) {
 		return;
 	}
@@ -1791,9 +1819,14 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 	}
 	Graph *base = getSelectedInstGraph();
 	GuiNode *sel = base ? base->selected : NULL;
-	bool onRouteBtn = sel && sel->actionCb == cbOpenRouteLayer;
+	/* The lines are anchored to the MODULATION LINE, so they are drawn
+	 * when the line is what the user is looking at. They used to be
+	 * drawn when a source's ROUTE button was selected -- but that
+	 * button lived in the modulation list, which is gone from the
+	 * instrument screen. */
+	bool onModLine = sel && sel->name && strcmp(sel->name, "MODLINE") == 0;
 	bool pickerOpen = g_routePickerCount > 0;
-	bool shouldShow = onRouteBtn || pickerOpen;
+	bool shouldShow = onModLine || pickerOpen;
 	Layer *existing = findLayerByName(&ig->overlayLayers, "ROUTELINES");
 	if(shouldShow) {
 		/* Refresh the source context whenever a ROUTE button is the
@@ -1802,15 +1835,17 @@ void syncRouteLinesOverlay(InstrumentGui *ig) {
 		 * below) and we early-return here, g_routeLinesCtx keeps pointing
 		 * at the previous source, so the lines keep drawing that source's
 		 * routes even though the cursor now sits on a different one. */
-		if(onRouteBtn) {
-			SourceCtx *sc = (SourceCtx *)sel->actionCtx;
-			/* resolveSourceCtx re-points sc->inst at the CURRENTLY
-			 * displayed instrument (captured ctx may be stale on the boot
-			 * path) and keeps sc->idx a valid source position. */
-			Instrument *resolved = sc ? resolveSourceCtx(sc) : NULL;
-			if(resolved) {
-				g_routeLinesCtx.inst = resolved;
-				g_routeLinesCtx.srcIdx = sc->idx;
+		if(onModLine) {
+			/* The lines follow the line's own selection: which
+			 * modulator it shows, and therefore which destinations
+			 * that modulator reaches. */
+			ModLineGuiNode *ml = (ModLineGuiNode *)sel;
+			Instrument *inst = ml ? ml->inst : NULL;
+			int pos = modLineSourcePos(ml);
+			if(inst && pos >= 0) {
+				g_routeLinesCtx.inst = inst;
+				g_routeLinesCtx.srcIdx = pos;
+				g_routeLinesCtx.lineIdx = modLineIndex(sel);
 			}
 		}
 		if(existing) {
@@ -1902,6 +1937,20 @@ static void cbCycleSourceType(void *ctx) {
 	}
 	sc->inst->rebuilding = false;
 	pthread_mutex_unlock(&g_audioLock);
+}
+
+/* Cycle a source's type. The instrument screen's source rows carried a
+ * TYPE button, and the modulation screen's detail pane carries the same
+ * control for the source it is showing -- so the type can still be
+ * changed from the UI now that the list is gone. */
+void cycleSourceTypeForSource(Instrument *inst, int srcIdx) {
+	static SourceCtx ctx;
+	if(!inst) {
+		return;
+	}
+	ctx.inst = inst;
+	ctx.idx = srcIdx;
+	cbCycleSourceType(&ctx);
 }
 
 
@@ -2010,6 +2059,36 @@ int modLineIndex(const GuiNode *n) {
 		return -1;
 	}
 	return modLineClampedIndex((const ModLineGuiNode *)n);
+}
+
+/* The modulation line's node in a graph, or NULL. */
+GuiNode *findModLineNode(GuiNode *root) {
+	if(!root) {
+		return NULL;
+	}
+	if(root->name && strcmp(root->name, "MODLINE") == 0) {
+		return root;
+	}
+	if(!root->items) {
+		return NULL;
+	}
+	ListElement *le = root->items->head;
+	for(int i = 0; i < root->itemCount && le; i++, le = le->next) {
+		GuiNode *hit = findModLineNode(*(GuiNode **)le->data);
+		if(hit) {
+			return hit;
+		}
+	}
+	return NULL;
+}
+
+/* The source POSITION of the connected modulator the line is showing, or
+ * -1 when nothing is connected. */
+int modLineSourcePos(const ModLineGuiNode *ml) {
+	if(!ml || !ml->inst) {
+		return -1;
+	}
+	return modConnectedSourcePos(ml->inst, modLineClampedIndex(ml));
 }
 
 /* The line's text: the source it is showing, the destination it
