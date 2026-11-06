@@ -104,7 +104,7 @@ the GUI are the GUI phase. See the sampler's ledger for the per-task record.
       device does not offer), and the sample pool's ceiling is the budget's
       number -- the pool no longer mallocs a fixed 32 MB arena up front, it
       grows as samples arrive. `015c36f`.
-- [ ] **C3 — the runtime governor.** The callback-time utilisation drives the voice
+- [x] **C3 — the runtime governor.** The callback-time utilisation drives the voice
       slots' grant and withdrawal, with a pinned stealing policy that cannot alter a
       surviving voice's output.
 - [ ] **C4 — the voice-type gating.** GRAIN and SPECTRAL cannot make a sound; grey
@@ -151,7 +151,7 @@ ask a real device what it negotiated.
 
 ### Phase E — the sequencer velocity
 
-- [ ] **E1 — the note velocity into the voice.** Currently absent (only
+- [x] **E1 — the note velocity into the voice.** Currently absent (only
       `grainVelocity` exists), and it is what the MPC60 profile's
       velocity-to-start-address needs.
 
@@ -191,7 +191,7 @@ plan:
 
 Each phase is evidenced by harness numbers, not narrative: the meson suite's count,
 the coverage gate's verdict, and the scripted fixtures' results. The landed work
-currently stands at **59/59 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
+currently stands at **60/60 meson tests**, **`meson/check.sh`: coverage + gate PASS**,
 and **13/15 scripted fixtures** (the two failures, `chip_meta` and `save_overwrite`,
 are pre-existing and confirmed on the pre-consolidation branch). The golden
 render's hash is `efb6e5e8a5e51c85`, identical on the x86-64 host and under

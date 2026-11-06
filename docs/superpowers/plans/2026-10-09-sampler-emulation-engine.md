@@ -60,6 +60,8 @@ Input classes the tasks' tests must pin:
 
 ### Task 1: Quantizer laws (`src/sampler_character.{c,h}`)
 
+**Status: complete** — commit `beb6d9b`. The ledger records it as complete: `docs/superpowers/plans/2026-10-09-sampler-emulation-engine-progress.md`.
+
 **Files:**
 - Create: `src/sampler_character.h`, `src/sampler_character.c`
 - Modify: `src/meson.build` (add `sampler_character.c` to `core_sources` beside `sample.c`), `tests/meson.build` (add `'test_sampler_character'` to `test_names`)
@@ -78,7 +80,7 @@ typedef enum { SQL_OFF, SQL_TRUNC, SQL_ROUND, SQL_TPDF, SQL_ULAW, SQL_COMPAND12,
 float samplerQuantize(float x, int bits, SamplerQuantLaw law);
 ```
 
-- [ ] **Step 1: Write failing tests** in `tests/dsp/test_sampler_character.c` (plain-assert style of `tests/dsp/test_waveform.c`):
+- [x] **Step 1: Write failing tests** in `tests/dsp/test_sampler_character.c` (plain-assert style of `tests/dsp/test_waveform.c`):
   - `test_quant_off_passthrough`: SQL_OFF returns x exactly for x in {−1, 0, 0.503, 1}.
   - `test_quant_trunc_floor`: SQL_TRUNC, bits=8: x=0.503 → 0.5 exactly; x=−0.503 → −65/128 exactly (floor toward −∞); error always in [−Δ, 0) over 1000 ramp points.
   - `test_quant_round_bounds`: SQL_ROUND, bits=8: error in [−Δ/2, +Δ/2) over 1000 points.
@@ -86,12 +88,14 @@ float samplerQuantize(float x, int bits, SamplerQuantLaw law);
   - `test_quant_ulaw_roundtrip`: SQL_ULAW: x=0 → 0 exactly; roundtrip is monotonic; |y−x| ≤ 1/128; relative error at x=0.001 < relative error at x=0.9 (companding resolution).
   - `test_quant_compand12`: SQL_COMPAND12: relative error at 0.01 < relative error at 0.9; |y−x| ≤ 1/2048.
   - `test_quant_bits_clamp`: bits ∈ {−3, 0, 25, 999} → no crash, output finite (clamped internally).
-- [ ] **Step 2: Run** `meson compile -C build test_sampler_character && meson test -C build test_sampler_character` — expect compile FAIL (types/functions missing).
-- [ ] **Step 3: Implement** in `src/sampler_character.c`: the four linear-law one-liners straight from corpus §1.2 (trunc `floorf(x*L)/L` with L=2^(bits−1); round `floorf(x*L+0.5f)/L`; TPDF = local xorshift `spx_rand()` returning [−0.5,0.5), dither `(spx_rand()+spx_rand())*step` then round). μ-law encode: `f(x)=sign(x)*logf(1+255*|x|)/logf(256)` quantized to 127 levels + sign, decode its inverse; SQL_COMPAND12 = same shape with μ=90 (`#define SAMPLER_COMPAND12_MU 90.0f`, corpus [C], tunable in Wave 3) at 12-bit. Null-free pure module; `#define`s for every constant.
-- [ ] **Step 4: Run tests → PASS.**
-- [ ] **Step 5: Commit** — `git log --oneline -5` for message style; e.g. `sampler: character engine quantizer laws (trunc/round/tpdf/ulaw/compand12)`.
+- [x] **Step 2: Run** `meson compile -C build test_sampler_character && meson test -C build test_sampler_character` — expect compile FAIL (types/functions missing).
+- [x] **Step 3: Implement** in `src/sampler_character.c`: the four linear-law one-liners straight from corpus §1.2 (trunc `floorf(x*L)/L` with L=2^(bits−1); round `floorf(x*L+0.5f)/L`; TPDF = local xorshift `spx_rand()` returning [−0.5,0.5), dither `(spx_rand()+spx_rand())*step` then round). μ-law encode: `f(x)=sign(x)*logf(1+255*|x|)/logf(256)` quantized to 127 levels + sign, decode its inverse; SQL_COMPAND12 = same shape with μ=90 (`#define SAMPLER_COMPAND12_MU 90.0f`, corpus [C], tunable in Wave 3) at 12-bit. Null-free pure module; `#define`s for every constant.
+- [x] **Step 4: Run tests → PASS.**
+- [x] **Step 5: Commit** — `git log --oneline -5` for message style; e.g. `sampler: character engine quantizer laws (trunc/round/tpdf/ulaw/compand12)`.
 
 ### Task 2: Bake — BakedSample + band-limited decimation
+
+**Status: complete** — commit `802ecbc`.
 
 **Files:**
 - Modify: `src/sampler_character.{c,h}`, `tests/dsp/test_sampler_character.c`
@@ -113,18 +117,20 @@ void freeBakedSample(BakedSample *b);
 bool bakedMatches(const BakedSample *b, const Sample *src, int rate, int bits, SamplerQuantLaw law);
 ```
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `test_bake_null_source`: NULL src → false, `out` zeroed, no crash.
   - `test_bake_identity_exact`: 44100 src, rate=44100, law=SQL_OFF → `baked.length == src.length`, `memcmp`-equal data (exact copy path, no sinc rounding at unity).
   - `test_bake_upsample_length`: 22050 src, rate=44100 → length == src.length*2.
   - `test_bake_bandlimit`: 44100 src holding a 1 kHz + 18 kHz two-tone sine (exact float synthesis), bake rate=26040, SQL_OFF → 1 kHz component within 0.5 dB of its input amplitude; 18 kHz component at ≤ −40 dB of its input amplitude (measure with direct cos/sin correlation, no FFT dependency).
   - `test_bake_trunc_floor`: 997 Hz full-scale sine, rate=26040, bits=12, SQL_TRUNC → residual RMS (y minus the ideal sine) within [0.4, 2.0]× Δ/√12 with Δ=2^-11 (corpus §1.1/§1.5).
   - `test_baked_matches`: true only when rate/bits/law and the src pointer/length all match.
-- [ ] **Step 2: Run → FAIL (link errors).**
-- [ ] **Step 3: Implement:** `rate == src->sampleRate` → direct copy then quantize (identity exactness); else windowed-sinc per output sample: `srcPos = m * srcRate / rate`, 16 taps (`#define BAKE_SINC_TAPS 16`), kernel `sinc(2*fc*t)*hann(t)`, `fc = 0.47f * min(srcRate, rate)`, taps normalized to unity DC gain. `out->srcBit = src->bit`. Free-then-alloc `out->data` (caller may reuse). All constants `#define`d.
-- [ ] **Step 4: Run → PASS. Commit** e.g. `sampler: bake — band-limited decimation + law quantization cache`.
+- [x] **Step 2: Run → FAIL (link errors).**
+- [x] **Step 3: Implement:** `rate == src->sampleRate` → direct copy then quantize (identity exactness); else windowed-sinc per output sample: `srcPos = m * srcRate / rate`, 16 taps (`#define BAKE_SINC_TAPS 16`), kernel `sinc(2*fc*t)*hann(t)`, `fc = 0.47f * min(srcRate, rate)`, taps normalized to unity DC gain. `out->srcBit = src->bit`. Free-then-alloc `out->data` (caller may reuse). All constants `#define`d.
+- [x] **Step 4: Run → PASS. Commit** e.g. `sampler: bake — band-limited decimation + law quantization cache`.
 
 ### Task 3: Machine profiles table
+
+**Status: complete** — commit `802ecbc`.
 
 **Files:**
 - Modify: `src/sampler_character.{c,h}`, `tests/dsp/test_sampler_character.c`
@@ -139,7 +145,7 @@ void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQ
                           SamplerInterp *interp, int *filterOn, float *cutoff, float *res);
 ```
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `test_profile_table_complete`: for every SMP_* in [0, SMP_PROFILE_COUNT): rate ∈ [2000,44100], bits ∈ [1,24], law/interp valid enums, filterOn ∈ {0,1}, cutoff ∈ [20,20000], res ∈ [0,0.9].
   - `test_profile_values` — the grounded table, asserted exactly:
 
@@ -153,11 +159,13 @@ void samplerProfileConfig(SamplerProfile profile, int *rate, int *bits, SamplerQ
 | SK1 | 9380 | 8 | SQL_TRUNC | SPI_LINEAR | 0 | 20000 | 0.0 |
 
   - `test_profile_clean_is_passthrough`: CLEAN config baked through Task 2 yields the identity bake.
-- [ ] **Step 2: Run → FAIL.**
-- [ ] **Step 3: Implement** the table as a `static const` struct array + the accessor (out-params, no allocation). SP1200 values are measured ground truth `[V]`; MPC60 compand is the corpus `[C]` approximation; S950 cutoff/resonance model the 6-pole switched-cap character coarsely (topology refinement is Wave 3).
-- [ ] **Step 4: Run → PASS. Commit** e.g. `sampler: machine profile defaults table (clean/sp1200/mpc60/s950/mirage/sk1)`.
+- [x] **Step 2: Run → FAIL.**
+- [x] **Step 3: Implement** the table as a `static const` struct array + the accessor (out-params, no allocation). SP1200 values are measured ground truth `[V]`; MPC60 compand is the corpus `[C]` approximation; S950 cutoff/resonance model the 6-pole switched-cap character coarsely (topology refinement is Wave 3).
+- [x] **Step 4: Run → PASS. Commit** e.g. `sampler: machine profile defaults table (clean/sp1200/mpc60/s950/mirage/sk1)`.
 
 ### Task 4: Playback read path — drop-sample + linear + parity advance
+
+**Status: complete** — commit `1d19765`.
 
 **Files:**
 - Modify: `src/sampler_character.{c,h}`, `tests/dsp/test_sampler_character.c`
@@ -180,15 +188,15 @@ float getBakedSampleDrop(BakedSample *b, uint32_t *addr, double *phase, float ad
 float getBakedSampleLinear(BakedSample *b, float *pos, float advance, int loop);
 ```
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `test_advance_parity`: `samplerAdvance(phaseIncrement, 16, 44100, 1.0f)` == `phaseIncrement * (PA_SR / ((float)44100 / 16) * 2)` within 1e-6 (the legacy expression, `src/sample.c:94`) for phaseIncrement ∈ {0.001, 0.00917, 0.05}.
   - `test_advance_rate_drop`: rate 26040 → advance == parity value × (44100/26040) (reading the same wall-clock position in a slower-rate buffer).
   - `test_drop_never_stalls`: advance=0.3, 1000 ticks → addr increases by ≥ 1 every tick (corpus: `addr += (i != 0) ? i : 1`).
   - `test_drop_pitch_down_repeats`: advance=0.5, ≥ 1 repeated output value across 100 ticks (sample-and-hold behavior).
   - `test_baked_drop_wrap_short`: loop=1 on a 3-sample bake, 1000 ticks at advance 2.7 → every return is one of the 3 values, no OOB (assert addr < length after each tick via a debug echo fn or assert via return sanity: finite and in [min,max] of data).
   - `test_linear_matches_legacy`: identity bake of a 44100/16 source → `getBakedSampleLinear(baked, &p, samplerAdvance(0.01f, 16, 44100, 1.0f), loop)` output == `getSampleValueFwd(sample, &p2, 0.01f, loop)` output for 500 successive reads, loop ∈ {0, 1}.
-- [ ] **Step 2: Run → FAIL.**
-- [ ] **Step 3: Implement.** Drop tick body (semantics are exact and non-obvious — corpus §2.2):
+- [x] **Step 2: Run → FAIL.**
+- [x] **Step 3: Implement.** Drop tick body (semantics are exact and non-obvious — corpus §2.2):
 
 ```c
 double ip = *phase + advance;
@@ -200,9 +208,11 @@ return b->data[*addr];
 ```
 
   Linear read = the legacy body (`src/sample.c:97-114`) transplanted onto `b->data/b->length` with `*pos += advance` instead of the internal ratio.
-- [ ] **Step 4: Run → PASS. Commit** e.g. `sampler: drop-sample + linear baked read paths with tuning parity`.
+- [x] **Step 4: Run → PASS. Commit** e.g. `sampler: drop-sample + linear baked read paths with tuning parity`.
 
 ### Task 5: Instrument params, profiles wiring, preset format V4
+
+**Status: complete** — commit `bd69c5f`.
 
 **Files:**
 - Modify: `src/voice.h` (`SamplerPatch` += `int profile; int law; int interp; int filterOn; int cutoff; float res; float tune;` appended after `loopEndIndex`), `src/voice.c`, `src/io.h` (`#define PRESET_MAGIC_HEADER_V4 "IPB4"` beside the V1–V3 defines, line 16-18), `src/io/preset_io.c`, `tests/dsp/test_sampler_character.c`, `tests/dsp/test_io.c`
@@ -211,21 +221,23 @@ return b->data[*addr];
 - Consumes: Tasks 1–3 (quantize / bake / profile table); `createParameterEx`/`createParameterPro` (signatures per `voice.c:1119-1125`); the param-recreate rule (#1135: every param `applyInstrumentPreset` clears must be recreated before return).
 - Produces: `static void rebuildSamplerBakeUnsafe(Instrument *inst)` (no locking — callers hold `g_audioLock` or take it); `static void cb_applySamplerProfile(void *inst)` + `static void cb_rebuildSamplerBake(void *inst)` (both lock `g_audioLock` around the rebuild; profile cb writes the six other params with their `onChange` suppressed per the `cb_setVoiceCount` pattern `voice.c:665-668` to avoid recursive rebuilds/deadlock, then rebuilds once); V4 save/load in `preset_io.c`.
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `test_preset_v4_roundtrip` (in `test_io.c` pattern): build a `Preset` with SAMPLE voiceType + all 7 new fields set distinctly → `savePresetFile` → `loadPresetFile` → all fields equal. Use `.tmp_files/` paths; delete artifacts in-test (rule #1297 stray `.ipb`).
   - `test_preset_v3_migrates`: hand-write a V3 file (`PresetV3` mirror struct in the test: old `SamplerPatchV3` fields only) with `IPB3` magic via direct `fwrite`, bitDepth=12, sampleRate=26040 → load → old fields preserved; new fields defaulted: `profile==SMP_CLEAN`, `law==SQL_TRUNC` (bitDepth<24), `interp==SPI_LINEAR`, `filterOn==0`, `cutoff==20000`, `res==0`, `tune==1.0`.
   - `test_preset_v2_still_loads`: existing V2 fixture test stays green (regression, part of `test_io`).
   - `test_params_recreated_on_apply` (test_sampler_character.c): construct instrument per `test_voice.c`'s pattern, `applyInstrumentPreset` with a patch carrying profile=SP1200 → all 7 params exist with profile-applied values, `id.sampler.baked` rebuilt (`baked->rate == 26040`, `bakedMatches` true), and per #1135 no param pointer dangling.
-- [ ] **Step 2: Run → FAIL.**
-- [ ] **Step 3: Implement:**
+- [x] **Step 2: Run → FAIL.**
+- [x] **Step 3: Implement:**
   - `createInstrument` SAMPLE branch (`voice.c:1108-1126`) + `applyInstrumentPreset` SAMPLE branch (`voice.c:715-728`): create the 7 params (both places, same order/names): `profile` (createParameterPro, cb_applySamplerProfile, initial `p.pd.sampler.profile`), `law` (Pro, cb_rebuildSamplerBake), `interp` (Ex), `filter` (Ex, 0..1), `cutoff` (Ex, 20..20000, initial `p.pd.sampler.cutoff`), `res` (Ex, 0..0.9), `tune` (Ex, 0.25..8.0, initial `p.pd.sampler.tune`). Call `rebuildSamplerBakeUnsafe` at the end of both branches (apply path is already under the lock).
   - `updateSampleReferences` (sampleIndex cb): append the locked rebuild (sample changed → new bake).
   - `cb_applySamplerProfile`: `samplerProfileConfig` → set rate/bits/law/interp/filterOn/cutoff/res params (suppress their cbs) → rebuild → restore cbs.
   - `presetFromInstrument` SAMPLE branch (`voice.c:873-881`): pull the 7 fields.
   - `preset_io.c`: `savePresetFile` writes `PRESET_MAGIC_HEADER_V4`; `loadPresetFile` tries V4 first, then a `PresetV3` mirror struct (full old union: `SamplerPatchV3` + current FmPatch/BlepPatch) migrated field-by-field exactly like the V2 branch does (`preset_io.c:95-144` pattern), then V2, then V1 — all untouched below.
-- [ ] **Step 4: Run → PASS** (`meson test -C build test_io test_sampler_character test_voice` — the mod-voice and voice suites exercise applyInstrumentPreset heavily). **Commit** e.g. `sampler: character params + profiles + preset format V4 with V3 migration`.
+- [x] **Step 4: Run → PASS** (`meson test -C build test_io test_sampler_character test_voice` — the mod-voice and voice suites exercise applyInstrumentPreset heavily). **Commit** e.g. `sampler: character params + profiles + preset format V4 with V3 migration`.
 
 ### Task 6: OTA cascade filter + voice integration (`samplerVoiceTick`)
+
+**Status: partially complete** — the voice integration landed in `efae3b0`; the **OTA cascade itself is deferred to the GUI phase** (the ledger's task log: "Task 6 (OTA cascade + voice integration): **integration complete** (`efae3b0`); the OTA cascade is deferred to the GUI phase"). Steps 3 and 4 stay unchecked: the filter body and its commit belong to the GUI phase's Task 6.
 
 **Files:**
 - Modify: `src/sampler_character.{c,h}` (filter), `src/voice.h`, `src/voice.c`, `src/main.c`, `tests/dsp/test_sampler_character.c`
@@ -252,14 +264,14 @@ float otaCascadeProcess(OtaCascade *f, float x, float cutoffTarget, float res, f
 float samplerVoiceTick(const SamplerInstrumentData *id, SamplerVoiceData *vd, const Parameter *cutoffV, float phaseIncrement);
 ```
 
-- [ ] **Step 1: Failing tests:**
+- [x] **Step 1: Failing tests:**
   - `test_ota_passband_stopband`: cutoff=500: 1 kHz sine at amplitude 1 → output amplitude ≥ 0.9 after settling; 5 kHz sine → ≤ 0.15 (4-pole, corpus §4.5 topology).
   - `test_ota_slew_no_click`: input constant 0.5, cutoffTarget steps 20000→500 at t=100 → |y[n]−y[n−1]| ≤ 0.01 for all n around the step (the §4.3 impulse is gone).
   - `test_ota_resonance_rings`: impulse, cutoff=1000, res=0.8 → output sign flips ≥ 3 times (feedback pole pair); res=0 → ≤ 1 flip.
   - `test_ota_init_zero`: after `otaCascadeInit`, one process call at any cutoff returns finite.
   - `test_tick_null_baked_silent`: `samplerVoiceTick` with `id->baked == NULL` (or `baked->data == NULL`) → 0.0f, no crash (boot-with-empty-pool path).
   - `test_tick_filter_off_bypasses`: identity bake + `filterOn` param 0 → output == the unfiltered read.
-- [ ] **Step 2: Run → FAIL.**
+- [x] **Step 2: Run → FAIL.**
 - [ ] **Step 3: Implement.** OTA body (topology per corpus §4.5): `x' = x - res*y4;` then four `y[i] += g*(in - y[i])` cascaded with `g = 1 - expf(-2π*fcCur/sr)`, `fcCur += k*(target-fcCur)`, `k = 1 - expf(-2π*SAMPLER_CUTOFF_SLEW_HZ/sr)`. `samplerVoiceTick` in `voice.c`: read `rate/bits/law/interp/filterOn/tune/res` via `getParameterValueAsInt(id->…)`; `advance = samplerAdvance(phaseIncrement, baked->srcBit, baked->rate, getParameterValue(id->tune))`; DROP vs LINEAR dispatch to Task 4 fns; filter stage unless `filterOn==0`. `generateSample` (`voice.c:106`) becomes the delegate (keep `out.L *= 0.5f` and L=R for parity).
   - `initialize_voice` VOICE_TYPE_SAMPLE branch (`voice.c:366-469`): create `vd->sampler.cutoffV = createParameter(voice->paramList, "cutoff", <inst cutoff base>)` beside `voice->volume`; zero `dsAddr/dsPhase`; `otaCascadeInit(&vd->sampler.filter)`.
   - `initVoiceDrivers` (`voice.c:420-445`): pair `inst->id.sampler.cutoff` → `voice->vd.sampler.cutoffV` in destMap for sampler instruments (mirror the gain→volume pair) so `syncVoiceGraph`/`replicateConnections`/`processModulations` treat cutoff as a per-voice destination (envelope→cutoff = SP-1200 dynamic filter, corpus §4.5).
@@ -267,6 +279,8 @@ float samplerVoiceTick(const SamplerInstrumentData *id, SamplerVoiceData *vd, co
 - [ ] **Step 4: Run → PASS. Commit** e.g. `sampler: OTA cascade character filter + env-routable per-voice cutoff`.
 
 ### Task 7: UI character panel + harness probe/fixture
+
+**Status: not started — the GUI phase.** The ledger: "Task 7 (character panel) and Task 8 (coverage + fixtures): the GUI phase — not started, by the human partner's instruction." The GUI phase is `docs/superpowers/plans/2026-11-04-gui-phase.md` (Tasks 5, 6 and 8 there).
 
 **Files:**
 - Modify: `src/gui_inst_sample.c` (panel rows + probe), `src/gui_instrument.c:1388` (sctrl weight), `src/tools/instrument_harness/instrument_harness.c` (+`SOP_ASSERT_SPROFILE`, `SOP_ASSERT_SRATE` verbs: `ASSERT sprofile==N`, `ASSERT srate==N`), `src/tools/instrument_harness/fixtures/sampler_character.txt` (new)
@@ -283,6 +297,8 @@ float samplerVoiceTick(const SamplerInstrumentData *id, SamplerVoiceData *vd, co
 - [ ] **Step 5: Commit** e.g. `sampler: character panel rows + profile/rate harness asserts`.
 
 ### Task 8: Coverage ratchet + full regression + checkpoint
+
+**Status: partly done, mostly the GUI phase.** The coverage floor for `src/sampler_character.c` landed (66, in `meson/coverage-min.txt`). The remaining regression and checkpoint steps belong to the GUI phase.
 
 **Files:**
 - Modify: `meson/coverage-min.txt` (+ `src/sampler_character.c` floor)
