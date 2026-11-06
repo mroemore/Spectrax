@@ -704,6 +704,74 @@ static int test_dirty_confirm(void) {
 	return 0;
 }
 
+/* The sampler's character panel: the rows that bind the character
+ * chain's parameters. They are the controls the landed DSP deserves --
+ * without them the ten parameters that define the sampler's character
+ * exist and are unreachable. */
+static int test_sampler_character_panel(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	/* The panel is the SAMPLE instrument's. */
+	ASSERT_TRUE(setInstrumentVoiceType(e.vm, 0, VOICE_TYPE_SAMPLE),
+	            "the instrument becomes a SAMPLE");
+	rebuildInstrumentGraph();
+
+	Instrument *i = e.vm->instruments[0];
+	ASSERT_TRUE(i != NULL, "the instrument exists");
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "the instrument screen has a graph");
+
+	/* R_3: the bake's shape. R_4: the filter and the tuning. */
+	static const char *names[] = {
+		"PROFILE", "LAW", "INTERP", "BITS", "RATE",
+		"FILTER", "CUTOFF", "RES", "TUNE", "ROOT"
+	};
+	GuiNode *dials[10];
+	for(int k = 0; k < 10; k++) {
+		dials[k] = find_node_named(g->root, names[k]);
+		ASSERT_TRUE(dials[k] != NULL, "the panel carries the control");
+	}
+
+	/* PROFILE, LAW, INTERP and FILTER are DISCRETE dials: they pick
+	 * from a fixed set, so they draw as steppers. */
+	GuiNode *discrete[] = { dials[0], dials[1], dials[2], dials[5] };
+	for(int k = 0; k < 4; k++) {
+		ASSERT_TRUE(discrete[k]->draw == drawDiscreteDialGuiNode,
+		            "the profile, law, interpolation and filter dials are discrete");
+	}
+
+	/* The dials are bound to the chain's own parameters, so turning them
+	 * changes the character and not a copy of it. */
+	ASSERT_TRUE(dials[0]->p == i->id.sampler.profile, "PROFILE binds the profile parameter");
+	ASSERT_TRUE(dials[1]->p == i->id.sampler.law, "LAW binds the law parameter");
+	ASSERT_TRUE(dials[2]->p == i->id.sampler.interp, "INTERP binds the interpolation parameter");
+	ASSERT_TRUE(dials[3]->p == i->id.sampler.bitDepth, "BITS binds the bit depth parameter");
+	ASSERT_TRUE(dials[4]->p == i->id.sampler.sampleRate, "RATE binds the sample rate parameter");
+	ASSERT_TRUE(dials[5]->p == i->id.sampler.filter, "FILTER binds the filter parameter");
+	ASSERT_TRUE(dials[6]->p == i->id.sampler.cutoff, "CUTOFF binds the cutoff parameter");
+	ASSERT_TRUE(dials[7]->p == i->id.sampler.res, "RES binds the resonance parameter");
+	ASSERT_TRUE(dials[8]->p == i->id.sampler.tune, "TUNE binds the tuning parameter");
+	ASSERT_TRUE(dials[9]->p == i->id.sampler.root, "ROOT binds the root parameter");
+
+	/* And the panel's rows are laid out in the order the design gives:
+	 * R_1, R_2, R_3 (the character), R_4 (the filter and tuning), R_5
+	 * (the waveform). */
+	GuiNode *r3 = find_node_named(g->root, "R_3");
+	GuiNode *r4 = find_node_named(g->root, "R_4");
+	GuiNode *r5 = find_node_named(g->root, "R_5");
+	ASSERT_TRUE(r3 != NULL, "the panel has a character row");
+	ASSERT_TRUE(r4 != NULL, "the panel has a filter row");
+	ASSERT_TRUE(r5 != NULL, "the panel has the waveform row");
+	ASSERT_TRUE(r3->y < r4->y, "the character row is above the filter row");
+	ASSERT_TRUE(r4->y < r5->y, "the filter row is above the waveform");
+
+	free_env(&e);
+	printf("PASS test_sampler_character_panel\n");
+	return 0;
+}
+
 /* The modulation list is gone from the instrument screen: the modulation
  * screen carries the full interface now, and the instrument screen keeps
  * one line for the connected modulators. */
@@ -828,6 +896,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_mod_list_removed() != 0) {
+		return 1;
+	}
+	if(test_sampler_character_panel() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

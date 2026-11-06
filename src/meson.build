@@ -22,6 +22,7 @@ core_sources = files(
   'notes.c',
   'sample.c',
   'sampler_character.c',
+  'sampler_filter.c',
   'device_budget.c',
   'device_calibrate.c',
   'voice_governor.c',

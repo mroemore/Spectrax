@@ -257,6 +257,66 @@ static int test_sample_voice_renders(void) {
     return 0;
 }
 
+/* The OTA cascade behind the FILTER dial: with the filter on and a low
+ * cutoff, the voice's output is measurably darker than the same voice
+ * with the filter off.
+ *
+ * The measure is the energy of the successive differences, which rises
+ * with frequency -- a difference-ratio assertion, not an absolute
+ * spectrum. */
+static float render_diff_energy(TestEnv *e, Voice *voice, int n) {
+    float energy = 0.0f;
+    float prev = 0.0f;
+    for (int i = 0; i < n; i++) {
+        processModulations(voice->paramList, voice->modList,
+                           1.0f / (float)SPECTRAX_ENGINE_RATE);
+        OutVal out = generateVoice(e->vm, voice, 440.0f / (float)SPECTRAX_ENGINE_RATE, 440.0f);
+        float d = out.L - prev;
+        energy += d * d;
+        prev = out.L;
+    }
+    return energy / (float)n;
+}
+
+static int test_sampler_filter_is_audible(void) {
+    TestEnv e;
+    if (make_env(&e, 4) != 0) return 1;
+
+    Instrument *inst = NULL;
+    init_instrument(&inst, VOICE_TYPE_SAMPLE, e.sp, &e.pb);
+    ASSERT_TRUE(inst != NULL, "init_instrument(SAMPLE) failed");
+    initVoicePool(e.vm, 1, 2, inst);
+
+    /* A high note, so the sample's tone sits above the cutoff and the
+     * filter has something to take away. */
+    int note[NOTE_INFO_SIZE] = { A, 8 };
+
+    /* The filter off: the voice's own output. */
+    setParameterValue(inst->id.sampler.filter, 0.0f);
+    Voice *plain = getFreeVoice(e.vm, 1);
+    ASSERT_TRUE(plain != NULL, "getFreeVoice() returned NULL");
+    triggerVoice(plain, note, NOTE_VELOCITY_FULL);
+    float plainEnergy = render_diff_energy(&e, plain, 1024);
+    ASSERT_TRUE(plainEnergy > 1e-9f, "the unfiltered voice is silent");
+
+    /* The filter on, with a low cutoff. */
+    setParameterValue(inst->id.sampler.filter, 1.0f);
+    setParameterValue(inst->id.sampler.cutoff, 200.0f);
+    setParameterValue(inst->id.sampler.res, 0.0f);
+    Voice *filtered = getFreeVoice(e.vm, 1);
+    ASSERT_TRUE(filtered != NULL, "getFreeVoice() returned NULL");
+    triggerVoice(filtered, note, NOTE_VELOCITY_FULL);
+    float filteredEnergy = render_diff_energy(&e, filtered, 1024);
+
+    printf("  (plain %.3e, filtered %.3e, ratio %.3f)\n",
+           plainEnergy, filteredEnergy, filteredEnergy / plainEnergy);
+    ASSERT_TRUE(filteredEnergy < plainEnergy * 0.5f,
+                "the filtered voice is darker than the unfiltered one");
+    printf("PASS test_sampler_filter_is_audible (%.3e -> %.3e)\n",
+           plainEnergy, filteredEnergy);
+    return 0;
+}
+
 static int test_blep_voice_square_renders(void) {
     TestEnv e;
     if (make_env(&e, 4) != 0) return 1;
@@ -671,6 +731,8 @@ int main(void) {
     failed |= test_fm_voice_renders_after_trigger();
     failed |= test_fm_voice_envelope_attack_then_silence();
     failed |= test_sample_voice_renders();
+    failed |= test_sampler_filter_is_audible();
+    failed |= test_sampler_filter_is_audible();
     failed |= test_blep_voice_square_renders();
     failed |= test_blep_default_shape_is_silent_bug();
     failed |= test_polyphony_all_voices_sound();

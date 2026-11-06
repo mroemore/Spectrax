@@ -175,6 +175,18 @@ OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency
 	} else {
 		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd);
 	}
+	/* The OTA cascade: the character engine's per-voice filter, behind the
+	 * FILTER dial. When the filter is off the state is bypassed AND
+	 * reset, so a voice that turns the filter off does not keep a stale
+	 * state -- and one that turns it back on does not start from a
+	 * ringing filter. */
+	if(getParameterValueAsInt(id->filter)) {
+		float cutoff = getParameterValue(id->cutoff);
+		float res = getParameterValue(id->res);
+		v = samplerOtaProcess(&vd->ota, v, cutoff, res, SPECTRAX_ENGINE_RATE);
+	} else {
+		samplerOtaReset(&vd->ota);
+	}
 	/* The MPC60's level: the velocity is the hit's loudness, and the
 	 * curve is the machine's, not a fader's. A note with no velocity
 	 * information plays at full, so it sounds exactly as it did before
@@ -570,6 +582,8 @@ void initialize_voice(Voice *voice, Instrument *inst) {
 			 * an uninitialised address reads outside the bake. */
 			voice->vd.sampler.dsAddr = 0;
 			voice->vd.sampler.dsPhase = 0.0;
+			/* The OTA cascade's state starts clear. */
+			samplerOtaReset(&voice->vd.sampler.ota);
 			voice->generate = generateSample;
 			break;
 

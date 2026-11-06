@@ -17,6 +17,7 @@ test_names = [
   'test_engine_rate',
   'test_canonical_math',
   'test_sampler_character',
+  'test_sampler_filter',
   'test_golden_render',
   'test_voice_isolation',
   'test_device_budget',
@@ -120,6 +121,9 @@ foreach name : test_names
     # arranger pulls in transitively, and vizfx for the scroller and the
     # mix ring the callback pushes into.
     link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]
+  elif name == 'test_sampler_filter'
+    # The no-libm lint greps the cascade's source, so it needs its path.
+    test_c_args = ['-DSPECTRAX_SRC_DIR="' + meson.project_source_root() + '/src"']
   elif name == 'test_canonical_math'
     # The contract test greps the canonical sources, so it needs their path.
     test_c_args = ['-DSPECTRAX_SRC_DIR="' + meson.project_source_root() + '/src"']

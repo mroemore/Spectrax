@@ -12,6 +12,7 @@
 #include "voice_governor.h"
 #include "blit_synth.h"
 #include "filters.h"
+#include "sampler_filter.h"
 #include "fft.h"
 #include "sampler_character.h"
 
@@ -290,6 +291,10 @@ typedef struct {
 	 * part carried beside it. */
 	uint32_t dsAddr;
 	double dsPhase;
+	/* The OTA cascade's state -- the character engine's per-voice
+	 * filter. Per VOICE, so two voices on the same instrument are
+	 * filtered independently. */
+	SamplerOtaState ota;
 } SamplerVoiceData;
 
 typedef struct {

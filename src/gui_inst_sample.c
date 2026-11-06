@@ -198,7 +198,14 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 
 	GuiNode *btnrow1 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_1", 0, 0);
 	GuiNode *btnrow2 = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_2", 0, 0);
-	GuiNode *wfrow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_3", 0, 0);
+	/* R_3 and R_4 are the CHARACTER rows: the bake's shape (profile,
+	 * law, interpolation, bit depth, sample rate) and the filter and
+	 * the tuning (filter, cutoff, resonance, tune, root). They were
+	 * parameters with no control until now -- the DSP had landed and
+	 * nothing on the screen reached it. */
+	GuiNode *charRow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_3", 0, 0);
+	GuiNode *filterRow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_4", 0, 0);
+	GuiNode *wfrow = createGuiNode(0, 0, 100, 100, 2, na_horizontal, "R_5", 0, 0);
 
 	GuiNode *sampleIndex = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->id.sampler.sampleIndex);
 	GuiNode *loop = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->id.sampler.loopSample);
@@ -209,6 +216,26 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	GuiNode *gain = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "GAIN", 0, incParameterBaseValue, inst->gain);
 	pan->draw = drawDiscreteDialGuiNode;
 	gain->draw = drawDiscreteDialGuiNode;
+
+	/* The character row. PROFILE, LAW and INTERP pick from a fixed set,
+	 * so they are discrete dials; BITS and RATE are continuous. */
+	GuiNode *profile = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PROFILE", 0, incParameterBaseValue, inst->id.sampler.profile);
+	GuiNode *law = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "LAW", 0, incParameterBaseValue, inst->id.sampler.law);
+	GuiNode *interp = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "INTERP", 0, incParameterBaseValue, inst->id.sampler.interp);
+	GuiNode *bits = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "BITS", 0, incParameterBaseValue, inst->id.sampler.bitDepth);
+	GuiNode *rate = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "RATE", 0, incParameterBaseValue, inst->id.sampler.sampleRate);
+	profile->draw = drawDiscreteDialGuiNode;
+	law->draw = drawDiscreteDialGuiNode;
+	interp->draw = drawDiscreteDialGuiNode;
+
+	/* The filter row. FILTER is a switch, so it is discrete; CUTOFF,
+	 * RES, TUNE and ROOT are continuous. */
+	GuiNode *filter = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "FILTER", 0, incParameterBaseValue, inst->id.sampler.filter);
+	GuiNode *cutoff = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "CUTOFF", 0, incParameterBaseValue, inst->id.sampler.cutoff);
+	GuiNode *res = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "RES", 0, incParameterBaseValue, inst->id.sampler.res);
+	GuiNode *tune = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "TUNE", 0, incParameterBaseValue, inst->id.sampler.tune);
+	GuiNode *root = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "ROOT", 0, incParameterBaseValue, inst->id.sampler.root);
+	filter->draw = drawDiscreteDialGuiNode;
 
 	SampleWaveformGuiNode *swgn = createSampleWaveformGuiNode(0, 0, 100, 100, 5, na_vertical, "WFRM", 0, inst, inst->id.sampler.loopStartIndex, inst->id.sampler.loopEndIndex);
 	GuiNode *viewBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "VIEW", 0, cbCycleWaveView, swgn);
@@ -231,10 +258,24 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	appendItem(btnrow2, sp1, 1);
 	appendItem(btnrow2, sp2, 1);
 
+	appendItem(charRow, profile, 1);
+	appendItem(charRow, law, 1);
+	appendItem(charRow, interp, 1);
+	appendItem(charRow, bits, 1);
+	appendItem(charRow, rate, 1);
+
+	appendItem(filterRow, filter, 1);
+	appendItem(filterRow, cutoff, 1);
+	appendItem(filterRow, res, 1);
+	appendItem(filterRow, tune, 1);
+	appendItem(filterRow, root, 1);
+
 	appendItem(wfrow, (GuiNode *)swgn, 1);
 
 	appendItem(btnwrap, btnrow1, 1);
 	appendItem(btnwrap, btnrow2, 1);
+	appendItem(btnwrap, charRow, 1);
+	appendItem(btnwrap, filterRow, 1);
 	appendItem(btnwrap, wfrow, 2);
 
 	appendItem(container, btnwrap, weight);
