@@ -1,0 +1,113 @@
+# mod_line.txt - the modulation line: the instrument screen's one-line slot
+# that cycles through the connected modulators and opens the modulation
+# screen.
+#
+# The line is the instrument screen's ONLY entry point into the modulation
+# screen, so this fixture is what proves the screen is reachable at all.
+#
+# The default FM patch wires its core envelopes to the operators, so the
+# line starts with several connected modulators to cycle through.
+
+FRAMES 4
+
+# --- The line is on the screen ---------------------------------------------
+JUMP MODLINE
+ASSERT selected==MODLINE
+ASSERT modline_index == 0
+
+# --- RIGHT cycles the connected modulators --------------------------------
+# The boot patch (fm1) wires three modulators, so the line cycles 0 -> 1
+# -> 2 -> 0.
+RIGHT
+FRAMES 2
+ASSERT modline_index == 1
+RIGHT
+FRAMES 2
+ASSERT modline_index == 2
+
+# --- The cycle wraps, and LEFT runs it backwards --------------------------
+RIGHT
+FRAMES 2
+ASSERT modline_index == 0
+LEFT
+FRAMES 2
+ASSERT modline_index == 2
+LEFT
+FRAMES 2
+ASSERT modline_index == 1
+LEFT
+FRAMES 2
+ASSERT modline_index == 0
+
+# --- EDIT opens the modulation screen on the line's source ----------------
+# The screen's graph is built when it opens, so the line must set the
+# selection BEFORE the open. The screen opens with the cursor on the
+# selected source's row, so the row's name shows which source it opened on.
+JUMP MODLINE
+RIGHT
+FRAMES 2
+ASSERT modline_index == 1
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_1
+
+# --- The screen is modal: REMOVE must not reach the instrument ------------
+# The modulation screen's graph holds Parameter pointers into the
+# instrument's paramList. REMOVE under the screen used to free them
+# (removeMod -> freeEnvelope/freeLFO) while the layer still pointed at
+# them -- a use-after-free on the next draw. The scene's REMOVE is gated
+# on instrumentLayerModalActive(), so the instrument must be untouched.
+REMOVE
+FRAMES 2
+ASSERT envcount==4
+
+# --- The same gate holds for the route picker -----------------------------
+# The picker layer holds the destination dials' Parameter pointers, and
+# the instrument graph's cursor stays on the ROUTE button under it -- so
+# here REMOVE *would* reach a removable source. The gate must stop it.
+#
+# First close the modulation screen: SELECT is the universal back, and the
+# layer stack pops the topmost non-passive layer on SELECT.
+SELECT
+FRAMES 2
+ASSERT selected==MODLINE
+#
+# Add a runtime source (the boot patch has only core sources, and core
+# sources are protected from removal).
+JUMP MODS_ADD
+EDIT
+FRAMES 2
+ASSERT envcount==5
+# Reach the runtime source's ROUTE button: DOWN x11 -> ENV(env[4]),
+# RIGHT x5 -> ROUTE.
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+DOWN
+ASSERT selected==ENV
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+RIGHT
+ASSERT selected==ROUTE
+# EDIT opens the picking layer.
+EDIT
+FRAMES 2
+REMOVE
+FRAMES 2
+ASSERT envcount==5
+
+# --- The back gesture closes the picker too --------------------------------
+SELECT
+FRAMES 2
+ASSERT selected==ROUTE
+
+QUIT

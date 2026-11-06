@@ -1509,6 +1509,13 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	}
 	appendItem(instwrap, pad2, 1);
 
+	/* Task 4: the modulation line -- the instrument screen's one-row slot
+	 * that cycles through the connected modulators and opens the modulation
+	 * screen. It sits after the voice's control panel and before the
+	 * modulation list, so the screen shows the line and the list at once
+	 * while both are present. */
+	appendModLineNode(instGraph, instwrap, inst, 2, false);
+
 	/* task scroll: header is appended to instwrap (weight 2) so it
 	 * never scrolls. The ScrollContainer is the mod_wrap viewport —
 	 * it receives only the source rows and the trailing blank. Its
@@ -1637,6 +1644,31 @@ static int pageY(GuiNode *n) {
 	return (int)(int16_t)n->y;
 }
 
+/* The modulators group spans the mod-wrap, its header AND the modulation
+ * line. The line is a child of instwrap in its own right, so it is
+ * collected explicitly -- otherwise it would belong to no group and
+ * FUNCTION+UP/DOWN would leave the cursor stranded on it. */
+static void collectModGroupSelectables(GuiNode *modsHdr, GuiNode *modLine,
+                                       GuiNode **out, int *count) {
+	if(modsHdr) {
+		collectPageSelectables(modsHdr, out, count);
+	}
+	if(modLine) {
+		collectPageSelectables(modLine, out, count);
+	}
+}
+
+/* Is the node inside the modulators group (the mod-wrap, its header, or
+ * the modulation line)? */
+static bool inModGroup(GuiNode *sel, GuiNode *modsHdr, GuiNode *modLine) {
+	for(GuiNode *p = sel; p; p = p->container) {
+		if(p == modsHdr || p == modLine) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void instrumentPageNav(int dir) {
 	Graph *g = getSelectedInstGraph();
 	if(!g || !g->root || !g->selected) {
@@ -1648,6 +1680,7 @@ void instrumentPageNav(int dir) {
 	}
 	GuiNode *groups[4] = { 0, 0, 0, 0 };
 	GuiNode *modsHdr = NULL;
+	GuiNode *modLine = NULL;
 	{
 		ListElement *e = instwrap->items->head;
 		for(int i = 0; i < instwrap->itemCount && e; i++) {
@@ -1662,6 +1695,8 @@ void instrumentPageNav(int dir) {
 				groups[3] = c;
 			} else if(strcmp(c->name, "mods_hdr") == 0) {
 				modsHdr = c;
+			} else if(strcmp(c->name, "MODLINE") == 0) {
+				modLine = c;
 			}
 			e = e->next;
 		}
@@ -1677,8 +1712,8 @@ void instrumentPageNav(int dir) {
 			continue;
 		}
 		collectPageSelectables(groups[gi], groupSels, &groupCount);
-		if(gi == 3 && modsHdr) {
-			collectPageSelectables(modsHdr, groupSels, &groupCount);
+		if(gi == 3) {
+			collectModGroupSelectables(modsHdr, modLine, groupSels, &groupCount);
 		}
 		GuiNode *p = g->selected;
 		bool inGroup = false;
@@ -1689,15 +1724,8 @@ void instrumentPageNav(int dir) {
 			}
 			p = p->container;
 		}
-		if(!inGroup && gi == 3 && modsHdr) {
-			p = g->selected;
-			while(p) {
-				if(p == modsHdr) {
-					inGroup = true;
-					break;
-				}
-				p = p->container;
-			}
+		if(!inGroup && gi == 3) {
+			inGroup = inModGroup(g->selected, modsHdr, modLine);
 		}
 		if(inGroup) {
 			selGroup = gi;
@@ -1732,8 +1760,8 @@ void instrumentPageNav(int dir) {
 					GuiNode *sels[PAGE_NAV_MAX];
 					int cnt = 0;
 					collectPageSelectables(groups[gi], sels, &cnt);
-					if(gi == 3 && modsHdr) {
-						collectPageSelectables(modsHdr, sels, &cnt);
+					if(gi == 3) {
+						collectModGroupSelectables(modsHdr, modLine, sels, &cnt);
 					}
 					if(cnt == 0) {
 						continue;
@@ -1760,8 +1788,8 @@ void instrumentPageNav(int dir) {
 					GuiNode *sels[PAGE_NAV_MAX];
 					int cnt = 0;
 					collectPageSelectables(groups[gi], sels, &cnt);
-					if(gi == 3 && modsHdr) {
-						collectPageSelectables(modsHdr, sels, &cnt);
+					if(gi == 3) {
+						collectModGroupSelectables(modsHdr, modLine, sels, &cnt);
 					}
 					if(cnt == 0) {
 						continue;

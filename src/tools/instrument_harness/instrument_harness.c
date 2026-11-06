@@ -102,6 +102,7 @@ typedef enum {
 	SOP_ASSERT_MODULATORS, /* ops[op]->{fb|rat|lvl}->modulator_count == N */
 	SOP_ASSERT_ROUTELINESRC, /* ROUTELINES ctx srcIdx == N */
 	SOP_ASSERT_WAVEVIEW,     /* sampler waveform view mode (WF_VIEW_*) == N */
+	SOP_ASSERT_MODLINE_INDEX, /* the modulation line's selected index == N */
 	SOP_ASSERT_SELECTED, /* currentGraph->selected->name == "NAME" */
 	SOP_ASSERT_PRESET,   /* presetBank has a patch whose name matches "NAME" */
 	SOP_ASSERT_FILE,     /* "data/instrument_presets/<sanitized>" exists on disk */
@@ -508,6 +509,15 @@ static void parseScript(const char *path) {
 					return;
 				}
 				s->op = SOP_ASSERT_WAVEVIEW; s->a.n = atoi(tokens[3]);
+			} else if(strcmp(tokens[1], "modline_index") == 0) {
+				/* ASSERT modline_index == <N>: the modulation line's
+				 * selected index into the connected modulators. */
+				if(nt < 4 || strcmp(tokens[2], "==") != 0) {
+					fclose(fp);
+					failScript(lineno, "ASSERT modline_index==<N>");
+					return;
+				}
+				s->op = SOP_ASSERT_MODLINE_INDEX; s->a.n = atoi(tokens[3]);
 			} else if(strcmp(tokens[1], "modulators") == 0) {
 				/* ASSERT modulators == ( <op> , <kind> , <N> ) */
 				if(nt < 9 || strcmp(tokens[2], "==") != 0 ||
@@ -1459,6 +1469,22 @@ static void processScriptAssert(const ScriptStep *s) {
 			fprintf(stdout, "PASS line %d: waveview==%d\n", s->lineno, s->a.n);
 			break;
 		}
+		case SOP_ASSERT_MODLINE_INDEX: {
+			/* The modulation line's index into the connected modulators.
+			 * -1 means there is no line on the screen at all. */
+			extern int modLineIndex(const GuiNode *n);
+			Graph *g = getSelectedInstGraph();
+			GuiNode *line = (g && g->root) ? findSelectableByName(g->root, "MODLINE") : NULL;
+			int got = modLineIndex(line);
+			if(got != s->a.n) {
+				fprintf(stdout, "FAIL line %d: ASSERT modline_index==%d failed: got %d\n",
+				        s->lineno, s->a.n, got);
+				failScript(s->lineno, "ASSERT modline_index mismatch");
+				return;
+			}
+			fprintf(stdout, "PASS line %d: modline_index==%d\n", s->lineno, s->a.n);
+			break;
+		}
 		case SOP_ASSERT_MODULATORS:
 			runAssertModulators(s->lineno, s->opIdx, s->kind, s->b.n);
 			break;
@@ -1849,15 +1875,29 @@ static void handleInstrumentInput(paTestData *data, ApplicationState *appState) 
 		return;
 	}
 
-	if(isKeyJustPressed(appState->inputState, KM_ADD)) {
+	/* Mirror main.c: ADD and REMOVE mutate the instrument, and they are
+	 * read here -- BEFORE handlePresetUiInput, which is what routes the
+	 * input to an open modal layer. So without a gate they fire even while
+	 * a layer owns the screen: REMOVE would free the Parameters
+	 * (removeMod -> freeEnvelope/freeLFO) that an open layer's graph
+	 * still points at. The modulation screen is the first layer that
+	 * holds Parameter pointers, so that is a use-after-free.
+	 *
+	 * instrumentLayerModalActive() is the branch's own gate for "a modal
+	 * layer is up" -- the same shape main.c uses. The harness MUST mirror
+	 * main.c here: it drives the same GUI from a script, so a fixture that
+	 * opens the modulation screen and presses REMOVE would otherwise
+	 * reproduce the crash the app no longer has. */
+	if(isKeyJustPressed(appState->inputState, KM_ADD) && !instrumentLayerModalActive()) {
 		Instrument *inst = getSelectedInstInstrument();
 		if(inst && inst->voiceType == VOICE_TYPE_FM) {
 			addRuntimeSource(inst);
 		}
 	}
-	if(isKeyJustPressed(appState->inputState, KM_REMOVE)) {
-		/* Task 4: the mod-wrap now has a header row at index 0, so
-		 * removeSelectedSource's `idx - 1` mapping is correct. */
+	if(isKeyJustPressed(appState->inputState, KM_REMOVE) && !instrumentLayerModalActive()) {
+		/* The mod-wrap's row index maps back to a source position in
+		 * removeSelectedSource -- the MODS header is a sibling of the
+		 * mod-wrap, not a child, so there is no header offset. */
 		removeSelectedSource();
 	}
 	if(isKeyHeld(appState->inputState, KM_FUNCTION) && !instrumentLayerModalActive()) {

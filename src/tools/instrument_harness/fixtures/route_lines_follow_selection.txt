@@ -5,7 +5,10 @@ ASSERT selected==RATIO1
 # Route source 0 -> op0 feedback and source 1 -> op0 feedback so both
 # sources have active routes (per the user's repro). Then walk the ROUTE
 # buttons and assert the overlay ctx follows each hop.
-# From RATIO1: DOWN x5 -> MODS_ADD; DOWN -> ATK(env0); RIGHT x4 -> ROUTE(env0)
+# From RATIO1: DOWN x6 -> MODS_ADD; DOWN -> ATK(env0); RIGHT x4 -> ROUTE(env0)
+# (6 DOWNs, not 5: the Task 4 modulation line is a row above the mod-wrap
+# header.)
+DOWN
 DOWN
 DOWN
 DOWN

@@ -461,8 +461,128 @@ static int test_viewport_geometry(void) {
 	return 0;
 }
 
+/* ---- the modulation line's data ---------------------------------------- */
+
+/* The line shows the instrument's CONNECTED modulators -- the sources that
+ * have at least one route -- and nothing else. A source with no route is
+ * not something the user can adjust, so it does not belong in the line.
+ *
+ * The counts are RELATIVE: a default FM patch already wires its core
+ * envelopes to the operators, so the instrument starts with connected
+ * sources. What matters is the difference a route makes. */
+static int test_connected_sources(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = inst0(&e);
+	ASSERT_TRUE(i != NULL, "instrument 0 exists");
+	ASSERT_TRUE(i->modList != NULL, "the instrument has a modList");
+	ASSERT_TRUE(i->paramList != NULL, "the instrument has a paramList");
+
+	Mod *conn[64];
+	int base = modConnectedSources(i, conn, 64);
+	ASSERT_TRUE(base > 0, "the FM's default patch wires its envelopes");
+
+	/* A source with no route: add one. */
+	int before = modSourceCount(i->modList);
+	addRuntimeSource(i);
+	ASSERT_EQ(modSourceCount(i->modList), before + 1, "a runtime source was added");
+	Mod *added = modSourceAtPos(i, before);
+	ASSERT_TRUE(added != NULL, "the added source resolves");
+	ASSERT_EQ(modConnectedSources(i, conn, 64), base,
+	          "an unconnected source is not on the line");
+
+	/* Route it, and it joins the line. */
+	ASSERT_TRUE(i->gain != NULL, "the instrument has a gain parameter");
+	ASSERT_TRUE(addModulation(i->paramList, i->modList, added, i->gain, 0.75f, MO_ADD),
+	           "the added source is routed to the gain");
+	int n = modConnectedSources(i, conn, 64);
+	ASSERT_EQ(n, base + 1, "a routed source joins the line");
+	ASSERT_TRUE(conn[base] == added, "the new source is last, in source order");
+
+	/* The route belongs to that source, and its amount is the attenuator's. */
+	ModConnection *routes[16];
+	int rn = modSourceRoutes(i, added, routes, 16);
+	ASSERT_EQ(rn, 1, "the source has one route");
+	ASSERT_TRUE(routes[0] != NULL, "the route is returned");
+	ASSERT_TRUE(routes[0]->amount != NULL, "the route carries an amount");
+	ASSERT_TRUE(getParameterValue(routes[0]->amount) > 0.0f, "the amount is non-zero");
+
+	/* A source with no route contributes no routes. The FM's own core
+	 * envelopes are connected, so the check is that a source with no route
+	 * is absent from the connected list, not that every source has one. */
+	int connectedWithout = 0;
+	for(int k = 0; k < base; k++) {
+		if(modSourceRoutes(i, conn[k], NULL, 0) == 0) {
+			connectedWithout++;
+		}
+	}
+	ASSERT_EQ(connectedWithout, 0, "every connected source has at least one route");
+
+	/* The count must not exceed the cap, and a NULL out is a pure count. */
+	ASSERT_EQ(modConnectedSources(i, NULL, 0), base + 1, "a NULL out counts without writing");
+
+	free_env(&e);
+	printf("PASS test_connected_sources\n");
+	return 0;
+}
+
+/* REMOVE removes the source under the cursor.
+ *
+ * The mapping used to subtract a header row that is not inside the
+ * mod-wrap (the MODS header is a SIBLING of the mod-wrap), so REMOVE
+ * removed the source BEFORE the one under the cursor -- and for the
+ * first runtime source it refused outright, because the source it named
+ * was a protected core envelope. */
+static int test_remove_selected_source(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = inst0(&e);
+	int before = modSourceCount(i->modList);
+
+	/* Core sources are protected, so the removal only fires on a runtime
+	 * source. Add one. */
+	addRuntimeSource(i);
+	ASSERT_EQ(modSourceCount(i->modList), before + 1, "a runtime source was added");
+
+	/* The added source is the last one. */
+	int target = before;
+	Mod *victim = modSourceAtPos(i, target);
+	ASSERT_TRUE(victim != NULL, "the target source resolves");
+
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "instrument graph");
+	GuiNode *route = findSourceRouteNode(g->root, target);
+	ASSERT_TRUE(route != NULL, "the target source's ROUTE node is in the graph");
+
+	/* Put the cursor on it, the way the player would have it. */
+	changeGraphSelection(g, route);
+
+	removeSelectedSource();
+
+	/* The source count drops by one... */
+	ASSERT_EQ(modSourceCount(i->modList), before, "the source was removed");
+	/* ...and it was the RIGHT one: the source that was at the target
+	 * position is the one that went. */
+	ASSERT_TRUE(modSourceAtPos(i, target) != victim,
+	            "the source under the cursor is the one that was removed");
+
+	free_env(&e);
+	printf("PASS test_remove_selected_source\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_source_lifecycle() != 0) {
+		return 1;
+	}
+	if(test_connected_sources() != 0) {
+		return 1;
+	}
+	if(test_remove_selected_source() != 0) {
 		return 1;
 	}
 	if(test_source_guards() != 0) {

@@ -17,6 +17,8 @@
 
 #include "gui.h"
 #include "graph_gui.h"
+#include "gui_inst_internal.h"
+#include "gui_mod_screen.h"
 #include "input.h"
 #include "io.h"
 #include "modsystem.h"
@@ -702,6 +704,78 @@ static int test_dirty_confirm(void) {
 	return 0;
 }
 
+/* The modulation line: the instrument screen's one-line slot that cycles
+ * through the connected modulators and opens the modulation screen. */
+static int test_mod_line(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *i = e.vm->instruments[0];
+	ASSERT_TRUE(i != NULL, "the instrument exists");
+
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "the instrument screen has a graph");
+
+	/* The line must be on the screen. It is the instrument screen's only
+	 * entry point into the modulation screen, so without it the screen is
+	 * unreachable from the app. */
+	GuiNode *line = find_node_named(g->root, "MODLINE");
+	ASSERT_TRUE(line != NULL, "the instrument screen carries a MODLINE node");
+	ASSERT_TRUE(line->selectable, "the line is selectable");
+	ASSERT_TRUE(line->actionCb != NULL, "the line fires an action on EDIT");
+	ASSERT_TRUE(line->customNav != NULL, "the line handles the arrow keys itself");
+
+	/* The default FM patch already wires its core envelopes, so the line
+	 * has something to show from the start. */
+	Mod *conn[64];
+	int connected = modConnectedSources(i, conn, 64);
+	ASSERT_TRUE(connected > 0, "the FM's default patch wires its envelopes");
+
+	/* The line's own state is the index into the connected sources. */
+	ModLineGuiNode *ml = (ModLineGuiNode *)line;
+	ASSERT_EQ(ml->index, 0);
+
+	/* LEFT and RIGHT cycle the line's index, and the line keeps it. With
+	 * more than one connected source RIGHT must advance it. */
+	ASSERT_TRUE(connected >= 2, "the FM patch has at least two connected sources");
+	line->customNav(line, KM_RIGHT);
+	ASSERT_EQ(ml->index, 1);
+	line->customNav(line, KM_LEFT);
+	ASSERT_EQ(ml->index, 0);
+	/* Wrapping: LEFT from the first source lands on the last. */
+	line->customNav(line, KM_LEFT);
+	ASSERT_EQ(ml->index, connected - 1);
+	line->customNav(line, KM_RIGHT);
+	ASSERT_EQ(ml->index, 0);
+
+	/* EDIT on the line opens the modulation screen, focused on the source
+	 * the line is showing. The screen's graph is built at open time, so the
+	 * selection must be set BEFORE the open -- otherwise the detail pane
+	 * shows the previous source. */
+	ASSERT_TRUE(!modScreenIsOpen(), "the modulation screen starts closed");
+	line->actionCb(line->actionCtx);
+	ASSERT_TRUE(modScreenIsOpen(), "EDIT on the line opens the modulation screen");
+	int shown = modScreenSelectedSource();
+	ASSERT_EQ(shown, 0);
+
+	/* The line shows a different source, and the screen must follow it. */
+	closeModScreen();
+	line->customNav(line, KM_RIGHT);
+	line->actionCb(line->actionCtx);
+	int shown2 = modScreenSelectedSource();
+	ASSERT_TRUE(shown2 > 0, "the screen opens on the second source");
+	ASSERT_TRUE(shown2 != shown, "the screen followed the line");
+
+	/* Close it again, so the test leaves no layer up. */
+	closeModScreen();
+	ASSERT_TRUE(!modScreenIsOpen(), "the screen closes");
+
+	free_env(&e);
+	printf("PASS test_mod_line\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_voice_type_cycling() != 0) {
 		return 1;
@@ -719,6 +793,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_dirty_confirm() != 0) {
+		return 1;
+	}
+	if(test_mod_line() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

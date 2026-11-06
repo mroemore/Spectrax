@@ -13,12 +13,13 @@ RELEASE
 FRAMES 2
 ASSERT selected==ALG
 
-# FUNCTION+DOWN again -> wrap to the modulators group's top (MODS_ADD).
+# FUNCTION+DOWN again -> wrap to the modulators group's top (MODLINE, the
+# Task 4 line that sits above the mod-wrap header).
 HOLD FUNCTION
 DOWN
 RELEASE
 FRAMES 2
-ASSERT selected==MODS_ADD
+ASSERT selected==MODLINE
 
 # FUNCTION+DOWN again -> modulators group's lowest (the grouped PTN row's
 # first route button, PTN_ROUTE_1).
@@ -28,12 +29,12 @@ RELEASE
 FRAMES 2
 ASSERT selected==PTN_ROUTE_1
 
-# FUNCTION+UP -> back to the modulators top.
+# FUNCTION+UP -> back to the modulators top (MODLINE).
 HOLD FUNCTION
 UP
 RELEASE
 FRAMES 2
-ASSERT selected==MODS_ADD
+ASSERT selected==MODLINE
 
 # FUNCTION+UP again -> wrap to the previous group's lowest (FM bottom = ALG).
 HOLD FUNCTION

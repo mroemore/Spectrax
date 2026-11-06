@@ -24,6 +24,7 @@ DOWN
 DOWN
 DOWN
 DOWN
+DOWN
 ASSERT selected==MODS_ADD
 
 # EDIT fires cbAddModSource: appends a runtime env, rebuilds the graph,
@@ -35,6 +36,7 @@ ASSERT envcount==5
 # 10 DOWNs reach the new entry's ENV action button: RATIO2 -> RATIO3 ->
 # RATIO4 -> ALG -> MODS_ADD -> ATTACK(env[0]) -> ATTACK(env[1]) ->
 # ATTACK(env[2]) -> ATTACK(env[3]) -> ENV(env[4]).
+DOWN
 DOWN
 DOWN
 DOWN
@@ -87,6 +89,7 @@ ASSERT selected==ENV
 # DOWNs re-reach the (now LFO) runtime row.
 EDIT
 ASSERT envcount==5
+DOWN
 DOWN
 DOWN
 DOWN

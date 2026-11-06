@@ -18,6 +18,7 @@
 #include "gui_internal.h"
 #include "gui_inst_internal.h"
 #include "gui_layer.h"
+#include "gui_mod_screen.h"
 
 /* Spec #1+2: dest cells in the route picker are now outline-only — no
  * label, no fill, just an osc orange/gold rectangle. The label of the
@@ -354,6 +355,33 @@ bool removeSource(Instrument *inst, int srcIndex) {
 }
 
 
+/* The source position of the mod-wrap row at `rowIdx`.
+ *
+ * The row index is NOT the source position: the pattern sources get no
+ * row of their own (they share the one grouped PTN row), so the rows run
+ * ahead of the source positions by however many pattern sources precede
+ * them. Map back by counting the sources that DO have a row.
+ *
+ * Returns -1 when the row has no source behind it. */
+static int sourcePosForRow(Instrument *inst, int rowIdx) {
+	if(!inst || !inst->modList || rowIdx < 0) {
+		return -1;
+	}
+	int seen = 0;
+	int n = modSourceCount(inst->modList);
+	for(int pos = 0; pos < n; pos++) {
+		Mod *m = modSourceAtPos(inst, pos);
+		if(!m || m->type == MT_PATTERN) {
+			continue;
+		}
+		if(seen == rowIdx) {
+			return pos;
+		}
+		seen++;
+	}
+	return -1;
+}
+
 void removeSelectedSource(void) {
 	if(!igui || !igui->vm || !igui->selectedInstrument) {
 		return;
@@ -372,11 +400,16 @@ void removeSelectedSource(void) {
 				l = l->next;
 			}
 			Instrument *inst = igui->vm->instruments[*igui->selectedInstrument];
-			/* idx - 1: account for the mod-wrap header row that Task 4
-			 * adds. With the header absent the mapping currently
-			 * under-counts by 1; that is intentional and matches the
-			 * brief's transitional note. */
-			removeSource(inst, idx - 1);
+			/* The row's index maps back to a source position. The old
+			 * mapping subtracted a header row that is not inside the
+			 * mod-wrap (the MODS header is a SIBLING of it), so REMOVE
+			 * named the source BEFORE the one under the cursor -- and for
+			 * the first runtime source it named a protected core
+			 * envelope, so it refused outright. */
+			int pos = sourcePosForRow(inst, idx);
+			if(pos >= 0) {
+				removeSource(inst, pos);
+			}
 			return;
 		}
 		n = n->container;
@@ -1849,6 +1882,258 @@ static void cbCycleSourceType(void *ctx) {
 	pthread_mutex_unlock(&g_audioLock);
 }
 
+
+/* ---- the modulation line ------------------------------------------------- */
+
+/* The routes of one source. The connections live on the instrument's
+ * parameters' modulator lists, and a route through the source's own
+ * attenuator counts as the source's route -- connFromSource follows the
+ * attenuator, so the line and the route list agree on what a route is. */
+int modSourceRoutes(const Instrument *inst, Mod *src, ModConnection **out, int max) {
+	if(!inst || !inst->paramList || !src) {
+		return 0;
+	}
+	int count = 0;
+	for(int i = 0; i < inst->paramList->count; i++) {
+		Parameter *dest = inst->paramList->params[i];
+		if(!dest) {
+			continue;
+		}
+		for(ModConnection *c = dest->modulators; c; c = c->next) {
+			if(!connFromSource(c, src)) {
+				continue;
+			}
+			if(out && count < max) {
+				out[count] = c;
+			}
+			count++;
+		}
+	}
+	return count;
+}
+
+/* The instrument's connected sources, in source order: the sources that
+ * have at least one route. The line cycles through these, so a source
+ * with no route never appears on it. */
+int modConnectedSources(const Instrument *inst, Mod **out, int max) {
+	if(!inst || !inst->modList) {
+		return 0;
+	}
+	int count = 0;
+	int srcCount = modSourceCount(inst->modList);
+	for(int pos = 0; pos < srcCount; pos++) {
+		Mod *src = modSourceAtPos(inst, pos);
+		if(!src) {
+			continue;
+		}
+		if(modSourceRoutes(inst, src, NULL, 0) <= 0) {
+			continue;
+		}
+		if(out && count < max) {
+			out[count] = src;
+		}
+		count++;
+	}
+	return count;
+}
+
+/* The source POSITION of the connected source at `index`, or -1. The
+ * position is the index space the modulation screen's selection uses, so
+ * the line can hand the screen the source it is showing. */
+static int modConnectedSourcePos(const Instrument *inst, int index) {
+	if(!inst || !inst->modList) {
+		return -1;
+	}
+	int seen = 0;
+	int srcCount = modSourceCount(inst->modList);
+	for(int pos = 0; pos < srcCount; pos++) {
+		Mod *src = modSourceAtPos(inst, pos);
+		if(!src) {
+			continue;
+		}
+		if(modSourceRoutes(inst, src, NULL, 0) <= 0) {
+			continue;
+		}
+		if(seen == index) {
+			return pos;
+		}
+		seen++;
+	}
+	return -1;
+}
+
+/* The line's index, clamped to the connected sources. The connected set
+ * shrinks when a route is removed, so the index is clamped on every read
+ * rather than trusted. */
+static int modLineClampedIndex(const ModLineGuiNode *ml) {
+	if(!ml || !ml->inst) {
+		return 0;
+	}
+	int n = modConnectedSources(ml->inst, NULL, 0);
+	if(n <= 0) {
+		return 0;
+	}
+	if(ml->index >= n) {
+		return n - 1;
+	}
+	if(ml->index < 0) {
+		return 0;
+	}
+	return ml->index;
+}
+
+/* The line's index, exposed for the test hook and the harness probe. */
+int modLineIndex(const GuiNode *n) {
+	if(!n || n->name == NULL || strcmp(n->name, "MODLINE") != 0) {
+		return -1;
+	}
+	return modLineClampedIndex((const ModLineGuiNode *)n);
+}
+
+/* The line's text: the source it is showing, the destination it
+ * modulates, and the amount. "MODS   —" when nothing is connected. */
+static void modLineText(const ModLineGuiNode *ml, char *buf, size_t len) {
+	if(!buf || len == 0) {
+		return;
+	}
+	buf[0] = '\0';
+	if(!ml || !ml->inst) {
+		snprintf(buf, len, "MODS   -");
+		return;
+	}
+	int idx = modLineClampedIndex(ml);
+	int pos = modConnectedSourcePos(ml->inst, idx);
+	Mod *src = (pos >= 0) ? modSourceAtPos(ml->inst, pos) : NULL;
+	if(!src) {
+		snprintf(buf, len, "MODS   -");
+		return;
+	}
+	/* The first route of the source names the destination and the amount.
+	 * A source can modulate more than one parameter; the line shows the
+	 * first, and the modulation screen shows them all. */
+	ModConnection *routes[8];
+	int n = modSourceRoutes(ml->inst, src, routes, 8);
+	const char *destName = "";
+	float amount = 0.0f;
+	if(n > 0 && routes[0]) {
+		for(int i = 0; i < ml->inst->paramList->count; i++) {
+			Parameter *d = ml->inst->paramList->params[i];
+			if(d && d->modulators) {
+				for(ModConnection *c = d->modulators; c; c = c->next) {
+					if(c == routes[0]) {
+						destName = d->name ? d->name : "";
+						break;
+					}
+				}
+			}
+			if(destName[0]) {
+				break;
+			}
+		}
+		if(routes[0]->amount) {
+			amount = getParameterValue(routes[0]->amount);
+		}
+	}
+	snprintf(buf, len, "MODS   %s -> %s   %.2f   OPEN ->", src->name, destName, amount);
+}
+
+/* The line's draw. It is a text row, drawn with the node's resolved text
+ * style so it matches the app's other labels. */
+static void drawModLineGuiNode(void *self) {
+	GuiNode *gn = (GuiNode *)self;
+	ModLineGuiNode *ml = (ModLineGuiNode *)self;
+	char text[192];
+	modLineText(ml, text, sizeof(text));
+
+	const TextStyle *st = resolveTextStyle(gn);
+	Font *lf = styleFont(st->fontName);
+	Vector2 m = MeasureTextEx(*lf, text, (float)st->fontSize, (float)st->spacing);
+	float tx = (float)gn->x + st->offsetX;
+	float ty = (float)gn->y + st->offsetY;
+	if(st->hAlign == TXT_ALIGN_CENTER) {
+		tx += ((float)gn->w - m.x) * 0.5f;
+	} else if(st->hAlign == TXT_ALIGN_RIGHT) {
+		tx += (float)gn->w - m.x;
+	}
+	if(st->vAlign == TXT_ALIGN_MIDDLE) {
+		ty += ((float)gn->h - m.y) * 0.5f;
+	} else if(st->vAlign == TXT_ALIGN_BOTTOM) {
+		ty += (float)gn->h - m.y;
+	}
+	DrawTextEx(*lf, text, (Vector2){ tx, ty }, (float)st->fontSize, (float)st->spacing,
+	           gn->selected ? st->colorSelected : st->color);
+}
+
+/* The line's navigation. LEFT and RIGHT change the line's index instead
+ * of moving the cursor: the line is a full-width row with no horizontal
+ * neighbour, so there is nothing to move to, and the spec wants the
+ * arrows to cycle the modulators. UP and DOWN are not handled, so the
+ * cursor still moves between rows the usual way. */
+static bool modLineNav(void *self, int keymapping) {
+	GuiNode *node = (GuiNode *)self;
+	ModLineGuiNode *ml = (ModLineGuiNode *)self;
+	if(!ml || !ml->inst) {
+		return false;
+	}
+	if(keymapping != KM_LEFT && keymapping != KM_RIGHT) {
+		return false;
+	}
+	(void)node;
+	int n = modConnectedSources(ml->inst, NULL, 0);
+	if(n <= 0) {
+		/* Nothing is connected: the line has nothing to cycle through. */
+		return true;
+	}
+	int idx = modLineClampedIndex(ml);
+	if(keymapping == KM_RIGHT) {
+		ml->index = (idx + 1) % n;
+	} else {
+		ml->index = (idx + n - 1) % n;
+	}
+	return true;
+}
+
+/* The line's action: open the modulation screen on the source the line is
+ * showing. The screen's graph is built when it opens, so the selection
+ * must be set BEFORE the open -- setting it afterwards would leave the
+ * detail pane on the previous source. */
+static void cbModLineOpen(void *ctx) {
+	ModLineGuiNode *ml = (ModLineGuiNode *)ctx;
+	if(!ml || !ml->inst) {
+		return;
+	}
+	int idx = modLineClampedIndex(ml);
+	int pos = modConnectedSourcePos(ml->inst, idx);
+	if(pos >= 0) {
+		modScreenSetSelectedSource(pos);
+	}
+	openModScreen();
+}
+
+/* Append the modulation line to the instrument screen's layout. */
+GuiNode *appendModLineNode(Graph *g, GuiNode *container, Instrument *inst, int weight, bool selected) {
+	(void)g;
+	if(!container || !inst) {
+		return NULL;
+	}
+	ModLineGuiNode *ml = (ModLineGuiNode *)calloc(1, sizeof(ModLineGuiNode));
+	if(!ml) {
+		return NULL;
+	}
+	if(!initGuiNode(&ml->base, 0, 0, 100, 100, 0, na_horizontal, "MODLINE", 1, selected ? 1 : 0)) {
+		free(ml);
+		return NULL;
+	}
+	ml->inst = inst;
+	ml->index = 0;
+	ml->base.drawable = true;
+	ml->base.draw = drawModLineGuiNode;
+	ml->base.customNav = modLineNav;
+	ml->base.actionCb = cbModLineOpen;
+	ml->base.actionCtx = ml;
+	appendItem(container, &ml->base, weight);
+	return &ml->base;
+}
 
 /* One source row in the mod-wrap: the source's own dials plus the
  * route / type / delete actions. */

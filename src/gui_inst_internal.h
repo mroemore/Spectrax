@@ -28,6 +28,20 @@ static inline bool connFromSource(ModConnection *c, Mod *src) {
 	return c->source && c->source->type == MT_ATTEN && c->source->data.atten.input == src;
 }
 
+/* The source at a source position (0-based over the instrument's mod
+ * sources), or NULL. The position is the index space the modulation
+ * screen's selection uses (modScreenSetSelectedSource), so the line on
+ * the instrument screen and the screen itself agree on what "source 2"
+ * means. Shared: the modulation screen's source list and the
+ * instrument screen's modulation line. */
+static inline Mod *modSourceAtPos(const Instrument *inst, int pos) {
+	if(!inst || !inst->modList) {
+		return NULL;
+	}
+	int mi = modIndexAt(inst->modList, pos);
+	return (mi >= 0) ? inst->modList->mods[mi] : NULL;
+}
+
 /* The display tag for a source's type. Shared with the modulation
  * screen, whose source rows show the tag next to the source's name. */
 static inline const char *modTypeTag(ModType t) {
@@ -149,6 +163,44 @@ void cbOpenClearAllLayer(void *ctx);
  * screen carries it, and the instrument screen's action dispatch fires
  * it on EDIT. */
 void cbOpenModScreen(void *ctx);
+
+/* ---- the modulation line (Task 4) ---------------------------------------- */
+
+/* The instrument's sources that have at least one route, in source order.
+ * These are the sources the modulation line cycles through: a source with
+ * no route is not something the user can adjust, so it does not belong on
+ * the line.
+ *
+ * Returns the number of connected sources; writes up to `max` of them
+ * into `out`. A NULL `out` counts without writing. */
+int modConnectedSources(const Instrument *inst, Mod **out, int max);
+
+/* The routes of one source: the connections whose source is `src` (or
+ * which run through src's attenuator -- see connFromSource). Returns the
+ * number of routes; writes up to `max` of them into `out`. A NULL `out`
+ * counts without writing. */
+int modSourceRoutes(const Instrument *inst, Mod *src, ModConnection **out, int max);
+
+/* The modulation line: the instrument screen's one-row slot that cycles
+ * through the connected modulators and opens the modulation screen.
+ *
+ * It is a dial-shaped node: LEFT and RIGHT change the index rather than
+ * moving the cursor (the line has no horizontal neighbour to move to), and
+ * EDIT opens the modulation screen on the source the line is showing.
+ *
+ * `index` is the index into the connected-sources list, clamped to
+ * `modConnectedSources(...) - 1`. */
+typedef struct {
+	GuiNode base;
+	Instrument *inst;
+	int index;
+} ModLineGuiNode;
+
+/* Append the line to the instrument screen's layout. */
+GuiNode *appendModLineNode(Graph *g, GuiNode *container, Instrument *inst, int weight, bool selected);
+
+/* The line's selected index, for the test hook and the harness probe. */
+int modLineIndex(const GuiNode *n);
 ModStripGuiNode *createModStripGuiNode(int x, int y, int w, int h, VoiceManager *vm, int channel);
 void cbAddModSource(void *ctx);
 void syncRouteLinesOverlay(InstrumentGui *ig);
