@@ -68,6 +68,72 @@ static Sequencer *make_seq(void) {
 	return seq;
 }
 
+/* ---- the velocity lane ---- */
+
+/* Find a node by name in the pattern graph. */
+static GuiNode *find_named(GuiNode *n, const char *name) {
+	if(!n) {
+		return NULL;
+	}
+	if(n->name && strcmp(n->name, name) == 0) {
+		return n;
+	}
+	if(n->items) {
+		ListElement *le = n->items->head;
+		for(int i = 0; i < n->itemCount && le; i++, le = le->next) {
+			GuiNode *hit = find_named(*(GuiNode **)le->data, name);
+			if(hit) {
+				return hit;
+			}
+		}
+	}
+	return NULL;
+}
+
+/* The lane is a second grid under the note grid: one cell per step,
+ * each drawing a bar whose height is the step's velocity. A step with
+ * no velocity set is UNSET, and an unset step plays at full -- so it
+ * draws the FULL height, not an empty cell. */
+static int test_velocity_lane(void) {
+	PatternList *pl = make_pl(4);
+	Sequencer *seq = make_seq();
+	int selectedPattern = 0;
+	int selectedStep = 0;
+
+	createPatternGraph(seq, pl, &selectedPattern, &selectedStep);
+
+	GuiNode *lane = find_named(getPatternGraphForTest()->root, "VELLANE");
+	ASSERT_TRUE(lane != NULL);
+
+	/* One cell per step of the pattern. */
+	for(int i = 0; i < 4; i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "VELCELL_%d", i);
+		ASSERT_TRUE(find_named(lane, name) != NULL);
+	}
+
+	/* The bar's height is the velocity's share of the cell. */
+	float full = velCellBarHeight(NOTE_VELOCITY_FULL, 100);
+	float half = velCellBarHeight(NOTE_VELOCITY_FULL / 2, 100);
+	ASSERT_TRUE(full > 99.0f && full < 101.0f);
+	ASSERT_TRUE(half > 45.0f && half < 55.0f);
+
+	/* An UNSET velocity (zero) plays at full, so it draws full. */
+	float unset = velCellBarHeight(0, 100);
+	ASSERT_TRUE(unset > 99.0f && unset < 101.0f);
+
+	/* The velocity is clamped to 1..NOTE_VELOCITY_FULL, and zero is
+	 * only reachable by CLEARING a cell -- never by turning it down. */
+	ASSERT_TRUE(velCellBarHeight(-5, 100) == unset);
+	ASSERT_TRUE(velCellBarHeight(NOTE_VELOCITY_FULL + 50, 100) == full);
+
+	destroyPatternGraph();
+	free(pl);
+	free(seq);
+	printf("PASS test_velocity_lane\n");
+	return 0;
+}
+
 /* ---- createPatternGraph: row layout from pattern size ---- */
 static int test_graph_row_layout(void) {
 	PatternList *pl = make_pl(8);       /* 8 steps => exactly 2 rows of 4 */
@@ -436,6 +502,9 @@ static int rebuildBeforeCreate(void) {
 }
 
 int main(void) {
+	if(test_velocity_lane() != 0) {
+		return 1;
+	}
 	/* These two must run before any createPatternGraph so the module-private
 	 * graph pointer is still NULL — they cover the "called too early" guards. */
 	if(navigateBeforeCreate() != 0) {

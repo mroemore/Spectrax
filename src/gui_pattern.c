@@ -25,6 +25,11 @@ static SongMinimapGui *smgui;
 static BufferScroller *patternBufferScroller;
 static int patternPage = 0;
 
+/* Task 10: the velocity lane's public interface. */
+bool handleVelocityLaneEdit(int keymapping);
+float velCellBarHeight(int velocity, int cellHeight);
+bool isVelCellNode(const GuiNode *n);
+
 void setPatternPage(int page) { patternPage = page; }
 int getPatternPage(void) { return patternPage; }
 
@@ -60,6 +65,84 @@ static GuiNode *trackDialNodes[PATTERN_TRACKS] = {0};
 static GuiNode *trackStepNodes[MAX_PATTERN_STEPS] = {0};
 static TrackStepData trackStepData[MAX_PATTERN_STEPS];
 static PatternState *trackPagePattern = NULL;
+
+/* Task 10: the velocity lane -- a second grid under the note grid, the
+ * same shape, one cell per step, each drawing a bar whose height is the
+ * step's velocity.
+ *
+ * The velocity already exists in the sequencer (velocity[i], 1..127,
+ * zero meaning UNSET so it plays at full); nothing edited it, so the
+ * MPC60's velocity-to-start-address could not be heard at all. A lane
+ * shows the velocity's SHAPE across the pattern, which a dial on the
+ * selected step cannot. */
+typedef struct {
+	GuiNode base;
+	PatternList *pl;
+	int patternIndex;
+	int stepIndex;
+	/* The step's velocity, 1..127. Zero means UNSET, and an unset step
+	 * plays at full. */
+	int velocity;
+} VelCellGuiNode;
+
+/* The bar's height for a velocity, in a cell of `cellHeight` pixels.
+ *
+ * A velocity of 0 means UNSET, and an unset step plays at full -- so it
+ * draws the FULL height, not an empty cell. */
+float velCellBarHeight(int velocity, int cellHeight) {
+	if(cellHeight <= 0) {
+		return 0.0f;
+	}
+	if(velocity <= 0) {
+		return (float)cellHeight;
+	}
+	if(velocity >= NOTE_VELOCITY_FULL) {
+		return (float)cellHeight;
+	}
+	return (float)cellHeight * (float)velocity / (float)NOTE_VELOCITY_FULL;
+}
+
+/* True when the node is one of the velocity lane's cells. */
+bool isVelCellNode(const GuiNode *n) {
+	return n && n->className && strcmp(n->className, "VELCELL") == 0;
+}
+
+static void drawVelCellGuiNode(void *self) {
+	VelCellGuiNode *vc = (VelCellGuiNode *)self;
+	GuiNode *gn = &vc->base;
+	if(gn->w <= 0 || gn->h <= 0) {
+		return;
+	}
+	DrawRectangle(gn->x, gn->y, gn->w, gn->h, cs.valueDisplayBg);
+	float bar = velCellBarHeight(vc->velocity, gn->h);
+	Color col = cs.waveform;
+	if(vc->velocity <= 0) {
+		/* An unset step plays at full, so it is drawn full -- and in
+		 * the muted colour, because it is not a value the user set. */
+		col = cs.disabledText;
+	}
+	DrawRectangle(gn->x, gn->y + (gn->h - (int)bar), gn->w, (int)bar, col);
+}
+
+/* The lane's cell: one step's velocity. */
+static GuiNode *createVelCellNode(PatternList *pl, int patternIndex, int stepIndex, int velocity, bool selected) {
+	VelCellGuiNode *vc = (VelCellGuiNode *)calloc(1, sizeof(VelCellGuiNode));
+	if(!vc) {
+		return NULL;
+	}
+	if(!initGuiNode(&vc->base, 0, 0, 40, 24, 1, na_horizontal, "VELCELL", 1, selected ? 1 : 0)) {
+		free(vc);
+		return NULL;
+	}
+	guiNodeSetClass(&vc->base, "VELCELL");
+	vc->pl = pl;
+	vc->patternIndex = patternIndex;
+	vc->stepIndex = stepIndex;
+	vc->velocity = velocity;
+	vc->base.drawable = true;
+	vc->base.draw = drawVelCellGuiNode;
+	return &vc->base;
+}
 
 static void drawPatternIndicatorNode(void *self);
 static void drawTrackStepNode(void *self);
@@ -335,8 +418,32 @@ void createPatternGraph(Sequencer *sequencer, PatternList *pl, int *selectedPatt
 		}
 		appendItem(gridWrap, row, 1);
 	}
+	/* Task 10: the velocity lane, under the note grid. It is the same
+	 * shape -- four steps per row, one row per pattern row -- so a cell
+	 * sits under the step it belongs to. */
+	GuiNode *laneWrap = createGuiNode(10, 10, 230, 460, 6, na_vertical, "VELLANE", 0, 0);
+	for(int r = 0; r < rows; r++) {
+		GuiNode *row = createGuiNode(0, 0, 100, 24, 2, na_horizontal, "velrow", 0, 0);
+		for(int c = 0; c < PATTERN_STEPS_PER_ROW; c++) {
+			int i = r * PATTERN_STEPS_PER_ROW + c;
+			if(i >= size) {
+				break;
+			}
+			int vel = getCurrentStepVelocity(pl, patternIndex, i);
+			GuiNode *cell = createVelCellNode(pl, patternIndex, i, vel, false);
+			if(cell) {
+				char name[32];
+				snprintf(name, sizeof(name), "VELCELL_%d", i);
+				guiNodeSetName(cell, name);
+				appendItem(row, cell, 1);
+			}
+		}
+		appendItem(laneWrap, row, 1);
+	}
+
 	appendItem(patternGraph->root, scrollerStrip, 4);
 	appendItem(patternGraph->root, gridWrap, 16);
+	appendItem(patternGraph->root, laneWrap, 8);
 	if(size > 0) {
 		int current = *selectedStep;
 		if(current < 0) {
@@ -441,6 +548,68 @@ void navigatePatternGraph(int keymapping) {
 }
 
 
+/* Task 10: the velocity lane's editing.
+ *
+ * The cursor is on a cell and EDIT is held: the arrows change that
+ * step's velocity. UP and DOWN move it by one, NAV_LEFT and
+ * NAV_RIGHT are the fine step, and LEFT and RIGHT the coarse one.
+ *
+ * The velocity is clamped to 1..NOTE_VELOCITY_FULL. Zero means UNSET,
+ * and it is only reachable by CLEARING the cell -- never by turning the
+ * dial down to nothing, because a step at zero plays at full. */
+bool handleVelocityLaneEdit(int keymapping) {
+	if(!patternGraph || !patternGraph->selected) {
+		return false;
+	}
+	GuiNode *sel = patternGraph->selected;
+	if(!isVelCellNode(sel)) {
+		return false;
+	}
+	VelCellGuiNode *vc = (VelCellGuiNode *)sel;
+	if(!vc->pl) {
+		return false;
+	}
+	int current = getCurrentStepVelocity(vc->pl, vc->patternIndex, vc->stepIndex);
+	int delta = 0;
+	switch(keymapping) {
+		case KM_UP:
+			delta = 1;
+			break;
+		case KM_DOWN:
+			delta = -1;
+			break;
+		case KM_NAV_LEFT:
+			delta = -1;
+			break;
+		case KM_NAV_RIGHT:
+			delta = 1;
+			break;
+		case KM_LEFT:
+			delta = -8;
+			break;
+		case KM_RIGHT:
+			delta = 8;
+			break;
+		default:
+			return false;
+	}
+	int next = current + delta;
+	if(next < 1) {
+		next = 1;
+	}
+	if(next > NOTE_VELOCITY_FULL) {
+		next = NOTE_VELOCITY_FULL;
+	}
+	if(next == current) {
+		return true;
+	}
+	if(!setStepVelocity(vc->pl, vc->patternIndex, vc->stepIndex, next)) {
+		return false;
+	}
+	vc->velocity = next;
+	return true;
+}
+
 bool handlePatternTrackEdit(int keymapping) {
 	if(patternPage == 0 || !patternGraph || !patternGraph->selected) {
 		return false;
@@ -483,6 +652,12 @@ bool handlePatternTrackEdit(int keymapping) {
 		capturePatternTracksToInstrument(d->inst);
 	}
 	return true;
+}
+
+/* Test hook: the pattern screen's graph. The graph is module-private,
+ * so the tests that assert on its SHAPE reach it through here. */
+Graph *getPatternGraphForTest(void) {
+	return patternGraph;
 }
 
 void destroyPatternGraph() {

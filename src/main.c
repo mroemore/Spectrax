@@ -882,6 +882,28 @@ int main(int argc, char **argv) {
 					}
 					break;
 				}
+				/* Task 10: the velocity lane. With the cursor on one of
+				 * its cells and EDIT held, the arrows change that
+				 * step's velocity. */
+				if(isKeyHeld(appState->inputState, KM_EDIT)) {
+					bool laneEdited = false;
+					if(isKeyJustPressed(appState->inputState, KM_UP)) {
+						laneEdited = handleVelocityLaneEdit(KM_UP);
+					} else if(isKeyJustPressed(appState->inputState, KM_DOWN)) {
+						laneEdited = handleVelocityLaneEdit(KM_DOWN);
+					} else if(isKeyJustPressed(appState->inputState, KM_NAV_LEFT)) {
+						laneEdited = handleVelocityLaneEdit(KM_NAV_LEFT);
+					} else if(isKeyJustPressed(appState->inputState, KM_NAV_RIGHT)) {
+						laneEdited = handleVelocityLaneEdit(KM_NAV_RIGHT);
+					} else if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+						laneEdited = handleVelocityLaneEdit(KM_LEFT);
+					} else if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+						laneEdited = handleVelocityLaneEdit(KM_RIGHT);
+					}
+					if(laneEdited) {
+						break;
+					}
+				}
 				if(isKeyHeld(appState->inputState, KM_FUNCTION)) {
 					if(isKeyJustPressed(appState->inputState, KM_EDIT)) {
 						/* CUT: copy the step's note into the clipboard

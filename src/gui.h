@@ -72,6 +72,23 @@ void rebuildPatternGraph();
 void setPatternPage(int page);
 int getPatternPage(void);
 bool handlePatternTrackEdit(int keymapping);
+
+/* Test hook: the pattern screen's graph. The graph is module-private,
+ * so the tests that assert on its shape reach it through here. */
+Graph *getPatternGraphForTest(void);
+
+/* Task 10: the pattern screen's velocity lane.
+ *
+ * `handleVelocityLaneEdit` changes the selected cell's velocity: UP and
+ * DOWN by one, NAV_LEFT and NAV_RIGHT the fine step, LEFT and RIGHT the
+ * coarse one. It returns true when it changed something.
+ *
+ * `velCellBarHeight` is the bar's height for a velocity in a cell of
+ * `cellHeight` pixels. A velocity of 0 means UNSET, and an unset step
+ * plays at full -- so it draws the FULL height. */
+bool handleVelocityLaneEdit(int keymapping);
+float velCellBarHeight(int velocity, int cellHeight);
+bool isVelCellNode(const GuiNode *n);
 void setSongMinimapGui(SongMinimapGui *smg);
 void setPatternBufferScroller(BufferScroller *bs);
 void setArrangerMixRing(MixRing *r);
