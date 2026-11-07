@@ -19,7 +19,6 @@
 #include "gui_inst_internal.h"
 #include "gui_layer.h"
 #include "gui_mod_screen.h"
-#include "gui_mod_screen.h"
 
 /* Spec #1+2: dest cells in the route picker are now outline-only — no
  * label, no fill, just an osc orange/gold rectangle. The label of the
@@ -409,21 +408,6 @@ static Instrument *resolveSourceCtx(SourceCtx *sc) {
 		return NULL;
 	}
 	return inst;
-}
-
-/* Resolve a SourceCtx source-position to a modList index (skipping the
- * connection-internal attenuators addModulation interleaves). -1 if the
- * position is out of range for the displayed instrument. */
-static int scModIndex(const SourceCtx *sc) {
-	InstrumentGui *ig = igui;
-	if(!ig || !sc) {
-		return -1;
-	}
-	Instrument *inst = ig->vm->instruments[*ig->selectedInstrument];
-	if(!inst || !inst->modList) {
-		return -1;
-	}
-	return modIndexAt(inst->modList, sc->idx);
 }
 
 /* The actual Mod for a SourceCtx, or NULL. Uses sc->inst if set,

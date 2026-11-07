@@ -194,9 +194,11 @@ int samplerPointsNearestZeroCrossing(const float *data, int length, int frame) {
 				} else if(b == 0.0f) {
 					best = left + 1;
 				} else {
-					/* The crossing lies between the two frames: the
-					 * nearer of them is the answer. */
-					best = (d == 0) ? left : left;
+					/* The crossing lies between the two frames; the
+					 * frame before it is the answer. (On the left
+					 * and on the right the two candidates are the
+					 * same distance from the cursor.) */
+					best = left;
 				}
 				break;
 			}

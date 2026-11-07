@@ -1151,7 +1151,16 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 	}
 	instrument->envelopeCount = 0;
 	instrument->lfoCount = 0;
-	for(int i = 0; i < p.modSettingsCount; i++) {
+	/* The count comes from the file, so it is clamped to what the array
+	 * holds: a corrupt or hostile preset must not read past it. */
+	int modCount = p.modSettingsCount;
+	if(modCount < 0) {
+		modCount = 0;
+	}
+	if(modCount > MAX_ENVELOPES + MAX_LFOS) {
+		modCount = MAX_ENVELOPES + MAX_LFOS;
+	}
+	for(int i = 0; i < modCount; i++) {
 		switch(p.modSettings[i].type) {
 			case MT_ENV:
 				instrument->envelopes[instrument->envelopeCount] = (Mod *)calloc(1, sizeof(Mod));
@@ -1702,7 +1711,10 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->id.sampler.sampleRate = createParameterEx((*instrument)->paramList, "bitrate", 0.0f, 0.0f, 192000.0f, 100.0f, 1000.0f);
 			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)sampleCountMax, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->id.sampler.loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
-			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
+			/* The maximum is the LAST valid type, not the count: a
+			 * maximum of SPT_COUNT would offer a fourth position that
+			 * no type has. */
+			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)(SPT_COUNT - 1), 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
 			(*instrument)->id.sampler.loopStartIndex = createParameterPro((*instrument)->paramList, "loop start", 0, 0, (float)sampleLen, 100.0f, 1000.0f, *instrument, publishSamplerCrossfadeLaw);
 			(*instrument)->id.sampler.loopEndIndex = createParameterPro((*instrument)->paramList, "loop end", (float)(sampleLen - 1), 1.0f, (float)sampleLen, 100.0f, 1000.0f, *instrument, publishSamplerCrossfadeLaw);
 			/* The character chain. Every one of these is a modulation

@@ -20,10 +20,10 @@
  *           MODROUTE_<i>   one row per route
  *           MOD_ADDRUTE    the "+ ROUTE" button
  *
- * The rows carry no actions yet: the route picker lands with the next
- * task, so every button but the back button is inert (a NULL callback)
- * and the cursor still moves over them. The back button closes the
- * screen.
+ * Every button carries an action: the source rows select their source,
+ * the list's header carries ADD and DEL, the detail pane carries the
+ * TYPE control and the source's own dials, and the route list carries
+ * "+ ROUTE" (which opens the destination picker) and "CLEAR ALL".
  *
  * The screen is a layer: openModScreen() builds the graph and pushes it
  * as a "MOD" layer over the instrument screen, closeModScreen() pops
@@ -233,7 +233,7 @@ static void appendPatternRow(GuiNode *container, Instrument *inst) {
 		if(!btn) {
 			continue;
 		}
-		guiNodeSetText(btn, (m && m->name) ? m->name : tag);
+		guiNodeSetText(btn, (m && m->name[0]) ? m->name : tag);
 		char sub[24];
 		patternTrackSummary(m, sub, sizeof(sub));
 		guiNodeSetSublabel(btn, sub);
@@ -434,16 +434,26 @@ Graph *createModScreenGraph(Instrument *inst, VoiceManager *vm, int channel, boo
 		appendItem(list, listHdr, 1);
 	}
 
-	/* The source list: one row per source, then the grouped pattern
-	 * row. */
+	/* The source list: one row per source, with the pattern sources
+	 * collapsed into the one grouped row -- and the grouped row goes
+	 * WHERE THE PATTERN SOURCES ARE, so the list reads in the same
+	 * order as the sources. */
 	GuiNode *selectedRow = NULL;
+	bool patternRowAdded = false;
 	for(int i = 0; i < count; i++) {
+		Mod *m = modSourceAt(inst, i);
+		if(m && m->type == MT_PATTERN && !patternRowAdded) {
+			appendPatternRow(list, inst);
+			patternRowAdded = true;
+		}
 		GuiNode *row = appendSourceRow(list, inst, i);
 		if(row && i == src) {
 			selectedRow = row;
 		}
 	}
-	appendPatternRow(list, inst);
+	if(!patternRowAdded) {
+		appendPatternRow(list, inst);
+	}
 
 	/* The detail pane: the selected source's own dials, then its
 	 * routes. */
@@ -614,6 +624,12 @@ int modScreenRouteDestinations(const Instrument *inst, Parameter **out, int max)
 	}
 	Graph *instGraph = getSelectedInstGraph();
 	if(!instGraph || !instGraph->root) {
+		return 0;
+	}
+	/* The dial half comes from the SELECTED instrument's graph and the
+	 * no-dial half from `inst` -- so they must be the same instrument,
+	 * or the list would mix two. */
+	if(inst && getSelectedInstInstrument() != inst) {
 		return 0;
 	}
 	Parameter *params[MAX_PARAMS];

@@ -392,7 +392,7 @@ static const float SAMPLER_VELOCITY_LEVEL[NOTE_VELOCITY_FULL + 1] = {
 	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
 	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
 	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f,
-	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f
+	1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f
 };
 
 float samplerVelocityLevel(int velocity) {
