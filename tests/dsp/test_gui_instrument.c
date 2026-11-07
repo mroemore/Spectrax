@@ -772,6 +772,52 @@ static int test_sampler_character_panel(void) {
 	return 0;
 }
 
+/* Task 8: the waveform's points. START and END are BUTTONS that carry
+ * the point's value, and the waveform holds the points model. */
+static int test_waveform_points(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	ASSERT_TRUE(setInstrumentVoiceType(e.vm, 0, VOICE_TYPE_SAMPLE),
+	            "the instrument becomes a SAMPLE");
+	rebuildInstrumentGraph();
+
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "the instrument screen has a graph");
+
+	/* START and END are buttons now, not dials: they carry the point's
+	 * value, because the point is what FUNCTION acts on. */
+	GuiNode *start = find_node_named(g->root, "START");
+	GuiNode *end = find_node_named(g->root, "END");
+	ASSERT_TRUE(start != NULL, "the panel carries a START button");
+	ASSERT_TRUE(end != NULL, "the panel carries an END button");
+	ASSERT_TRUE(start->actionCb != NULL, "the START button acts");
+	ASSERT_TRUE(end->actionCb != NULL, "the END button acts");
+	ASSERT_TRUE(start->text && strstr(start->text, "START") != NULL,
+	            "the START button shows its name");
+	ASSERT_TRUE(start->text && strchr(start->text, '.') != NULL,
+	            "the START button shows the point's value");
+
+	/* The waveform holds the points model. */
+	GuiNode *wfr = find_node_named(g->root, "WFRM");
+	ASSERT_TRUE(wfr != NULL, "the panel carries the waveform");
+	SampleWaveformGuiNode *sw = (SampleWaveformGuiNode *)wfr;
+	ASSERT_TRUE(sw->points.length > 0, "the points know the sample's length");
+	ASSERT_TRUE(sw->points.cursor.exists, "the cursor exists");
+	ASSERT_TRUE(sw->points.cursor.selected, "the cursor is the selected point");
+
+	/* The END button selects its point: the point is created at the
+	 * cursor, and the cursor jumps to it. */
+	end->actionCb(end->actionCtx);
+	ASSERT_TRUE(sw->points.loopEnd.exists, "the loop end now exists");
+	ASSERT_TRUE(sw->points.loopEnd.selected, "the loop end is the selected point");
+
+	free_env(&e);
+	printf("PASS test_waveform_points\n");
+	return 0;
+}
+
 /* The modulation list is gone from the instrument screen: the modulation
  * screen carries the full interface now, and the instrument screen keeps
  * one line for the connected modulators. */
@@ -899,6 +945,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_sampler_character_panel() != 0) {
+		return 1;
+	}
+	if(test_waveform_points() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

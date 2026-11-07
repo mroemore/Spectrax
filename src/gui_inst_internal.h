@@ -212,6 +212,15 @@ int modConnectedSources(const Instrument *inst, Mod **out, int max);
  * counts without writing. */
 int modSourceRoutes(const Instrument *inst, Mod *src, ModConnection **out, int max);
 
+/* Task 8: note that FUNCTION was pressed, so the SEQUENCE gesture can
+ * tell it from the chord. */
+bool samplerPointsNoteFunctionPress(Instrument *inst);
+
+/* Task 8: the waveform's SEQUENCE gesture -- delete the selected point,
+ * when FUNCTION was pressed and released since the last EDIT. Returns
+ * true when a point was deleted. */
+bool samplerPointsDeleteSelected(Instrument *inst);
+
 /* The modulation line: the instrument screen's one-row slot that cycles
  * through the connected modulators and opens the modulation screen.
  *

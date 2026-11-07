@@ -48,6 +48,29 @@ void drawSampleWavePolylineNode(void *self) {
 
 static void drawSampleWaveformGuiNode(void *self);
 
+/* The instrument's waveform node, or NULL. The points live on it. */
+static SampleWaveformGuiNode *findWaveformNode(Instrument *inst);
+
+/* Task 8: the START and END buttons select their point on the
+ * waveform. The chord (FUNCTION held) reaches this from the instrument
+ * screen's input handler, which checks the FUNCTION-held case before
+ * the generic EDIT dispatch. */
+static void cbSelectLoopStart(void *ctx) {
+	SampleWaveformGuiNode *swgn = findWaveformNode((Instrument *)ctx);
+	if(!swgn) {
+		return;
+	}
+	samplerPointsSelect(&swgn->points, PT_LOOP_START);
+}
+
+static void cbSelectLoopEnd(void *ctx) {
+	SampleWaveformGuiNode *swgn = findWaveformNode((Instrument *)ctx);
+	if(!swgn) {
+		return;
+	}
+	samplerPointsSelect(&swgn->points, PT_LOOP_END);
+}
+
 /* Cycle the waveform view mode FIT -> LOOP -> ZOOM -> FIT. Wired to the
  * VIEW action button; the generic actionCb dispatch fires it on KM_EDIT. */
 static void cbCycleWaveView(void *ctx) {
@@ -73,10 +96,89 @@ static SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, i
 	swgn->loopStart = loopStart;
 	swgn->loopEnd = loopEnd;
 	swgn->viewMode = WF_VIEW_FIT;
+	/* The points: the cursor at the start, and the loop points where
+	 * the instrument's parameters say they are. */
+	int sampleLength = (inst && inst->id.sampler.sample) ? inst->id.sampler.sample->length : 0;
+	samplerPointsInit(&swgn->points, sampleLength);
+	if(inst && inst->id.sampler.loopStartIndex && inst->id.sampler.loopEndIndex) {
+		swgn->points.loopStart.exists = true;
+		swgn->points.loopStart.frame = (int)getParameterValue(inst->id.sampler.loopStartIndex);
+		swgn->points.loopEnd.exists = true;
+		swgn->points.loopEnd.frame = (int)getParameterValue(inst->id.sampler.loopEndIndex);
+	}
 
 	gn->drawable = true;
 	gn->draw = drawSampleWaveformGuiNode;
 	return swgn;
+}
+
+/* The instrument's waveform node, or NULL. The points live on it, and
+ * the START and END buttons need them. */
+static SampleWaveformGuiNode *findWaveformNode(Instrument *inst);
+
+/* Task 8: note that FUNCTION was pressed. The SEQUENCE gesture is
+ * FUNCTION pressed-and-released before EDIT, and the flag that says so
+ * lives on the points model. */
+bool samplerPointsNoteFunctionPress(Instrument *inst) {
+	SampleWaveformGuiNode *swgn = findWaveformNode(inst);
+	if(!swgn) {
+		return false;
+	}
+	swgn->points.functionPressed = true;
+	return true;
+}
+
+/* Task 8: the SEQUENCE gesture -- FUNCTION was pressed and released
+ * since the last EDIT, so the selected point is deleted.
+ *
+ * The flag lives on the points model, not in the input's history ring:
+ * that ring is appended to only when something QUERIES a key's
+ * just-pressed state, so its contents depend on the query order rather
+ * than on the player's hands.
+ *
+ * Returns true when a point was deleted. */
+bool samplerPointsDeleteSelected(Instrument *inst) {
+	SampleWaveformGuiNode *swgn = findWaveformNode(inst);
+	if(!swgn) {
+		return false;
+	}
+	if(!swgn->points.functionPressed) {
+		return false;
+	}
+	/* The flag is consumed by the gesture that reads it. */
+	swgn->points.functionPressed = false;
+	return samplerPointsDelete(&swgn->points);
+}
+static SampleWaveformGuiNode *findWaveformNode(Instrument *inst) {
+	if(!inst) {
+		return NULL;
+	}
+	Graph *g = getSelectedInstGraph();
+	if(!g || !g->root) {
+		return NULL;
+	}
+	/* The waveform node is the one named "WFRM". */
+	GuiNode *n = g->root;
+	if(!n) {
+		return NULL;
+	}
+	/* A small recursive walk for the named node. */
+	GuiNode *stack[64];
+	int top = 0;
+	stack[top++] = n;
+	while(top > 0) {
+		GuiNode *cur = stack[--top];
+		if(cur && cur->name && strcmp(cur->name, "WFRM") == 0) {
+			return (SampleWaveformGuiNode *)cur;
+		}
+		if(cur && cur->items) {
+			ListElement *le = cur->items->head;
+			for(int i = 0; i < cur->itemCount && le && top < 64; i++, le = le->next) {
+				stack[top++] = *(GuiNode **)le->data;
+			}
+		}
+	}
+	return NULL;
 }
 
 
@@ -174,6 +276,37 @@ static void drawSampleWaveformGuiNode(void *self) {
 	drawWaveformMarker(gn, swgn->wfAltColour, loopStart, lo, hi);
 	drawWaveformMarker(gn, swgn->wfAltColour, loopEnd, lo, hi);
 
+	/* Task 8: the points. The loop region is shaded, the two loop
+	 * points are drawn in green, and the cursor in the brighter colour
+	 * it has everywhere else in the app. */
+	if(swgn->points.loopStart.exists && swgn->points.loopEnd.exists) {
+		float a = (float)swgn->points.loopStart.frame;
+		float b = (float)swgn->points.loopEnd.frame;
+		if(a > lo && a < hi && b > lo && b < hi) {
+			int x0 = gn->x + (int)(((a - lo) / (hi - lo)) * (float)gn->w);
+			int x1 = gn->x + (int)(((b - lo) / (hi - lo)) * (float)gn->w);
+			if(x1 < x0) {
+				int t = x0;
+				x0 = x1;
+				x1 = t;
+			}
+			/* The region is shaded lightly, so the waveform still reads
+			 * through it. */
+			Color region = cs.waveformAlt;
+			region.a = 60;
+			DrawRectangle(x0, gn->y, x1 - x0, gn->h, region);
+		}
+	}
+	if(swgn->points.loopStart.exists) {
+		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopStart.frame, lo, hi);
+	}
+	if(swgn->points.loopEnd.exists) {
+		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopEnd.frame, lo, hi);
+	}
+	if(swgn->points.cursor.exists) {
+		drawWaveformMarker(gn, cs.labelSelected, (float)swgn->points.cursor.frame, lo, hi);
+	}
+
 	const char *name = (s->name) ? s->name : "";
 	BeginScissorMode(gn->x, gn->y, gn->w, gn->h);
 	DrawTextEx(pixelFont, name, (Vector2){ (float)(gn->x + gn->padding), (float)(gn->y + gn->padding) },
@@ -209,8 +342,13 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 
 	GuiNode *sampleIndex = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "SAMPLE", selected, incParameterBaseValue, inst->id.sampler.sampleIndex);
 	GuiNode *loop = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "LOOP", 0, incParameterBaseValue, inst->id.sampler.loopSample);
-	GuiNode *loopStart = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, incParameterBaseValue, inst->id.sampler.loopStartIndex);
-	GuiNode *loopEnd = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, incParameterBaseValue, inst->id.sampler.loopEndIndex);
+	/* Task 8: START and END stop being dials and become BUTTONS that
+	 * carry the point's value. The point is what FUNCTION acts on, and
+	 * the point is moved on the waveform -- not by turning a dial. The
+	 * loop parameters remain the instrument's: they are saved in the
+	 * preset and can be modulated. Only their PRESENTATION changes. */
+	GuiNode *loopStart = createActionBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "START", 0, cbSelectLoopStart, inst);
+	GuiNode *loopEnd = createActionBtnGuiNode(0, 0, 100, 100, 5, na_horizontal, "END", 0, cbSelectLoopEnd, inst);
 	GuiNode *playbackType = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PLAYBACK", 0, incParameterBaseValue, inst->id.sampler.playbackType);
 	GuiNode *pan = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "PAN", 0, incParameterBaseValue, inst->panning);
 	GuiNode *gain = createDialGuiNode(0, 0, 100, 100, 5, na_horizontal, "GAIN", 0, incParameterBaseValue, inst->gain);
@@ -238,6 +376,20 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 	filter->draw = drawDiscreteDialGuiNode;
 
 	SampleWaveformGuiNode *swgn = createSampleWaveformGuiNode(0, 0, 100, 100, 5, na_vertical, "WFRM", 0, inst, inst->id.sampler.loopStartIndex, inst->id.sampler.loopEndIndex);
+
+	/* The buttons carry the point's value, in milliseconds. The point
+	 * is what FUNCTION acts on, so the button says where the point is. */
+	{
+		int rate = (inst->id.sampler.sample && inst->id.sampler.sample->sampleRate > 0)
+		           ? inst->id.sampler.sample->sampleRate : 1;
+		char buf[48];
+		float startMs = (float)getParameterValueAsInt(inst->id.sampler.loopStartIndex) * 1000.0f / (float)rate;
+		float endMs = (float)getParameterValueAsInt(inst->id.sampler.loopEndIndex) * 1000.0f / (float)rate;
+		snprintf(buf, sizeof(buf), "START %.3f", startMs);
+		guiNodeSetText(loopStart, buf);
+		snprintf(buf, sizeof(buf), "END %.3f", endMs);
+		guiNodeSetText(loopEnd, buf);
+	}
 	GuiNode *viewBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "VIEW", 0, cbCycleWaveView, swgn);
 	if(selected) {
 		g->selected = sampleIndex;

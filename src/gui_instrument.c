@@ -1077,6 +1077,43 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * for modal confirmation/cancel semantics. Holding KM_EDIT to fire
 	 * the button mirrors the dial-edit gesture (KM_EDIT + arrow edits
 	 * the selected dial); here KM_EDIT alone activates the button. */
+	/* Task 8: note that FUNCTION was pressed. The waveform's SEQUENCE
+	 * gesture is FUNCTION pressed-and-released before EDIT, and the flag
+	 * that says so lives on the points model. */
+	if(isKeyJustPressed(is, KM_FUNCTION)) {
+		extern bool samplerPointsNoteFunctionPress(Instrument *inst);
+		samplerPointsNoteFunctionPress(inst);
+	}
+
+	/* Task 8: the waveform's two FUNCTION gestures.
+	 *
+	 * FUNCTION HELD when EDIT fires is the CHORD: it selects the point
+	 * the START or END button names. FUNCTION pressed and RELEASED
+	 * before EDIT is the SEQUENCE: it deletes the selected point.
+	 *
+	 * The chord is checked FIRST, before the generic EDIT dispatch --
+	 * the buttons fire on EDIT, so the generic dispatch would otherwise
+	 * take the press. And the chord only applies when the selected node
+	 * is the START or END button. */
+	if(sel && isKeyJustPressed(is, KM_EDIT)) {
+		if(isKeyHeld(is, KM_FUNCTION) && sel->name
+		   && (strcmp(sel->name, "START") == 0 || strcmp(sel->name, "END") == 0)) {
+			/* The CHORD: the button's own action selects its point. */
+			ActionCallback cb = sel->actionCb;
+			if(cb) {
+				cb(sel->actionCtx);
+			}
+			return true;
+		}
+		/* The SEQUENCE: FUNCTION was pressed and released since the last
+		 * EDIT, so the point under the cursor is deleted. */
+		{
+			extern bool samplerPointsDeleteSelected(Instrument *inst);
+			if(samplerPointsDeleteSelected(inst)) {
+				return true;
+			}
+		}
+	}
 	if(sel && isKeyJustPressed(is, KM_EDIT)) {
 		/* Generic actionCb dispatch (Task 4): any selected GuiNode whose
 		 * actionCb is non-NULL fires on KM_EDIT. PREV/NEXT get a follow-up

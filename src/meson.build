@@ -24,6 +24,7 @@ core_sources = files(
   'sampler_character.c',
   'sampler_filter.c',
   'sampler_crossfade.c',
+  'gui_sampler_points.c',
   'device_budget.c',
   'device_calibrate.c',
   'voice_governor.c',

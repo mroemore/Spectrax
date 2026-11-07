@@ -9,6 +9,7 @@
 #include "raylib.h"
 #include "input.h"
 #include "graph_gui.h"
+#include "gui_sampler_points.h"
 #include "voice.h"
 #include "vizfx.h"
 #include "gui_layer.h"
@@ -265,6 +266,10 @@ typedef struct {
 	Color wfAltColour;
 	Image wfImage;
 	WaveformViewMode viewMode;
+	/* Task 8: the waveform's points -- the cursor, the loop start and
+	 * the loop end. The model is UI state; the loop points mirror the
+	 * instrument's parameters, which are the instrument's business. */
+	SamplerPoints points;
 } SampleWaveformGuiNode;
 
 typedef struct {

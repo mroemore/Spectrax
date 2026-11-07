@@ -19,6 +19,7 @@ test_names = [
   'test_sampler_character',
   'test_sampler_filter',
   'test_sampler_crossfade',
+  'test_gui_sampler_points',
   'test_golden_render',
   'test_voice_isolation',
   'test_device_budget',
