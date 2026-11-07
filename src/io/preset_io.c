@@ -219,10 +219,6 @@ PresetFileResult loadPresetFile(const char *filename, PresetBank *pb) {
 	if(!file) {
 		return PRESET_ERROR_OPEN;
 	}
-	file = fopen(filename, "rb");
-	if(!file) {
-		return PRESET_ERROR_OPEN;
-	}
 	if(!readAndVerifyChunkHeader(file, PRESET_MAGIC_HEADER_V3)) {
 		/* fall through to V2 handling below */
 	} else {

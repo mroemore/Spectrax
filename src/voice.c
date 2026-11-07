@@ -175,12 +175,18 @@ OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency
 	 * audio path, and cached on the bake. */
 	int xfadeFrames = 0;
 	int fadeLaw = XF_EQUAL_POWER;
-	if(loop) {
+	if(loop && id->crossfade) {
 		int loopFrames = loopEnd - loopStart;
 		float xfadeMs = getParameterValue(id->crossfade);
 		xfadeFrames = samplerCrossfadeFrames(xfadeMs, loopFrames, baked->rate);
 		if(xfadeFrames > 0) {
-			fadeLaw = (int)samplerCrossfadeMeasure(baked, loopStart, loopEnd, xfadeFrames);
+			/* The law is READ, never measured here. The measurement is
+			 * made OFF the audio path -- when the loop points or the
+			 * crossfade change -- because the bake is shared by every
+			 * voice of the instrument: measuring it in the callback
+			 * would race with itself and would make a voice's output
+			 * depend on which voice got there first. */
+			fadeLaw = (int)samplerCrossfadeLawOf(baked, loopStart, loopEnd, xfadeFrames);
 		}
 	}
 	/* The playback mode: FORWARD, REVERSE, or either of them PINGPONG.
@@ -851,6 +857,37 @@ static void cb_setVoiceCount(void *ctx) {
  * set during the resize so the audio thread skips the channel
  * while voices are being torn down and re-initialized.
  *
+/* Publish the loop crossfade's law onto the instrument's bake.
+ *
+ * The measurement is made ONCE per loop, when the loop points or the
+ * crossfade change -- never per sample, and never on the audio thread.
+ * The bake is shared by every voice of the instrument, so a measurement
+ * in the callback would race with itself.
+ *
+ * This is the callback for the loop points' and the crossfade's
+ * parameters. */
+static void publishSamplerCrossfadeLaw(void *data) {
+	Instrument *inst = (Instrument *)data;
+	if(!inst || !inst->id.sampler.baked || !inst->id.sampler.baked->data) {
+		return;
+	}
+	BakedSample *baked = inst->id.sampler.baked;
+	/* The loop's frames in the BAKE's frames -- the same scaling the
+	 * read path uses. */
+	int srcRate = (inst->id.sampler.sample && inst->id.sampler.sample->sampleRate > 0)
+	              ? inst->id.sampler.sample->sampleRate : baked->rate;
+	int loopStart = (int)(((long)getParameterValueAsInt(inst->id.sampler.loopStartIndex) * baked->rate) / srcRate);
+	int loopEnd = (int)(((long)getParameterValueAsInt(inst->id.sampler.loopEndIndex) * baked->rate) / srcRate);
+	int loopFrames = loopEnd - loopStart;
+	int frames = 0;
+	if(inst->id.sampler.crossfade) {
+		frames = samplerCrossfadeFrames(getParameterValue(inst->id.sampler.crossfade), loopFrames, baked->rate);
+	}
+	if(frames > 0) {
+		samplerCrossfadeMeasure(baked, loopStart, loopEnd, frames);
+	}
+}
+
 /* Apply the current device budget's per-channel voice count to an
  * instrument: the VOICES parameter's maximum becomes the budget's, and a
  * value above it is clamped down to it. */
@@ -863,12 +900,20 @@ int applyVoiceBudgetToInstrument(Instrument *inst) {
 	if(max < 1) {
 		max = 1;
 	}
-	setParameterMaxValue(inst->voiceCountParam, (float)max);
+	/* The VALUE first, through setParameterValue, which fires the
+	 * parameter's onChange -- and that callback is what resizes the
+	 * channel's voice pool. The maximum comes AFTER, because
+	 * setParameterMaxValue clamps the value SILENTLY: if the ceiling
+	 * were lowered first, the value would already be clamped and the
+	 * callback would never fire, leaving the engine with the larger
+	 * pool while the dial showed the budget's number. */
 	float value = getParameterValue(inst->voiceCountParam);
 	if(value > (float)max) {
 		setParameterValue(inst->voiceCountParam, (float)max);
 		value = (float)max;
 	}
+	/* The dial's ceiling becomes the budget's. */
+	setParameterMaxValue(inst->voiceCountParam, (float)max);
 	return (int)value;
 }
 
@@ -1066,8 +1111,8 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.sampleIndex = createParameterPro(instrument->paramList, "sample", (float)p.pd.sampler.sampleIndex, 0, (float)smax, 1.0f, 10.0f, instrument, updateSampleReferences);
 			instrument->id.sampler.loopSample = createParameterEx(instrument->paramList, "loop", (float)p.pd.sampler.loopSample, 0, 1.0, 1.0f, 1.0f);
 			instrument->id.sampler.playbackType = createParameterPro(instrument->paramList, "playback", (float)p.pd.sampler.playbackType, 0, (float)SPT_COUNT, 1.0f, 10.0f, instrument, setSamplePlaybackFunction);
-			instrument->id.sampler.loopStartIndex = createParameterEx(instrument->paramList, "loop start", (float)p.pd.sampler.loopStartIndex, 0, (float)sl, 100.0f, 1000.0f);
-			instrument->id.sampler.loopEndIndex = createParameterEx(instrument->paramList, "loop end", (p.pd.sampler.loopEndIndex >= 1 && p.pd.sampler.loopEndIndex <= sl) ? (float)p.pd.sampler.loopEndIndex : (float)(sl - 1), 1.0f, (float)sl, 100.0f, 1000.0f);
+			instrument->id.sampler.loopStartIndex = createParameterPro(instrument->paramList, "loop start", (float)p.pd.sampler.loopStartIndex, 0, (float)sl, 100.0f, 1000.0f, instrument, publishSamplerCrossfadeLaw);
+			instrument->id.sampler.loopEndIndex = createParameterPro(instrument->paramList, "loop end", (p.pd.sampler.loopEndIndex >= 1 && p.pd.sampler.loopEndIndex <= sl) ? (float)p.pd.sampler.loopEndIndex : (float)(sl - 1), 1.0f, (float)sl, 100.0f, 1000.0f, instrument, publishSamplerCrossfadeLaw);
 			/* The character chain's parameters have to be recreated here as
 			 * well: applyInstrumentPreset clears the parameter list, and a
 			 * parameter that is cleared and not recreated leaves a dangling
@@ -1088,7 +1133,7 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			               ? (float)instrument->id.sampler.sample->length * 1000.0f
 			                 / (float)instrument->id.sampler.sample->sampleRate
 			               : 0.0f;
-			instrument->id.sampler.crossfade = createParameterEx(instrument->paramList, "crossfade", (float)p.pd.sampler.crossfadeMs, 0.0f, loopMs, 1.0f, 10.0f);
+			instrument->id.sampler.crossfade = createParameterPro(instrument->paramList, "crossfade", (float)p.pd.sampler.crossfadeMs, 0.0f, loopMs, 1.0f, 10.0f, instrument, publishSamplerCrossfadeLaw);
 			/* The previous bake is freed here rather than orphaned:
 			 * applyInstrumentPreset replaces the whole chain. */
 			if(instrument->id.sampler.baked) {
@@ -1507,6 +1552,10 @@ static void rebuildSamplerBakeUnsafe(Instrument *inst) {
 		return;
 	}
 	inst->id.sampler.baked = b;
+	/* The bake is new material, so the crossfade's law must be measured
+	 * again -- the correlation of the new bake's head and tail is not the
+	 * old one's. The measurement is here, off the audio path. */
+	publishSamplerCrossfadeLaw(inst);
 }
 
 void applySamplerProfile(Instrument *inst) {
@@ -1572,7 +1621,16 @@ static void cb_rebuildSamplerBake(void *instrument) {
 }
 
 void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePool, PresetBank *pb) {
-	*instrument = (Instrument *)malloc(sizeof(Instrument));
+	/* calloc, not malloc: the instrument is a big struct with many
+	 * pointer fields that are only assigned on SOME paths (the preset
+	 * apply path creates the character chain's parameters; the type-switch
+	 * path creates its own). A field that is only assigned on one path
+	 * holds garbage on the other, and the GUI reads them.
+	 *
+	 * The crossfade's parameter was exactly that: created only by the
+	 * preset apply, so an instrument installed by the TYPE button carried
+	 * garbage in it -- and the instrument screen's draw dereferenced it. */
+	*instrument = (Instrument *)calloc(1, sizeof(Instrument));
 	if(!*instrument) {
 		printf("could not allocate memory for instrument in init_instrument.\n");
 		return;
@@ -1645,8 +1703,8 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->id.sampler.sampleIndex = createParameterPro((*instrument)->paramList, "sample", 0, 0, (float)sampleCountMax, 1.0f, 10.0f, *instrument, updateSampleReferences);
 			(*instrument)->id.sampler.loopSample = createParameterEx((*instrument)->paramList, "loop", 0, 0, 1.0, 1.0f, 1.0f);
 			(*instrument)->id.sampler.playbackType = createParameterPro((*instrument)->paramList, "playback", 0, 0, (float)SPT_COUNT, 1.0f, 10.0f, *instrument, setSamplePlaybackFunction);
-			(*instrument)->id.sampler.loopStartIndex = createParameterEx((*instrument)->paramList, "loop start", 0, 0, (float)sampleLen, 100.0f, 1000.0f);
-			(*instrument)->id.sampler.loopEndIndex = createParameterEx((*instrument)->paramList, "loop end", (float)(sampleLen - 1), 1.0f, (float)sampleLen, 100.0f, 1000.0f);
+			(*instrument)->id.sampler.loopStartIndex = createParameterPro((*instrument)->paramList, "loop start", 0, 0, (float)sampleLen, 100.0f, 1000.0f, *instrument, publishSamplerCrossfadeLaw);
+			(*instrument)->id.sampler.loopEndIndex = createParameterPro((*instrument)->paramList, "loop end", (float)(sampleLen - 1), 1.0f, (float)sampleLen, 100.0f, 1000.0f, *instrument, publishSamplerCrossfadeLaw);
 			/* The character chain. Every one of these is a modulation
 			 * destination as well as a dial, so an envelope can drive the
 			 * cutoff or the pitch the way it drives anything else. */
@@ -1660,6 +1718,16 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			/* The root is counted from C4, so zero means C4 -- which is
 			 * what a zeroed preset gives. */
 			(*instrument)->id.sampler.root = createParameterEx((*instrument)->paramList, "root", 0.0f, -48.0f, 48.0f, 1.0f, 12.0f);
+			/* The loop's crossfade, in milliseconds. Its maximum follows the
+			 * SAMPLE's length here -- the loop's own length is not known
+			 * until the loop points are set, so the read path clamps it to
+			 * the loop at use time.
+			 *
+			 * This parameter MUST be created on this path: the instrument
+			 * is malloc'd, not calloc'd, so a field that is only assigned
+			 * on the preset-apply path holds whatever malloc returned --
+			 * and the instrument screen's draw reads it. */
+			(*instrument)->id.sampler.crossfade = createParameterPro((*instrument)->paramList, "crossfade", 0.0f, 0.0f, (float)sampleLen * 1000.0f / 48000.0f, 1.0f, 10.0f, *instrument, publishSamplerCrossfadeLaw);
 			(*instrument)->id.sampler.baked = NULL;
 			rebuildSamplerBakeUnsafe(*instrument);
 			break;

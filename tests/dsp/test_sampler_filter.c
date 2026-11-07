@@ -408,6 +408,60 @@ static int test_guards(void) {
 	return 0;
 }
 
+/* A cutoff of zero: the coefficient is zero, so the cascade passes
+ * nothing and the feedback limit is zero -- no feedback, no divergence. */
+static int test_zero_cutoff(void) {
+	SamplerOtaState st;
+	samplerOtaReset(&st);
+	float out = 0.0f;
+	for(int n = 0; n < 64; n++) {
+		out = samplerOtaProcess(&st, 1.0f, 0.0f, 0.9f, SR);
+		ASSERT_TRUE(isfinite(out), "a zero cutoff stays finite");
+	}
+	ASSERT_TRUE(out == 0.0f, "a zero cutoff passes nothing");
+	printf("PASS test_zero_cutoff\n");
+	return 0;
+}
+
+/* The cascade is FINITE over the WHOLE parameter grid.
+ *
+ * The feedback loop's stability bound FALLS as the cutoff rises: at
+ * 20 kHz the feedback must stay below about 1.1, so the raw k of 4
+ * would diverge and the NaN would poison the whole mix, not just that
+ * voice. Checking one corner of the grid -- the one the other tests
+ * happen to sample -- is not a check.
+ *
+ * The grid is the parameter range: the cutoff from its minimum to its
+ * maximum, and the resonance across its whole range. */
+static int test_finite_over_the_whole_grid(void) {
+	const float cutoffs[] = { 100.0f, 500.0f, 2000.0f, 8000.0f,
+	                          12000.0f, 16000.0f, 18000.0f, 19000.0f, 20000.0f };
+	const int cutoffCount = (int)(sizeof(cutoffs) / sizeof(cutoffs[0]));
+	for(int c = 0; c < cutoffCount; c++) {
+		for(int r = 0; r <= 9; r++) {
+			float res = (float)r / 10.0f;
+			/* A long run, so a slow divergence has time to show. */
+			SamplerOtaState st;
+			samplerOtaReset(&st);
+			int blew = 0;
+			for(int n = 0; n < 20000 && !blew; n++) {
+				float in = (float)((n % 64) - 32) / 32.0f;
+				float out = samplerOtaProcess(&st, in, cutoffs[c], res, SR);
+				if(!isfinite(out)) {
+					blew = 1;
+				}
+			}
+			if(blew) {
+				printf("FAIL: the cascade diverged at cutoff %g, resonance %g\n",
+				       (double)cutoffs[c], (double)res);
+				return 1;
+			}
+		}
+	}
+	printf("PASS test_finite_over_the_whole_grid\n");
+	return 0;
+}
+
 /* The cascade is deterministic: the same inputs give the same outputs. */
 static int test_deterministic(void) {
 	const int N = 4096;
@@ -497,6 +551,12 @@ int main(void) {
 		return 1;
 	}
 	if(test_guards() != 0) {
+		return 1;
+	}
+	if(test_zero_cutoff() != 0) {
+		return 1;
+	}
+	if(test_finite_over_the_whole_grid() != 0) {
 		return 1;
 	}
 	if(test_deterministic() != 0) {

@@ -112,6 +112,20 @@ int samplerCrossfadeFrames(float ms, int loopFrames, int rate) {
 	return n;
 }
 
+SamplerFadeLaw samplerCrossfadeLawOf(const BakedSample *b, int loopStart, int loopEnd, int frames) {
+	if(!b) {
+		return XF_EQUAL_POWER;
+	}
+	if(b->lawLoopStart == loopStart && b->lawLoopEnd == loopEnd && b->lawFrames == frames) {
+		return (SamplerFadeLaw)b->fadeLaw;
+	}
+	/* The measurement is for a different loop (or was never made), so
+	 * the law says nothing about this one. Equal-power is the safe
+	 * answer: it is the law for material that is NOT correlated, and it
+	 * never cancels. */
+	return XF_EQUAL_POWER;
+}
+
 SamplerFadeLaw samplerCrossfadeMeasure(BakedSample *b, int loopStart, int loopEnd, int frames) {
 	if(!b) {
 		return XF_EQUAL_POWER;

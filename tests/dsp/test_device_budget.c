@@ -23,6 +23,16 @@
 /* The deadline at 48 kHz with a 256-frame buffer: 5.33 ms. */
 #define DEADLINE_NANOS (5333333)
 
+/* The voice-count parameter's onChange, so the test can see whether the
+ * clamp reached it. The counter lives in the callback's data, the way a
+ * real callback would carry its state. */
+static void on_voice_count_changed(void *data) {
+	int *counter = (int *)data;
+	if(counter) {
+		(*counter)++;
+	}
+}
+
 /* The budget reaches the UI: the VOICES dial's maximum IS the budget's
  * per-channel voice count, and a value above it is clamped down. The
  * user sees the number change, so the budget is not a silent refusal. */
@@ -56,8 +66,28 @@ static int test_the_budget_reaches_the_voices_dial(void) {
 	ASSERT_TRUE(inst->voiceCountParam->maxValue == 2.0f, "the maximum is the budget's");
 	ASSERT_TRUE(getParameterValue(inst->voiceCountParam) == 2.0f, "the value is clamped to it");
 
-	/* The budget's ceiling holds when the budget is published again. */
-	deviceBudgetSetCurrent(NULL);
+	/* The clamp must REACH the engine: the parameter's onChange is what
+	 * resizes the channel's voice pool, and setParameterMaxValue clamps
+	 * the value SILENTLY -- so if the ceiling were lowered first, the
+	 * callback would never fire and the engine would keep the larger
+	 * pool while the dial showed the budget's number. */
+	{
+		/* Put the value back above the budget's ceiling, the way a
+		 * preset that asks for eight voices would. */
+		setParameterMaxValue(inst->voiceCountParam, 8.0f);
+		setParameterValue(inst->voiceCountParam, 8.0f);
+		ASSERT_TRUE(getParameterValue(inst->voiceCountParam) == 8.0f,
+		            "the value is eight before the clamp");
+		int fired = 0;
+		inst->voiceCountParam->onChange.cbData = &fired;
+		inst->voiceCountParam->onChange.cbFunc = on_voice_count_changed;
+		applyVoiceBudgetToInstrument(inst);
+		ASSERT_TRUE(fired == 1, "the clamp fired the parameter's callback");
+		ASSERT_TRUE(getParameterValue(inst->voiceCountParam) == 2.0f,
+		            "the value is clamped to the budget");
+		inst->voiceCountParam->onChange.cbData = NULL;
+		inst->voiceCountParam->onChange.cbFunc = NULL;
+	}
 	printf("PASS test_the_budget_reaches_the_voices_dial\n");
 	return 0;
 }

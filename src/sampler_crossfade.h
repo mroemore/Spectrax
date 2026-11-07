@@ -56,7 +56,18 @@ int samplerCrossfadeFrames(float ms, int loopFrames, int rate);
  * measurement is made ONCE per loop rather than per sample.
  *
  * The cache is keyed on the loop points: a bake measured for one loop
- * says nothing about another. Returns the law. */
+ * says nothing about another. Returns the law.
+ *
+ * This is a WRITE to the bake, so it must be called OFF the audio path:
+ * the bake is shared by every voice of the instrument, and a measurement
+ * on the audio thread would race with itself and would make a voice's
+ * output depend on which voice got there first. The audio path READS
+ * `fadeLaw` and never measures. */
 SamplerFadeLaw samplerCrossfadeMeasure(BakedSample *b, int loopStart, int loopEnd, int frames);
+
+/* The law the bake carries, and whether it is one that was measured for
+ * THIS loop. The audio path reads the law through this: a bake whose
+ * measurement is for a different loop says nothing about this one. */
+SamplerFadeLaw samplerCrossfadeLawOf(const BakedSample *b, int loopStart, int loopEnd, int frames);
 
 #endif

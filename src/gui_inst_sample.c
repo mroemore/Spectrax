@@ -48,6 +48,13 @@ void drawSampleWavePolylineNode(void *self) {
 
 static void drawSampleWaveformGuiNode(void *self);
 
+/* The waveform's cursor movement -- defined below, with the options
+ * menu. */
+static bool modLineWaveNav(void *self, int keymapping);
+
+/* The points are written to the instrument's loop parameters. */
+static void writePointsToParameters(SampleWaveformGuiNode *swgn);
+
 /* The instrument's waveform node, or NULL. The points live on it. */
 static SampleWaveformGuiNode *findWaveformNode(Instrument *inst);
 
@@ -109,6 +116,9 @@ static SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, i
 
 	gn->drawable = true;
 	gn->draw = drawSampleWaveformGuiNode;
+	/* The waveform takes the left and right arrows: they move its
+	 * cursor. */
+	gn->customNav = modLineWaveNav;
 	return swgn;
 }
 
@@ -146,6 +156,8 @@ static void cbPointNearestZeroCrossing(void *ctx) {
 	if(z >= 0) {
 		pt->frame = z;
 		swgn->points.cursor.frame = z;
+		/* The point moved, so the loop moved with it. */
+		writePointsToParameters(swgn);
 	}
 }
 
@@ -155,6 +167,84 @@ static void cbPointOptionsBack(void *ctx) {
 	if(ig) {
 		popTopNonPassiveLayerFree(&ig->overlayLayers);
 	}
+}
+
+/* Task 8: the points ARE the loop.
+ *
+ * The model holds the points; the instrument's loop parameters are the
+ * source of truth, and the points are written to them. Every gesture
+ * that moves a point goes through here, so the loop the voice plays is
+ * always the loop on the screen.
+ *
+ * A loop whose start is at or past its end would be read backwards, so
+ * the write is REFUSED in that case: the points keep their positions and
+ * the instrument keeps the last good loop. */
+static void writePointsToParameters(SampleWaveformGuiNode *swgn) {
+	if(!swgn || !swgn->instrument) {
+		return;
+	}
+	Instrument *inst = swgn->instrument;
+	if(!inst->id.sampler.loopStartIndex || !inst->id.sampler.loopEndIndex) {
+		return;
+	}
+	if(!swgn->points.loopStart.exists || !swgn->points.loopEnd.exists) {
+		return;
+	}
+	if(!samplerPointsValidate(&swgn->points, swgn->points.length)) {
+		return;
+	}
+	setParameterValue(inst->id.sampler.loopStartIndex, (float)swgn->points.loopStart.frame);
+	setParameterValue(inst->id.sampler.loopEndIndex, (float)swgn->points.loopEnd.frame);
+	/* The crossfade's ceiling follows the LOOP's length, not the
+	 * sample's: the spec's range is "0 to the loop's length". */
+	if(inst->id.sampler.crossfade && inst->id.sampler.sample
+	   && inst->id.sampler.sample->sampleRate > 0) {
+		int loopFrames = swgn->points.loopEnd.frame - swgn->points.loopStart.frame;
+		float loopMs = (float)loopFrames * 1000.0f / (float)inst->id.sampler.sample->sampleRate;
+		setParameterMaxValue(inst->id.sampler.crossfade, loopMs);
+	}
+}
+
+/* Task 8: the waveform's cursor movement.
+ *
+ * LEFT and RIGHT move the cursor one column of the current view, and
+ * the SELECTED point follows it -- which is what makes the interaction
+ * direct manipulation rather than a form. The points are the model's;
+ * the instrument's loop parameters are written from them, so the loop the
+ * voice plays is the loop on the screen.
+ *
+ * The node takes the arrows itself: a waveform's cursor IS the thing
+ * being moved, so the graph must not navigate away from it. */
+static bool modLineWaveNav(void *self, int keymapping) {
+	SampleWaveformGuiNode *swgn = (SampleWaveformGuiNode *)self;
+	if(!swgn) {
+		return false;
+	}
+	if(keymapping != KM_LEFT && keymapping != KM_RIGHT) {
+		return false;
+	}
+	/* One column of the current view: the view spans the whole sample
+	 * in FIT, so a column is a step of the sample divided by the node's
+	 * width -- and at least one frame, so the cursor can always move. */
+	int length = swgn->points.length;
+	if(length <= 0) {
+		return false;
+	}
+	int width = swgn->base.w;
+	if(width <= 0) {
+		width = 1;
+	}
+	int step = length / width;
+	if(step < 1) {
+		step = 1;
+	}
+	if(keymapping == KM_LEFT) {
+		step = -step;
+	}
+	samplerPointsMoveCursor(&swgn->points, step);
+	/* The loop the voice plays is the loop on the screen. */
+	writePointsToParameters(swgn);
+	return true;
 }
 
 /* Open the options menu for the waveform's selected point.
@@ -248,7 +338,23 @@ bool samplerPointsDeleteSelected(Instrument *inst) {
 	}
 	/* The flag is consumed by the gesture that reads it. */
 	swgn->points.functionPressed = false;
-	return samplerPointsDelete(&swgn->points);
+	if(!samplerPointsDelete(&swgn->points)) {
+		return false;
+	}
+	/* A deleted loop point leaves the loop reverted to the whole sample,
+	 * and the instrument's parameters must say so -- otherwise the voice
+	 * keeps playing the loop that is no longer on the screen. */
+	if(swgn->instrument) {
+		Instrument *i = swgn->instrument;
+		if(!swgn->points.loopStart.exists && i->id.sampler.loopStartIndex) {
+			setParameterValue(i->id.sampler.loopStartIndex, 0.0f);
+		}
+		if(!swgn->points.loopEnd.exists && i->id.sampler.loopEndIndex) {
+			int len = (i->id.sampler.sample) ? i->id.sampler.sample->length : 1;
+			setParameterValue(i->id.sampler.loopEndIndex, (float)(len - 1));
+		}
+	}
+	return true;
 }
 static SampleWaveformGuiNode *findWaveformNode(Instrument *inst) {
 	if(!inst) {
@@ -490,7 +596,17 @@ static void drawSampleWaveformGuiNode(void *self) {
 		float xfMs = getParameterValue(swgn->instrument->id.sampler.crossfade);
 		if(xfMs > 0.0f) {
 			int headStart = 0, headEnd = 0, tailStart = 0, tailEnd = 0;
-			samplerPointsCrossfadeBand(&swgn->points, (int)(xfMs * (float)bakedRateOf(swgn->instrument) / 1000.0f),
+			/* The band is in the SOURCE's frames, because the points are
+			 * the source's frames. (Converting the crossfade's length
+			 * with the BAKE's rate here would mix the two: the band
+			 * would be drawn at the wrong width whenever the profile
+			 * resamples.) */
+			int srcRate = (swgn->instrument->id.sampler.sample
+			               && swgn->instrument->id.sampler.sample->sampleRate > 0)
+			              ? swgn->instrument->id.sampler.sample->sampleRate
+			              : SPECTRAX_ENGINE_RATE;
+			int xfadeSrcFrames = (int)(xfMs * (float)srcRate / 1000.0f);
+			samplerPointsCrossfadeBand(&swgn->points, xfadeSrcFrames,
 			                           &headStart, &headEnd, &tailStart, &tailEnd);
 			if(headEnd > headStart && tailEnd > tailStart) {
 				drawCrossfadeBand(gn, (float)headStart * loopScale, (float)headEnd * loopScale, lo, hi, 1.0f);

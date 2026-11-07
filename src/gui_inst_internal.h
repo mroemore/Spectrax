@@ -187,7 +187,8 @@ void openClearAllForSource(Instrument *inst, int srcIdx);
  * button share it. */
 void openDeleteConfirmForSource(Instrument *inst, int srcIdx);
 /* Cycle a source's type (ENV -> LFO -> RND -> ENV). The modulation
- * screen's detail pane carries it for the source it is showing. */
+ * screen's detail pane carries it for the source it is showing. A CORE
+ * source's type is fixed: the core envelopes are the instrument's own. */
 void cycleSourceTypeForSource(Instrument *inst, int srcIdx);
 /* Task 2: the action that opens the modulation screen (gui_mod_screen.c)
  * as a layer over the instrument screen. A button on the instrument

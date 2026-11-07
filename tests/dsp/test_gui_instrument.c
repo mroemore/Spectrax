@@ -843,6 +843,55 @@ static int test_voice_type_gating(void) {
 	return 0;
 }
 
+/* The waveform's points REACH the instrument.
+ *
+ * The points model is the screen's own state; the instrument's loop
+ * parameters are the source of truth. Every gesture that moves a point
+ * must write them, or the loop the voice plays is not the loop on the
+ * screen -- which is what the phase's headline interaction is. */
+static int test_points_reach_the_instrument(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	ASSERT_TRUE(setInstrumentVoiceType(e.vm, 0, VOICE_TYPE_SAMPLE),
+	            "the instrument becomes a SAMPLE");
+	rebuildInstrumentGraph();
+
+	Instrument *i = e.vm->instruments[0];
+	Graph *g = getSelectedInstGraph();
+	ASSERT_TRUE(g != NULL, "the instrument screen has a graph");
+	GuiNode *wfr = find_node_named(g->root, "WFRM");
+	ASSERT_TRUE(wfr != NULL, "the panel carries the waveform");
+	GuiNode *start = find_node_named(g->root, "START");
+	ASSERT_TRUE(start != NULL, "the panel carries the START button");
+
+	/* Select the loop start: the button's action selects its point. */
+	start->actionCb(start->actionCtx);
+	SampleWaveformGuiNode *sw = (SampleWaveformGuiNode *)wfr;
+	ASSERT_TRUE(sw->points.loopStart.selected, "the loop start is the selected point");
+
+	/* Now move the cursor: the selected point follows it, and the
+	 * instrument's loop start parameter must follow too. */
+	float before = getParameterValue(i->id.sampler.loopStartIndex);
+	ASSERT_TRUE(wfr->customNav != NULL, "the waveform takes the arrows");
+	wfr->customNav(wfr, KM_RIGHT);
+	wfr->customNav(wfr, KM_RIGHT);
+	float after = getParameterValue(i->id.sampler.loopStartIndex);
+	ASSERT_TRUE(after != before, "moving the cursor moved the instrument's loop start");
+	ASSERT_TRUE(after == (float)sw->points.loopStart.frame,
+	            "the parameter holds the point's frame");
+
+	/* The crossfade's ceiling follows the LOOP's length, not the
+	 * sample's. */
+	ASSERT_TRUE(i->id.sampler.crossfade != NULL, "the instrument has a crossfade");
+	ASSERT_TRUE(i->id.sampler.crossfade->maxValue > 0.0f, "the crossfade has a ceiling");
+
+	free_env(&e);
+	printf("PASS test_points_reach_the_instrument\n");
+	return 0;
+}
+
 /* The modulation list is gone from the instrument screen: the modulation
  * screen carries the full interface now, and the instrument screen keeps
  * one line for the connected modulators. */
@@ -976,6 +1025,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_waveform_points() != 0) {
+		return 1;
+	}
+	if(test_points_reach_the_instrument() != 0) {
 		return 1;
 	}
 	printf("PASSED (gui_instrument)\n");

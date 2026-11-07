@@ -61,9 +61,9 @@ REMOVE
 FRAMES 2
 ASSERT envcount==4
 
-# --- The same gate holds for the route picker -----------------------------
+# --- The same gate holds for the destination picker ------------------------
 # The picker layer holds the destination dials' Parameter pointers, and
-# the instrument graph's cursor stays on the ROUTE button under it -- so
+# the instrument graph's cursor stays on the source's row under it -- so
 # here REMOVE *would* reach a removable source. The gate must stop it.
 #
 # First close the modulation screen: SELECT is the universal back, and the
@@ -72,42 +72,38 @@ SELECT
 FRAMES 2
 ASSERT selected==MODLINE
 #
-# Add a runtime source (the boot patch has only core sources, and core
-# sources are protected from removal).
-JUMP MODS_ADD
+# Add a runtime source from the modulation screen's source list. The boot
+# patch has only core sources, and core sources are protected from
+# removal -- so the ADD has to happen on the modulation screen, which is
+# where the list lives now.
+JUMP MODLINE
+EDIT
+FRAMES 2
+JUMPTL MODLIST_ADD
+FRAMES 1
 EDIT
 FRAMES 2
 ASSERT envcount==5
-# Reach the runtime source's ROUTE button: DOWN x11 -> ENV(env[4]),
-# RIGHT x5 -> ROUTE.
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-DOWN
-ASSERT selected==ENV
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-RIGHT
-ASSERT selected==ROUTE
-# EDIT opens the picking layer.
+# The source list's ADD selects the new source, so the screen is showing
+# it -- and the route list below is that source's (empty) route list.
+ASSERT topLayerSelected==MODSRC_8
+#
+# Open the destination picker from the route list, and check the gate:
+# REMOVE must not reach the instrument while the picker owns the screen.
+JUMPTL MOD_ADDRUTE
+FRAMES 1
 EDIT
 FRAMES 2
+ASSERT topLayerSelected==DEST_0
 REMOVE
 FRAMES 2
 ASSERT envcount==5
 
 # --- The back gesture closes the picker too --------------------------------
+# The modulation screen's own selection is where it was when the picker
+# opened -- the button the picker was opened from.
 SELECT
 FRAMES 2
-ASSERT selected==ROUTE
+ASSERT topLayerSelected==MOD_ADDRUTE
 
 QUIT

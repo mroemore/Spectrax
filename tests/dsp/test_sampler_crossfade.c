@@ -129,6 +129,15 @@ static int test_correlation(void) {
 	}
 	float corrSilent = samplerCrossfadeCorrelation(b, loopStart, loopEnd, 128);
 	ASSERT_NEAR(corrSilent, 0.0, 1e-6, "silence does not correlate");
+	/* Silence on the TAIL alone, with a live head. */
+	for(int i = 0; i < N; i++) {
+		b->data[i] = sinf(2.0f * (float)M_PI * 8.0f * (float)i / (float)N);
+	}
+	for(int i = loopEnd - 128; i < loopEnd; i++) {
+		b->data[i] = 0.0f;
+	}
+	float corrTailSilent = samplerCrossfadeCorrelation(b, loopStart, loopEnd, 128);
+	ASSERT_NEAR(corrTailSilent, 0.0, 1e-6, "a silent tail does not correlate");
 
 	/* The guards. */
 	ASSERT_NEAR(samplerCrossfadeCorrelation(NULL, 0, 100, 10), 0.0, 1e-6,
@@ -210,6 +219,12 @@ static int test_guards(void) {
 	/* A region that is empty. */
 	ASSERT_NEAR(samplerCrossfadeCorrelation(b, 100, 100, 10), 0.0, 1e-6,
 	            "an empty region does not correlate");
+	/* An end past the bake: the region is clipped to the bake. */
+	ASSERT_TRUE(samplerCrossfadeCorrelation(b, 100, N + 500, 8) >= -1.0f,
+	            "an end past the bake is clipped");
+	/* A start before the bake: the region is clipped to the bake. */
+	ASSERT_TRUE(samplerCrossfadeCorrelation(b, -500, 200, 8) >= -1.0f,
+	            "a start before the bake is clipped");
 	/* A negative start and an end past the bake. */
 	ASSERT_TRUE(samplerCrossfadeCorrelation(b, -10, N + 100, 8) >= -1.0f,
 	            "an out-of-range region does not read past the bake");
@@ -235,6 +250,38 @@ static int test_guards(void) {
 	free(b->data);
 	free(b);
 	printf("PASS test_guards\n");
+	return 0;
+}
+
+/* The law the bake CARRIES: the audio path reads it, and it is the law
+ * only when it was measured for THIS loop. */
+static int test_law_of_the_bake(void) {
+	const int N = 512;
+	BakedSample *b = make_bake(N);
+	ASSERT_TRUE(b != NULL, "the bake");
+	for(int i = 0; i < N; i++) {
+		b->data[i] = sinf(2.0f * (float)M_PI * 8.0f * (float)i / (float)N);
+	}
+	int loopStart = N - 256;
+	int loopEnd = N;
+
+	/* A bake with no measurement says nothing about any loop. */
+	ASSERT_TRUE(samplerCrossfadeLawOf(b, loopStart, loopEnd, 64) == XF_EQUAL_POWER, "a bake with no measurement says nothing");
+	/* A NULL bake neither. */
+	ASSERT_TRUE(samplerCrossfadeLawOf(NULL, loopStart, loopEnd, 64) == XF_EQUAL_POWER, "a NULL bake says nothing");
+
+	/* Measure it, and the bake carries the law. */
+	SamplerFadeLaw law = samplerCrossfadeMeasure(b, loopStart, loopEnd, 64);
+	ASSERT_TRUE(law == XF_EQUAL_GAIN, "the correlated loop measures equal-gain");
+	ASSERT_TRUE(samplerCrossfadeLawOf(b, loopStart, loopEnd, 64) == law, "the bake carries the law");
+
+	/* A DIFFERENT loop is not covered by that measurement. */
+	ASSERT_TRUE(samplerCrossfadeLawOf(b, loopStart - 100, loopEnd, 64) == XF_EQUAL_POWER, "a different loop is not covered");
+	ASSERT_TRUE(samplerCrossfadeLawOf(b, loopStart, loopEnd, 32) == XF_EQUAL_POWER, "a different band is not covered");
+
+	free(b->data);
+	free(b);
+	printf("PASS test_law_of_the_bake\n");
 	return 0;
 }
 
@@ -306,6 +353,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_guards() != 0) {
+		return 1;
+	}
+	if(test_law_of_the_bake() != 0) {
 		return 1;
 	}
 	if(test_no_inexact_libm() != 0) {

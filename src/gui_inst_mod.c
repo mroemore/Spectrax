@@ -1057,6 +1057,11 @@ static void cbDeleteConfirmYes(void *ctx) {
 	}
 	if(sc) {
 		removeSource(sc->inst, sc->idx);
+		/* The source's Parameters were freed with it, and the modulation
+		 * screen's detail pane holds pointers to them -- so the screen
+		 * must be rebuilt before it is drawn again, or the draw reads
+		 * freed memory. (The clear-all does the same.) */
+		refreshModScreen();
 	}
 }
 
@@ -1903,6 +1908,15 @@ static void cbCycleSourceType(void *ctx) {
 	}
 	Mod *mod = scMod(sc);
 	if(!mod || mod->type == MT_ATTEN) {
+		return;
+	}
+	/* A CORE source's type is fixed. The core envelopes are the
+	 * instrument's own -- the FM's amplitude envelopes -- and retyping
+	 * one would change the instrument's structure: its amplitude
+	 * envelope would become an LFO. The instrument screen deliberately
+	 * hid its TYPE button on the core rows for the same reason, and the
+	 * modulation screen's TYPE control must honour that. */
+	if(sc->idx < sc->inst->coreEnvelopeCount) {
 		return;
 	}
 	ModType next = MT_ENV;

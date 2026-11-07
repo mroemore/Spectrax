@@ -109,6 +109,22 @@ static int g_modScreenSource = -1;
  * does. */
 static Instrument *g_modScreenInst = NULL;
 
+/* The instrument the screen is showing, or NULL.
+ *
+ * The cached pointer can DANGLE: changing the voice type frees the old
+ * instrument, and the screen's pointer would still name it. So the
+ * screen never uses the cache on its own -- it asks the instrument screen
+ * which instrument is selected now, and forgets the cache when the two
+ * disagree. */
+static Instrument *modScreenInstrument(void) {
+	Instrument *current = getSelectedInstInstrument();
+	if(current != g_modScreenInst) {
+		g_modScreenInst = current;
+		g_modScreenSource = -1;
+	}
+	return g_modScreenInst;
+}
+
 int modScreenSelectedSource(void) {
 	return g_modScreenSource;
 }
@@ -121,6 +137,7 @@ void modScreenSetSelectedSource(int idx) {
 	/* The pattern sources share the one grouped row, so they are not
 	 * selectable sources: an index naming one is refused and the
 	 * selection stays where it was. */
+	modScreenInstrument();
 	if(g_modScreenInst && !isSelectableSource(modSourceAt(g_modScreenInst, idx))) {
 		return;
 	}
@@ -148,8 +165,13 @@ typedef struct {
 /* The source rows' contexts. The screen's graph is rebuilt whenever the
  * selection changes, so the contexts are rebuilt with it -- but they
  * have to outlive the graph they are attached to, so they are file
- * static. */
-static ModSrcCtx g_modSrcCtx[MAX_MOD_SOURCES];
+ * static.
+ *
+ * They are sized MAX_MODS, not MAX_MOD_SOURCES: the source POSITIONS
+ * run over the whole mod list, and a preset may carry more sources
+ * than MAX_MOD_SOURCES (the pattern tracks are re-seeded on top of the
+ * preset's own). */
+static ModSrcCtx g_modSrcCtx[MAX_MODS];
 
 /* A row's action: select that source and rebuild the screen, so the
  * detail pane follows. */
@@ -647,9 +669,26 @@ static void cbModScreenRouteToDest(void *ctx) {
 	if(top && top->name && strcmp(top->name, MOD_PICKER_LAYER_NAME) == 0) {
 		popTopNonPassiveLayerFree(&ig->overlayLayers);
 	}
+	/* The picker TOGGLES: picking a destination that is already routed
+	 * removes the route, and picking one that is not adds it. (The
+	 * instrument screen's picker did the same, and without it the route
+	 * list would show the destination twice and the modulation would be
+	 * applied twice -- addModulation never dedupes, and it leaves a
+	 * stray attenuator behind.) */
+	bool already = false;
+	for(ModConnection *c = dc->dest->modulators; c; c = c->next) {
+		if(connFromSource(c, dc->src)) {
+			already = true;
+			break;
+		}
+	}
 	pthread_mutex_lock(&g_audioLock);
 	dc->inst->rebuilding = true;
-	addModulation(dc->inst->paramList, dc->inst->modList, dc->src, dc->dest, 1.0f, MO_ADD);
+	if(already) {
+		removeModulation(dc->inst->paramList, dc->inst->modList, dc->dest, dc->src);
+	} else {
+		addModulation(dc->inst->paramList, dc->inst->modList, dc->src, dc->dest, 1.0f, MO_ADD);
+	}
 	if(dc->inst->vm) {
 		rebuildVoicesForInstrument(dc->inst->vm, dc->inst);
 	}
@@ -657,7 +696,7 @@ static void cbModScreenRouteToDest(void *ctx) {
 	pthread_mutex_unlock(&g_audioLock);
 	rebuildInstrumentGraph();
 	/* The screen's route list shows the routes, so it has to be rebuilt
-	 * to show the one just added. */
+	 * to show the one just added (or removed). */
 	refreshModScreen();
 }
 
@@ -680,6 +719,7 @@ Graph *createRoutePickerGraph(Instrument *inst, int channel) {
 	/* The picker routes the screen's SELECTED source, so the screen's
 	 * graph has to have been built (it is what validates the
 	 * selection against the instrument). */
+	modScreenInstrument();
 	Mod *src = (g_modScreenInst == inst && g_modScreenSource >= 0)
 	           ? modSourceAt(inst, g_modScreenSource)
 	           : NULL;
@@ -735,7 +775,7 @@ void refreshModScreen(void) {
 	if(!modLayer) {
 		return;
 	}
-	Instrument *inst = g_modScreenInst;
+	Instrument *inst = modScreenInstrument();
 	if(!inst) {
 		return;
 	}
@@ -762,7 +802,7 @@ static void cbModScreenOpenPicker(void *ctx) {
 	if(!ig) {
 		return;
 	}
-	Graph *g = createRoutePickerGraph(g_modScreenInst, 0);
+	Graph *g = createRoutePickerGraph(modScreenInstrument(), 0);
 	if(!g) {
 		return;
 	}
@@ -779,17 +819,17 @@ static void cbModScreenOpenPicker(void *ctx) {
  * YES/NO confirmation for the source the screen is showing. */
 static void cbModScreenClearAll(void *ctx) {
 	(void)ctx;
-	if(!g_modScreenInst || g_modScreenSource < 0) {
+	if(!modScreenInstrument() || g_modScreenSource < 0) {
 		return;
 	}
-	openClearAllForSource(g_modScreenInst, g_modScreenSource);
+	openClearAllForSource(modScreenInstrument(), g_modScreenSource);
 }
 
 /* The source list's ADD: adds a runtime source. The instrument screen's
  * ADD button does the same thing, so the action is shared. */
 static void cbModScreenAddSource(void *ctx) {
 	(void)ctx;
-	Instrument *inst = g_modScreenInst;
+	Instrument *inst = modScreenInstrument();
 	if(!inst) {
 		return;
 	}
@@ -811,10 +851,10 @@ static void cbModScreenAddSource(void *ctx) {
  * rebuilds the screen, so its parameters follow the new type. */
 static void cbModScreenCycleType(void *ctx) {
 	(void)ctx;
-	if(!g_modScreenInst || g_modScreenSource < 0) {
+	if(!modScreenInstrument() || g_modScreenSource < 0) {
 		return;
 	}
-	cycleSourceTypeForSource(g_modScreenInst, g_modScreenSource);
+	cycleSourceTypeForSource(modScreenInstrument(), g_modScreenSource);
 	refreshModScreen();
 }
 
@@ -822,8 +862,8 @@ static void cbModScreenCycleType(void *ctx) {
  * screen's selected source. */
 static void cbModScreenDeleteSource(void *ctx) {
 	(void)ctx;
-	if(!g_modScreenInst || g_modScreenSource < 0) {
+	if(!modScreenInstrument() || g_modScreenSource < 0) {
 		return;
 	}
-	openDeleteConfirmForSource(g_modScreenInst, g_modScreenSource);
+	openDeleteConfirmForSource(modScreenInstrument(), g_modScreenSource);
 }

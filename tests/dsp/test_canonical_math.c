@@ -344,6 +344,12 @@ static int test_canonical_module_calls_no_inexact_libm(void) {
 	 * listed is a file whose maths nobody has checked. */
 	static const char *const FILES[] = {
 		"canonical_math.c", "sintab.c", "sampler_character.c",
+		/* The sampler's new audio-path modules: the OTA cascade and the
+		 * loop crossfade. Both are on the audio path, so the lint's
+		 * scope is theirs too -- the list is the invariant's scope, and a
+		 * file that is not listed is a file whose maths nobody has
+		 * checked. */
+		"sampler_filter.c", "sampler_crossfade.c",
 		"audio.c", "voice.c", "oscillator.c", "modsystem.c", "filters.c",
 		"blit_synth.c", "sample.c", "sequencer.c", "wavetable.c", "notes.c",
 	};

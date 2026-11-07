@@ -44,7 +44,7 @@ src/sampler_character.c  66
 src/sampler_filter.c    100
 # The loop crossfade. Its coverage comes from the unit suite (tests/dsp/
 # test_sampler_crossfade.c).
-src/sampler_crossfade.c 88
+src/sampler_crossfade.c 89
 # The device's budget: the derivation's arithmetic and the profile's
 # round-trip are covered by tests/dsp/test_device_budget.c. The
 # uncovered branches are the file's own error paths.
