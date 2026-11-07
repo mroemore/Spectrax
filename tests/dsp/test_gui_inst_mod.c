@@ -354,55 +354,6 @@ static GuiNode *find_first_dial(GuiNode *n) {
 	return NULL;
 }
 
-static int test_route_erase_mode(void) {
-	guiSetRouteEraseMode(false);
-	ASSERT_TRUE(!guiRouteEraseMode(), "erase starts off");
-	guiSetRouteEraseMode(true);
-	ASSERT_TRUE(guiRouteEraseMode(), "erase can be armed");
-	guiSetRouteEraseMode(false);
-	ASSERT_TRUE(!guiRouteEraseMode(), "erase can be disarmed");
-
-	guiSetPickerEditHeld(true);
-	guiSetPickerEditHeld(false);
-	printf("PASS test_route_erase_mode\n");
-	return 0;
-}
-
-/* The source rows' ROUTE buttons are gone from the instrument screen:
- * the modulation list is gone, and the modulation screen carries the
- * routing instead. The modulation LINE is what remains, and it is
- * findable by name. */
-static int test_route_node_lookup(void) {
-	Env e;
-	if(make_env(&e) != 0) {
-		return 1;
-	}
-	Graph *g = getSelectedInstGraph();
-	ASSERT_TRUE(g != NULL, "instrument graph exists");
-
-	/* No source's ROUTE button is on the instrument screen any more.
-	 * (The lookup itself still exists -- the instrument screen's ghost
-	 * picker uses it -- but it finds nothing.) */
-	int count = modSourceCount(inst0(&e)->modList);
-	ASSERT_TRUE(count > 0, "the instrument has sources");
-	for(int k = 0; k < count; k++) {
-		ASSERT_TRUE(findSourceRouteNode(g->root, k) == NULL,
-		            "the source rows' ROUTE buttons are gone from the instrument screen");
-	}
-	/* Out-of-range and negative lookups must miss, not crash. */
-	ASSERT_TRUE(findSourceRouteNode(g->root, -1) == NULL, "negative index misses");
-	ASSERT_TRUE(findSourceRouteNode(g->root, 100000) == NULL, "huge index misses");
-	ASSERT_TRUE(findSourceRouteNode(NULL, 0) == NULL, "NULL node misses");
-
-	/* The modulation line is findable by name. */
-	ASSERT_TRUE(findModLineNode(g->root) != NULL, "the modulation line is in the graph");
-	ASSERT_TRUE(findModLineNode(NULL) == NULL, "a NULL graph misses");
-
-	free_env(&e);
-	printf("PASS test_route_node_lookup\n");
-	return 0;
-}
-
 static int test_viewport_geometry(void) {
 	Env e;
 	if(make_env(&e) != 0) {
@@ -528,12 +479,6 @@ int main(void) {
 		return 1;
 	}
 	if(test_capacity_boundary() != 0) {
-		return 1;
-	}
-	if(test_route_erase_mode() != 0) {
-		return 1;
-	}
-	if(test_route_node_lookup() != 0) {
 		return 1;
 	}
 	if(test_viewport_geometry() != 0) {

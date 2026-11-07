@@ -35,7 +35,6 @@ test_names = [
   'test_gui_instrument',
   'test_gui_inst_mod',
   'test_gui_inst_mod_mirror',
-  'test_gui_inst_mod_picker',
   'test_gui_mod_screen',
   'test_modstrip_lazy',
   'test_gui_arranger_fault',

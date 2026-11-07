@@ -166,17 +166,7 @@ void appendSampleInstControlNode(Graph *g, GuiNode *container, char *name, int w
 void appendBlepInstControlNode(Graph *g, GuiNode *container, char *name, int weight, bool selected, Instrument *inst);
 
 /* mod-source container + strip (gui_inst_mod) */
-void appendModSourceEntry(Graph *g, GuiNode *container, Instrument *inst, int idx, int weight, bool selected);
-void appendPatternTrackRow(GuiNode *container, Instrument *inst, int weight);
 void syncModWrapScroll(void);
-void syncPickerDestRects(void);
-void syncPickerBaseScroll(void);
-void guiPickerFrameSync(void);
-void guiPickerUpdateDeferred(void);
-void guiPickerEditorDraw(void);
-bool guiPickerEditorInput(InputState *is);
-bool guiPickerHeldAmountAdjust(InputState *is);
-void cbOpenRouteLayer(void *ctx);
 void cbOpenClearAllLayer(void *ctx);
 /* Open the shared clear-all confirmation for a source position. The
  * modulation screen's CLEAR ALL button and the instrument screen's
@@ -266,7 +256,6 @@ void instrumentPageNav(int dir);
 bool dialVisibleInViewport(GuiNode *dial);
 /* boot-path source-ctx refresh (see gui_inst_mod.c) — called once from
  * createInstrumentGui after igui is assigned */
-void guiInstRefreshSourceCtx(void);
 /* test hook: which source's routes the ROUTELINES overlay currently shows */
 int guiRouteLinesSource(void);
 /* test hook: the selected instrument's waveform view mode (WF_VIEW_*), or
@@ -274,34 +263,13 @@ int guiRouteLinesSource(void);
 int guiWaveformViewMode(void);
 /* find a source's ROUTE button by source position (its actionCtx is the
  * &g_sourceCtx[idx] slot). Exposed for the route-lines regression test. */
-GuiNode *findSourceRouteNode(GuiNode *n, int srcIdx);
 
-/* Spec #3: picker bookkeeping. syncRouteLinesOverlay decides whether
- * to push the gradient overlay based on g_routePickerCount, not on a
- * hover, so the picker and overlay stay in sync across edits. */
-extern int g_routePickerCount;
+/* Spec #3: the route-lines overlay's bookkeeping. syncRouteLinesOverlay
+ * decides whether to push the gradient overlay, and the overlay follows
+ * the modulation line's selection. */
 
 /* Spec #6: erase-mode flag. Toggled by the ROUTE input handler when
  * the user requests destructive routing; cbRouteToDest reads it to
  * pick addModulation vs removeModulationForSource. */
-extern bool g_routeErase;
-extern bool g_pickerEditHeld;
-
-/* Spec #6 (public toggle). Called from the topmost ROUTE layer's input
- * handler. Also exposed so scripted tests can drive erase without
- * touching internals. */
-void guiSetRouteEraseMode(bool on);
-void guiSetPickerEditHeld(bool on);
-bool guiRouteEraseMode(void);
-/* Resets every piece of picker state (atten editor, pending double-tap). Every
- * path that closes a picker must call it. */
-void guiPickerClosed(void);
-
-/* Probe-only: drive the picker exactly once against the first
- * routable dial of the selected instrument. Returns true if the route
- * was applied. Gated behind g_probeRoute from main.c (zero effect
- * when --probe-route is absent; the picker state machine itself is
- * unchanged). */
-int probePickFirstRoute(void);
 
 #endif

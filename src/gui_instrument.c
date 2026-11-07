@@ -72,11 +72,6 @@ void createInstrumentGui(VoiceManager *vm, int *selectedInstrument, int scene) {
 	 * it when empty. */
 	initLayerStack(&ig->overlayLayers);
 	igui = ig;
-	/* Bug 2: refresh the source ctx AFTER igui is assigned — the boot
-	 * graphs were built before igui existed, so the selected-channel
-	 * refresh inside appendModSourceEntry never ran and every ROUTE/DEL
-	 * button captured a g_sourceCtx slot with idx==0. */
-	guiInstRefreshSourceCtx();
 }
 
 
@@ -953,19 +948,6 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		                        && strcmp(ig->overlayLayers.layers[topIdx].name,
 		                                  "OVERWRITE") == 0;
 		if(topIdx >= 0 && !overwriteLayerUp) {
-			guiSetRouteEraseMode(isKeyHeld(is, KM_FUNCTION));
-			guiSetPickerEditHeld(isKeyHeld(is, KM_EDIT));
-			/* T11: the attenuation editor consumes all picker input
-			 * while it is open (arrows move focus, EDIT fires the
-			 * focused control, FUNCTION/SELECT exit). */
-			if(guiPickerEditorInput(is)) {
-				return true;
-			}
-			/* EDIT-held amount dial: LEFT/RIGHT adjust the routed
-			 * dest's connection amount instead of navigating. */
-			if(guiPickerHeldAmountAdjust(is)) {
-				return true;
-			}
 			if(layerStackInputLayer(&ig->overlayLayers, topIdx, is)) {
 				/* A dial in the layer was turned (the modulation
 				 * screen's detail pane holds the selected source's own
@@ -1163,13 +1145,6 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 		 * the call is a use-after-free. */
 		ActionCallback cb = sel->actionCb;
 		if(cb) {
-			/* T12: KM_FUNCTION held + KM_EDIT on a source's ROUTE
-			 * button pushes the clear-all-routes confirm instead of
-			 * opening the picker. */
-			if(cb == cbOpenRouteLayer && isKeyHeld(is, KM_FUNCTION)) {
-				cbOpenClearAllLayer(sel->actionCtx);
-				return true;
-			}
 			bool needsRebuild = (cb == cbPresetPrev || cb == cbPresetNext);
 			cb(sel->actionCtx);
 			/* PREV/NEXT apply a preset, which rebuilds the paramList;
@@ -1626,16 +1601,11 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 
 void gui_instrument_draw(void) {
 	syncModWrapScroll();
-	guiPickerFrameSync();
-	guiPickerUpdateDeferred();
-	syncPickerBaseScroll();
-	syncPickerDestRects();
 	drawNode(igui->instrumentScreenGraphs[*igui->selectedInstrument]->root);
 	if (igui) {
 		/* route-lines overlay is driven by the focused selection each frame */
 		syncRouteLinesOverlay(igui);
 		layerStackDraw(&igui->overlayLayers);
-		guiPickerEditorDraw();
 	}
 }
 

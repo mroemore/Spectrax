@@ -62,22 +62,17 @@ static bool g_probeRebuilt = false;
  * routed destination? Used to gate a one-shot call to
  * probePickFirstRoute so the gradient overlay is rendered before the
  * warm-pixel counter fires. */
-static bool g_probeWired = false;
-static bool g_probePickerOpened = false;
-extern void cbOpenRouteLayer(void *ctx);
-/* Probe-only hook to wire the picker to its first routable dial. */
-extern int probePickFirstRoute(void);
 
-static GuiNode *probeFindRouteBtn(GuiNode *node) {
+static GuiNode *probeFindModLine(GuiNode *node) {
 	if(!node) {
 		return NULL;
 	}
-	if(node->name && strcmp(node->name, "ROUTE") == 0) {
+	if(node->name && strcmp(node->name, "MODLINE") == 0) {
 		return node;
 	}
 	ListElement *e = node->items ? node->items->head : NULL;
 	for(; e; e = e->next) {
-		GuiNode *hit = probeFindRouteBtn(*(GuiNode **)e->data);
+		GuiNode *hit = probeFindModLine(*(GuiNode **)e->data);
 		if(hit) {
 			return hit;
 		}
@@ -232,37 +227,17 @@ static void probeStepRoute(ApplicationState *appState) {
 		InstrumentGui *ig = getInstrumentGui();
 		Graph *g = getSelectedInstGraph();
 		if(g && g->root) {
-			GuiNode *route = probeFindRouteBtn(g->root);
-			if(route) {
-				changeGraphSelection(g, route);
+			/* The overlay is anchored to the MODULATION LINE now, so
+			 * that is what the probe selects. (It used to select a
+			 * source row's ROUTE button, which the modulation list's
+			 * removal took with it.) */
+			GuiNode *line = probeFindModLine(g->root);
+			if(line) {
+				changeGraphSelection(g, line);
 				g_probeSelected = true;
 			}
 		}
 		(void)ig;
-	}
-	/* Spec #4+#5 verification: open the route picker via the ROUTE
-	 * button's action callback so the gradient overlay and label
-	 * overlay are exercised end-to-end. The probe doesn't drive keys,
-	 * so we fire the actionCb directly with the SourceCtx that the
-	 * route button carries. */
-	if(g_probeSelected && !g_probePickerOpened && g_probeFrame == 6) {
-		InstrumentGui *ig = getInstrumentGui();
-		Graph *g = getSelectedInstGraph();
-		if(ig && g && g->root) {
-			GuiNode *route = probeFindRouteBtn(g->root);
-			if(route && route->actionCb == cbOpenRouteLayer && route->actionCtx) {
-				route->actionCb(route->actionCtx);
-				g_probePickerOpened = true;
-			}
-		}
-	}
-	/* Spec #4+#5 verification: after the picker is open, wire the
-	 * source into the first routable dial so the gradient line and
-	 * end-circles are visible to the warm-pixel probe. */
-	if(g_probeSelected && !g_probeWired && g_probeFrame == 11) {
-		if(probePickFirstRoute()) {
-			g_probeWired = true;
-		}
 	}
 }
 
