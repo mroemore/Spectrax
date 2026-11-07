@@ -1322,11 +1322,63 @@ static int test_playback_mode_edges(void) {
 	return 0;
 }
 
+/* The crossfade IN THE READ PATH: the loop's last frames fade out
+ * while its first frames fade in, over the same span. Without it the
+ * seam is a jump; with it the values cross.
+ *
+ * The bake is a ramp, so the value at a frame IS its index: the tail
+ * reads 12, 13, 14, 15 and the head reads 0, 1, 2, 3. A four-frame
+ * equal-gain cross gives 12, 10, 8, 6 -- each frame is the outgoing
+ * copy fading out over the incoming one fading in. */
+static int test_read_path_crossfades_the_seam(void) {
+	const int N = 64;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	b.data = (float *)malloc((size_t)N * sizeof(float));
+	if(!b.data) {
+		return 1;
+	}
+	b.length = N;
+	b.rate = 48000;
+	for(int i = 0; i < N; i++) {
+		b.data[i] = (float)i;
+	}
+
+	/* Read the loop's last four frames. The read position is driven
+	 * there by hand, one frame at a time. */
+	float expected[4] = { 12.0f, 10.0f, 8.0f, 6.0f };
+	for(int i = 0; i < 4; i++) {
+		float pos = (float)(12 + i) - 1.0f;   /* the read advances first */
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 4, XF_EQUAL_GAIN, SPT_FORWARD, NULL);
+		ASSERT_TRUE(v > expected[i] - 0.01f && v < expected[i] + 0.01f, "the seam crosses");
+	}
+
+	/* Without the crossfade the seam is the tail alone. */
+	for(int i = 0; i < 4; i++) {
+		float pos = (float)(12 + i) - 1.0f;
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 0, XF_EQUAL_GAIN, SPT_FORWARD, NULL);
+		ASSERT_TRUE(v > (float)(12 + i) - 0.01f && v < (float)(12 + i) + 0.01f, "without the crossfade the tail is alone");
+	}
+
+	/* The drop read crossfades the seam too. */
+	uint32_t addr = 11;
+	double phase = 0.0;
+	float v = getBakedSampleDrop(&b, &addr, &phase, 1.0f, 1, 0, 16, 4, XF_EQUAL_GAIN, SPT_FORWARD, NULL);
+	ASSERT_TRUE(v > 11.99f && v < 12.01f, "the drop read starts the crossfade on the tail");
+
+	free(b.data);
+	printf("PASS test_read_path_crossfades_the_seam\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_playback_modes() != 0) {
 		return 1;
 	}
 	if(test_playback_mode_edges() != 0) {
+		return 1;
+	}
+	if(test_read_path_crossfades_the_seam() != 0) {
 		return 1;
 	}
 	int fails = 0;
