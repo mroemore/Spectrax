@@ -534,6 +534,16 @@ static float crossfadeAt(const BakedSample *b, int start, int end, int xfadeFram
 static int playbackDirection(int playback, int *dir) {
 	bool reverse = (playback == SPT_REVERSE || playback == SPT_REVERSE_PINGPONG);
 	bool pingpong = (playback == SPT_FORWARD_PINGPONG || playback == SPT_REVERSE_PINGPONG);
+	if(pingpong) {
+		/* The ping-pong KEEPS its direction: it flips only when the
+		 * read reaches an end of the loop. Forcing it here would make
+		 * the ping-pong play forwards and then forwards again. */
+		int d = (dir && *dir != 0) ? *dir : (reverse ? -1 : 1);
+		if(dir) {
+			*dir = d;
+		}
+		return d;
+	}
 	if(!reverse) {
 		if(dir && *dir < 0) {
 			*dir = 1;
@@ -570,22 +580,25 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 	if(step == 0) {
 		step = direction;
 	}
-	*addr = (uint32_t)((int)*addr + step);
+	/* The address arithmetic is SIGNED: a backward read that runs off
+	 * the start would underflow the unsigned address, and the bounds
+	 * check below would then read past the buffer. */
+	int a = (int)*addr + step;
 	if(pingpong) {
 		/* The bounce: the read reverses at the loop's ends, so the
 		 * region plays forwards and then backwards. */
-		if(direction > 0 && *addr >= (uint32_t)end) {
-			*addr = (uint32_t)(end - 1);
+		if(direction > 0 && a >= end) {
+			a = end - 1;
 			if(dir) {
 				*dir = -1;
 			}
-		} else if(direction < 0 && *addr <= (uint32_t)start) {
-			*addr = (uint32_t)start;
+		} else if(direction < 0 && a <= start) {
+			a = start;
 			if(dir) {
 				*dir = 1;
 			}
 		}
-	} else if(direction > 0 && *addr >= (uint32_t)end) {
+	} else if(direction > 0 && a >= end) {
 		if(!loop) {
 			*addr = (uint32_t)(end - 1);
 			return 0.0f;
@@ -594,8 +607,8 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 		if(span == 0) {
 			return 0.0f;
 		}
-		*addr = (uint32_t)start + ((*addr - (uint32_t)start) % span);
-	} else if(direction < 0 && *addr < (uint32_t)start) {
+		a = start + (int)(((uint32_t)a - (uint32_t)start) % span);
+	} else if(direction < 0 && a < start) {
 		if(!loop) {
 			*addr = (uint32_t)start;
 			return 0.0f;
@@ -606,8 +619,15 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 		}
 		/* The address wraps to the loop's END, the way a forward read
 		 * wraps to its start. */
-		*addr = (uint32_t)(end - 1) - ((uint32_t)(start - 1) - *addr) % span;
+		a = (end - 1) - (int)((uint32_t)(start - a) % span);
 	}
+	if(a < 0) {
+		a = 0;
+	}
+	if(a >= b->length) {
+		a = b->length - 1;
+	}
+	*addr = (uint32_t)a;
 	return crossfadeAt(b, start, end, xfadeFrames, law, (int)*addr, b->data[*addr]);
 }
 

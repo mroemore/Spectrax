@@ -1239,8 +1239,94 @@ static int test_playback_modes(void) {
 	return 0;
 }
 
+/* The playback modes' edge cases: the direction flips when the mode
+ * changes, a ping-pong read bounces at BOTH ends, and a read that runs
+ * off a non-looping sample goes silent rather than off the buffer. */
+static int test_playback_mode_edges(void) {
+	const int N = 256;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	b.data = (float *)malloc((size_t)N * sizeof(float));
+	if(!b.data) {
+		return 1;
+	}
+	b.length = N;
+	b.rate = 48000;
+	for(int i = 0; i < N; i++) {
+		b.data[i] = (float)i;
+	}
+
+	/* The direction flips when the mode changes: a read that was going
+	 * backwards goes forwards when the mode says so. */
+	float pos = 50.0f;
+	int dir = -1;
+	getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, N, 0, XF_EQUAL_POWER, SPT_REVERSE, &dir);
+	ASSERT_TRUE(dir < 0, "the reverse read goes backwards");
+	getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, N, 0, XF_EQUAL_POWER, SPT_FORWARD, &dir);
+	ASSERT_TRUE(dir > 0, "the forward read goes forwards");
+
+	/* A forward ping-pong bounces at the loop's end and comes back. */
+	pos = 12.0f;
+	dir = 1;
+	for(int i = 0; i < 8; i++) {
+		getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 0, XF_EQUAL_POWER, SPT_FORWARD_PINGPONG, &dir);
+	}
+	ASSERT_TRUE(dir < 0, "the forward ping-pong reversed at the end");
+	ASSERT_TRUE(pos < 16.0f && pos >= 0.0f, "the ping-pong stayed inside the loop");
+	/* And it bounces at the start too: over a run long enough to cross
+	 * the whole loop, the direction must flip at least twice. */
+	int flips = 0;
+	int last = dir;
+	for(int i = 0; i < 80; i++) {
+		getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 0, XF_EQUAL_POWER, SPT_FORWARD_PINGPONG, &dir);
+		ASSERT_TRUE(pos < 16.0f && pos >= 0.0f, "the ping-pong stayed inside the loop");
+		if(dir != last) {
+			flips++;
+			last = dir;
+		}
+	}
+	ASSERT_TRUE(flips >= 2, "the ping-pong bounced at both ends");
+
+	/* A read that runs off a NON-looping sample goes silent, in either
+	 * direction, rather than reading off the buffer. */
+	pos = (float)(N - 2);
+	float v = getBakedSampleLinear(&b, &pos, 4.0f, 0, 0, N, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
+	ASSERT_TRUE(v == 0.0f, "a forward read off the end is silent");
+	pos = 1.0f;
+	dir = -1;
+	v = getBakedSampleLinear(&b, &pos, 4.0f, 0, 0, N, 0, XF_EQUAL_POWER, SPT_REVERSE, &dir);
+	ASSERT_TRUE(v == 0.0f, "a backward read off the start is silent");
+
+	/* The drop read honours the same edges. */
+	uint32_t addr = (uint32_t)(N - 2);
+	double phase = 0.0;
+	v = getBakedSampleDrop(&b, &addr, &phase, 4.0f, 0, 0, N, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
+	ASSERT_TRUE(v == 0.0f, "the drop read off the end is silent");
+	addr = 1;
+	phase = 0.0;
+	dir = -1;
+	v = getBakedSampleDrop(&b, &addr, &phase, 4.0f, 0, 0, N, 0, XF_EQUAL_POWER, SPT_REVERSE, &dir);
+	ASSERT_TRUE(v == 0.0f, "the drop read off the start is silent");
+
+	/* A ping-pong drop read stays inside the loop. */
+	addr = 14;
+	phase = 0.0;
+	dir = 1;
+	for(int i = 0; i < 20; i++) {
+		getBakedSampleDrop(&b, &addr, &phase, 1.0f, 1, 0, 16, 0, XF_EQUAL_POWER, SPT_FORWARD_PINGPONG, &dir);
+		ASSERT_TRUE(addr < 16u, "the ping-pong drop read stays inside the loop");
+	}
+
+	free(b.data);
+	printf("PASS test_playback_mode_edges\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_playback_modes() != 0) {
+		return 1;
+	}
+	if(test_playback_mode_edges() != 0) {
 		return 1;
 	}
 	int fails = 0;

@@ -501,8 +501,69 @@ static int rebuildBeforeCreate(void) {
 	return 0;
 }
 
+/* The velocity lane's editing: the cursor is on a cell and EDIT is held,
+ * the arrows change that step's velocity. */
+static int test_velocity_lane_editing(void) {
+	PatternList *pl = make_pl(4);
+	Sequencer *seq = make_seq();
+	int selectedPattern = 0;
+	int selectedStep = 0;
+
+	createPatternGraph(seq, pl, &selectedPattern, &selectedStep);
+	Graph *g = getPatternGraphForTest();
+	ASSERT_TRUE(g != NULL);
+
+	/* Nothing selected that is a cell: the edit refuses. */
+	g->selected = NULL;
+	ASSERT_TRUE(!handleVelocityLaneEdit(KM_UP));
+
+	/* Put the cursor on the lane's first cell. */
+	GuiNode *cell = find_named(g->root, "VELCELL_0");
+	ASSERT_TRUE(cell != NULL);
+	changeGraphSelection(g, cell);
+
+	/* An unset velocity reads as full, so DOWN takes it down by one. */
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL);
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_DOWN));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL - 1);
+
+	/* UP takes it back up. */
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_UP));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL);
+
+	/* At the top, UP changes nothing -- but it is still handled. */
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_UP));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL);
+
+	/* LEFT and RIGHT are the coarse step; the NAV keys the fine one. */
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_LEFT));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL - 8);
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_NAV_RIGHT));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL - 7);
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_NAV_LEFT));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == NOTE_VELOCITY_FULL - 8);
+
+	/* The velocity is clamped at 1: it never reaches zero, because zero
+	 * means UNSET and an unset step plays at full. */
+	setStepVelocity(pl, 0, 0, 1);
+	ASSERT_TRUE(handleVelocityLaneEdit(KM_DOWN));
+	ASSERT_TRUE(getCurrentStepVelocity(pl, 0, 0) == 1);
+
+	/* A key the lane does not use is refused. */
+	ASSERT_TRUE(!handleVelocityLaneEdit(KM_START));
+
+	destroyPatternGraph();
+	free(seq);
+	free(pl);
+	printf("PASS test_velocity_lane_editing\n");
+	return 0;
+}
+
 int main(void) {
 	if(test_velocity_lane() != 0) {
+		return 1;
+	}
+	if(test_velocity_lane_editing() != 0) {
 		return 1;
 	}
 	/* These two must run before any createPatternGraph so the module-private
