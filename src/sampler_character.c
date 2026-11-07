@@ -518,8 +518,37 @@ static float crossfadeAt(const BakedSample *b, int start, int end, int xfadeFram
 	return samplerCrossfadeMix(outgoing, b->data[incomingIndex], phase, (SamplerFadeLaw)law);
 }
 
+
+/* The playback modes' read direction.
+ *
+ * SPT_FORWARD and SPT_REVERSE read in one direction and wrap at the
+ * loop's ends. The PINGPONG variants BOUNCE: the read reverses at the
+ * loop's end and at its start, so it plays the region forwards and
+ * then backwards.
+ *
+ * `dir` is the read's direction and belongs to the caller (the voice's
+ * read state), so a ping-pong read alternates across the ticks.
+ *
+ * Returns the direction to read in, and flips `*dir` when the read has
+ * just run off an end. */
+static int playbackDirection(int playback, int *dir) {
+	bool reverse = (playback == SPT_REVERSE || playback == SPT_REVERSE_PINGPONG);
+	bool pingpong = (playback == SPT_FORWARD_PINGPONG || playback == SPT_REVERSE_PINGPONG);
+	if(!reverse) {
+		if(dir && *dir < 0) {
+			*dir = 1;
+		}
+		return 1;
+	}
+	if(dir && *dir > 0) {
+		*dir = -1;
+	}
+	return -1;
+}
+
 float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
-                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law) {
+                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law,
+                          int playback, int *dir) {
 	if(!b || !b->data || b->length <= 0 || !addr || !phase) {
 		return 0.0f;
 	}
@@ -528,15 +557,35 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 	if(!(advance > 0.0f)) {
 		advance = 1.0f;
 	}
+	int direction = playbackDirection(playback, dir);
+	bool pingpong = (playback == SPT_FORWARD_PINGPONG || playback == SPT_REVERSE_PINGPONG);
 	/* The fractional part is carried, and the integer part moves the
 	 * address -- truncated, as the machine's accumulator did. */
-	double ip = *phase + (double)advance;
+	double ip = *phase + (double)(direction < 0 ? -advance : advance);
 	uint32_t i = (uint32_t)ip;
 	*phase = ip - (double)i;
 	/* The address never stalls: an integer part of zero still advances a
 	 * frame, so a slow passage repeats rather than sticking. */
-	*addr += (i != 0) ? i : 1u;
-	if(*addr >= (uint32_t)end) {
+	int step = (int)i;
+	if(step == 0) {
+		step = direction;
+	}
+	*addr = (uint32_t)((int)*addr + step);
+	if(pingpong) {
+		/* The bounce: the read reverses at the loop's ends, so the
+		 * region plays forwards and then backwards. */
+		if(direction > 0 && *addr >= (uint32_t)end) {
+			*addr = (uint32_t)(end - 1);
+			if(dir) {
+				*dir = -1;
+			}
+		} else if(direction < 0 && *addr <= (uint32_t)start) {
+			*addr = (uint32_t)start;
+			if(dir) {
+				*dir = 1;
+			}
+		}
+	} else if(direction > 0 && *addr >= (uint32_t)end) {
 		if(!loop) {
 			*addr = (uint32_t)(end - 1);
 			return 0.0f;
@@ -546,19 +595,48 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 			return 0.0f;
 		}
 		*addr = (uint32_t)start + ((*addr - (uint32_t)start) % span);
+	} else if(direction < 0 && *addr < (uint32_t)start) {
+		if(!loop) {
+			*addr = (uint32_t)start;
+			return 0.0f;
+		}
+		uint32_t span = (uint32_t)(end - start);
+		if(span == 0) {
+			return 0.0f;
+		}
+		/* The address wraps to the loop's END, the way a forward read
+		 * wraps to its start. */
+		*addr = (uint32_t)(end - 1) - ((uint32_t)(start - 1) - *addr) % span;
 	}
 	return crossfadeAt(b, start, end, xfadeFrames, law, (int)*addr, b->data[*addr]);
 }
 
 float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
-                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law) {
+                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law,
+                            int playback, int *dir) {
 	if(!b || !b->data || b->length <= 0 || !pos) {
 		return 0.0f;
 	}
 	int start = 0, end = b->length;
 	loopBounds(b, loopStart, loopEnd, &start, &end);
-	*pos += advance;
-	if(*pos >= (float)end) {
+	int direction = playbackDirection(playback, dir);
+	bool pingpong = (playback == SPT_FORWARD_PINGPONG || playback == SPT_REVERSE_PINGPONG);
+	*pos += (direction < 0) ? -advance : advance;
+	if(pingpong) {
+		/* The bounce: the read reverses at the loop's ends, so the
+		 * region plays forwards and then backwards. */
+		if(direction > 0 && *pos >= (float)end) {
+			*pos = (float)(end - 1);
+			if(dir) {
+				*dir = -1;
+			}
+		} else if(direction < 0 && *pos <= (float)start) {
+			*pos = (float)start;
+			if(dir) {
+				*dir = 1;
+			}
+		}
+	} else if(direction > 0 && *pos >= (float)end) {
 		if(!loop) {
 			*pos = (float)(end - 1);
 			return 0.0f;
@@ -570,6 +648,20 @@ float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
 		float rel = *pos - (float)start;
 		rel = rel - floorf(rel / span) * span;
 		*pos = (float)start + rel;
+	} else if(direction < 0 && *pos < (float)start) {
+		if(!loop) {
+			*pos = (float)start;
+			return 0.0f;
+		}
+		float span = (float)(end - start);
+		if(span <= 0.0f) {
+			return 0.0f;
+		}
+		/* The position wraps to the loop's END, the way a forward read
+		 * wraps to its start. */
+		float rel = (float)start - *pos;
+		rel = rel - floorf(rel / span) * span;
+		*pos = (float)(end - 1) - rel;
 	}
 	/* The head is played before the loop: the position only reaches the
 	 * loop region by wrapping at the end, exactly as the drop read does.

@@ -85,6 +85,14 @@ bool samplerPointsDelete(SamplerPoints *p);
  * waveform has none within a whole period. */
 int samplerPointsNearestZeroCrossing(const float *data, int length, int frame);
 
+/* The crossfade's band, in source frames: the head's and the tail's.
+ *
+ * The head is the loop's first `xfadeFrames` frames -- the copy fading
+ * IN -- and the tail is its last `xfadeFrames` -- the copy fading OUT.
+ * The band is clamped to the loop's length. */
+void samplerPointsCrossfadeBand(const SamplerPoints *p, int xfadeFrames,
+                                 int *headStart, int *headEnd, int *tailStart, int *tailEnd);
+
 /* True when the points are usable: the loop must not start at or past
  * its end. A loop read backwards is worse than no loop, so the state is
  * rejected rather than normalised. */

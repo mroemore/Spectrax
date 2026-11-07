@@ -705,7 +705,7 @@ static int test_drop_never_stalls(void) {
 	double phase = 0.0;
 	uint32_t prev = addr;
 	for(int i = 0; i < 500; i++) {
-		getBakedSampleDrop(&b, &addr, &phase, 0.3f, 0, 0, b.length, 0, XF_EQUAL_POWER);
+		getBakedSampleDrop(&b, &addr, &phase, 0.3f, 0, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 		if(i > 0 && addr <= prev) {
 			printf("FAIL: the drop read stalled at tick %d (addr %u -> %u)\n", i, prev, addr);
 			freeBakedSample(&b);
@@ -725,9 +725,9 @@ static int test_drop_pitch_down_repeats(void) {
 	uint32_t addr = 0;
 	double phase = 0.0;
 	int repeats = 0;
-	float prev = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
+	float prev = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 	for(int i = 1; i < 100; i++) {
-		float v = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
+		float v = getBakedSampleDrop(&b, &addr, &phase, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 		if(v == prev) {
 			repeats++;
 		}
@@ -750,7 +750,7 @@ static int test_baked_drop_wrap_short(void) {
 	uint32_t addr = 0;
 	double phase = 0.0;
 	for(int i = 0; i < 1000; i++) {
-		float v = getBakedSampleDrop(&b, &addr, &phase, 2.7f, 1, 0, b.length, 0, XF_EQUAL_POWER);
+		float v = getBakedSampleDrop(&b, &addr, &phase, 2.7f, 1, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 		if(!(v == b.data[0] || v == b.data[1] || v == b.data[2])) {
 			printf("FAIL: the drop read returned %g, which is not in the bake\n", (double)v);
 			freeBakedSample(&b);
@@ -771,7 +771,7 @@ static int test_linear_interpolates(void) {
 	/* A linear read sits between the two frames it spans. */
 	BakedSample b = makeRamp(64, SPECTRAX_ENGINE_RATE);
 	float pos = 0.0f;
-	float v = getBakedSampleLinear(&b, &pos, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER);
+	float v = getBakedSampleLinear(&b, &pos, 0.5f, 0, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 	/* After the advance the position is 0.5, halfway between frame 0 and
 	 * frame 1. */
 	if(fabsf(v - 0.5f * (b.data[0] + b.data[1])) > 1e-6f) {
@@ -795,7 +795,7 @@ static int test_linear_loops_within_the_region(void) {
 	 * wraps to the region's start when it passes the region's end, the
 	 * way the drop read does. The two interpolators have to agree. */
 	for(int i = 0; i < 8; i++) {
-		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER);
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 		if(fabsf(v - b.data[i + 1]) > 1e-6f) {
 			printf("FAIL: the linear read skipped the head at %d (%g, want %g)\n",
 			       i, (double)v, (double)b.data[i + 1]);
@@ -804,7 +804,7 @@ static int test_linear_loops_within_the_region(void) {
 		}
 	}
 	for(int i = 0; i < 500; i++) {
-		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER);
+		float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 8, 24, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 		if(v < minSeen) {
 			minSeen = v;
 		}
@@ -830,7 +830,7 @@ static int test_read_stops_at_the_end_without_looping(void) {
 	float pos = 0.0f;
 	float last = 1.0f;
 	for(int i = 0; i < 64; i++) {
-		last = getBakedSampleLinear(&b, &pos, 1.0f, 0, 0, b.length, 0, XF_EQUAL_POWER);
+		last = getBakedSampleLinear(&b, &pos, 1.0f, 0, 0, b.length, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
 	}
 	if(last != 0.0f) {
 		printf("FAIL: the read past the end gave %g, want silence\n", (double)last);
@@ -1182,7 +1182,67 @@ static int test_sampler_voice_plays_at_the_written_pitch(void) {
 	return 0;
 }
 
+/* ---- the playback modes -------------------------------------------------- */
+
+/* The playback modes were ignored: the PLAYBACK dial did nothing. Now
+ * FORWARD reads forwards, REVERSE reads backwards from the same start
+ * point, and the PINGPONG variants bounce at the loop's ends. */
+static int test_playback_modes(void) {
+	const int N = 256;
+	BakedSample b;
+	memset(&b, 0, sizeof(b));
+	b.data = (float *)malloc((size_t)N * sizeof(float));
+	if(!b.data) {
+		return 1;
+	}
+	b.length = N;
+	b.rate = 48000;
+	/* A ramp: every frame is its own index, so a read's direction is
+	 * visible in the values it produces. */
+	for(int i = 0; i < N; i++) {
+		b.data[i] = (float)i;
+	}
+
+	/* FORWARD reads forwards. */
+	float pos = 100.0f;
+	float v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, N, 0, XF_EQUAL_POWER, SPT_FORWARD, NULL);
+	ASSERT_TRUE(v > 100.0f && v < 103.0f, "the forward read moves forwards");
+
+	/* REVERSE reads backwards from the same start point. */
+	pos = 100.0f;
+	int dir = -1;
+	v = getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, N, 0, XF_EQUAL_POWER, SPT_REVERSE, &dir);
+	ASSERT_TRUE(v < 100.0f && v > 97.0f, "the reverse read moves backwards");
+
+	/* The drop-sample read honours them too. */
+	uint32_t addr = 100;
+	double phase = 0.0;
+	dir = -1;
+	v = getBakedSampleDrop(&b, &addr, &phase, 1.0f, 1, 0, N, 0, XF_EQUAL_POWER, SPT_REVERSE, &dir);
+	ASSERT_TRUE(v < 100.0f && v > 96.0f, "the drop read moves backwards");
+
+	/* The PINGPONG read stays inside the loop region, and reverses. */
+	pos = 8.0f;
+	dir = 1;
+	float first = getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 0, XF_EQUAL_POWER, SPT_FORWARD_PINGPONG, &dir);
+	ASSERT_TRUE(first > 8.0f, "the ping-pong read starts forwards");
+	/* Run it to the loop's end and past it: it must bounce, not wrap. */
+	for(int i = 0; i < 40; i++) {
+		pos = pos;
+		getBakedSampleLinear(&b, &pos, 1.0f, 1, 0, 16, 0, XF_EQUAL_POWER, SPT_FORWARD_PINGPONG, &dir);
+		ASSERT_TRUE(pos >= 0.0f && pos < 16.0f, "the ping-pong read stays inside the loop");
+	}
+	ASSERT_TRUE(dir < 0, "the ping-pong read reversed at the loop's end");
+
+	free(b.data);
+	printf("PASS test_playback_modes\n");
+	return 0;
+}
+
 int main(void) {
+	if(test_playback_modes() != 0) {
+		return 1;
+	}
 	int fails = 0;
 	fails += test_quant_off_passthrough();
 	fails += test_quant_trunc_floor();

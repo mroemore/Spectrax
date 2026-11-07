@@ -1077,6 +1077,16 @@ bool handlePresetUiInput(InputState *is, Instrument *inst) {
 	 * for modal confirmation/cancel semantics. Holding KM_EDIT to fire
 	 * the button mirrors the dial-edit gesture (KM_EDIT + arrow edits
 	 * the selected dial); here KM_EDIT alone activates the button. */
+	/* Task 9: SELECT+EDIT on the waveform opens its options menu. The
+	 * context menu is on SELECT, so this is checked before the generic
+	 * EDIT dispatch (which fires the selected node's action). */
+	if(sel && sel->name && strcmp(sel->name, "WFRM") == 0
+	   && isKeyHeld(is, KM_SELECT) && isKeyJustPressed(is, KM_EDIT)) {
+		extern void guiOpenPointOptions(Instrument *inst);
+		guiOpenPointOptions(inst);
+		return true;
+	}
+
 	/* Task 8: note that FUNCTION was pressed. The waveform's SEQUENCE
 	 * gesture is FUNCTION pressed-and-released before EDIT, and the flag
 	 * that says so lives on the points model. */

@@ -183,11 +183,16 @@ OutVal generateSample(Voice *currentVoice, float phaseIncrement, float frequency
 			fadeLaw = (int)samplerCrossfadeMeasure(baked, loopStart, loopEnd, xfadeFrames);
 		}
 	}
+	/* The playback mode: FORWARD, REVERSE, or either of them PINGPONG.
+	 * It used to be ignored -- the PLAYBACK dial did nothing -- so the
+	 * dial was a lie. The direction lives in the voice's read state, so
+	 * a ping-pong read alternates across the ticks. */
+	int playback = getParameterValueAsInt(id->playbackType);
 	float v;
 	if(getParameterValueAsInt(id->interp) == SPI_DROPSAMPLE) {
-		v = getBakedSampleDrop(baked, &vd->dsAddr, &vd->dsPhase, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw);
+		v = getBakedSampleDrop(baked, &vd->dsAddr, &vd->dsPhase, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw, playback, &vd->direction);
 	} else {
-		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw);
+		v = getBakedSampleLinear(baked, &vd->samplePosition, advance, loop, loopStart, loopEnd, xfadeFrames, fadeLaw, playback, &vd->direction);
 	}
 	/* The OTA cascade: the character engine's per-voice filter, behind the
 	 * FILTER dial. When the filter is off the state is bypassed AND

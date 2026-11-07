@@ -174,12 +174,14 @@ float samplerAdvance(int noteSemitones, int rootSemitones, float tune, int baked
  * are the loop region in baked frames; when `loop` is zero the read falls
  * silent at the end instead of wrapping. */
 float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, float advance,
-                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law);
+                          int loop, int loopStart, int loopEnd, int xfadeFrames, int law,
+                          int playback, int *dir);
 
 /* The linear-interpolated read: the varispeed class. `pos` is the voice's
  * read position in baked frames. */
 float getBakedSampleLinear(const BakedSample *b, float *pos, float advance,
-                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law);
+                            int loop, int loopStart, int loopEnd, int xfadeFrames, int law,
+                            int playback, int *dir);
 
 /* Quantize one sample.
  *

@@ -212,6 +212,10 @@ int modConnectedSources(const Instrument *inst, Mod **out, int max);
  * counts without writing. */
 int modSourceRoutes(const Instrument *inst, Mod *src, ModConnection **out, int max);
 
+/* Task 9: open the waveform's options menu (SELECT+EDIT on the
+ * waveform). */
+void guiOpenPointOptions(Instrument *inst);
+
 /* Task 8: note that FUNCTION was pressed, so the SEQUENCE gesture can
  * tell it from the chord. */
 bool samplerPointsNoteFunctionPress(Instrument *inst);

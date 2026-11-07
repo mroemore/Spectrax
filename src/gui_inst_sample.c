@@ -116,6 +116,107 @@ static SampleWaveformGuiNode *createSampleWaveformGuiNode(int x, int y, int w, i
  * the START and END buttons need them. */
 static SampleWaveformGuiNode *findWaveformNode(Instrument *inst);
 
+/* Task 9: the options menu -- the context menu on the selected point.
+ *
+ * It holds exactly two things: NEAREST ZERO CROSSING, which puts the
+ * point where the waveform crosses zero so a loop does not click, and
+ * the CROSSFADE, a DIAL ROW (the app's instrument for a number) that
+ * sets the crossfade's length in milliseconds.
+ *
+ * The menu is a layer over the instrument screen. */
+static void cbPointNearestZeroCrossing(void *ctx) {
+	SampleWaveformGuiNode *swgn = (SampleWaveformGuiNode *)ctx;
+	if(!swgn || !swgn->instrument) {
+		return;
+	}
+	Sample *src = swgn->instrument->id.sampler.sample;
+	if(!src || !src->data || src->length <= 0) {
+		return;
+	}
+	/* The point that moves is the SELECTED one. */
+	SamplerPoint *pt = NULL;
+	if(swgn->points.loopStart.selected) {
+		pt = &swgn->points.loopStart;
+	} else if(swgn->points.loopEnd.selected) {
+		pt = &swgn->points.loopEnd;
+	} else {
+		pt = &swgn->points.cursor;
+	}
+	int z = samplerPointsNearestZeroCrossing(src->data, src->length, pt->frame);
+	if(z >= 0) {
+		pt->frame = z;
+		swgn->points.cursor.frame = z;
+	}
+}
+
+static void cbPointOptionsBack(void *ctx) {
+	(void)ctx;
+	InstrumentGui *ig = getInstrumentGui();
+	if(ig) {
+		popTopNonPassiveLayerFree(&ig->overlayLayers);
+	}
+}
+
+/* Open the options menu for the waveform's selected point.
+ *
+ * It is opened by SELECT+EDIT on the waveform -- SELECT for the
+ * context menu, EDIT to open it -- so it does not collide with the
+ * gestures that are already on the wavefrom. */
+static void cbOpenPointOptions(void *ctx) {
+	SampleWaveformGuiNode *swgn = (SampleWaveformGuiNode *)ctx;
+	InstrumentGui *ig = getInstrumentGui();
+	if(!swgn || !ig || !swgn->instrument) {
+		return;
+	}
+	Graph *g = createGraph(na_vertical);
+	if(!g || !g->root) {
+		free(g);
+		return;
+	}
+	/* NEAREST ZERO CROSSING. */
+	GuiNode *zero = createActionBtnGuiNode(0, 0, 100, 100, 1, na_horizontal, "OPT_ZERO", 0,
+	                                      cbPointNearestZeroCrossing, swgn);
+	if(zero) {
+		guiNodeSetText(zero, "NEAREST ZERO CROSSING");
+		appendItem(g->root, zero, 1);
+	}
+	/* The CROSSFADE: a dial row, bound to the instrument's crossfade
+	 * parameter, so turning it changes the crossfade and the waveform's
+	 * band grows as it turns. */
+	if(swgn->instrument->id.sampler.crossfade) {
+		GuiNode *xf = createDialGuiNode(0, 0, 100, 100, 1, na_horizontal, "OPT_XFADE", 0,
+		                                incParameterBaseValue, swgn->instrument->id.sampler.crossfade);
+		if(xf) {
+			appendItem(g->root, xf, 1);
+		}
+	}
+	GuiNode *back = createActionBtnGuiNode(0, 0, 100, 100, 1, na_horizontal, "OPT_BACK", 0,
+	                                       cbPointOptionsBack, NULL);
+	if(back) {
+		guiNodeSetText(back, "BACK");
+		appendItem(g->root, back, 1);
+	}
+	changeGraphSelection(g, zero ? zero : back);
+	Layer *layer = createLayer(g, 0, 0, SCREEN_W, SCREEN_H, "POINTOPT", true, true);
+	if(!layer) {
+		freeGuiNode(g->root);
+		free(g);
+		return;
+	}
+	pushLayer(&ig->overlayLayers, layer);
+}
+
+/* Open the options menu for the instrument's waveform. Called by the
+ * instrument screen's input handler when SELECT+EDIT lands on the
+ * waveform. */
+void guiOpenPointOptions(Instrument *inst) {
+	SampleWaveformGuiNode *swgn = findWaveformNode(inst);
+	if(!swgn) {
+		return;
+	}
+	cbOpenPointOptions(swgn);
+}
+
 /* Task 8: note that FUNCTION was pressed. The SEQUENCE gesture is
  * FUNCTION pressed-and-released before EDIT, and the flag that says so
  * lives on the points model. */
@@ -182,6 +283,55 @@ static SampleWaveformGuiNode *findWaveformNode(Instrument *inst) {
 }
 
 
+/* The bake's rate, or the engine's when there is no bake. The
+ * crossfade's length is in milliseconds, and the frame count it means
+ * depends on the rate. */
+static int bakedRateOf(Instrument *inst) {
+	if(inst && inst->id.sampler.baked && inst->id.sampler.baked->rate > 0) {
+		return inst->id.sampler.baked->rate;
+	}
+	if(inst && inst->id.sampler.sample && inst->id.sampler.sample->sampleRate > 0) {
+		return inst->id.sampler.sample->sampleRate;
+	}
+	return SPECTRAX_ENGINE_RATE;
+}
+
+/* Draw the crossfade's band and its fade curve. `gain` is 1 for the
+ * copy fading IN (the head) and 0 for the copy fading OUT (the tail);
+ * the curve is the fade between them. */
+static void drawCrossfadeBand(const GuiNode *gn, float a, float b, float lo, float hi, float gain) {
+	if(hi <= lo || b <= a) {
+		return;
+	}
+	float x0 = gn->x + (int)(((a - lo) / (hi - lo)) * (float)gn->w);
+	float x1 = gn->x + (int)(((b - lo) / (hi - lo)) * (float)gn->w);
+	if(x1 <= x0) {
+		return;
+	}
+	/* The band is shaded harder than the loop region. */
+	Color band = cs.waveformAlt;
+	band.a = 110;
+	DrawRectangle((int)x0, gn->y, (int)(x1 - x0), gn->h, band);
+	/* The fade curve: the copy's gain across the band. */
+	int steps = 12;
+	int mid = gn->y + gn->h / 2;
+	int amp = gn->h / 3;
+	for(int i = 0; i < steps; i++) {
+		float t0 = (float)i / (float)steps;
+		float t1 = (float)(i + 1) / (float)steps;
+		/* The equal-gain law is a straight line; the equal-power law is
+		 * the quarter-circle. The curve is drawn the same either way
+		 * here -- the law's difference is in the AUDIO, and the band
+		 * shows WHERE the fade is. */
+		float v0 = gain + (1.0f - gain) * t0;
+		float v1 = gain + (1.0f - gain) * t1;
+		float px0 = x0 + (x1 - x0) * t0;
+		float px1 = x0 + (x1 - x0) * t1;
+		DrawLineEx((Vector2){ px0, (float)(mid - (int)(v0 * amp)) },
+		           (Vector2){ px1, (float)(mid - (int)(v1 * amp)) }, 2.0f, cs.waveform);
+	}
+}
+
 /* Draw a vertical marker at sample `pos` when it lies inside [lo, hi). */
 static void drawWaveformMarker(const GuiNode *gn, Color col, float pos, float lo, float hi) {
 	if(hi <= lo || pos < lo || pos >= hi) {
@@ -205,9 +355,32 @@ static void drawSampleWaveformGuiNode(void *self) {
 		return;
 	}
 
+	/* Task 9: the preview shows the BAKE -- what the voice plays -- not
+	 * the source. The bake is the source resampled to the machine's
+	 * rate and quantized to its word, so on a character profile the
+	 * drawn signal and the heard signal are visibly different. */
+	Sample bakedView;
+	BakedSample *baked = swgn->instrument ? swgn->instrument->id.sampler.baked : NULL;
+	bool drawingBake = baked && baked->data && baked->length > 0;
+	if(drawingBake) {
+		bakedView.data = baked->data;
+		bakedView.name = s->name;
+		bakedView.length = baked->length;
+		bakedView.sampleRate = baked->rate;
+		bakedView.bit = baked->bits;
+		s = &bakedView;
+	}
+	/* The drawn frames per source frame: the loop points are the
+	 * SOURCE's frames, and the drawn material may be at another rate. */
+	float loopScale = 1.0f;
+	if(drawingBake && swgn->instrument->id.sampler.sample
+	   && swgn->instrument->id.sampler.sample->length > 0) {
+		loopScale = (float)baked->length / (float)swgn->instrument->id.sampler.sample->length;
+	}
+
 	float len = (float)s->length;
-	float loopStart = (float)getParameterValueAsInt(swgn->loopStart);
-	float loopEnd = (float)getParameterValueAsInt(swgn->loopEnd);
+	float loopStart = (float)getParameterValueAsInt(swgn->loopStart) * loopScale;
+	float loopEnd = (float)getParameterValueAsInt(swgn->loopEnd) * loopScale;
 	float lo = 0.0f;
 	float hi = len;
 	switch(swgn->viewMode) {
@@ -280,8 +453,8 @@ static void drawSampleWaveformGuiNode(void *self) {
 	 * points are drawn in green, and the cursor in the brighter colour
 	 * it has everywhere else in the app. */
 	if(swgn->points.loopStart.exists && swgn->points.loopEnd.exists) {
-		float a = (float)swgn->points.loopStart.frame;
-		float b = (float)swgn->points.loopEnd.frame;
+		float a = (float)swgn->points.loopStart.frame * loopScale;
+		float b = (float)swgn->points.loopEnd.frame * loopScale;
 		if(a > lo && a < hi && b > lo && b < hi) {
 			int x0 = gn->x + (int)(((a - lo) / (hi - lo)) * (float)gn->w);
 			int x1 = gn->x + (int)(((b - lo) / (hi - lo)) * (float)gn->w);
@@ -298,13 +471,38 @@ static void drawSampleWaveformGuiNode(void *self) {
 		}
 	}
 	if(swgn->points.loopStart.exists) {
-		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopStart.frame, lo, hi);
+		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopStart.frame * loopScale, lo, hi);
 	}
 	if(swgn->points.loopEnd.exists) {
-		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopEnd.frame, lo, hi);
+		drawWaveformMarker(gn, cs.waveformAlt, (float)swgn->points.loopEnd.frame * loopScale, lo, hi);
 	}
 	if(swgn->points.cursor.exists) {
-		drawWaveformMarker(gn, cs.labelSelected, (float)swgn->points.cursor.frame, lo, hi);
+		drawWaveformMarker(gn, cs.labelSelected, (float)swgn->points.cursor.frame * loopScale, lo, hi);
+	}
+
+	/* Task 9: the crossfade, drawn on the waveform. The head's and the
+	 * tail's bands are shaded harder than the loop region, and the
+	 * fade curve is drawn over each -- a straight line for the
+	 * equal-gain law, a quarter-circle for the equal-power one. The
+	 * value is written on the waveform as well, so the number and the
+	 * picture agree. */
+	if(swgn->instrument && swgn->instrument->id.sampler.crossfade) {
+		float xfMs = getParameterValue(swgn->instrument->id.sampler.crossfade);
+		if(xfMs > 0.0f) {
+			int headStart = 0, headEnd = 0, tailStart = 0, tailEnd = 0;
+			samplerPointsCrossfadeBand(&swgn->points, (int)(xfMs * (float)bakedRateOf(swgn->instrument) / 1000.0f),
+			                           &headStart, &headEnd, &tailStart, &tailEnd);
+			if(headEnd > headStart && tailEnd > tailStart) {
+				drawCrossfadeBand(gn, (float)headStart * loopScale, (float)headEnd * loopScale, lo, hi, 1.0f);
+				drawCrossfadeBand(gn, (float)tailStart * loopScale, (float)tailEnd * loopScale, lo, hi, 0.0f);
+			}
+			char xf[32];
+			snprintf(xf, sizeof(xf), "XF %.0fms", xfMs);
+			BeginScissorMode(gn->x, gn->y, gn->w, gn->h);
+			DrawTextEx(pixelFont, xf, (Vector2){ (float)(gn->x + gn->padding), (float)(gn->y + gn->h - 12) },
+			           WAVEFORM_TAG_FONT, 1, cs.waveformAlt);
+			EndScissorMode();
+		}
 	}
 
 	const char *name = (s->name) ? s->name : "";

@@ -219,6 +219,49 @@ int samplerPointsNearestZeroCrossing(const float *data, int length, int frame) {
 	return best;
 }
 
+void samplerPointsCrossfadeBand(const SamplerPoints *p, int xfadeFrames,
+                                 int *headStart, int *headEnd, int *tailStart, int *tailEnd) {
+	if(headStart) {
+		*headStart = 0;
+	}
+	if(headEnd) {
+		*headEnd = 0;
+	}
+	if(tailStart) {
+		*tailStart = 0;
+	}
+	if(tailEnd) {
+		*tailEnd = 0;
+	}
+	if(!p || xfadeFrames <= 0) {
+		return;
+	}
+	if(!p->loopStart.exists || !p->loopEnd.exists) {
+		return;
+	}
+	int start = p->loopStart.frame;
+	int end = p->loopEnd.frame;
+	/* The band cannot be longer than the loop. */
+	if(xfadeFrames > end - start) {
+		xfadeFrames = end - start;
+	}
+	if(xfadeFrames <= 0) {
+		return;
+	}
+	if(headStart) {
+		*headStart = start;
+	}
+	if(headEnd) {
+		*headEnd = start + xfadeFrames;
+	}
+	if(tailStart) {
+		*tailStart = end - xfadeFrames;
+	}
+	if(tailEnd) {
+		*tailEnd = end;
+	}
+}
+
 bool samplerPointsValidate(const SamplerPoints *p, int length) {
 	if(!p || length <= 0) {
 		return false;

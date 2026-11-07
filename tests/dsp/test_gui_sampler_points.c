@@ -197,7 +197,47 @@ static int test_validate_rejects_a_backwards_loop(void) {
 	return 0;
 }
 
+/* The crossfade's band: the head is the loop's first frames and the
+ * tail its last, and the band never exceeds the loop. */
+static int test_crossfade_band(void) {
+	SamplerPoints p;
+	samplerPointsInit(&p, SAMPLE_LEN);
+	samplerPointsSelect(&p, PT_LOOP_START);
+	samplerPointsMoveCursor(&p, 100);
+	samplerPointsSelect(&p, PT_LOOP_END);
+	samplerPointsMoveCursor(&p, 500);
+	/* The loop start followed the cursor to 100, and the loop end was
+	 * created at the cursor and then followed it to 600. */
+	ASSERT_EQ(p.loopStart.frame, 100, "the loop starts at 100");
+	ASSERT_EQ(p.loopEnd.frame, 600, "the loop ends at 600");
+
+	int headStart = -1, headEnd = -1, tailStart = -1, tailEnd = -1;
+	samplerPointsCrossfadeBand(&p, 64, &headStart, &headEnd, &tailStart, &tailEnd);
+	ASSERT_EQ(headStart, 100, "the head band starts at the loop's start");
+	ASSERT_EQ(headEnd, 164, "the head band is the crossfade's length");
+	ASSERT_EQ(tailStart, 536, "the tail band ends at the loop's end");
+	ASSERT_EQ(tailEnd, 600, "the tail band ends at the loop's end");
+
+	/* A band longer than the loop is clamped to it. */
+	samplerPointsCrossfadeBand(&p, 10000, &headStart, &headEnd, &tailStart, &tailEnd);
+	ASSERT_EQ(headEnd - headStart, 500, "the band is clamped to the loop's length");
+	ASSERT_EQ(tailEnd - tailStart, 500, "the tail band is clamped too");
+
+	/* No band without a loop, and none without a crossfade. */
+	samplerPointsCrossfadeBand(&p, 0, &headStart, &headEnd, &tailStart, &tailEnd);
+	ASSERT_EQ(headEnd - headStart, 0, "no crossfade is no band");
+	samplerPointsInit(&p, SAMPLE_LEN);
+	samplerPointsCrossfadeBand(&p, 64, &headStart, &headEnd, &tailStart, &tailEnd);
+	ASSERT_EQ(headEnd - headStart, 0, "no loop is no band");
+
+	printf("PASS test_crossfade_band\n");
+	return 0;
+}
+
 int main(void) {
+	if(test_crossfade_band() != 0) {
+		return 1;
+	}
 	if(test_cursor_moves_and_clamps() != 0) {
 		return 1;
 	}

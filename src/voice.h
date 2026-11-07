@@ -300,6 +300,9 @@ typedef struct {
 	 * filter. Per VOICE, so two voices on the same instrument are
 	 * filtered independently. */
 	SamplerOtaState ota;
+	/* The read's direction: 1 forwards, -1 backwards. It belongs to the
+	 * voice, so a PINGPONG read alternates across the ticks. */
+	int direction;
 } SamplerVoiceData;
 
 typedef struct {
