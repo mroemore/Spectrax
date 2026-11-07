@@ -860,10 +860,18 @@ static void drawTypeLabelGuiNode(void *self) {
 	const char *tag = inst ? voiceTypeTag(inst->voiceType) : "--";
 	Font *lf = styleFont(st->label.fontName);
 	int tw = MeasureText(tag, st->label.fontSize);
+	/* A type that cannot make a sound is shown GREYED: the type is not
+	 * offered by the selector, but a preset can still carry one, and the
+	 * label must say that the instrument is in a state the user cannot
+	 * reach. */
+	Color col = st->label.color;
+	if(inst && !voiceTypeIsAvailable(inst->voiceType)) {
+		col = cs.disabledText;
+	}
 	DrawTextEx(*lf, tag,
 	           (Vector2){ gn->x + (gn->w - tw) / 2 + st->label.offsetX, gn->y + (gn->h - st->label.fontSize) / 2 + st->label.offsetY },
 	           st->label.fontSize, st->label.spacing,
-	           gn->selected ? st->label.colorSelected : st->label.color);
+	           gn->selected ? st->label.colorSelected : col);
 	if(gn->selected) {
 		Color outline = (st->border.colorSelected.a != 0) ? st->border.colorSelected : st->border.color;
 		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, st->border.borderWidth, outline);
