@@ -634,6 +634,8 @@ int main(int argc, char **argv) {
 		if(deviceCalibrate(cfgDir, data.voiceManager, 0, &measured)) {
 			g_deviceBudget = measured;
 			g_deviceBudgetLoaded = 1;
+			/* The measured budget is the one the GUI shows. */
+			deviceBudgetSetCurrent(&g_deviceBudget);
 			printf("calibrated: %ld ns per voice-sample, %d voices per channel, %d-frame buffer\n",
 			       measured.nanosPerVoiceSample, measured.voicesPerChannel, measured.bufferFrames);
 		}
@@ -1185,6 +1187,10 @@ void initApplication(paTestData *data, ApplicationState **appState, InstrumentGu
 	if(deviceBudgetLoad(data->configDir, &g_deviceBudget)) {
 		g_deviceBudgetLoaded = 1;
 	}
+	/* The GUI reads the budget too: the VOICES dial's maximum IS the
+	 * budget's per-channel voice count, so a device that cannot give
+	 * eight voices shows what it can give. */
+	deviceBudgetSetCurrent(&g_deviceBudget);
 	if(g_deviceBudget.enabledChannels < settings->enabledChannels) {
 		settings->enabledChannels = g_deviceBudget.enabledChannels;
 	}

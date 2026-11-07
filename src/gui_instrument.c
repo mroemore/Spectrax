@@ -772,6 +772,24 @@ static void cbPresetNext(void *ctx) {
  * test_type_cycle_order (gui.h). Unknown types fall through to FM so
  * the caller's `setInstrumentVoiceType` always lands on a valid type. */
 
+/* Task 11: which voice types can make a sound.
+ *
+ * GRAIN and SPECTRAL cannot today: their code stays (the design says
+ * they are greyed out, not removed), but the type selector skips them,
+ * so the user is never offered a type that would be silent.
+ *
+ * Their code is not wasted: GRAIN's granular buffer is already only
+ * allocated for a GRAIN voice, so there is no memory work to do. */
+bool voiceTypeIsAvailable(VoiceType t) {
+	switch(t) {
+		case VOICE_TYPE_GRAIN:
+		case VOICE_TYPE_SPECTRAL:
+			return false;
+		default:
+			return true;
+	}
+}
+
 VoiceType nextVoiceType(VoiceType t) {
 	switch(t) {
 		case VOICE_TYPE_SAMPLE: return VOICE_TYPE_FM;
@@ -1482,6 +1500,10 @@ static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst
 	 * range is 1..8 (MAX_VOICES_PER_CHANNEL). incParameterBaseValue
 	 * is the standard adjust callback used by every other dial in the
 	 * instrument screen, so left/right + KM_EDIT+arrow work uniformly. */
+	/* The budget's voice count is the dial's ceiling: a device that
+	 * cannot give eight voices shows four, and the user sees the number
+	 * change rather than the budget silently refusing. */
+	applyVoiceBudgetToInstrument(inst);
 	GuiNode *voicesDial = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "VOICES", 0, incParameterBaseValue, inst->voiceCountParam);
 
 	GuiNode *widthPad = createBlankGuiNode();

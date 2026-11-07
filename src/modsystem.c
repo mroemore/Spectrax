@@ -260,8 +260,23 @@ void setParameterMinValue(Parameter *param, float min) {
 }
 
 void setParameterMaxValue(Parameter *param, float max) {
+	if(!param) {
+		return;
+	}
+	/* The maximum never goes below the minimum: an inverted range
+	 * would make every value invalid.
+	 *
+	 * (The old code set the maximum only when it was BELOW the
+	 * minimum -- so it never raised a maximum at all, and the dial's
+	 * ceiling never moved.) */
 	if(max < param->minValue) {
-		param->maxValue = max;
+		max = param->minValue;
+	}
+	param->maxValue = max;
+	/* A value above the new ceiling comes down with it, so the dial
+	 * and the parameter agree. */
+	if(param->currentValue > max) {
+		param->currentValue = max;
 	}
 }
 

@@ -263,6 +263,9 @@ int chipLabelCharIndex(char c);
  * {SAMPLE, FM, BLEP} falls through to FM so a stray value still lands
  * on a known type. Exposed (non-static) for the unit test
  * test_type_cycle_order. */
+/* Task 11: true when the voice type can make a sound. GRAIN and
+ * SPECTRAL cannot today, so the type selector skips them. */
+bool voiceTypeIsAvailable(VoiceType t);
 VoiceType nextVoiceType(VoiceType t);
 VoiceType prevVoiceType(VoiceType t);
 
@@ -294,6 +297,15 @@ typedef struct {
 	ModStrip strip;
 	int channel;
 } ModStripGuiNode;
+
+/* Apply the current device budget's per-channel voice count to an
+ * instrument: the VOICES parameter's maximum becomes the budget's, and a
+ * value above it is clamped down to it.
+ *
+ * The user SEES the number change, so the budget is not a silent
+ * refusal. Returns the number of voices the instrument may now
+ * allocate. */
+int applyVoiceBudgetToInstrument(Instrument *inst);
 
 typedef struct {
 	GuiNode base;

@@ -54,6 +54,12 @@ typedef struct {
  * desktop uses. */
 void deviceBudgetDefaults(DeviceBudget *out);
 
+/* The budget the app is running under, or NULL when it is not known.
+ * The VOICES dial's maximum IS the budget's per-channel voice count. */
+void deviceBudgetSetCurrent(const DeviceBudget *budget);
+const DeviceBudget *deviceBudgetCurrent(void);
+
+
 /* The voice types this device may offer.
  *
  * This is the engine's copy of the budget's mask, so the engine can

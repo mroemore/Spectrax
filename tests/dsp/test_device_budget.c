@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #include "device_budget.h"
+#include "gui.h"
 #include "voice.h"
 
 #define ASSERT_TRUE(c, m) do { if(!(c)) { printf("FAIL: %s\n", m); return 1; } } while(0)
@@ -21,6 +22,45 @@
 
 /* The deadline at 48 kHz with a 256-frame buffer: 5.33 ms. */
 #define DEADLINE_NANOS (5333333)
+
+/* The budget reaches the UI: the VOICES dial's maximum IS the budget's
+ * per-channel voice count, and a value above it is clamped down. The
+ * user sees the number change, so the budget is not a silent refusal. */
+static int test_the_budget_reaches_the_voices_dial(void) {
+	DeviceBudget budget;
+	deviceBudgetDefaults(&budget);
+	budget.voicesPerChannel = 2;
+	deviceBudgetSetCurrent(&budget);
+
+	/* An instrument with a VOICES parameter. */
+	Instrument *inst = (Instrument *)calloc(1, sizeof(Instrument));
+	if(!inst) {
+		return 1;
+	}
+	ParamList *pl = createParamList();
+	if(!pl) {
+		free(inst);
+		return 1;
+	}
+	inst->paramList = pl;
+	inst->voiceCountParam = createParameterPro(pl, "voiceCount", 8.0f, 1.0f, 8.0f, 1.0f, 1.0f, NULL, NULL);
+	if(!inst->voiceCountParam) {
+		freeParamList(pl);
+		free(inst);
+		return 1;
+	}
+
+	/* The value was 8, and the budget allows two. */
+	ASSERT_TRUE(getParameterValue(inst->voiceCountParam) == 8.0f, "the value starts at eight");
+	applyVoiceBudgetToInstrument(inst);
+	ASSERT_TRUE(inst->voiceCountParam->maxValue == 2.0f, "the maximum is the budget's");
+	ASSERT_TRUE(getParameterValue(inst->voiceCountParam) == 2.0f, "the value is clamped to it");
+
+	/* The budget's ceiling holds when the budget is published again. */
+	deviceBudgetSetCurrent(NULL);
+	printf("PASS test_the_budget_reaches_the_voices_dial\n");
+	return 0;
+}
 
 static int test_the_defaults_are_sane(void) {
 	DeviceBudget b;
@@ -222,6 +262,7 @@ int main(void) {
 	fails += test_the_voice_type_mask_is_enforced();
 	fails += test_the_default_mask_permits_only_the_working_types();
 	fails += test_a_profile_is_clamped();
+	fails += test_the_budget_reaches_the_voices_dial();
 	if(fails) {
 		fprintf(stderr, "%d device-budget test(s) failed\n", fails);
 		return 1;

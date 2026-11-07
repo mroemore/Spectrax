@@ -54,6 +54,28 @@ int deviceBudgetMaskForVoiceType(int voiceType) {
 	}
 }
 
+/* The budget the app is running under.
+ *
+ * The budget is measured on the device (or loaded from its config), and
+ * it is what the engine may actually do. The GUI needs it too: the
+ * VOICES dial's maximum IS the budget's per-channel voice count, so a
+ * device that cannot give eight voices shows four -- and the user sees
+ * the number change, rather than the budget silently refusing. */
+static DeviceBudget g_currentBudget;
+static bool g_currentBudgetSet = false;
+
+void deviceBudgetSetCurrent(const DeviceBudget *budget) {
+	if(!budget) {
+		return;
+	}
+	g_currentBudget = *budget;
+	g_currentBudgetSet = true;
+}
+
+const DeviceBudget *deviceBudgetCurrent(void) {
+	return g_currentBudgetSet ? &g_currentBudget : NULL;
+}
+
 void deviceBudgetDefaults(DeviceBudget *out) {
 	if(!out) {
 		return;

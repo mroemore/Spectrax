@@ -818,6 +818,31 @@ static int test_waveform_points(void) {
 	return 0;
 }
 
+/* The voice types that cannot make a sound are not offered: GRAIN and
+ * SPECTRAL cannot today, so the type selector skips them. */
+static int test_voice_type_gating(void) {
+	ASSERT_TRUE(voiceTypeIsAvailable(VOICE_TYPE_FM), "FM can make a sound");
+	ASSERT_TRUE(voiceTypeIsAvailable(VOICE_TYPE_SAMPLE), "SAMPLE can make a sound");
+	ASSERT_TRUE(voiceTypeIsAvailable(VOICE_TYPE_BLEP), "BLEP can make a sound");
+	ASSERT_TRUE(!voiceTypeIsAvailable(VOICE_TYPE_GRAIN), "GRAIN cannot");
+	ASSERT_TRUE(!voiceTypeIsAvailable(VOICE_TYPE_SPECTRAL), "SPECTRAL cannot");
+
+	/* Cycling the type never lands on an unavailable one, from every
+	 * type that is available. */
+	VoiceType available[] = { VOICE_TYPE_FM, VOICE_TYPE_SAMPLE, VOICE_TYPE_BLEP };
+	for(unsigned i = 0; i < 3; i++) {
+		VoiceType t = available[i];
+		for(int step = 0; step < 8; step++) {
+			t = nextVoiceType(t);
+			ASSERT_TRUE(voiceTypeIsAvailable(t), "the cycle lands on an available type");
+			t = prevVoiceType(t);
+			ASSERT_TRUE(voiceTypeIsAvailable(t), "the cycle lands on an available type");
+		}
+	}
+	printf("PASS test_voice_type_gating\n");
+	return 0;
+}
+
 /* The modulation list is gone from the instrument screen: the modulation
  * screen carries the full interface now, and the instrument screen keeps
  * one line for the connected modulators. */
@@ -939,6 +964,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_mod_line() != 0) {
+		return 1;
+	}
+	if(test_voice_type_gating() != 0) {
 		return 1;
 	}
 	if(test_mod_list_removed() != 0) {

@@ -851,7 +851,28 @@ static void cb_setVoiceCount(void *ctx) {
  * set during the resize so the audio thread skips the channel
  * while voices are being torn down and re-initialized.
  *
- * Task 6: also writes `inst->voiceCountParam` so any future dial read
+/* Apply the current device budget's per-channel voice count to an
+ * instrument: the VOICES parameter's maximum becomes the budget's, and a
+ * value above it is clamped down to it. */
+int applyVoiceBudgetToInstrument(Instrument *inst) {
+	const DeviceBudget *b = deviceBudgetCurrent();
+	if(!inst || !b || !inst->voiceCountParam) {
+		return 0;
+	}
+	int max = b->voicesPerChannel;
+	if(max < 1) {
+		max = 1;
+	}
+	setParameterMaxValue(inst->voiceCountParam, (float)max);
+	float value = getParameterValue(inst->voiceCountParam);
+	if(value > (float)max) {
+		setParameterValue(inst->voiceCountParam, (float)max);
+		value = (float)max;
+	}
+	return (int)value;
+}
+
+/* Task 6: also writes `inst->voiceCountParam` so any future dial read
  * (after a programmatic resize, e.g. presets / load) reflects the
  * real voice pool size. The write UNCONDITIONALLY suppresses
  * onChange (savedCb / NULL / restore) rather than relying on
