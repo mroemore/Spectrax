@@ -570,13 +570,18 @@ float getBakedSampleDrop(const BakedSample *b, uint32_t *addr, double *phase, fl
 	int direction = playbackDirection(playback, dir);
 	bool pingpong = (playback == SPT_FORWARD_PINGPONG || playback == SPT_REVERSE_PINGPONG);
 	/* The fractional part is carried, and the integer part moves the
-	 * address -- truncated, as the machine's accumulator did. */
+	 * address -- truncated, as the machine's accumulator did.
+	 *
+	 * The integer part is taken with floor(), not by a cast: a backward
+	 * read makes the accumulator NEGATIVE, and converting a negative
+	 * double to an unsigned type is undefined. For a forward read floor
+	 * and truncation agree. */
 	double ip = *phase + (double)(direction < 0 ? -advance : advance);
-	uint32_t i = (uint32_t)ip;
+	int i = (int)floor(ip);
 	*phase = ip - (double)i;
 	/* The address never stalls: an integer part of zero still advances a
 	 * frame, so a slow passage repeats rather than sticking. */
-	int step = (int)i;
+	int step = i;
 	if(step == 0) {
 		step = direction;
 	}
