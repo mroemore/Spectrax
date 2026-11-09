@@ -470,6 +470,81 @@ static int test_clear_all(void) {
 	return 0;
 }
 
+/* The destination picker TOGGLES: picking a destination that is already
+ * routed removes the route, and picking one that is not adds it.
+ *
+ * (The picker it replaced toggled; without the toggle, routing the same
+ * destination twice showed it twice in the route list and applied the
+ * modulation twice, and left a stray attenuator behind.) */
+static int test_picker_toggles(void) {
+	Env e;
+	if(make_env(&e) != 0) {
+		return 1;
+	}
+	Instrument *inst = e.inst;
+
+	/* The screen's graph must exist: the picker is built for the screen's
+	 * selected source. */
+	modScreenSetSelectedSource(-1);
+	Graph *screen = createModScreenGraph(inst, e.vm, 0, true);
+	ASSERT_TRUE(screen != NULL, "the modulation screen's graph");
+	Mod *src = sourceAt(inst, 0);
+	ASSERT_TRUE(src != NULL, "the first source");
+	modScreenSetSelectedSource(0);
+
+	/* Build the picker and find its first destination button. */
+	Graph *picker = createRoutePickerGraph(inst, 0);
+	ASSERT_TRUE(picker != NULL, "the picker's graph");
+	GuiNode *dest = findChildNamed(picker->root, "DEST_0");
+	ASSERT_TRUE(dest != NULL, "the picker holds a destination button");
+	ASSERT_TRUE(dest->actionCb != NULL, "the destination button routes");
+
+	/* How many routes the source has, over the whole instrument. The
+	 * count is relative: the FM's default patch already routes its
+	 * first envelope, so picking ADDS one and picking again takes it
+	 * back. */
+	int before = 0;
+	for(int i = 0; i < inst->paramList->count; i++) {
+		for(ModConnection *c = inst->paramList->params[i]->modulators; c; c = c->next) {
+			if(connFromSource(c, src)) {
+				before++;
+			}
+		}
+	}
+
+	/* Pick it: the route appears. */
+	dest->actionCb(dest->actionCtx);
+	int after = 0;
+	for(int i = 0; i < inst->paramList->count; i++) {
+		for(ModConnection *c = inst->paramList->params[i]->modulators; c; c = c->next) {
+			if(connFromSource(c, src)) {
+				after++;
+			}
+		}
+	}
+	ASSERT_EQ(after, before + 1, "picking the destination routed it");
+
+	/* Pick it again: the route goes. */
+	dest->actionCb(dest->actionCtx);
+	int again = 0;
+	for(int i = 0; i < inst->paramList->count; i++) {
+		for(ModConnection *c = inst->paramList->params[i]->modulators; c; c = c->next) {
+			if(connFromSource(c, src)) {
+				again++;
+			}
+		}
+	}
+	ASSERT_EQ(again, before, "picking it again removed the route");
+
+	freeGuiNode(picker->root);
+	free(picker);
+	freeGuiNode(screen->root);
+	free(screen);
+	free_env(&e);
+	printf("PASS test_picker_toggles\n");
+	return 0;
+}
+
 /* ---- the source list's own actions --------------------------------------- */
 
 /* The source list carries the actions the instrument screen's list used
@@ -1073,6 +1148,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_clear_all() != 0) {
+		return 1;
+	}
+	if(test_picker_toggles() != 0) {
 		return 1;
 	}
 	if(test_source_list_actions() != 0) {
