@@ -915,7 +915,12 @@ static void publishSamplerCrossfadeLaw(void *data) {
 		frames = samplerCrossfadeFrames(getParameterValue(inst->id.sampler.crossfade), loopFrames, baked->rate);
 	}
 	if(frames > 0) {
+		/* The law is written here and READ by the audio thread, so the
+		 * write is under the audio lock: without it a reader could see
+		 * a half-written law and apply the wrong one to a buffer. */
+		pthread_mutex_lock(&g_audioLock);
 		samplerCrossfadeMeasure(baked, loopStart, loopEnd, frames);
+		pthread_mutex_unlock(&g_audioLock);
 	}
 }
 

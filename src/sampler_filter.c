@@ -54,7 +54,13 @@ static float otaFeedbackLimit(float g) {
 	 * limit is positive: no further guards are needed. */
 	float root = 4.0f - 2.0f * u * u;
 	float t = (sqrtf(root) - 1.41421356f * u) / (2.0f * g);
-	return t * t * t * t;
+	float k = t * t * t * t;
+	/* A hair under the bound: at the bound the poles sit ON the unit
+	 * circle, and the float rounding of the limit can put them a few
+	 * parts in 10^8 outside it. The margin costs nothing -- the
+	 * resonance is still there -- and it removes the last hair of
+	 * instability. */
+	return k * 0.999f;
 }
 
 float samplerOtaFeedbackLimit(float cutoff, int sr) {

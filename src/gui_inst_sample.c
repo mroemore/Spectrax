@@ -58,6 +58,57 @@ static void writePointsToParameters(SampleWaveformGuiNode *swgn);
 /* The instrument's waveform node, or NULL. The points live on it. */
 static SampleWaveformGuiNode *findWaveformNode(Instrument *inst);
 
+/* Find a node by name in a graph. */
+static GuiNode *findNodeByName(GuiNode *n, const char *name) {
+	if(!n) {
+		return NULL;
+	}
+	if(n->name && strcmp(n->name, name) == 0) {
+		return n;
+	}
+	if(n->items) {
+		ListElement *le = n->items->head;
+		for(int i = 0; i < n->itemCount && le; i++, le = le->next) {
+			GuiNode *hit = findNodeByName(*(GuiNode **)le->data, name);
+			if(hit) {
+				return hit;
+			}
+		}
+	}
+	return NULL;
+}
+
+/* The points are the source of truth while they are being edited, so the
+ * START and END buttons' captions are refreshed from them -- otherwise
+ * they keep showing the value the point had when the panel was built,
+ * and the user cannot see where the point went. */
+static void refreshPointCaptions(SampleWaveformGuiNode *swgn) {
+	if(!swgn || !swgn->instrument) {
+		return;
+	}
+	Graph *g = getSelectedInstGraph();
+	if(!g || !g->root) {
+		return;
+	}
+	int rate = (swgn->instrument->id.sampler.sample
+	            && swgn->instrument->id.sampler.sample->sampleRate > 0)
+	           ? swgn->instrument->id.sampler.sample->sampleRate
+	           : SPECTRAX_ENGINE_RATE;
+	char buf[48];
+	GuiNode *start = findNodeByName(g->root, "START");
+	if(start) {
+		snprintf(buf, sizeof(buf), "START %.3f",
+		         (float)swgn->points.loopStart.frame * 1000.0f / (float)rate);
+		guiNodeSetText(start, buf);
+	}
+	GuiNode *end = findNodeByName(g->root, "END");
+	if(end) {
+		snprintf(buf, sizeof(buf), "END %.3f",
+		         (float)swgn->points.loopEnd.frame * 1000.0f / (float)rate);
+		guiNodeSetText(end, buf);
+	}
+}
+
 /* Task 8: the START and END buttons select their point on the
  * waveform. The chord (FUNCTION held) reaches this from the instrument
  * screen's input handler, which checks the FUNCTION-held case before
@@ -68,6 +119,11 @@ static void cbSelectLoopStart(void *ctx) {
 		return;
 	}
 	samplerPointsSelect(&swgn->points, PT_LOOP_START);
+	/* Selecting a loop point that did not exist creates it, so the
+	 * instrument must hear about it -- otherwise the screen shows a
+	 * point the voice is not playing. */
+	writePointsToParameters(swgn);
+	refreshPointCaptions(swgn);
 }
 
 static void cbSelectLoopEnd(void *ctx) {
@@ -76,6 +132,8 @@ static void cbSelectLoopEnd(void *ctx) {
 		return;
 	}
 	samplerPointsSelect(&swgn->points, PT_LOOP_END);
+	writePointsToParameters(swgn);
+	refreshPointCaptions(swgn);
 }
 
 /* Cycle the waveform view mode FIT -> LOOP -> ZOOM -> FIT. Wired to the
@@ -195,6 +253,7 @@ static void writePointsToParameters(SampleWaveformGuiNode *swgn) {
 	}
 	setParameterValue(inst->id.sampler.loopStartIndex, (float)swgn->points.loopStart.frame);
 	setParameterValue(inst->id.sampler.loopEndIndex, (float)swgn->points.loopEnd.frame);
+	refreshPointCaptions(swgn);
 	/* The crossfade's ceiling follows the LOOP's length, not the
 	 * sample's: the spec's range is "0 to the loop's length". */
 	if(inst->id.sampler.crossfade && inst->id.sampler.sample
