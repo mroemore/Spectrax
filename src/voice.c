@@ -857,6 +857,37 @@ static void cb_setVoiceCount(void *ctx) {
  * set during the resize so the audio thread skips the channel
  * while voices are being torn down and re-initialized.
  *
+/* The RES dial's ceiling follows the CUTOFF.
+ *
+ * The OTA's feedback loop is only stable up to a bound that FALLS as the
+ * cutoff rises: at 20 kHz the feedback must stay below about 1.1, so
+ * only a quarter of the RES dial's range is usable there. So the dial's
+ * CEILING is the stable range -- the dial says what the filter does,
+ * rather than showing a number the filter cannot use.
+ *
+ * The clamp is also what keeps the cascade finite: the read path clamps
+ * the feedback again, but the dial must not offer more than the filter
+ * can take. */
+static void clampSamplerResonance(void *data) {
+	Instrument *inst = (Instrument *)data;
+	if(!inst || !inst->id.sampler.res || !inst->id.sampler.cutoff) {
+		return;
+	}
+	float cutoff = getParameterValue(inst->id.sampler.cutoff);
+	float kMax = samplerOtaFeedbackLimit(cutoff, SPECTRAX_ENGINE_RATE);
+	float resMax = kMax / SAMPLER_OTA_MAX_FEEDBACK;
+	if(resMax > 0.9f) {
+		resMax = 0.9f;
+	}
+	if(resMax < 0.0f) {
+		resMax = 0.0f;
+	}
+	setParameterMaxValue(inst->id.sampler.res, resMax);
+	if(getParameterValue(inst->id.sampler.res) > resMax) {
+		setParameterValue(inst->id.sampler.res, resMax);
+	}
+}
+
 /* Publish the loop crossfade's law onto the instrument's bake.
  *
  * The measurement is made ONCE per loop, when the loop points or the
@@ -1121,8 +1152,10 @@ void applyInstrumentPreset(Instrument *instrument, Preset p) {
 			instrument->id.sampler.law = createParameterPro(instrument->paramList, "law", (float)p.pd.sampler.law, 0.0f, (float)(SQL_COUNT - 1), 1.0f, 1.0f, instrument, cb_rebuildSamplerBake);
 			instrument->id.sampler.interp = createParameterEx(instrument->paramList, "interp", (float)p.pd.sampler.interp, 0.0f, (float)(SPI_INTERP_COUNT - 1), 1.0f, 1.0f);
 			instrument->id.sampler.filter = createParameterEx(instrument->paramList, "filter", (float)p.pd.sampler.filterOn, 0.0f, 1.0f, 1.0f, 1.0f);
-			instrument->id.sampler.cutoff = createParameterEx(instrument->paramList, "cutoff", presetValueOr(p.pd.sampler.cutoff, 20.0f, 20000.0f, 20000.0f), 20.0f, 20000.0f, 10.0f, 100.0f);
+			instrument->id.sampler.cutoff = createParameterPro(instrument->paramList, "cutoff", presetValueOr(p.pd.sampler.cutoff, 20.0f, 20000.0f, 20000.0f), 20.0f, 20000.0f, 10.0f, 100.0f, instrument, clampSamplerResonance);
 			instrument->id.sampler.res = createParameterEx(instrument->paramList, "res", presetValueOr(p.pd.sampler.res, 0.0f, 0.9f, 0.0f), 0.0f, 0.9f, 0.01f, 0.05f);
+			/* The resonance's ceiling is the stable range for this cutoff. */
+			clampSamplerResonance(instrument);
 			instrument->id.sampler.tune = createParameterEx(instrument->paramList, "tune", presetValueOr(p.pd.sampler.tune, 0.25f, 8.0f, 1.0f), 0.25f, 8.0f, 0.01f, 0.1f);
 			instrument->id.sampler.root = createParameterEx(instrument->paramList, "root", (float)p.pd.sampler.root, -48.0f, 48.0f, 1.0f, 12.0f);
 			/* The loop's crossfade, in milliseconds. The maximum follows
@@ -1724,8 +1757,10 @@ void init_instrument(Instrument **instrument, VoiceType vt, SamplePool *samplePo
 			(*instrument)->id.sampler.law = createParameterPro((*instrument)->paramList, "law", (float)SQL_OFF, 0.0f, (float)(SQL_COUNT - 1), 1.0f, 1.0f, (*instrument), cb_rebuildSamplerBake);
 			(*instrument)->id.sampler.interp = createParameterEx((*instrument)->paramList, "interp", (float)SPI_LINEAR, 0.0f, (float)(SPI_INTERP_COUNT - 1), 1.0f, 1.0f);
 			(*instrument)->id.sampler.filter = createParameterEx((*instrument)->paramList, "filter", 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
-			(*instrument)->id.sampler.cutoff = createParameterEx((*instrument)->paramList, "cutoff", 20000.0f, 20.0f, 20000.0f, 10.0f, 100.0f);
+			(*instrument)->id.sampler.cutoff = createParameterPro((*instrument)->paramList, "cutoff", 20000.0f, 20.0f, 20000.0f, 10.0f, 100.0f, *instrument, clampSamplerResonance);
 			(*instrument)->id.sampler.res = createParameterEx((*instrument)->paramList, "res", 0.0f, 0.0f, 0.9f, 0.01f, 0.05f);
+			/* The resonance's ceiling is the stable range for this cutoff. */
+			clampSamplerResonance(*instrument);
 			(*instrument)->id.sampler.tune = createParameterEx((*instrument)->paramList, "tune", 1.0f, 0.25f, 8.0f, 0.01f, 0.1f);
 			/* The root is counted from C4, so zero means C4 -- which is
 			 * what a zeroed preset gives. */

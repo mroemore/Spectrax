@@ -57,6 +57,13 @@ static float otaFeedbackLimit(float g) {
 	return t * t * t * t;
 }
 
+float samplerOtaFeedbackLimit(float cutoff, int sr) {
+	if(!(sr > 0) || !(cutoff > 0.0f)) {
+		return 0.0f;
+	}
+	return otaFeedbackLimit(canonicalOnePoleCoef(cutoff, sr));
+}
+
 void samplerOtaReset(SamplerOtaState *f) {
 	if(!f) {
 		return;

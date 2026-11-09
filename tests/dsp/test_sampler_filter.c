@@ -423,6 +423,40 @@ static int test_zero_cutoff(void) {
 	return 0;
 }
 
+/* The feedback limit, and what it means for the RES dial.
+ *
+ * The bound FALLS as the cutoff rises, so the RES dial's usable range
+ * depends on where the CUTOFF dial is: at 20 kHz only about a quarter of
+ * the dial's range is usable, at 500 Hz nearly all of it. */
+static int test_feedback_limit(void) {
+	/* A low cutoff: nearly the whole range is usable. */
+	float low = samplerOtaFeedbackLimit(500.0f, SR);
+	float high = samplerOtaFeedbackLimit(20000.0f, SR);
+	ASSERT_TRUE(low > high, "the bound falls as the cutoff rises");
+	ASSERT_TRUE(low >= 3.0f, "a low cutoff allows nearly the whole range");
+	ASSERT_TRUE(high > 1.0f && high < 1.2f, "at 20 kHz the bound is just above one");
+	ASSERT_TRUE(samplerOtaFeedbackLimit(0.0f, SR) == 0.0f, "no cutoff, no feedback");
+	ASSERT_TRUE(samplerOtaFeedbackLimit(1000.0f, 0) == 0.0f, "no rate, no feedback");
+
+	/* The bound is where the poles leave the unit circle: at the limit
+	 * the loop is at the edge of stability, and just past it, it is not. */
+	float g = canonicalOnePoleCoef(20000.0f, SR);
+	float u = 1.0f - g;
+	float root = 4.0f - 2.0f * u * u;
+	float t = (sqrtf(root) - 1.41421356f * u) / (2.0f * g);
+	float kAtLimit = t * t * t * t;
+	ASSERT_TRUE(kAtLimit > 1.0f, "the limit is above one at 20 kHz");
+	/* The poles at the limit sit on the unit circle (for the worst
+	 * angle), so the limit is where the loop stops being stable. */
+	float r = g * powf(kAtLimit, 0.25f);
+	float re = (1.0f - g) + r * 0.70710678f;
+	float im = r * 0.70710678f;
+	ASSERT_TRUE(sqrtf(re * re + im * im) > 0.999f, "the poles reach the unit circle at the limit");
+
+	printf("PASS test_feedback_limit\n");
+	return 0;
+}
+
 /* The cascade is FINITE over the WHOLE parameter grid.
  *
  * The feedback loop's stability bound FALLS as the cutoff rises: at
@@ -554,6 +588,9 @@ int main(void) {
 		return 1;
 	}
 	if(test_zero_cutoff() != 0) {
+		return 1;
+	}
+	if(test_feedback_limit() != 0) {
 		return 1;
 	}
 	if(test_finite_over_the_whole_grid() != 0) {

@@ -33,6 +33,15 @@ typedef struct {
 /* Clear the cascade's state. */
 void samplerOtaReset(SamplerOtaState *f);
 
+/* The largest feedback amount the cascade is stable at, for a cutoff.
+ *
+ * The bound FALLS as the cutoff rises, so the RES dial's usable range
+ * depends on where the CUTOFF dial is. The caller uses this to make the
+ * dial's ceiling the stable one, so the dial says what the filter does.
+ * The result is the feedback AMOUNT (0..SAMPLER_OTA_MAX_FEEDBACK); the
+ * RES parameter's range is that divided by the maximum. */
+float samplerOtaFeedbackLimit(float cutoff, int sr);
+
 /* One sample through the cascade.
  *
  * `cutoff` is in Hz, `res` is 0..1 (the feedback amount), and `sr` is the
