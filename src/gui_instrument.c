@@ -1584,7 +1584,7 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	appendModLineNode(instGraph, instwrap, inst, 2, false);
 
 	appendItem(mainRow, margin1, 1);
-	appendItem(mainRow, instwrap, 18);
+	appendItem(mainRow, instwrap, 36);
 	appendItem(mainRow, margin2, 1);
 	appendItem(instGraph->root, mainRow, 19);
 

@@ -23,10 +23,10 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	 * AD-env standard) so every per-op control — including the outLevel /
 	 * pitch / gain dests that only existed on the routing layer — has a
 	 * reachable base dial. Content is 5 rows (one op per row + a misc
-	 * row), viewport is 3 rows, so a scrollbar appears for the last two.
-	 * One op per row keeps the 5 dial labels (FEEDBACK1 etc.) from
-	 * colliding, which 2 ops/row does. */
-	const int fmRowH = 35;
+	 * row), viewport is ~4 rows at the 1.5x dial height, so the mods
+	 * row scrolls. One op per row keeps the 5 dial labels (FEEDBACK1
+	 * etc.) from colliding, which 2 ops/row does. */
+	const int fmRowH = 50;
 	GuiNode *fmScroll = createScrollContainer(0, 0, 100, fmRowH * 3, fmRowH, "fm_ctrl");
 	fmScroll->drawable = true;
 	fmScroll->draw = drawWrapperNode;
