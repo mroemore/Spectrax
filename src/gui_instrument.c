@@ -1434,11 +1434,13 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	guiNodeSetClass(loadBtn, "btn-compact");
 	guiNodeSetClass(nextBtn, "btn-compact");
 	appendItem(btnwrap, prevBtn, 1);
-	appendItem(btnwrap, pad1, 7);
+	/* 1.5x: SAVE/LOAD/NEXT need two weight slices each so their 11px
+	 * compact labels clear the cell border (one slice is ~30px). */
+	appendItem(btnwrap, pad1, 4);
 	appendItem(btnwrap, nameNode, 4);
-	appendItem(btnwrap, saveBtn, 1);
-	appendItem(btnwrap, loadBtn, 1);
-	appendItem(btnwrap, nextBtn, 1);
+	appendItem(btnwrap, saveBtn, 2);
+	appendItem(btnwrap, loadBtn, 2);
+	appendItem(btnwrap, nextBtn, 2);
 	appendItem(container, btnwrap, weight);
 	/* Task 7: the preset load list is no longer a child node in the
 	 * PRESET controls row. It now lives as its own overlay Layer,
