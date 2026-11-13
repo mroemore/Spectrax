@@ -82,9 +82,13 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	GuiNode *swing = createDialGuiNode(0, 0, 100, 100, 5, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
 	GuiNode *pad2 = createNamedBlankGuiNode("pad02");
 	appendItem(songControls, pad0, 1);
-	appendItem(songControls, bpm, 1);
-	appendItem(songControls, swing, 1);
-	appendItem(songControls, pad2, 8);
+	/* 1.5x: each dial's content is 40px tall, so a 1/11 weight slice
+	 * (~43px) overflowed the cell and the label crossed into the
+	 * knob. The column below is empty space, so the pair can take a
+	 * double slice without costing the grid anything. */
+	appendItem(songControls, bpm, 2);
+	appendItem(songControls, swing, 2);
+	appendItem(songControls, pad2, 9);
 
 	GuiNode *margin2 = createNamedBlankGuiNode("Marge!");
 	appendItem(agui->root, pad1, 1);

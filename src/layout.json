@@ -133,7 +133,7 @@
             ],
             "voiceCount": {
                 "font": "pixel",
-                "fontSize": 14,
+                "fontSize": 10,
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": 2,
@@ -141,7 +141,7 @@
             },
             "typeTag": {
                 "font": "pixel",
-                "fontSize": 14,
+                "fontSize": 10,
                 "spacing": 1,
                 "offsetX": -4,
                 "offsetY": 2,
@@ -149,7 +149,7 @@
             },
             "label": {
                 "font": "pixel",
-                "fontSize": 16,
+                "fontSize": 12,
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 0,
@@ -157,7 +157,7 @@
             },
             "patchName": {
                 "font": "pixel",
-                "fontSize": 11,
+                "fontSize": 9,
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": -11,

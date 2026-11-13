@@ -824,14 +824,14 @@ static int test_chip_style_resolves_and_geometry(void) {
 	ASSERT_TRUE(st != NULL, "chip style resolves");
 	ASSERT_TRUE(st->border.borderWidth == 2.0f, "chip border width 2");
 	ASSERT_TRUE(st->dots.size == 4 && st->dots.gap == 2, "chip dots defaults");
-	ASSERT_TRUE(chipComponentHeight(st) == 31,
-	            "chip intrinsic height (label 16 + patch 11 + dots 4)");
+	ASSERT_TRUE(chipComponentHeight(st) == 25,
+	            "chip intrinsic height (label 12 + patch 9 + dots 4)");
 
 	ChipGeometry g;
 	computeChipGeometry(n, st, "FM", "chan", &g);
 	ASSERT_TRUE(g.voiceCountY == 2, "voice count top at +2");
-	/* label centred: (h - fontSize)/2 + offsetY = (30-16)/2 + 0 = 7 */
-	ASSERT_TRUE(g.labelY == 7, "label vertically centred");
+	/* label centred: (h - fontSize)/2 + offsetY = (30-12)/2 + 0 = 9 */
+	ASSERT_TRUE(g.labelY == 9, "label vertically centred");
 	/* patchName bottom: y + h + offsetY = 0 + 30 + -11 = 19 */
 	ASSERT_TRUE(g.patchNameY == 19, "patch name at bottom (offsetY -11)");
 	freeGuiNode(n);
