@@ -1,8 +1,8 @@
 {
 	"schema": 2,
 	"font": {
-		"path": "resources/fonts/console.ttf",
-		"size": 9,
+		"path": "resources/fonts/pixel_times.ttf",
+		"size": 14,
 		"spacing": 1
 	},
 	"colors": {

@@ -23,6 +23,8 @@
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"
+#include "input_log.h"
+#include "alsa_output.h"
 #include "graph_gui.h"
 #include "dataviz.h"
 #include "vizfx.h"
@@ -279,6 +281,11 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer,
  * callback -- the app would sit there playing the silence it was primed
  * with. The PipeWire-backed PCMs deliver callbacks normally. */
 static volatile unsigned long g_audioCallbacks = 0;
+/* Rendered-frame accounting for the --probe-tempo pacing probe: the engine's
+ * clock IS the callback, so frames/s is the rate the song actually advances at
+ * (and the underflow count says why it might not be SPECTRAX_ENGINE_RATE). */
+static volatile unsigned long g_audioFrames = 0;
+static volatile unsigned long g_audioUnderflows = 0;
 
 /* Opens the output stream, negotiating a rate and buffer size the device will
  * accept, and records the rate the stream ended up at in g_deviceRate.
@@ -489,10 +496,59 @@ static PaDeviceIndex findOutputDeviceByName(const char *want) {
 static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
 	(void)inputBuffer;
 	(void)timeInfo;
-	(void)statusFlags;
 	g_audioCallbacks++;
+	g_audioFrames += framesPerBuffer;
+	if(statusFlags & paOutputUnderflow) {
+		g_audioUnderflows++;
+	}
 	renderAudioBuffer((paTestData *)userData, (float *)outputBuffer, framesPerBuffer);
 	return 0;
+}
+
+/* Companion to --probe-tempo: is the stream pacing real time?
+ *
+ * Every sequencer step is counted in rendered samples, so the callback is the
+ * song's clock -- one buffer of framesPerBuffer samples per call. If the device
+ * delivers fewer samples per second than SPECTRAX_ENGINE_RATE the song advances
+ * at that fraction of real time: playback looks frozen, then crawls, and the
+ * output is one buffer per (possibly seconds-long) starvation gap. Printing
+ * frames/s makes the ratio explicit instead of "it feels slow". */
+static void probeAudioPacing(void) {
+	static double lastT = 0.0;
+	static unsigned long lastFrames = 0;
+	static unsigned long lastUnderflows = 0;
+	if(!g_probeTempo) {
+		return;
+	}
+	/* The engine's clock is whichever backend is running: the ALSA thread
+	 * writes are the device's own pace, so its frame counter is the honest
+	 * one there. */
+	unsigned long frames = g_audioFrames;
+	unsigned long underflows = g_audioUnderflows;
+	double now = GetTime();
+	if(alsaOutputActive()) {
+		AlsaOutputStats stats;
+		alsaOutputStats(&stats);
+		frames = stats.frames;
+		underflows = stats.xruns;
+	}
+	if(lastT == 0.0) {
+		lastT = now;
+		lastFrames = frames;
+		lastUnderflows = underflows;
+		return;
+	}
+	double dt = now - lastT;
+	if(dt < 2.0) {
+		return;
+	}
+	double rate = (double)(frames - lastFrames) / dt;
+	fprintf(stderr, "PACING backend=%s engineRate=%.0f/s want=%d/s underruns=%lu (+%lu)\n",
+	        alsaOutputActive() ? "alsa" : "portaudio", rate, SPECTRAX_ENGINE_RATE,
+	        underflows, underflows - lastUnderflows);
+	lastT = now;
+	lastFrames = frames;
+	lastUnderflows = underflows;
 }
 
 #ifndef SPECTRAX_HARNESS
@@ -507,6 +563,9 @@ int main(int argc, char **argv) {
 	 * the exit path can rebuild absolute cfg.json / clr.json paths. */
 	char cfgDir[1024];
 	char dataDir[1024];
+	/* The device's ALSA PCM, from the launch wrapper's device.toml. Absent on
+	 * a desktop, where PortAudio is the right backend. */
+	const char *alsaPcm = NULL;
 	/* Task 9: scan argv for the --probe-route diagnostic flag. Off by
 	 * default; the probe must have zero effect when this flag is absent. */
 	for(int i = 1; i < argc; i++) {
@@ -515,6 +574,9 @@ int main(int argc, char **argv) {
 		}
 		if(strcmp(argv[i], "--probe-tempo") == 0) {
 			g_probeTempo = true;
+		}
+		if(strcmp(argv[i], "--alsa-pcm") == 0 && i + 1 < argc) {
+			alsaPcm = argv[i + 1];
 		}
 		if((strcmp(argv[i], "--volume") == 0 || strcmp(argv[i], "-V") == 0) && i + 1 < argc) {
 			char *end = NULL;
@@ -545,9 +607,9 @@ int main(int argc, char **argv) {
 	/* Seed FontConfig with hardcoded defaults so it stays usable even if
 	 * loadThemeJson can't find the theme file. */
 	FontConfig fontCfg;
-	strncpy(fontCfg.path, "resources/fonts/console.ttf", sizeof(fontCfg.path) - 1);
+	strncpy(fontCfg.path, "resources/fonts/pixel_times.ttf", sizeof(fontCfg.path) - 1);
 	fontCfg.path[sizeof(fontCfg.path) - 1] = '\0';
-	fontCfg.size = 9;
+	fontCfg.size = 14;
 	fontCfg.spacing = 1;
 	setFontConfig(&fontCfg);
 
@@ -616,18 +678,58 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	err = Pa_Initialize();
-	if(err != paNoError)
-		goto error;
+	/* The device's own ALSA clock when the launcher named a PCM (see
+	 * alsa_output.h); PortAudio everywhere else. The ALSA path is preferred
+	 * because on this hardware PortAudio's ALSA backend either never delivers
+	 * a callback or delivers them far faster than real time, and the callback
+	 * is the song's clock. PortAudio stays as the fallback so a machine whose
+	 * PCM cannot be opened still starts (and says so). */
+	stream = NULL;
+	if(alsaPcm) {
+		char alsaErr[256];
+		unsigned long alsaBuf = (unsigned long)(g_deviceBudgetLoaded ? g_deviceBudget.bufferFrames : 256);
+		if(alsaOutputStart(&data, alsaPcm, (unsigned)alsaBuf, alsaErr, sizeof(alsaErr))) {
+			g_deviceRate = (float)alsaOutputRate();
+			printf("audio: ALSA %s at %.0f Hz, %u-frame writes\n", alsaPcm,
+			       (double)g_deviceRate, (unsigned)alsaBuf);
+		} else {
+			fprintf(stderr, "audio: %s -- falling back to PortAudio\n", alsaErr);
+		}
+	}
+	if(!alsaOutputActive()) {
+		err = Pa_Initialize();
+		if(err != paNoError)
+			goto error;
 
-	err = openAudioStream(&stream, &data);
-	if(err != paNoError)
-		goto error;
+		err = openAudioStream(&stream, &data);
+		if(err != paNoError)
+			goto error;
+	}
 
 	SetTraceLogLevel(LOG_WARNING);
 	RenderTexture2D gfx = createPresentTarget();
+	/* Input-mapping diagnostic: every press is logged at all three layers
+	 * (evdev, raylib, KeyMapping) to input_log.txt. Best effort -- a failure to
+	 * write it must not stop the app. */
+	inputDiagStart();
+	/* The exit gesture's clock; -1 means "not holding". */
+	double quitHeldSince = -1.0;
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
+		double now = GetTime();
+		inputDiagPoll(now);
+		inputDiagLogCommands(appState->inputState);
+		/* No window manager on the device: SELECT+START held is the only
+		 * way out of the app (see QUIT_HOLD_SECONDS). The raw kernel codes
+		 * are a second route, so a wrong gamepad mapping cannot leave the app
+		 * with no way out. Breaking the loop runs the normal shutdown path,
+		 * so the song is saved. */
+		if(updateQuitHold(isKeyHeld(appState->inputState, KM_SELECT),
+		                  isKeyHeld(appState->inputState, KM_START),
+		                  now, &quitHeldSince)
+		   || inputDiagRawExitHeld(now)) {
+			break;
+		}
 		/* Task 6: window-scale keybinds. Ctrl+=/- steps the window scale
 		 * in whole multiples of the base (1x->2x->3x...); adding Shift
 		 * steps in 0.25 increments. Global (all scenes). */
@@ -642,6 +744,7 @@ int main(int argc, char **argv) {
 		}
 		probeStepRoute(appState);
 		probeTempoState(&data);
+		probeAudioPacing();
 		updateModStripTextures();
 		BeginTextureMode(gfx);
 		clearBg();
@@ -667,7 +770,9 @@ int main(int argc, char **argv) {
 		}
 		// printf("checking inputs...\n");
 		// Global Navigation Controls
-		if(isKeyJustPressed(appState->inputState, KM_START)) {
+		if(isKeyJustPressed(appState->inputState, KM_START) && !isKeyHeld(appState->inputState, KM_SELECT)) {
+			/* SELECT is a modifier, not a play button: without this,
+			 * starting the quit gesture would also toggle playback. */
 			data.arranger->playing ? stopPlaying(data.arranger) : startPlaying(data.sequencer, data.patternList, data.arranger, appState->currentScene);
 		}
 		if(isKeyHeld(appState->inputState, KM_SELECT)) {
@@ -1063,8 +1168,11 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 		}
 		if(isKeyHeld(appState->inputState, KM_MOD_EXTRA)) {
 			if(isKeyJustPressed(appState->inputState, KM_START)) {
+				/* Each panel has its own toggle; the time graph is not a
+				 * spectrogram and has no Fft behind it (calling the
+				 * spectrogram's toggle on it wrote through a bogus Fft). */
 				toggleSpectrogram(&data.spectrogram);
-				toggleSpectrogram(&data.timeGraph);
+				toggleTimeGraph(&data.timeGraph);
 			}
 			if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
 				incWindowFunc(&data.spectrogram.fft, true);
@@ -1091,6 +1199,7 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 	 * rlUnloadTexture (rlgl derefs the dead context). */
 	UnloadRenderTexture(gfx);
 	freeBufferScroller(&data.bufferScroller);
+	inputDiagStop();
 	CloseWindow();
 	for(int ch = 0; ch < data.voiceManager->enabledChannels; ch++) {
 		capturePatternTracksToInstrument(data.voiceManager->instruments[ch]);
@@ -1109,12 +1218,16 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 		saveThemeJson(clrPath, getColourScheme(), getFontConfig());
 	}
 	printf("song save attempt result: %i", saveResult);
-	err = Pa_StopStream(stream);
-	if(err != paNoError)
-		goto error;
-	err = Pa_CloseStream(stream);
-	if(err != paNoError)
-		goto error;
+	if(alsaOutputActive()) {
+		alsaOutputStop();
+	} else {
+		err = Pa_StopStream(stream);
+		if(err != paNoError)
+			goto error;
+		err = Pa_CloseStream(stream);
+		if(err != paNoError)
+			goto error;
+	}
 	Pa_Terminate();
 
 	freeSamplePool(data.samplePool);
@@ -1123,6 +1236,7 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 	printf("The end! :).\n");
 	return err;
 error:
+	alsaOutputStop();
 	Pa_Terminate();
 	/// fclose(data.log_file);
 
