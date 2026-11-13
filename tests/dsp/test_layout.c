@@ -21,15 +21,15 @@ static int test_btn_and_typelabel_styles(void);
 static int test_baked_defaults_used_when_no_class(void) {
 	GuiNode *n = createBlankGuiNode();
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 28, "knob size 28 (1.5x baked default)");
+	ASSERT_TRUE(d->knob.size == 37, "knob size 37 (2x baked default)");
 	ASSERT_TRUE(d->knob.startAngle == -225, "start angle");
 	ASSERT_TRUE(d->knob.sweep == 270, "sweep");
 	ASSERT_TRUE(strcmp(d->value.format, "%05.2f") == 0, "value format");
-	ASSERT_TRUE(d->value.offsetX == 34, "value offsetX");
-	ASSERT_TRUE(d->label.offsetY == 26, "label offsetY");
+	ASSERT_TRUE(d->value.offsetX == 39, "value offsetX");
+	ASSERT_TRUE(d->label.offsetY == 34, "label offsetY");
 	const DialStyle *dd = resolveDiscreteDialStyle(n);
 	ASSERT_TRUE(strcmp(dd->value.format, "%i") == 0, "discrete format");
-	ASSERT_TRUE(dd->label.offsetX == 6, "discrete label offsetX");
+	ASSERT_TRUE(dd->label.offsetX == 8, "discrete label offsetX");
 	freeGuiNode(n);
 	printf("PASS test_baked_defaults_used_when_no_class\n");
 	return 0;
@@ -39,7 +39,7 @@ static int test_unknown_class_falls_back_to_type_default(void) {
 	GuiNode *n = createBlankGuiNode();
 	guiNodeSetClass(n, "does-not-exist");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 28, "fallback knob size (1.5x baked default)");
+	ASSERT_TRUE(d->knob.size == 37, "fallback knob size (2x baked default)");
 	freeGuiNode(n);
 	printf("PASS test_unknown_class_falls_back_to_type_default\n");
 	return 0;
@@ -67,7 +67,7 @@ static int test_compute_dial_geometry(void) {
 	ASSERT_TRUE(g.valueX == expectValueX, "valueX is knob-relative, clamped clear of the knob");
 	ASSERT_TRUE(g.valueY == g.knobY + 2, "valueY is knob-relative");
 	ASSERT_TRUE(g.labelX == 104 + 36, "labelX centres in the cell");
-	ASSERT_TRUE(g.labelY == g.knobY + 26, "labelY sits below the knob (baked label offsetY 26)");
+	ASSERT_TRUE(g.labelY == g.knobY + 34, "labelY sits below the knob (baked label offsetY 34)");
 	freeGuiNode(n);
 	printf("PASS test_compute_dial_geometry\n");
 	return 0;
@@ -186,18 +186,18 @@ static int test_reflow_fills_weighted_column(void) {
 static int test_dial_geometry_centers_in_wide_cell(void) {
 	/* wide cell: knob centers on both axes, value + label follow the
 	 * knob (knob-relative); narrow cell: classic left/top inset. */
-	GuiNode *wide = createGuiNode(100, 200, 140, 50, 1, na_horizontal, "w", 1, 0);
+	GuiNode *wide = createGuiNode(100, 200, 180, 70, 1, na_horizontal, "w", 1, 0);
 	const DialStyle *d = resolveDialStyle(wide);
 	DialGeometry g;
 	computeDialGeometry(wide, d, &g);
-	/* 1.5x: contentW = 140-2 = 138; groupW = 28+34+52 = 114;
-	 * slack 24; knobX = cx+12 */
-	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob horizontally");
-	/* contentH = 48; composition 40; slack 8; knobY = cy+4 */
-	ASSERT_TRUE(g.knobY == 200 + 1 + 4, "wide cell centers knob vertically");
+	/* 2x: contentW = 180-2 = 178; groupW = 37+39+62 = 138;
+	 * slack 40; knobX = cx+20 */
+	ASSERT_TRUE(g.knobX == 100 + 1 + 20, "wide cell centers knob horizontally");
+	/* contentH = 68; composition 52; slack 16; knobY = cy+8 */
+	ASSERT_TRUE(g.knobY == 200 + 1 + 8, "wide cell centers knob vertically");
 	/* value follows the knob; label centres in the cell */
-	ASSERT_TRUE(g.valueX == g.knobX + 34, "value is knob-relative");
-	ASSERT_TRUE(g.labelX == 100 + 1 + 69, "label centres in the wide cell");
+	ASSERT_TRUE(g.valueX == g.knobX + 39, "value is knob-relative");
+	ASSERT_TRUE(g.labelX == 100 + 1 + 89, "label centres in the wide cell");
 	freeGuiNode(wide);
 
 	GuiNode *narrow = createGuiNode(100, 200, 58, 35, 2, na_horizontal, "n", 1, 0);
@@ -213,16 +213,16 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 }
 
 static int test_dial_component_height(void) {
-	/* 1.5x dial: max(knob 28, value 2+20=22, label 26+14=40) = 40 */
-	GuiNode *n = createGuiNode(0, 0, 100, 50, 2, na_horizontal, "g", 1, 0);
+	/* 2x dial: max(knob 37, value 2+26=28, label 34+18=52) = 52 */
+	GuiNode *n = createGuiNode(0, 0, 100, 70, 2, na_horizontal, "g", 1, 0);
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(dialComponentHeight(d) == 40, "default dial content height");
-	/* discrete: max(28, value 5+14=19, label 21+14=35) = 35 */
-	GuiNode *dn = createGuiNode(0, 0, 100, 50, 2, na_horizontal, "g", 1, 0);
+	ASSERT_TRUE(dialComponentHeight(d) == 52, "default dial content height");
+	/* discrete: max(37, value 2+26=28, label 30+18=48) = 48 */
+	GuiNode *dn = createGuiNode(0, 0, 100, 70, 2, na_horizontal, "g", 1, 0);
 	const DialStyle *dd = resolveDiscreteDialStyle(dn);
-	ASSERT_TRUE(dialComponentHeight(dd) == 35, "discrete dial content height");
+	ASSERT_TRUE(dialComponentHeight(dd) == 48, "discrete dial content height");
 	/* a custom class's height follows its style */
-	ASSERT_TRUE(dialComponentHeight(d) + 2 * 2 == 44, "full cell = content + padding");
+	ASSERT_TRUE(dialComponentHeight(d) + 2 * 2 == 56, "full cell = content + padding");
 	freeGuiNode(n);
 	freeGuiNode(dn);
 	printf("PASS test_dial_component_height\n");
@@ -656,7 +656,7 @@ static int test_compile_unknown_class_ignored(void) {
 	GuiNode *n = createBlankGuiNode();
 	guiNodeSetClass(n, "mystery");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 28, "untyped class ignored -> baked default (1.5x)");
+	ASSERT_TRUE(d->knob.size == 37, "untyped class ignored -> baked default (2x)");
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_compile_unknown_class_ignored\n");
@@ -670,7 +670,7 @@ static int test_missing_layout_file_keeps_defaults(void) {
 	            "missing file -> false");
 	GuiNode *n = createBlankGuiNode();
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 28, "defaults intact (1.5x baked default)");
+	ASSERT_TRUE(d->knob.size == 37, "defaults intact (2x baked default)");
 	freeGuiNode(n);
 	printf("PASS test_missing_layout_file_keeps_defaults\n");
 	return 0;
@@ -1012,7 +1012,7 @@ static int test_stage_dial_styles_resolve(void) {
 	GuiNode *nr = createBlankGuiNode();
 	guiNodeSetClass(nr, "stage-rate");
 	const DialStyle *sr = resolveDialStyle(nr);
-	ASSERT_TRUE(sr->knob.size == 28, "stage-rate inherits default knob.size 28");
+	ASSERT_TRUE(sr->knob.size == 37, "stage-rate inherits default knob.size 37");
 	ASSERT_TRUE(sr->value.offsetY == 34, "stage-rate value.offsetY 34");
 	ASSERT_TRUE(sr->value.fontSize == 7, "stage-rate value.fontSize 7");
 	freeGuiNode(nr);
