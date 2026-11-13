@@ -23,7 +23,6 @@
 #include "sequencer.h"
 #include "notes.h"
 #include "distortion.h"
-#include "input_log.h"
 #include "alsa_output.h"
 #include "graph_gui.h"
 #include "dataviz.h"
@@ -708,17 +707,11 @@ int main(int argc, char **argv) {
 
 	SetTraceLogLevel(LOG_WARNING);
 	RenderTexture2D gfx = createPresentTarget();
-	/* Input-mapping diagnostic: every press is logged at all three layers
-	 * (evdev, raylib, KeyMapping) to input_log.txt. Best effort -- a failure to
-	 * write it must not stop the app. */
-	inputDiagStart();
 	/* The exit gesture's clock; -1 means "not holding". */
 	double quitHeldSince = -1.0;
 	while(!WindowShouldClose()) {
 		updateInputState(appState->inputState);
 		double now = GetTime();
-		inputDiagPoll(now);
-		inputDiagLogCommands(appState->inputState);
 		/* No window manager on the device: SELECT+START held is the only
 		 * way out of the app (see QUIT_HOLD_SECONDS). The raw kernel codes
 		 * are a second route, so a wrong gamepad mapping cannot leave the app
@@ -727,7 +720,6 @@ int main(int argc, char **argv) {
 		if(updateQuitHold(isKeyHeld(appState->inputState, KM_SELECT),
 		                  isKeyHeld(appState->inputState, KM_START),
 		                  now, &quitHeldSince)
-		   || inputDiagRawExitHeld(now)) {
 			break;
 		}
 		/* Task 6: window-scale keybinds. Ctrl+=/- steps the window scale
@@ -1199,7 +1191,6 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 	 * rlUnloadTexture (rlgl derefs the dead context). */
 	UnloadRenderTexture(gfx);
 	freeBufferScroller(&data.bufferScroller);
-	inputDiagStop();
 	CloseWindow();
 	for(int ch = 0; ch < data.voiceManager->enabledChannels; ch++) {
 		capturePatternTracksToInstrument(data.voiceManager->instruments[ch]);
