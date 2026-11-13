@@ -1265,7 +1265,7 @@ static void drawPresetNameGuiNode(void *self) {
 		memcpy(clipped, pn->name, (size_t)len);
 		clipped[len] = '\0';
 		DrawTextEx(*nf, clipped, (Vector2){ (float)gn->x + 2.0f, textY },
-		           (float)nameFs, 1.0f, RED);
+		           (float)nameFs, 1.0f, cs.valueText);
 	}
 	if(pn->editing) {
 		/* Caret at the cursor's character position. */
@@ -1276,7 +1276,7 @@ static void drawPresetNameGuiNode(void *self) {
 		prefix[cur] = '\0';
 		float caretX = (float)gn->x + 2.0f
 		             + MeasureTextEx(*nf, prefix, (float)nameFs, 1.0f).x;
-		DrawRectangleRec((Rectangle){ caretX, textY - 1.0f, 1.0f, (float)nameFs + 2.0f }, RED);
+		DrawRectangleRec((Rectangle){ caretX, textY - 1.0f, 1.0f, (float)nameFs + 2.0f }, cs.valueText);
 	}
 }
 

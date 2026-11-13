@@ -7,56 +7,56 @@
 	},
 	"colors": {
 		"surface": {
-			"window": "#0A0108FF",
-			"panel": "#747474FF",
-			"inset": "#0A0108FF",
-			"dim": "#102208AA"
+			"window": "#070018FF",
+			"panel": "#330344FF",
+			"inset": "#070018FF",
+			"dim": "#000000AA"
 		},
 		"text": {
-			"primary": "#F0D196FF",
-			"secondary": "#BBBBBBFF",
-			"muted": "#C8B4B4FF",
-			"mutedSelected": "#709E2FFF",
-			"value": "#709E2FFF",
-			"gridLabel": "#C8B4B4FF",
-			"disabled": "#6E6060FF"
+			"primary": "#3CFF96FF",
+			"secondary": "#B08CE0FF",
+			"muted": "#D0E24AFF",
+			"mutedSelected": "#F232E0FF",
+			"value": "#04F068FF",
+			"gridLabel": "#04F068FF",
+			"disabled": "#572098FF"
 		},
 		"line": {
-			"panel": "#E8E8E8FF",
-			"wrapper": "#0A0505FF",
-			"strong": "#709E2FFF",
-			"grid": "#D54723FF",
-			"step": "#501414FF"
+			"panel": "#FAFFAAFF",
+			"wrapper": "#070018FF",
+			"strong": "#04F068FF",
+			"grid": "#572098FF",
+			"step": "#049008FF"
 		},
 		"cell": {
-			"default": "#D39E61FF",
-			"blank": "#747474FF",
-			"highlighted": "#D63C11FF",
-			"selected": "#709E2FFF"
+			"default": "#572098FF",
+			"blank": "#330344FF",
+			"highlighted": "#3CFF96FF",
+			"selected": "#04F068FF"
 		},
 		"control": {
-			"dial": "#709E2FFF",
-			"accent": "#CF3F71FF"
+			"dial": "#FAFFAAFF",
+			"accent": "#AA2631FF"
 		},
 		"waveform": {
-			"bg": "#BBBBBBFF",
-			"primary": "#CF3F71FF",
+			"bg": "#070018FF",
+			"primary": "#04F068FF",
 			"alt": "#00FF00FF",
 			"overlay": "#FF5050FF",
 			"playhead": "#FF0000FF"
 		},
 		"sample": {
-			"bg": "#BBBBBBFF",
-			"bgAlt": "#818277FF",
-			"border": "#CF3F71FF",
+			"bg": "#070018FF",
+			"bgAlt": "#330344FF",
+			"border": "#049008FF",
 			"closed": "#501E1EFF"
 		},
 		"arranger": {
-			"playhead": "#D54723FF"
+			"playhead": "#FAFFAAFF"
 		},
 		"mod": {
 			"lfo": "#00FFFFFF",
-			"env": "#BEBEBEFF",
+			"env": "#82FF82FF",
 			"random": "#FF50FFFF",
 			"offset": "#BEBEBEFF",
 			"default": "#D2D2D2FF",
