@@ -188,7 +188,15 @@ foreach name : test_names
     dependencies: system_deps,
     c_args: test_c_args,
   )
-  test(name, exe)
+  # The race suite: the tests that exercise real threads. The race
+  # detectors run this suite only (meson/matrix.sh), and they CHECK the
+  # declaration - every test whose source creates a thread must be in it,
+  # or the race detector would not cover it and nothing would say so.
+  test_suites = []
+  if name == 'test_audio_concurrency'
+    test_suites = ['race']
+  endif
+  test(name, exe, suite: test_suites)
 endforeach
 
 exe = executable('test_sequencer',
@@ -210,6 +218,7 @@ test('test_device_profile',
 test('test_qemu_smoke',
   find_program('dsp/test_qemu_smoke.sh'),
   args: [],
+  suite: ['device'],
   timeout: 900,
 )
 

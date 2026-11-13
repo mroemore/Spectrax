@@ -18,6 +18,10 @@ TARGETS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --time)
+      # The value is checked, not trusted: an unset $2 under `set -u` is an
+      # unbound-variable error, which crashes the script with a message about
+      # the shell rather than about the option.
+      [ $# -ge 2 ] || { echo "fuzz.sh: --time needs a number of seconds" >&2; exit 2; }
       TIME="$2"
       shift 2
       ;;
@@ -38,6 +42,13 @@ done
 
 if [ "${#TARGETS[@]}" -eq 0 ]; then
   TARGETS=(wav seqfile config)
+fi
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  # Exit 3, not 0: "nothing to do" is not "everything passed", and check.sh
+  # maps 3 to SKIP so a fuzz tier that fuzzed no target can never read as a
+  # pass.
+  echo "fuzz.sh: no targets (add fuzz/fuzz_<target>.c); nothing to fuzz" >&2
+  exit 3
 fi
 
 have_fuzzer() {
@@ -120,7 +131,23 @@ build_seqfile() {
 
 for t in "${TARGETS[@]}"; do
   echo ">> build $t"
-  "build_$t"
+  if declare -F "build_$t" >/dev/null 2>&1; then
+    "build_$t"
+  else
+    # The generic recipe: fuzz/<target>.srcs lists the extra source files to
+    # compile alongside the harness, one path per line, relative to the repo
+    # root, '#' for a comment. A target that needs more than a source list
+    # - a link against the project's static libraries, say - keeps its own
+    # build_<target> function above, and a new target that does not need one
+    # can be added here without editing this script.
+    extra=()
+    if [ -f "$ROOT/fuzz/$t.srcs" ]; then
+      while IFS= read -r s; do
+        [ -n "$s" ] && extra+=("$ROOT/$s")
+      done < <(grep -vE '^[[:space:]]*(#|$)' "$ROOT/fuzz/$t.srcs")
+    fi
+    "$CC" "${CFLAGS[@]}" "$ROOT/fuzz/fuzz_$t.c" "${extra[@]}" -lm -o "$OUT/fuzz_$t"
+  fi
   if [ "$BUILD_ONLY" = 1 ]; then
     continue
   fi

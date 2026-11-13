@@ -19,6 +19,9 @@ BUILD="${ROOT}/build-cov"
 HTML=0
 GATE=0
 
+# shellcheck source=meson/lib.sh
+. "$ROOT/meson/lib.sh"
+
 for arg in "$@"; do
   case "$arg" in
     --html)
@@ -46,11 +49,20 @@ echo ">> build"
 ninja -C "$BUILD"
 
 echo ">> test"
+# A suite that matched nothing is not a tier with nothing to run: the run
+# would report PASS over zero tests, and the capture would then measure a
+# tree no test ever touched. Every way of having nothing here is a failure,
+# and each says which.
+if ! require_tests "$BUILD" "coverage"; then
+  exit 1
+fi
 # Clear stale counters first. A .gcda written by a previous build of the same
 # path carries the old build's stamp, and lcov refuses it with "stamp
 # mismatch with notes file" -- which breaks the capture whenever a source
-# file changed since the last run.
-find "$BUILD" -name '*.gcda' -delete
+# file changed since the last run. The milder form is worse: gcov overwrites
+# the stale profile with a "different checksum" error and discards the old
+# counters, so the capture succeeds and the numbers are wrong.
+find "$BUILD" -type f -name '*.gcda' -delete
 # A failing test still executes code, so keep going and report coverage;
 # the suite's exit status is surfaced at the end.
 TEST_RC=0

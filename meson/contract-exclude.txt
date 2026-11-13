@@ -1,0 +1,11 @@
+# Suites the contract tier does not run.
+#
+# The device smoke cross-compiles the device target and runs it under
+# qemu-aarch64-static. Its binaries contain neither getNoteString nor
+# layerStack*, so it reaches none of the three first-party contract sites
+# (src/notes.c:48, src/notes.c:49, src/gui_layer.c:235) - and it is
+# 12.85 s of a 17.7 s fast tier, 87% of the suite's critical path.
+#
+# One meson suite name per line. The name is declared where the test is:
+#   test('test_qemu_smoke', ..., suite: ['device'])
+device
