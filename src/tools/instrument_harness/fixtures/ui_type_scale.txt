@@ -1,24 +1,31 @@
-# Fixture: 1.5x type-scale geometry (Phase A of the small-screen rework).
+# Fixture: type-scale geometry — Phase B (2x) baseline.
 #
-# Pins the post-Phase-A geometry so later phases (2x rework) have a
-# baseline to diff against. Boots the instrument scene at the default
-# state and reports the rendered rects:
+# Pins the instrument screen's geometry after the 2x rework. Phase A's
+# 1.5x numbers (META 74, FMR1 50) must NOT come back; a regression to
+# them means a font size or dial style reverted.
 #
-#   META          -> the meta row (h=74 at 1.5x)
-#   presetwrappa  -> the preset row (h=74, matches META)
-#   FMR1          -> the first FM op dial row (h=50, the 1.5x dial row)
-#   fm_ctrl       -> the FM inst control scroll box (h=193: holds all
-#                    four op rows; the mods row scrolls)
-#   TPREV         -> a meta-row button (w=84 at 1.5x label size)
+# Measured on the 2x stack (2026-11-13):
 #
-# The 35-era numbers (FMR1 h=35) must NOT come back; a regression to
-# them means the fmRowH constant or the dial styles reverted.
+#   META          -> meta row             x=15 y=5   h=75
+#   presetwrappa  -> preset row           x=15 y=80  h=75
+#   FMHDR         -> FM column header     x=15 y=155 h=30   (above the box)
+#   fm_ctrl       -> FM scroll viewport   x=15 y=185 h=196  (header + 4 ops)
+#   FMR1          -> first FM op row      x=15 y=185 h=39   (unlabelled, pad 1)
+#   TPREV         -> a meta-row button    x=17 y=7   w=86
+#   RATIO1        -> first op dial        x=60 y=186 w=112 h=37
+#   FEEDBACK1     -> second op dial       x=172        w=112 (column pitch 112)
+#
+# The gutter column is the 45px between the content edge (x=15) and the
+# first dial (x=60); it carries the OP1..OP4 tags.
 FRAMES 5
 
 REPORT META
 REPORT presetwrappa
-REPORT FMR1
+REPORT FMHDR
 REPORT fm_ctrl
+REPORT FMR1
 REPORT TPREV
+REPORT RATIO1
+REPORT FEEDBACK1
 
 SHOT ui_type_scale.png
