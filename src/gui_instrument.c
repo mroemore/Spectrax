@@ -1242,25 +1242,41 @@ static void drawPresetNameGuiNode(void *self) {
 	if(gn->selected && !pn->editing) {
 		DrawRectangleLinesEx((Rectangle){ gn->x, gn->y, gn->w, gn->h }, 2.0f, cs.sampleBorder);
 	}
-	/* copy the current name into the node once per selection */
-	int n = (int)strlen(pn->name);
-	if(n < 32) {
-		n = 32;
-	}
-	int cellW = gn->w / 32;
-	if(cellW < 20) {
-		cellW = 20;
-	}
-	for(int i = 0; i < 32; i++) {
-		int cx = gn->x + i * cellW;
-		int cy = gn->y;
-		char ch = (i < (int)strlen(pn->name)) ? pn->name[i] : ' ';
-		if(pn->editing && i == pn->cursor) {
-			DrawRectangle(cx, cy, cellW, gn->h, RED);          /* inverted cursor block */
-			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 15, 30, BLACK);
-		} else {
-			DrawText((char[]){ ch, '\0' }, cx + 1, cy + gn->h / 2 - 15, 30, RED);
+	/* The name is one string in the UI font, clipped to the widget: the
+	 * old per-cell draw used the raylib default font at a hardcoded 30px
+	 * in 20px cells, so a 3-character name spilled 640px of glyph runs
+	 * out of a ~160px cell (visible once the whole UI went 1.5x). */
+	Font *nf = styleFont("pixel");
+	const int nameFs = 14;
+	int len = (int)strlen(pn->name);
+	/* Only as many characters as fit inside the widget. */
+	while(len > 0) {
+		char probe[PRESET_NAME_MAX + 1];
+		memcpy(probe, pn->name, (size_t)len);
+		probe[len] = '\0';
+		if(MeasureTextEx(*nf, probe, (float)nameFs, 1.0f).x <= (float)gn->w - 4.0f) {
+			break;
 		}
+		len--;
+	}
+	float textY = (float)gn->y + ((float)gn->h - (float)nameFs) * 0.5f;
+	if(len > 0) {
+		char clipped[PRESET_NAME_MAX + 1];
+		memcpy(clipped, pn->name, (size_t)len);
+		clipped[len] = '\0';
+		DrawTextEx(*nf, clipped, (Vector2){ (float)gn->x + 2.0f, textY },
+		           (float)nameFs, 1.0f, RED);
+	}
+	if(pn->editing) {
+		/* Caret at the cursor's character position. */
+		char prefix[PRESET_NAME_MAX + 1];
+		int cur = pn->cursor;
+		if(cur > len) cur = len;
+		memcpy(prefix, pn->name, (size_t)cur);
+		prefix[cur] = '\0';
+		float caretX = (float)gn->x + 2.0f
+		             + MeasureTextEx(*nf, prefix, (float)nameFs, 1.0f).x;
+		DrawRectangleRec((Rectangle){ caretX, textY - 1.0f, 1.0f, (float)nameFs + 2.0f }, RED);
 	}
 }
 
