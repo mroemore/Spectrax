@@ -401,15 +401,16 @@ void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *o
 	int cy = gn->y + gn->padding;
 	int contentW = (int)gn->w - 2 * (int)gn->padding;
 	int contentH = (int)gn->h - 2 * (int)gn->padding;
-	/* Mini-layout: the trio [knob, value, label] is a composition
-	 * anchored on the knob. The knob centers in the cell on both axes
-	 * when there is slack; value + label follow the knob (their
-	 * offsets are knob-relative), so the whole unit moves as one. */
+	/* The trio [knob, value, label] is a composition anchored on the
+	 * knob. Centre the WHOLE composition, not just the knob: in a cell
+	 * only as tall as the composition the knob would otherwise sit
+	 * low and push the label through the cell's bottom edge. */
+	int groupH = dialComponentHeight(st);
 	int groupW = st->knob.size + st->value.offsetX + st->value.width;
 	int knobX = (groupW < contentW) ? (cx + (contentW - groupW) / 2) : (cx + 2);
 	int knobY = (st->vAlign == DIAL_VALIGN_TOP)
 	              ? cy
-	              : ((st->knob.size < contentH) ? (cy + (contentH - st->knob.size) / 2) : cy);
+	              : ((groupH < contentH) ? (cy + (contentH - groupH) / 2) : cy);
 	out->knobX = knobX;
 	out->knobY = knobY;
 	out->knobW = st->knob.size;

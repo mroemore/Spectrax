@@ -54,8 +54,8 @@ static int test_compute_dial_geometry(void) {
 	computeDialGeometry(n, d, &g);
 	/* contentW = 80-8 = 72 < groupW 86 -> classic horizontal inset cx+2 */
 	ASSERT_TRUE(g.knobX == 106, "narrow cell keeps horizontal inset");
-	/* contentH = 40-8 = 32 > knob d->knob.size -> knob centers vertically */
-	ASSERT_TRUE(g.knobY == 204 + (32 - d->knob.size) / 2, "knob centers vertically");
+	/* contentH = 40-8 = 32 < the 40px composition -> top-anchored at cy */
+	ASSERT_TRUE(g.knobY == 204, "knob centers vertically");
 	/* value follows the knob; label centres in the cell below the knob */
 	/* value follows the knob; the cell-aware clamp pushes it to the knob's
 	 * right edge when the style's offset would start it inside the knob
@@ -193,8 +193,8 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 	/* 1.5x: contentW = 140-2 = 138; groupW = 28+34+52 = 114;
 	 * slack 24; knobX = cx+12 */
 	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob horizontally");
-	/* contentH = 48; knob 28; slack 20; knobY = cy+10 */
-	ASSERT_TRUE(g.knobY == 200 + 1 + 10, "wide cell centers knob vertically");
+	/* contentH = 48; composition 40; slack 8; knobY = cy+4 */
+	ASSERT_TRUE(g.knobY == 200 + 1 + 4, "wide cell centers knob vertically");
 	/* value follows the knob; label centres in the cell */
 	ASSERT_TRUE(g.valueX == g.knobX + 34, "value is knob-relative");
 	ASSERT_TRUE(g.labelX == 100 + 1 + 69, "label centres in the wide cell");
@@ -596,7 +596,8 @@ static int test_custom_class_geometry(void) {
 	computeDialGeometry(n, d, &g);
 	ASSERT_TRUE(g.knobW == 30, "geometry knobW");
 	ASSERT_TRUE(g.knobX == 106, "geometry knobX keeps inset");
-	ASSERT_TRUE(g.knobY == 205, "geometry knobY centers vertically");
+	/* contentH = 32 < the 38px composition -> top-anchored at cy */
+	ASSERT_TRUE(g.knobY == 204, "geometry knobY centers vertically");
 	ASSERT_TRUE(g.valueX == g.knobX + 40, "geometry valueX with offset");
 	ASSERT_TRUE(g.valueY == g.knobY + 6, "geometry valueY");
 	ASSERT_TRUE(g.labelX == 140 - 40, "geometry labelX centres + offset");
