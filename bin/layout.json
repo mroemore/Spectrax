@@ -2,8 +2,8 @@
     "styles": {
         "dial": {
             "knob": {
-                "size": 20,
-                "radius": 10,
+                "size": 28,
+                "radius": 14,
                 "startAngle": -225,
                 "sweep": 270,
                 "offsetX": 0,
@@ -17,9 +17,9 @@
             },
             "value": {
                 "format": "%05.2f",
-                "width": 38,
-                "height": 14,
-                "offsetX": 28,
+                "width": 52,
+                "height": 20,
+                "offsetX": 34,
                 "offsetY": 2,
                 "fontSize": 14,
                 "color": "text.value"
@@ -29,7 +29,7 @@
                 "fontSize": 14,
                 "spacing": 1,
                 "offsetX": 0,
-                "offsetY": 18,
+                "offsetY": 26,
                 "color": "text.muted",
                 "colorSelected": "text.mutedSelected"
             }
