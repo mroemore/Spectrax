@@ -21,12 +21,12 @@
                 "height": 14,
                 "offsetX": 28,
                 "offsetY": 2,
-                "fontSize": 9,
+                "fontSize": 14,
                 "color": "text.value"
             },
             "label": {
                 "font": "pixel",
-                "fontSize": 9,
+                "fontSize": 14,
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 18,
@@ -55,7 +55,7 @@
             },
             "label": {
                 "font": "pixel",
-                "fontSize": 10,
+                "fontSize": 14,
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": 4,
@@ -64,7 +64,7 @@
             },
             "sublabel": {
                 "font": "pixel",
-                "fontSize": 8,
+                "fontSize": 11,
                 "spacing": 0,
                 "offsetX": 4,
                 "offsetY": 12,
@@ -75,7 +75,7 @@
         "type-label": {
             "label": {
                 "font": "pixel",
-                "fontSize": 10,
+                "fontSize": 14,
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 0,
@@ -125,7 +125,7 @@
             ],
             "voiceCount": {
                 "font": "pixel",
-                "fontSize": 9,
+                "fontSize": 14,
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": 2,
@@ -133,7 +133,7 @@
             },
             "typeTag": {
                 "font": "pixel",
-                "fontSize": 9,
+                "fontSize": 14,
                 "spacing": 1,
                 "offsetX": -4,
                 "offsetY": 2,
@@ -141,7 +141,7 @@
             },
             "label": {
                 "font": "pixel",
-                "fontSize": 12,
+                "fontSize": 16,
                 "spacing": 1,
                 "offsetX": 0,
                 "offsetY": 0,
@@ -149,7 +149,7 @@
             },
             "patchName": {
                 "font": "pixel",
-                "fontSize": 8,
+                "fontSize": 11,
                 "spacing": 1,
                 "offsetX": 4,
                 "offsetY": -11,
@@ -164,7 +164,7 @@
         },
         "text": {
             "font": "pixel",
-            "fontSize": 10,
+            "fontSize": 14,
             "spacing": 1,
             "offsetX": 0,
             "offsetY": 0,
@@ -184,12 +184,12 @@
                 "format": "%04.1f",
                 "width": 38,
                 "height": 14,
-                "fontSize": 7,
+                "fontSize": 11,
                 "offsetX": -10,
                 "offsetY": 18
             },
             "label": {
-                "fontSize": 7,
+                "fontSize": 11,
                 "spacing": 1,
                 "offsetX": 140,
                 "offsetY": 0
@@ -207,7 +207,7 @@
                 "fontSize": 0
             },
             "label": {
-                "fontSize": 7,
+                "fontSize": 11,
                 "spacing": 1,
                 "offsetX": -19,
                 "offsetY": -9
