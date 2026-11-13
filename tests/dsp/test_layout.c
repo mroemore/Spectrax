@@ -186,17 +186,18 @@ static int test_reflow_fills_weighted_column(void) {
 static int test_dial_geometry_centers_in_wide_cell(void) {
 	/* wide cell: knob centers on both axes, value + label follow the
 	 * knob (knob-relative); narrow cell: classic left/top inset. */
-	GuiNode *wide = createGuiNode(100, 200, 113, 35, 1, na_horizontal, "w", 1, 0);
+	GuiNode *wide = createGuiNode(100, 200, 140, 50, 1, na_horizontal, "w", 1, 0);
 	const DialStyle *d = resolveDialStyle(wide);
 	DialGeometry g;
 	computeDialGeometry(wide, d, &g);
-	/* contentW = 113-2 = 111; groupW = 20+28+38 = 86; slack 25; knobX = cx+12 */
+	/* 1.5x: contentW = 140-2 = 138; groupW = 28+34+52 = 114;
+	 * slack 24; knobX = cx+12 */
 	ASSERT_TRUE(g.knobX == 100 + 1 + 12, "wide cell centers knob horizontally");
-	/* contentH = 33; knob 20; slack 13; knobY = cy+6 */
-	ASSERT_TRUE(g.knobY == 200 + 1 + 6, "wide cell centers knob vertically");
+	/* contentH = 48; knob 28; slack 20; knobY = cy+10 */
+	ASSERT_TRUE(g.knobY == 200 + 1 + 10, "wide cell centers knob vertically");
 	/* value follows the knob; label centres in the cell */
-	ASSERT_TRUE(g.valueX == g.knobX + 28, "value is knob-relative");
-	ASSERT_TRUE(g.labelX == 100 + 1 + 55, "label centres in the wide cell");
+	ASSERT_TRUE(g.valueX == g.knobX + 34, "value is knob-relative");
+	ASSERT_TRUE(g.labelX == 100 + 1 + 69, "label centres in the wide cell");
 	freeGuiNode(wide);
 
 	GuiNode *narrow = createGuiNode(100, 200, 58, 35, 2, na_horizontal, "n", 1, 0);
