@@ -73,7 +73,12 @@ echo ">> test (contracts live)"
 # A suite that matched nothing is not a tier with nothing to run: the run
 # would report PASS over zero tests. Every way of having nothing here is a
 # failure, and each says which.
-if ! require_tests "$BUILD" "contract"; then
+#
+# The guard lists with the SAME filter the run uses. A guard that lists the
+# whole tree while the run excludes a suite that holds every test would
+# pass over a run that never happened - which is the defect this tier
+# exists to close, one level down.
+if ! require_tests "$BUILD" "contract" "" "${args[@]}"; then
   exit 1
 fi
 meson test -C "$BUILD" --print-errorlogs "${args[@]}"

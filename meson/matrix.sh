@@ -42,17 +42,6 @@
 # file (tsan.supp, helgrind.supp) records every accepted exception, and each
 # entry must name the access point it silences.
 #
-# In this project the race suite is one test: test_audio_concurrency, which
-# is declared with suite: ['race'] in tests/meson.build. It is
-# self-contained by construction - renderAudioBuffer makes no raylib calls
-# at all with g_probeTempo false - so a clean report means something.
-#
-# helgrind is the second rung here for a reason beyond atomics: it runs on
-# a plain, uninstrumented build, so it also catches a lock-order inversion
-# the tsan build does not. It does NOT model C11 _Atomic, so a relaxed
-# atomic load or store reads as a race to it and to nothing else - see
-# helgrind.supp, and the ctol-race skill for the rule.
-#
 # Not viable on a stock Void box (documented, skipped): MSan needs an
 # instrumented libc; gcc here ships no libasan/libubsan, so sanitizer builds use
 # clang (see TESTING.md I18/I19).
@@ -99,7 +88,7 @@ race_gate() {
     return 1
   fi
   if ! race_suite_complete "$ROOT" "$build" "$RACE_SUITE"; then
-    echo "$name: the tests named above create a thread but are not in the '$RACE_SUITE' suite; the race detector would not cover them" >&2
+    echo "$name: the sources named above create a thread, and the '$RACE_SUITE' suite does not cover them; the race detector would not run them" >&2
     return 1
   fi
   return 0

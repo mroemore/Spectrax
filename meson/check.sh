@@ -108,6 +108,16 @@ run() {
       printf '   SKIP  %s (nothing to run)\n' "$name"
       skip=$((skip + 1))
       ;;
+    2)
+      # The tier could not RUN: a missing tool, a missing report, a tree
+      # that cannot be read. That is a different failure from a tier that
+      # ran and found something wrong, and the reader needs to tell them
+      # apart - "the gate failed" and "the gate could not run" send them to
+      # different places.
+      printf '   ERROR %s (could not run)\n' "$name"
+      [ "$QUIET" = 1 ] || tail -30 "$LOG"
+      fail=$((fail + 1))
+      ;;
     *)
       printf '   FAIL  %s\n' "$name"
       [ "$QUIET" = 1 ] || tail -30 "$LOG"
@@ -122,9 +132,7 @@ run "coverage + gate" "$ROOT/meson/coverage.sh" "$BUILD" --gate
 
 if [ "$FULL" = 1 ]; then
   run "dynamic-analysis matrix" "$ROOT/meson/matrix.sh"
-  run "fuzz smoke (wav 20s)" "$ROOT/meson/fuzz.sh" wav --time 20
-  run "fuzz smoke (seqfile 20s)" "$ROOT/meson/fuzz.sh" seqfile --time 20
-  run "fuzz smoke (config 20s)" "$ROOT/meson/fuzz.sh" config --time 20
+  run "fuzz smoke (20s/target)" "$ROOT/meson/fuzz.sh" --time 20
   run "mutation" "$ROOT/meson/mutate.sh"
 fi
 

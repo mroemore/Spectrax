@@ -12,8 +12,17 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   echo "pre-push: not in a git tree" >&2; exit 0; }
 
 if [ ! -x "$ROOT/meson/check.sh" ]; then
-  echo "pre-push: meson/check.sh missing; skipping" >&2
-  exit 0
+  # The hook exists to run the gates. If there are no gates, it has nothing
+  # to do - and exiting 0 would be a green light over work that never
+  # happened, the exact shape the gate exists to prevent. A hook that was
+  # never installed should be installed or removed; a hook that is installed
+  # and cannot find its gates is a broken installation, and it says so.
+  echo "pre-push: meson/check.sh is missing at $ROOT/meson/check.sh" >&2
+  echo "pre-push: this hook cannot run any gate, so it is not blocking anything." >&2
+  echo "pre-push: install the CTOL stack, or remove the hook:" >&2
+  echo "  ln -sf ../../meson/pre-push .git/hooks/pre-push" >&2
+  echo "  rm .git/hooks/pre-push" >&2
+  exit 1
 fi
 
 echo "pre-push: running fast tier (./meson/check.sh --quiet)"

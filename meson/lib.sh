@@ -47,12 +47,18 @@ build_state() {
   esac
 }
 
-# list_tests <builddir> [suite] — list the tests meson would run.
+# list_tests <builddir> [suite] [extra meson-test args...] — list the tests
+# meson would run.
 #
 # Sets _LIST_TESTS to the listing and returns:
 #   0  the listing succeeded; the list may still be empty - check it
 #   1  meson says the tree defines no tests
 #   2  the listing failed for some other reason
+#
+# The extra arguments are passed straight to `meson test`, so a caller that
+# runs the suite with a filter - `--no-suite device`, say - can list with
+# the SAME filter. A guard that lists with one filter and runs with another
+# can pass over a suite that never ran.
 #
 # meson 1.12 has two notices for "nothing to run": `No tests defined.` (the
 # tree has no test() call at all) and `No suitable tests defined.` (tests
@@ -67,13 +73,15 @@ build_state() {
 list_tests() {
   local dir="$1"
   local suite="${2:-}"
+  if [ $# -ge 2 ]; then shift 2; else shift $#; fi
+  local extra=("$@")
   local err rc
   err="$(mktemp "${TMPDIR:-.}/ctol-list.XXXXXX" 2>/dev/null || mktemp)"
   if [ -n "$suite" ]; then
-    _LIST_TESTS="$(meson test -C "$dir" --suite "$suite" --list 2>"$err")"
+    _LIST_TESTS="$(meson test -C "$dir" --suite "$suite" "${extra[@]}" --list 2>"$err")"
     rc=$?
   else
-    _LIST_TESTS="$(meson test -C "$dir" --list 2>"$err")"
+    _LIST_TESTS="$(meson test -C "$dir" "${extra[@]}" --list 2>"$err")"
     rc=$?
   fi
   if [ "$rc" -eq 0 ]; then
@@ -90,7 +98,8 @@ list_tests() {
   return 2
 }
 
-# require_tests <builddir> <tier-name> [suite] — the empty-suite guard.
+# require_tests <builddir> <tier-name> [suite] [extra meson-test args...] —
+# the empty-suite guard.
 #
 # A suite that matched nothing is not a tier with nothing to run. `meson
 # test --suite X` exits 0 having run no test at all when the suite is not
@@ -105,8 +114,10 @@ require_tests() {
   local dir="$1"
   local name="$2"
   local suite="${3:-}"
+  if [ $# -ge 3 ]; then shift 3; else shift $#; fi
+  local extra=("$@")
   local rc
-  list_tests "$dir" "$suite"
+  list_tests "$dir" "$suite" "${extra[@]}"
   rc=$?
   case "$rc" in
     0)
@@ -119,6 +130,7 @@ require_tests() {
       ;;
     1)
       echo "$name: the suite matched no tests - meson says the tree defines none" >&2
+      echo "$name: if the tree does define tests, the filter excluded them all - and a run over zero tests would report PASS" >&2
       return 1
       ;;
     *)
@@ -131,46 +143,110 @@ require_tests() {
 
 # project_declares_suite <root> <suite-name>
 #
-# Does the project declare any test in that meson suite?
+# Did the project ASK for this meson suite?
 #
 # This is how the race tier tells "the project has no race suite" - nothing
-# to race-check, a skip - from "the project declared one and it matched
-# nothing" - the registration is broken, a failure. meson cannot tell them
-# apart: both look like "No suitable tests defined." to the tier.
+# to race-check, a skip - from "the project asked for one and it has no
+# members" - the registration is broken, a failure. meson cannot tell them
+# apart: a suite with no members does not appear in meson's own listing, so
+# both look like "No suitable tests defined." to the tier.
+#
+# The question is asked of the SOURCE, because that is where the answer
+# lives. A line counts when it mentions a suite AND names this one, so both
+# of the forms a project uses are seen:
+#
+#     test('t', exe, suite: ['race'])      <- the literal on the suite line
+#     test_suites = ['race']  ... suite: test_suites   <- through a variable
+#
+# The second form is the template's own convention - one test in the list
+# needs a suite and the rest do not - and a grep for the literal
+# "suite: ['race']" misses it. Commented lines do not count: a project
+# whose race suite is commented out has not asked for it.
 project_declares_suite() {
   local root="$1"
   local suite="$2"
-  grep -rqE "suite[[:space:]]*:[[:space:]]*\[?[^]]*['\"]${suite}['\"]" \
-    --include=meson.build "$root" 2>/dev/null
+  grep -rh --include=meson.build . "$root" 2>/dev/null |
+    grep -v '^[[:space:]]*#' |
+    grep -iE 'suite' |
+    grep -qE "['\"]${suite}['\"]"
+}
+
+# _ctol_creates_thread <file> — does this source create a thread?
+#
+# C comments are stripped first: a mention of pthread_create in a comment,
+# or in a block comment, is not a thread, and a scan that counted it would
+# fail a project over a sentence.
+_ctol_creates_thread() {
+  awk '
+    {
+      line = $0; out = ""
+      while (length(line) > 0) {
+        if (inblock) {
+          p = index(line, "*/")
+          if (p == 0) { line = ""; break }
+          line = substr(line, p + 2); inblock = 0; continue
+        }
+        p = index(line, "/*")
+        q = index(line, "//")
+        if (q > 0 && (p == 0 || q < p)) { out = out substr(line, 1, q - 1); break }
+        if (p > 0) { out = out substr(line, 1, p - 1); line = substr(line, p + 2); inblock = 1; continue }
+        out = out line; line = ""
+      }
+      print out
+    }
+  ' "$1" | grep -qE 'pthread_create|thrd_create|CreateThread'
 }
 
 # race_suite_complete <root> <builddir> <suite-name>
 #
-# Every test whose source contains a thread-creation primitive must be in
-# the suite. A test that creates no thread cannot create a data race of its
-# own, so the sources that contain one are a superset of the tests that need
-# the race detector - and a superset rule catches the case that matters: a
-# new concurrency test that nobody tagged is silently uncovered by the race
-# detector otherwise.
+# Every thread-creating source under tests/ must be accounted for by the
+# suite.
 #
-# Prints the uncovered tests and returns 1 when there are any.
+# What it checks, and what it does not claim:
+#
+#   * The scan covers EVERY .c file under tests/, at any depth and under any
+#     name - not only the test_*.c files at depth 2. A thread created in a
+#     shared helper is a thread some test creates, so a scan that stopped at
+#     the test files would miss it.
+#   * C comments are stripped first: a mention of pthread_create in a
+#     comment is not a thread.
+#   * Names are compared WHOLE. The suite's listing is
+#     "<suite> - <project>:<testname>", and the name after the last colon is
+#     compared for equality - a substring comparison lets
+#     "test_threaded_extra" cover "test_threaded", which is precisely the
+#     untagged concurrency test the check exists to catch.
+#   * A source whose name IS a test name of the project, and is NOT in the
+#     suite, is UNCOVERED: the test exists and the race detector does not
+#     run it.
+#   * A source whose name is not a test name at all - a helper, or a test
+#     named differently from its source - is UNVERIFIABLE: the tool cannot
+#     tell which test uses it. It is reported rather than passed, because a
+#     thread created in a shared helper is a thread some test creates.
+#
+# Prints what it found and returns 1 when anything is unaccounted for.
 race_suite_complete() {
   local root="$1"
   local build="$2"
   local suite="$3"
-  local listing f base missing=0
-  listing="$(meson test -C "$build" --suite "$suite" --list 2>/dev/null)"
+  local suite_names all_names f stem missing=0
+  suite_names="$(meson test -C "$build" --suite "$suite" --list 2>/dev/null |
+    sed 's/.*://' | sed '/^[[:space:]]*$/d')"
+  all_names="$(meson test -C "$build" --list 2>/dev/null |
+    sed 's/.*://' | sed '/^[[:space:]]*$/d')"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    grep -qE 'pthread_create|thrd_create|CreateThread' "$f" || continue
-    base="$(basename "$f" .c)"
-    case "$listing" in
-      *"$base"*) ;;
-      *)
-        echo "$base"
-        missing=1
-        ;;
-    esac
-  done < <(find "$root/tests" -maxdepth 2 -type f -name 'test_*.c' 2>/dev/null | sort)
+    _ctol_creates_thread "$f" || continue
+    stem="$(basename "$f" .c)"
+    if printf '%s\n' "$suite_names" | grep -qxF "$stem"; then
+      continue
+    fi
+    if printf '%s\n' "$all_names" | grep -qxF "$stem"; then
+      echo "${f#"$root"/} - a test of this project, and the '$suite' suite does not run it"
+    else
+      echo "${f#"$root"/} - creates a thread, and it cannot be verified: the name is not a test name in this project"
+      echo "  (name the test after its source file, so the check can see which test it is)"
+    fi
+    missing=1
+  done < <(find "$root/tests" -type f -name '*.c' 2>/dev/null | sort)
   return "$missing"
 }

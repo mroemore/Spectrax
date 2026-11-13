@@ -87,11 +87,11 @@ awk -v root="${ROOT}/" -v minfile="$MIN" -v minfile2="$MIN2" '
   BEGIN {
     readfloors(minfile)
     if(minfile2 != "") readfloors(minfile2)
-    nf = 0; ns = 0; fail = 0
+    nf = 0; ns = 0; fail = 0; sf_records = 0; brf_records = 0
     for (k in min) declared++
   }
-  /^SF:/ { file = substr($0, 4); sub(root, "", file); tot = 0; hit = 0; seen[file] = 1 }
-  /^BRF:/ { tot = substr($0, 5) + 0 }
+  /^SF:/ { file = substr($0, 4); sub(root, "", file); tot = 0; hit = 0; seen[file] = 1; sf_records++ }
+  /^BRF:/ { tot = substr($0, 5) + 0; brf_records++ }
   /^BRH:/ { hit = substr($0, 5) + 0 }
   /^end_of_record/ {
     if(file in min) {
@@ -114,6 +114,21 @@ awk -v root="${ROOT}/" -v minfile="$MIN" -v minfile2="$MIN2" '
     if(declared == 0) {
       print "coverage-gate: no floors declared in " minfile " - nothing to enforce"
       exit 0
+    }
+    # A report with no branch data cannot enforce a branch floor. lcov
+    # without the branch_coverage knob emits no BRF records at all, so every
+    # file would read as "no branches", every floor would be skipped, and
+    # the gate would pass over zero branch measurement - a floor silently
+    # unenforced on an lcov whose knob is spelled differently. An empty
+    # report is the same shape.
+    if(sf_records == 0) {
+      print "coverage-gate: the report holds no records at all; the floors could not be enforced" > "/dev/stderr"
+      exit 2
+    }
+    if(brf_records == 0) {
+      print "coverage-gate: the report carries no branch data (" sf_records " file(s), no BRF records); the floors could not be enforced" > "/dev/stderr"
+      print "coverage-gate: the capture must run with branch coverage enabled (lcov --rc lcov_branch_coverage=1)" > "/dev/stderr"
+      exit 2
     }
     # A floor on a file that is not in the report at all was being ignored in
     # silence - counting only the files that matched means a gated module that
