@@ -1411,6 +1411,12 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	GuiNode *saveBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "SAVE", 0, cbFocusNameNode, inst);
 	GuiNode *loadBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "LOAD", 0, cbOpenLoadList, inst);
 	GuiNode *nextBtn = createActionBtnGuiNode(0, 0, 100, 100, 2, na_horizontal, "NEXT", 0, cbPresetNext, inst);
+	/* 1.5x: these four cells are ~40px wide (weight 1 of 15), too narrow
+	 * for a 14px label, so their labels would run over the borders. */
+	guiNodeSetClass(prevBtn, "btn-compact");
+	guiNodeSetClass(saveBtn, "btn-compact");
+	guiNodeSetClass(loadBtn, "btn-compact");
+	guiNodeSetClass(nextBtn, "btn-compact");
 	appendItem(btnwrap, prevBtn, 1);
 	appendItem(btnwrap, pad1, 7);
 	appendItem(btnwrap, nameNode, 4);

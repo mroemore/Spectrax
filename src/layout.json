@@ -72,6 +72,14 @@
                 "colorSelected": "text.mutedSelected"
             }
         },
+        "btn-compact": {
+            "extends": "btn",
+            "label": {
+                "fontSize": 11,
+                "offsetX": 3,
+                "offsetY": 5
+            }
+        },
         "type-label": {
             "label": {
                 "font": "pixel",
