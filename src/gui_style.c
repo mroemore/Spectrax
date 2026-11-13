@@ -58,19 +58,19 @@ void applyLayout(GuiNode *container, const char *name) {
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
-	.knob   = { 28, 14, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 37, 19, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%05.2f", 52, 20, 34, 2, 14, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 14, 1, 0, 26, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.value  = { "%05.2f", 62, 26, 39, 2, 18, { 0, 0, 0, 0 }, "mono" },
+	.label  = { "pixel", 18, 1, 0, 34, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.curveIcon = { 0, 8, 0, 0, { 0, 0, 0, 0 } },
 	.vAlign = DIAL_VALIGN_CENTER,
 };
 
 static DialStyle g_defaultDialDiscrete = {
-	.knob   = { 28, 14, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 37, 19, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%i", 10, 14, 6, 5, 14, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 14, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.value  = { "%i", 50, 26, 41, 2, 18, { 0, 0, 0, 0 }, "mono" },
+	.label  = { "pixel", 18, 1, 8, 30, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static BtnStyle g_defaultBtn = {
@@ -495,6 +495,7 @@ static void overlayValue(cJSON *o, const ColourScheme *cs, ValueStyle *v) {
 	v->offsetY = jsonInt(o, "offsetY", v->offsetY);
 	v->fontSize = jsonInt(o, "fontSize", v->fontSize);
 	jsonColor(o, "color", cs, &v->color);
+	jsonStr(o, "font", v->fontName, sizeof(v->fontName));
 }
 static void overlayLabel(cJSON *o, const ColourScheme *cs, LabelStyle *l) {
 	jsonStr(o, "font", l->fontName, sizeof(l->fontName));

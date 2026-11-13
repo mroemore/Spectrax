@@ -1433,10 +1433,10 @@ void appendPresetControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	guiNodeSetClass(saveBtn, "btn-compact");
 	guiNodeSetClass(loadBtn, "btn-compact");
 	guiNodeSetClass(nextBtn, "btn-compact");
-	appendItem(btnwrap, prevBtn, 1);
-	/* 1.5x: SAVE/LOAD/NEXT need two weight slices each so their 11px
-	 * compact labels clear the cell border (one slice is ~30px). */
-	appendItem(btnwrap, pad1, 4);
+	/* 2x: every labelled cell here needs two slices (~40px) so a 14px
+	 * compact label clears the border. */
+	appendItem(btnwrap, prevBtn, 2);
+	appendItem(btnwrap, pad1, 3);
 	appendItem(btnwrap, nameNode, 4);
 	appendItem(btnwrap, saveBtn, 2);
 	appendItem(btnwrap, loadBtn, 2);
@@ -1518,8 +1518,10 @@ static void appendMetaControlNode(Graph *g, GuiNode *container, Instrument *inst
 	appendItem(btnwrap, prevBtn, 1);
 	appendItem(btnwrap, tag, 2);
 	appendItem(btnwrap, nextBtn, 1);
-	appendItem(btnwrap, voicesDial, 1);
-	appendItem(btnwrap, widthPad, 2);
+	/* 2x: a labelled dial's composition is ~138px wide, so the VOICES
+	 * cell needs two slices (609*2/7 ≈ 174) rather than one. */
+	appendItem(btnwrap, voicesDial, 2);
+	appendItem(btnwrap, widthPad, 1);
 	appendItem(container, btnwrap, weight);
 }
 
@@ -1607,16 +1609,17 @@ static Graph *createInstGraph(Instrument *inst, VoiceManager *vm, int channel, b
 	 * own. */
 	appendModLineNode(instGraph, instwrap, inst, 2, false);
 
+	/* Phase B: side gutters ~10px (640/63) instead of ~17px (640/38). */
 	appendItem(mainRow, margin1, 1);
-	appendItem(mainRow, instwrap, 36);
+	appendItem(mainRow, instwrap, 61);
 	appendItem(mainRow, margin2, 1);
 	appendItem(instGraph->root, mainRow, 19);
 
 	ModStripGuiNode *msgn = createModStripGuiNode(0, 0, 640, 100, vm, channel);
 	if(msgn) {
-		appendItem(instGraph->root, (GuiNode *)msgn, 4);
+		appendItem(instGraph->root, (GuiNode *)msgn, 2);
 	} else {
-		appendBlankNode(instGraph->root, 4);
+		appendBlankNode(instGraph->root, 2);
 	}
 	return instGraph;
 }

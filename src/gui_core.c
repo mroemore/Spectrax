@@ -38,6 +38,7 @@ Font textFont;
 Font symbolFont;
 
 Font pixelFont;
+Font monoFont;
 
 ColourScheme cs;
 
@@ -213,6 +214,10 @@ void InitGUI(void) {
 	InitWindow(screenWidth, screenHeight, "Spectrax");
 	textFont = LoadFont("resources/fonts/setback.png");
 	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
+	/* Phase B (mixed fonts): values are drawn in a monospace face so
+	 * digits are tabular — a proportional face makes a changing value
+	 * (the modulation pass rewrites them every block) shift sideways. */
+	monoFont = LoadFontEx("resources/fonts/console.ttf", gFontConfig.size, NULL, 255);
 	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
 	Image dialimg = LoadImage("resources/images/dial2.png");
 	dial = LoadTextureFromImage(dialimg);
@@ -229,9 +234,19 @@ void drawRotatedDial(int x, int y, int w, int h, int radius, int startAngle, int
 
 
 void drawValueDisplay(int x, int y, int w, int h, char *text, Color textColour, int fontSize) {
+	drawValueDisplayFont(&pixelFont, x, y, w, h, text, textColour, fontSize);
+}
+
+/* Phase B: same plate, explicit face — dial values pass the style's
+ * font so a `"font": "mono"` value renders in the monospace face. */
+void drawValueDisplayFont(Font *f, int x, int y, int w, int h, char *text, Color textColour, int fontSize) {
 	DrawRectangle(x, y, w, h, cs.valueDisplayBg);
 	float sz = (float)(fontSize > 0 ? fontSize : 9);
-	DrawTextEx(pixelFont, text, (Vector2){ x + 4, y + 4 }, sz, 1, textColour);
+	/* Vertically centre inside the plate so a taller plate (2x) does not
+	 * leave the digits riding at the top edge. */
+	float th = (float)fontSize;
+	float ty = (float)y + ((float)h - th) * 0.5f;
+	DrawTextEx(*f, text, (Vector2){ (float)x + 4, ty }, sz, 1, textColour);
 }
 
 
@@ -264,6 +279,9 @@ Font *styleFont(const char *name) {
 	}
 	if(name && strcmp(name, "symbol") == 0) {
 		return &symbolFont;
+	}
+	if(name && strcmp(name, "mono") == 0) {
+		return &monoFont;
 	}
 	return &pixelFont;
 }
@@ -321,7 +339,8 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ iconX, iconY, (float)ci->size, (float)ci->size },
 		               (Vector2){ 0, 0 }, 0.0f, ci->color);
 	} else if(g.valueW > 0 && g.valueH > 0) {
-		drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
+		drawValueDisplayFont(styleFont(st->value.fontName), g.valueX, g.valueY, g.valueW, g.valueH,
+		                     paramValue, st->value.color, st->value.fontSize);
 	}
 	if(st->label.fontSize > 0) {
 		Font *lf = styleFont(st->label.fontName);

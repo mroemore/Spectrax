@@ -39,6 +39,9 @@ typedef struct {
 	int offsetY;
 	int fontSize;
 	Color color;
+	/* Phase B (mixed fonts): the face a value is drawn in — "mono" keeps
+	 * digits tabular so a changing value cannot shift sideways. */
+	char fontName[16];
 } ValueStyle;
 
 typedef struct {

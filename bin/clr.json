@@ -2,61 +2,61 @@
 	"schema": 2,
 	"font": {
 		"path": "resources/fonts/pixel_times.ttf",
-		"size": 14,
+		"size": 18,
 		"spacing": 1
 	},
 	"colors": {
 		"surface": {
-			"window": "#CF6E3AFF",
-			"panel": "#503C3CFF",
-			"inset": "#322828FF",
-			"dim": "#000000AA"
+			"window": "#0A0108FF",
+			"panel": "#747474FF",
+			"inset": "#0A0108FF",
+			"dim": "#102208AA"
 		},
 		"text": {
-			"primary": "#631100FF",
-			"secondary": "#B03500FF",
+			"primary": "#F0D196FF",
+			"secondary": "#BBBBBBFF",
 			"muted": "#C8B4B4FF",
-			"mutedSelected": "#FFB4B4FF",
-			"value": "#FF0000FF",
+			"mutedSelected": "#709E2FFF",
+			"value": "#709E2FFF",
 			"gridLabel": "#C8B4B4FF",
 			"disabled": "#6E6060FF"
 		},
 		"line": {
-			"panel": "#0A0000FF",
+			"panel": "#E8E8E8FF",
 			"wrapper": "#0A0505FF",
-			"strong": "#DB9467FF",
-			"grid": "#3CFF96FF",
+			"strong": "#709E2FFF",
+			"grid": "#D54723FF",
 			"step": "#501414FF"
 		},
 		"cell": {
-			"default": "#944410FF",
-			"blank": "#5E171DFF",
+			"default": "#D39E61FF",
+			"blank": "#747474FF",
 			"highlighted": "#D63C11FF",
-			"selected": "#EBA14BFF"
+			"selected": "#709E2FFF"
 		},
 		"control": {
-			"dial": "#FF0000FF",
-			"accent": "#AA2631FF"
+			"dial": "#709E2FFF",
+			"accent": "#CF3F71FF"
 		},
 		"waveform": {
-			"bg": "#000000FF",
-			"primary": "#FF0000FF",
+			"bg": "#BBBBBBFF",
+			"primary": "#CF3F71FF",
 			"alt": "#00FF00FF",
 			"overlay": "#FF5050FF",
 			"playhead": "#FF0000FF"
 		},
 		"sample": {
-			"bg": "#3C0A0AFF",
-			"bgAlt": "#0A320AFF",
-			"border": "#C8503CFF",
+			"bg": "#BBBBBBFF",
+			"bgAlt": "#818277FF",
+			"border": "#CF3F71FF",
 			"closed": "#501E1EFF"
 		},
 		"arranger": {
-			"playhead": "#FF0000FF"
+			"playhead": "#D54723FF"
 		},
 		"mod": {
 			"lfo": "#00FFFFFF",
-			"env": "#82FF82FF",
+			"env": "#BEBEBEFF",
 			"random": "#FF50FFFF",
 			"offset": "#BEBEBEFF",
 			"default": "#D2D2D2FF",

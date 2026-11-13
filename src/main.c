@@ -547,7 +547,7 @@ int main(int argc, char **argv) {
 	FontConfig fontCfg;
 	strncpy(fontCfg.path, "resources/fonts/pixel_times.ttf", sizeof(fontCfg.path) - 1);
 	fontCfg.path[sizeof(fontCfg.path) - 1] = '\0';
-	fontCfg.size = 14;
+	fontCfg.size = 18;
 	fontCfg.spacing = 1;
 	setFontConfig(&fontCfg);
 

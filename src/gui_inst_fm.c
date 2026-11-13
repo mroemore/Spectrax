@@ -26,13 +26,27 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	 * row), viewport is ~4 rows at the 1.5x dial height, so the mods
 	 * row scrolls. One op per row keeps the 5 dial labels (FEEDBACK1
 	 * etc.) from colliding, which 2 ops/row does. */
-	const int fmRowH = 50;
+	const int fmRowH = 39;
 	GuiNode *fmScroll = createScrollContainer(0, 0, 100, fmRowH * 3, fmRowH, "fm_ctrl");
 	fmScroll->drawable = true;
 	fmScroll->draw = drawWrapperNode;
 
 	GuiNode *oprow[4];
 	GuiNode *miscrow = createGuiNode(0, 0, 100, 100, 1, na_horizontal, "FMR5", 0, 0);
+	/* Phase B: header row + OP gutter. The five column names are drawn
+	 * once at the top instead of on all twenty dials, and each op row
+	 * carries its OP tag in a left gutter cell. The dials then only hold
+	 * knob + value (`dial-unlabelled`), which is what lets five columns
+	 * fit a 620px content width at 2x type. */
+	GuiNode *headerRow = createGuiNode(0, 0, 100, 100, 1, na_horizontal, "FMHDR", 0, 0);
+	GuiNode *hdrBlank = createTextGuiNode(0, 0, 100, 100, "", "hdrblank");
+	const char *colNames[5] = { "RATIO", "FEEDBACK", "LEVEL", "OUTLV", "PITCH" };
+	appendItem(headerRow, hdrBlank, 2);
+	for(int j = 0; j < 5; j++) {
+		GuiNode *h = createTextGuiNode(0, 0, 100, 100, colNames[j], "hdr-text");
+		appendItem(headerRow, h, 5);
+	}
+	applyLayout(headerRow, "fm-header");
 	for(int i = 0; i < 4; i++) {
 		char nm[8];
 		snprintf(nm, sizeof(nm), "FMR%d", i + 1);
@@ -52,7 +66,11 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 			char dname[16];
 			snprintf(dname, sizeof(dname), "%s%d", labels[j], i + 1);
 			bool isSel = (i == 0 && j == 0) ? selected : 0;
-			dials[i][j] = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, dname, isSel, incParameterBaseValue, p[j]);
+			/* padding 1: the unlabelled composition is 37px and the row
+			 * must fit four ops plus the header inside the viewport. */
+			dials[i][j] = createDialGuiNode(0, 0, 100, 100, 1, na_horizontal, dname, isSel, incParameterBaseValue, p[j]);
+			/* Phase B: names live in the header row + OP gutter. */
+			guiNodeSetClass(dials[i][j], "dial-unlabelled");
 		}
 	}
 	GuiNode *alg = createDialGuiNode(0, 0, 100, 100, 2, na_horizontal, "ALG", 0, incParameterBaseValue, inst->id.fm.selectedAlgorithm);
@@ -66,16 +84,22 @@ void appendFMInstControlNode(Graph *g, GuiNode *container, char *name, int weigh
 	}
 
 	for(int i = 0; i < 4; i++) {
+		char gtext[8];
+		snprintf(gtext, sizeof(gtext), "OP%d", i + 1);
+		GuiNode *gutter = createTextGuiNode(0, 0, 100, 100, gtext, "op-gutter");
+		appendItem(oprow[i], gutter, 2);
 		for(int j = 0; j < 5; j++) {
-			appendItem(oprow[i], dials[i][j], 1);
+			appendItem(oprow[i], dials[i][j], 5);
 		}
-		/* Task 5.2 follow-up: the op row's arrangement (equal-width
-		 * dials filling the row) is a named layout, applied from
-		 * layout.json — the first module to dogfood the layout tier. */
-		applyLayout(oprow[i], "fm-op-row");
+		/* Phase B: the op rows share the header's column weights so the
+		 * names point at the right dial. */
+		applyLayout(oprow[i], "fm-row");
 		appendItem(fmScroll, oprow[i], 1);
 	}
 
+	/* Phase B: the header is fixed above the scroll box; only the op
+	 * rows and the misc row scroll, so all four ops stay reachable. */
+	appendItem(container, headerRow, 2);
 	appendItem(miscrow, alg, 1);
 	appendItem(miscrow, pan, 1);
 	appendItem(miscrow, gain, 1);

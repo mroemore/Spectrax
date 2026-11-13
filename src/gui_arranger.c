@@ -89,14 +89,17 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 	 * (~43px) overflowed the cell and the label crossed into the
 	 * knob. The column below is empty space, so the pair can take a
 	 * double slice without costing the grid anything. */
-	appendItem(songControls, bpm, 2);
-	appendItem(songControls, swing, 2);
-	appendItem(songControls, pad2, 9);
+	appendItem(songControls, bpm, 4);
+	appendItem(songControls, swing, 4);
+	appendItem(songControls, pad2, 11);
 
 	GuiNode *margin2 = createNamedBlankGuiNode("Marge!");
 	appendItem(agui->root, pad1, 1);
 
-	appendItem(arrWrap, songControls, 1);
+	/* Phase B: the ~106px dead band between the tempo dials and the grid
+	 * becomes a ~10px gutter (640/68); the grid and its chip row take
+	 * the reclaimed width. */
+	appendItem(arrWrap, songControls, 12);
 	appendItem(arrWrap, margin2, 1);
 
 	/* Task 3: instrument chip row sits above the arranger grid. One chip
@@ -144,7 +147,7 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 		appendItem(gridColumn, rowc, 1);
 	}
 	g_arranger = a;
-	appendItem(arrWrap, gridColumn, 4);
+	appendItem(arrWrap, gridColumn, 55);
 	appendItem(agui->root, arrWrap, 15);
 	/* Task 2: prefer the cell that matches the current selection; fall
 	 * back to the legacy gn selection if no cell matches (which can
