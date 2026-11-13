@@ -58,29 +58,29 @@ void applyLayout(GuiNode *container, const char *name) {
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
-	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 28, 14, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%05.2f", 38, 14, 28, 2, 9, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 9, 1, 0, 18, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.value  = { "%05.2f", 52, 20, 34, 2, 14, { 0, 0, 0, 0 } },
+	.label  = { "pixel", 14, 1, 0, 26, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.curveIcon = { 0, 8, 0, 0, { 0, 0, 0, 0 } },
 	.vAlign = DIAL_VALIGN_CENTER,
 };
 
 static DialStyle g_defaultDialDiscrete = {
-	.knob   = { 20, 10, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 28, 14, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%i", 10, 14, 6, 5, 9, { 0, 0, 0, 0 } },
-	.label  = { "pixel", 9, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.value  = { "%i", 10, 14, 6, 5, 14, { 0, 0, 0, 0 } },
+	.label  = { "pixel", 14, 1, 6, 21, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static BtnStyle g_defaultBtn = {
 	.border   = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.label    = { "pixel", 10, 1, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.sublabel = { "pixel", 8, 0, 4, 12, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.label    = { "pixel", 14, 1, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.sublabel = { "pixel", 11, 0, 4, 12, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 static TypeLabelStyle g_defaultTypeLabel = {
-	.label  = { "pixel", 10, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.label  = { "pixel", 14, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
@@ -90,7 +90,7 @@ static DestStyle g_defaultDest = {
 
 static TextStyle g_defaultText = {
 	.fontName = "pixel",
-	.fontSize = 10,
+	.fontSize = 14,
 	.spacing = 1,
 	.offsetX = 0,
 	.offsetY = 0,
@@ -104,10 +104,10 @@ static ChipStyle g_defaultChip = {
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.palette = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 },
 	             { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.voiceCount = { "pixel", 9, 1, 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.typeTag    = { "pixel", 9, 1, -4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.label      = { "pixel", 12, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.patchName  = { "pixel", 8, 1, 4, -11, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.voiceCount = { "pixel", 14, 1, 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.typeTag    = { "pixel", 14, 1, -4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.label      = { "pixel", 16, 1, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.patchName  = { "pixel", 11, 1, 4, -11, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.dots = { 4, 2, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
@@ -115,7 +115,7 @@ static StepCellStyle g_defaultStepCell = {
 	.bgEmpty = { 0, 0, 0, 0 },
 	.bgPlaying = { 0, 0, 0, 0 },
 	.borderSelected = { 0, 0, 0, 0 },
-	.note = { "text", 10, 4, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	.note = { "text", 14, 4, 4, 4, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
 /* Curve icons are an overlay on a dial, not a style type of their own:

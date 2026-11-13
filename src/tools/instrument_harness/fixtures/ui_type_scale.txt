@@ -1,0 +1,24 @@
+# Fixture: 1.5x type-scale geometry (Phase A of the small-screen rework).
+#
+# Pins the post-Phase-A geometry so later phases (2x rework) have a
+# baseline to diff against. Boots the instrument scene at the default
+# state and reports the rendered rects:
+#
+#   META          -> the meta row (h=74 at 1.5x)
+#   presetwrappa  -> the preset row (h=74, matches META)
+#   FMR1          -> the first FM op dial row (h=50, the 1.5x dial row)
+#   fm_ctrl       -> the FM inst control scroll box (h=193: holds all
+#                    four op rows; the mods row scrolls)
+#   TPREV         -> a meta-row button (w=84 at 1.5x label size)
+#
+# The 35-era numbers (FMR1 h=35) must NOT come back; a regression to
+# them means the fmRowH constant or the dial styles reverted.
+FRAMES 5
+
+REPORT META
+REPORT presetwrappa
+REPORT FMR1
+REPORT fm_ctrl
+REPORT TPREV
+
+SHOT ui_type_scale.png
