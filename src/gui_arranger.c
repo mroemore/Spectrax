@@ -78,8 +78,11 @@ void createArrangerGraph(Arranger *a, PatternList *pl) {
 
 	GuiNode *pad0 = createNamedBlankGuiNode("pad00");
 	GuiNode *pad1 = createNamedBlankGuiNode("pad01");
-	GuiNode *bpm = createDialGuiNode(0, 0, 100, 100, 5, na_vertical, "BPM", false, incParameterBaseValue, a->tempoSettings.bpm);
-	GuiNode *swing = createDialGuiNode(0, 0, 100, 100, 5, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
+	/* Padding 2 (not 5): at 1.5x the dial composition is 40px tall and
+	 * its cell is ~50, so 5px padding left the Swing label flush
+	 * against the panel's bottom border. */
+	GuiNode *bpm = createDialGuiNode(0, 0, 100, 100, 2, na_vertical, "BPM", false, incParameterBaseValue, a->tempoSettings.bpm);
+	GuiNode *swing = createDialGuiNode(0, 0, 100, 100, 2, na_vertical, "Swing", false, incParameterBaseValue, a->tempoSettings.swing);
 	GuiNode *pad2 = createNamedBlankGuiNode("pad02");
 	appendItem(songControls, pad0, 1);
 	/* 1.5x: each dial's content is 40px tall, so a 1/11 weight slice
