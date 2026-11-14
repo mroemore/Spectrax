@@ -18,14 +18,45 @@ static void ensure_tmp_dirs(void) { mkdir(TMP_DIR, 0755); }
 static int test_type_key_fallback_resolves(void);
 static int test_btn_and_typelabel_styles(void);
 
+/* Phase C part A: the dial's two ring angles. The modulation ring must be
+ * derived from the effective value and coincide with the base ring when
+ * nothing modulates, so an unmodulated dial cannot flicker. */
+static int test_dial_arc_angles(void) {
+	Parameter p = { 0 };
+	p.minValue = 0.0f;
+	p.maxValue = 10.0f;
+	p.baseValue = 2.5f;      /* 25% of the range */
+	p.modulators = NULL;
+	float base = -1.0f, mod = -1.0f;
+	dialArcAngles(&p, 270.0f, &base, &mod);
+	ASSERT_TRUE(base > 67.4f && base < 67.6f, "base angle is 25% of the sweep");
+	ASSERT_TRUE(mod == base, "unmodulated: the modulation ring coincides");
+
+	/* Clamped: an effective value past maxValue stops at the sweep. */
+	p.baseValue = 10.0f;
+	dialArcAngles(&p, 270.0f, &base, &mod);
+	ASSERT_TRUE(base == 270.0f, "full-scale base sweeps the whole arc");
+	ASSERT_TRUE(mod == 270.0f, "effective value is clamped to maxValue");
+
+	/* A zero range must not divide, and must leave both angles at zero. */
+	Parameter flat = { 0 };
+	flat.baseValue = 1.0f;
+	dialArcAngles(&flat, 270.0f, &base, &mod);
+	ASSERT_TRUE(base == 0.0f, "zero range: no base angle");
+	ASSERT_TRUE(mod == 0.0f, "zero range: no modulation angle");
+
+	printf("PASS test_dial_arc_angles\n");
+	return 0;
+}
+
 static int test_baked_defaults_used_when_no_class(void) {
 	GuiNode *n = createBlankGuiNode();
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 37, "knob size 37 (2x baked default)");
+	ASSERT_TRUE(d->knob.size == 31, "knob size 31 (ring + 2x default)");
 	ASSERT_TRUE(d->knob.startAngle == -225, "start angle");
 	ASSERT_TRUE(d->knob.sweep == 270, "sweep");
 	ASSERT_TRUE(strcmp(d->value.format, "%05.2f") == 0, "value format");
-	ASSERT_TRUE(d->value.offsetX == 39, "value offsetX");
+	ASSERT_TRUE(d->value.offsetX == 35, "value offsetX");
 	ASSERT_TRUE(d->label.offsetY == 34, "label offsetY");
 	const DialStyle *dd = resolveDiscreteDialStyle(n);
 	ASSERT_TRUE(strcmp(dd->value.format, "%i") == 0, "discrete format");
@@ -39,7 +70,7 @@ static int test_unknown_class_falls_back_to_type_default(void) {
 	GuiNode *n = createBlankGuiNode();
 	guiNodeSetClass(n, "does-not-exist");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 37, "fallback knob size (2x baked default)");
+	ASSERT_TRUE(d->knob.size == 31, "fallback knob size (ring + 2x default)");
 	freeGuiNode(n);
 	printf("PASS test_unknown_class_falls_back_to_type_default\n");
 	return 0;
@@ -53,7 +84,7 @@ static int test_compute_dial_geometry(void) {
 	DialGeometry g;
 	computeDialGeometry(n, d, &g);
 	/* contentW = 80-8 = 72 < groupW 86 -> classic horizontal inset cx+2 */
-	ASSERT_TRUE(g.knobX == 106, "narrow cell keeps horizontal inset");
+	ASSERT_TRUE(g.knobX == 108, "narrow cell keeps ring-safe horizontal inset");
 	/* contentH = 40-8 = 32 < the 40px composition -> top-anchored at cy */
 	ASSERT_TRUE(g.knobY == 204, "knob centers vertically");
 	/* value follows the knob; label centres in the cell below the knob */
@@ -190,13 +221,13 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 	const DialStyle *d = resolveDialStyle(wide);
 	DialGeometry g;
 	computeDialGeometry(wide, d, &g);
-	/* 2x: contentW = 180-2 = 178; groupW = 37+39+62 = 138;
-	 * slack 40; knobX = cx+20 */
-	ASSERT_TRUE(g.knobX == 100 + 1 + 20, "wide cell centers knob horizontally");
+	/* contentW = 180-2 = 178; groupW = 31+35+62 = 128; slack 50;
+	 * knobX = cx+25 */
+	ASSERT_TRUE(g.knobX == 100 + 1 + 25, "wide cell centers knob horizontally");
 	/* contentH = 68; composition 52; slack 16; knobY = cy+8 */
 	ASSERT_TRUE(g.knobY == 200 + 1 + 8, "wide cell centers knob vertically");
 	/* value follows the knob; label centres in the cell */
-	ASSERT_TRUE(g.valueX == g.knobX + 39, "value is knob-relative");
+	ASSERT_TRUE(g.valueX == g.knobX + 35, "value is knob-relative");
 	ASSERT_TRUE(g.labelX == 100 + 1 + 89, "label centres in the wide cell");
 	freeGuiNode(wide);
 
@@ -205,7 +236,7 @@ static int test_dial_geometry_centers_in_wide_cell(void) {
 	DialGeometry gn;
 	computeDialGeometry(narrow, dn, &gn);
 	/* contentW = 58-4 = 54 < 86 -> classic inset cx+2 = 104 */
-	ASSERT_TRUE(gn.knobX == 100 + 2 + 2, "narrow cell keeps classic horizontal inset");
+	ASSERT_TRUE(gn.knobX == 100 + 2 + 4, "narrow cell keeps ring-safe horizontal inset");
 	ASSERT_TRUE(gn.labelX == 100 + 2 + 27, "narrow cell label centres too");
 	freeGuiNode(narrow);
 	printf("PASS test_dial_geometry_centers_in_wide_cell\n");
@@ -468,6 +499,7 @@ static int test_dial_value_clamped_to_cell(void) {
 int main(void) {
 	int fails = 0;
 	ensure_tmp_dirs();
+	fails += test_dial_arc_angles();
 	fails += test_baked_defaults_used_when_no_class();
 	fails += test_unknown_class_falls_back_to_type_default();
 	fails += test_type_key_fallback_resolves();
@@ -595,7 +627,7 @@ static int test_custom_class_geometry(void) {
 	DialGeometry g;
 	computeDialGeometry(n, d, &g);
 	ASSERT_TRUE(g.knobW == 30, "geometry knobW");
-	ASSERT_TRUE(g.knobX == 106, "geometry knobX keeps inset");
+	ASSERT_TRUE(g.knobX == 108, "geometry knobX keeps ring-safe inset");
 	/* contentH = 32 < the 38px composition -> top-anchored at cy */
 	ASSERT_TRUE(g.knobY == 204, "geometry knobY centers vertically");
 	ASSERT_TRUE(g.valueX == g.knobX + 40, "geometry valueX with offset");
@@ -656,7 +688,7 @@ static int test_compile_unknown_class_ignored(void) {
 	GuiNode *n = createBlankGuiNode();
 	guiNodeSetClass(n, "mystery");
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 37, "untyped class ignored -> baked default (2x)");
+	ASSERT_TRUE(d->knob.size == 31, "untyped class ignored -> baked default");
 	freeGuiNode(n);
 	remove(path);
 	printf("PASS test_compile_unknown_class_ignored\n");
@@ -670,7 +702,7 @@ static int test_missing_layout_file_keeps_defaults(void) {
 	            "missing file -> false");
 	GuiNode *n = createBlankGuiNode();
 	const DialStyle *d = resolveDialStyle(n);
-	ASSERT_TRUE(d->knob.size == 37, "defaults intact (2x baked default)");
+	ASSERT_TRUE(d->knob.size == 31, "defaults intact (ring + 2x default)");
 	freeGuiNode(n);
 	printf("PASS test_missing_layout_file_keeps_defaults\n");
 	return 0;
@@ -1012,7 +1044,7 @@ static int test_stage_dial_styles_resolve(void) {
 	GuiNode *nr = createBlankGuiNode();
 	guiNodeSetClass(nr, "stage-rate");
 	const DialStyle *sr = resolveDialStyle(nr);
-	ASSERT_TRUE(sr->knob.size == 37, "stage-rate inherits default knob.size 37");
+	ASSERT_TRUE(sr->knob.size == 31, "stage-rate inherits default knob.size 31");
 	ASSERT_TRUE(sr->value.offsetY == 34, "stage-rate value.offsetY 34");
 	ASSERT_TRUE(sr->value.fontSize == 7, "stage-rate value.fontSize 7");
 	freeGuiNode(nr);

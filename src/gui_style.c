@@ -1,4 +1,5 @@
 #include "gui_style.h"
+#include "modsystem.h"
 #include "cJSON.h"
 #include "io/config_io.h"
 #include <string.h>
@@ -58,18 +59,18 @@ void applyLayout(GuiNode *container, const char *name) {
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
-	.knob   = { 37, 19, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 31, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%05.2f", 62, 26, 39, 2, 18, { 0, 0, 0, 0 }, "mono" },
+	.value  = { "%05.2f", 62, 26, 35, 2, 18, { 0, 0, 0, 0 }, "mono" },
 	.label  = { "pixel", 18, 1, 0, 34, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.curveIcon = { 0, 8, 0, 0, { 0, 0, 0, 0 } },
 	.vAlign = DIAL_VALIGN_CENTER,
 };
 
 static DialStyle g_defaultDialDiscrete = {
-	.knob   = { 37, 19, -225, 270, 0, 0, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 31, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
-	.value  = { "%i", 50, 26, 41, 2, 18, { 0, 0, 0, 0 }, "mono" },
+	.value  = { "%i", 50, 26, 37, 2, 18, { 0, 0, 0, 0 }, "mono" },
 	.label  = { "pixel", 18, 1, 8, 30, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 };
 
@@ -396,6 +397,33 @@ int dialComponentHeight(const DialStyle *st) {
 	return h;
 }
 
+void dialArcAngles(const Parameter *p, float sweep, float *baseAngle, float *modAngle) {
+	float base = 0.0f;
+	float mod = 0.0f;
+	if(p) {
+		float range = p->maxValue - p->minValue;
+		if(range > 0.0f) {
+			base = ((p->baseValue - p->minValue) / range) * sweep;
+			/* With no modulator attached, currentValue is not being
+			 * written, so the effective value IS the base value. */
+			float eff = p->modulators ? getParameterValue((Parameter *)p) : p->baseValue;
+			if(eff < p->minValue) {
+				eff = p->minValue;
+			}
+			if(eff > p->maxValue) {
+				eff = p->maxValue;
+			}
+			mod = ((eff - p->minValue) / range) * sweep;
+		}
+	}
+	if(baseAngle) {
+		*baseAngle = base;
+	}
+	if(modAngle) {
+		*modAngle = mod;
+	}
+}
+
 void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *out) {
 	int cx = gn->x + gn->padding;
 	int cy = gn->y + gn->padding;
@@ -407,7 +435,9 @@ void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *o
 	 * low and push the label through the cell's bottom edge. */
 	int groupH = dialComponentHeight(st);
 	int groupW = st->knob.size + st->value.offsetX + st->value.width;
-	int knobX = (groupW < contentW) ? (cx + (contentW - groupW) / 2) : (cx + 2);
+	/* When the composition is wider than the cell, the inset keeps the
+	 * value ring (radius + 3) clear of the cell's border. */
+	int knobX = (groupW < contentW) ? (cx + (contentW - groupW) / 2) : (cx + 4);
 	int knobY = (st->vAlign == DIAL_VALIGN_TOP)
 	              ? cy
 	              : ((groupH < contentH) ? (cy + (contentH - groupH) / 2) : cy);
@@ -477,6 +507,7 @@ static void overlayKnob(cJSON *o, const ColourScheme *cs, KnobStyle *k) {
 	k->offsetX = jsonInt(o, "offsetX", k->offsetX);
 	k->offsetY = jsonInt(o, "offsetY", k->offsetY);
 	jsonColor(o, "color", cs, &k->color);
+	jsonColor(o, "modColor", cs, &k->modColor);
 	jsonStr(o, "asset", k->assetPath, sizeof(k->assetPath));
 	if(k->assetPath[0]) {
 		k->hasAsset = true;

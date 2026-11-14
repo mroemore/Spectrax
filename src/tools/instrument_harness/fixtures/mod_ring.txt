@@ -1,0 +1,35 @@
+# Fixture: the modulation ring + dimmed effective number (Phase C, part A).
+#
+# Routes the first runtime source into the first destination, then leaves
+# the modulation screen for the instrument screen so the SHOT shows the
+# dial that now carries a modulator: its ring should show a bright arc to
+# the base value and a dimmer continuation to the modulated value.
+FRAMES 1
+ASSERT selected==RATIO1
+
+JUMP MODLINE
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==MODSRC_0
+
+JUMPTL MODLIST_ADD
+FRAMES 1
+EDIT
+FRAMES 2
+
+JUMPTL MOD_ADDRUTE
+FRAMES 1
+EDIT
+FRAMES 2
+ASSERT topLayerSelected==DEST_0
+EDIT
+FRAMES 3
+
+# FUNC backs out of the modulation screen to the instrument screen, where
+# the routed dial (the meta row's VOICES) now carries the dim mod arc.
+HOLD SELECT
+FRAMES 3
+RELEASE
+FRAMES 4
+SHOT modring_inst.png
+QUIT

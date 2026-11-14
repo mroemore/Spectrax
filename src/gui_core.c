@@ -287,6 +287,39 @@ Font *styleFont(const char *name) {
 }
 
 
+/* The dial's two rings. Computes the base angle (which the needle
+ * rotates by, returned through angleOut) and paints:
+ *   - the modulation sector, startAngle -> effective value, dim;
+ *   - the base sector, startAngle -> base value, bright, over it.
+ * Unmodulated the two angles coincide and the dim ring is covered
+ * entirely, so no branch is needed beyond "is there a modulator".
+ * Display-only: getParameterValue is a read the audio thread also makes. */
+static void drawDialArcs(const GuiNode *gn, const DialStyle *st, const DialGeometry *g, float *angleOut) {
+	float baseAngle = 0.0f;
+	float modAngle = 0.0f;
+	dialArcAngles(gn->p, (float)st->knob.sweep, &baseAngle, &modAngle);
+	Vector2 centre = { g->knobX + (float)st->knob.radius, g->knobY + (float)st->knob.radius };
+	/* A ring, not a pie: the knob graphic is opaque and covers a pie's
+	 * interior, so only the band outside its edge reads. */
+	float rIn = (float)st->knob.radius - 2.0f;
+	float rOut = (float)st->knob.radius + 3.0f;
+	float start = (float)st->knob.startAngle;
+	if(gn->p->modulators && modAngle != baseAngle) {
+		Color dim = st->knob.modColor;
+		if(dim.a == 0) {
+			/* A style that never set modColor still gets a visible
+			 * second ring: the dial's own colour at 45%. */
+			dim = st->knob.color;
+			dim.a = (unsigned char)((float)dim.a * 0.45f);
+		}
+		DrawRing(centre, rIn, rOut, start, start + modAngle, 48, dim);
+	}
+	DrawRing(centre, rIn, rOut, start, start + baseAngle, 48, st->knob.color);
+	if(angleOut) {
+		*angleOut = baseAngle;
+	}
+}
+
 void drawDialGuiNode(void *self) {
 	GuiNode *gn = (GuiNode *)self;
 	if(!gn->p) {
@@ -295,24 +328,22 @@ void drawDialGuiNode(void *self) {
 	const DialStyle *st = resolveDialStyle(gn);
 	char paramValue[50];
 	snprintf(paramValue, 50, st->value.format, gn->p->baseValue);
-	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = 0.0f;
-	if(range > 0.0f) {
-		float norm = (gn->p->baseValue - gn->p->minValue) / (range / 100.0f);
-		angle = norm * (st->knob.sweep / 100.0f);
-	}
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
 
+	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
 	               st->border.color, st->border.colorSelected);
+	/* The value ring, then the modulation ring behind it, then the knob
+	 * graphic inside both. The ring used to be skipped whenever the style
+	 * named a knob asset, which left the shipped dial with no value
+	 * indication at all. */
+	drawDialArcs(gn, st, &g, &angle);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
 	} else {
-		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
-		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
 		/* DrawTexturePro places the rotated quad's centre at
 		 * (dest.x, dest.y), not at (dest + origin) — so the dest
 		 * top-left must carry the +radius offset for the knob graphic
@@ -491,24 +522,22 @@ void drawDiscreteDialGuiNode(void *self) {
 	const DialStyle *st = resolveDiscreteDialStyle(gn);
 	char paramValue[50];
 	snprintf(paramValue, 50, st->value.format, (int)gn->p->baseValue);
-	float range = gn->p->maxValue - gn->p->minValue;
-	float angle = 0.0f;
-	if(range > 0.0f) {
-		float norm = (gn->p->baseValue - gn->p->minValue) / (range / 100.0f);
-		angle = norm * (st->knob.sweep / 100.0f);
-	}
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
 
+	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
 	               st->border.color, st->border.colorSelected);
+	/* The value ring, then the modulation ring behind it, then the knob
+	 * graphic inside both. The ring used to be skipped whenever the style
+	 * named a knob asset, which left the shipped dial with no value
+	 * indication at all. */
+	drawDialArcs(gn, st, &g, &angle);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ g.knobW / 2.0f, g.knobH / 2.0f }, st->knob.startAngle + angle, WHITE);
 	} else {
-		DrawCircleSector((Vector2){ g.knobX + st->knob.radius, g.knobY + st->knob.radius },
-		                 st->knob.radius + 2, st->knob.startAngle, st->knob.startAngle + angle, 32, st->knob.color);
 		/* DrawTexturePro places the rotated quad's centre at
 		 * (dest.x, dest.y), not at (dest + origin) — so the dest
 		 * top-left must carry the +radius offset for the knob graphic

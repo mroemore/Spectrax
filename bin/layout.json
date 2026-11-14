@@ -2,8 +2,8 @@
     "styles": {
         "dial": {
             "knob": {
-                "size": 37,
-                "radius": 19,
+                "size": 31,
+                "radius": 15,
                 "startAngle": -225,
                 "sweep": 270,
                 "offsetX": 0,
@@ -19,7 +19,7 @@
                 "format": "%05.2f",
                 "width": 62,
                 "height": 26,
-                "offsetX": 39,
+                "offsetX": 35,
                 "offsetY": 2,
                 "fontSize": 18,
                 "color": "text.value",
@@ -41,7 +41,7 @@
                 "format": "%i",
                 "width": 50,
                 "height": 26,
-                "offsetX": 41,
+                "offsetX": 37,
                 "offsetY": 2,
                 "fontSize": 18,
                 "font": "mono"

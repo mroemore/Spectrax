@@ -17,6 +17,9 @@ typedef struct {
 	int offsetX;
 	int offsetY;
 	Color color;
+	/* The modulation ring: the dial's own colour at 45% when the style
+	 * does not name one (a=0 means "derive"). */
+	Color modColor;
 	bool hasAsset;
 	char assetPath[256];
 	Texture2D assetTex;
@@ -198,6 +201,11 @@ typedef struct {
 } DialGeometry;
 
 void computeDialGeometry(const GuiNode *gn, const DialStyle *st, DialGeometry *out);
+/* The two ring angles for a parameter: the base value's angle and the
+ * effective (modulated) value's angle, both as degrees from the style's
+ * start angle. Equal when nothing modulates the parameter. Split out of
+ * the draw path so the arithmetic is testable without a window. */
+void dialArcAngles(const Parameter *p, float sweep, float *baseAngle, float *modAngle);
 
 /* The dial component's natural content height: the lowest extent of
  * knob, value and label (all anchored at the knob top). Does not
