@@ -295,18 +295,18 @@ static void drawDialValueRing(const GuiNode *gn, const DialStyle *st, const Dial
 	float modAngle = 0.0f;
 	dialArcAngles(gn->p, (float)st->knob.sweep, &baseAngle, &modAngle);
 	Vector2 centre = { g->knobX + (float)st->knob.radius, g->knobY + (float)st->knob.radius };
-	DrawRing(centre, (float)st->knob.radius - 2.0f, (float)st->knob.radius + 3.0f,
+	DrawRing(centre, (float)st->knob.radius, (float)st->knob.radius + 3.0f,
 	         (float)st->knob.startAngle, (float)st->knob.startAngle + baseAngle, 48, st->knob.color);
 	if(baseAngleOut) {
 		*baseAngleOut = baseAngle;
 	}
 }
 
-/* The modulation segment, drawn after the knob graphic because it sits
- * inside the value ring, on the knob's face. It starts at the base
- * position and runs to the effective value, so its direction carries the
- * sign of the excursion; its length carries the distance. Display-only:
- * getParameterValue is a read the audio thread also makes. */
+/* The modulation segment: the middle ring, inside the value ring and
+ * outside the knob graphic, both of which are drawn after it. It starts
+ * at the base position and runs to the effective value, so its direction
+ * carries the sign of the excursion and its length the distance.
+ * Display-only: getParameterValue is a read the audio thread also makes. */
 static void drawDialModRing(const GuiNode *gn, const DialStyle *st, const DialGeometry *g) {
 	if(!gn->p->modulators) {
 		return;
@@ -322,7 +322,7 @@ static void drawDialModRing(const GuiNode *gn, const DialStyle *st, const DialGe
 	if(accent.a == 0) {
 		accent = (Color){ 255, 255, 255, 255 };
 	}
-	DrawRing(centre, (float)st->knob.radius - 8.0f, (float)st->knob.radius - 4.0f,
+	DrawRing(centre, (float)st->knob.radius - 3.0f, (float)st->knob.radius - 1.0f,
 	         (float)st->knob.startAngle + baseAngle, (float)st->knob.startAngle + modAngle, 48, accent);
 }
 
@@ -353,6 +353,7 @@ void drawDialGuiNode(void *self) {
 	 * whenever the style named a knob asset, which left the shipped dial
 	 * with no value indication at all. */
 	drawDialValueRing(gn, st, &g, &angle);
+	drawDialModRing(gn, st, &g);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
@@ -366,7 +367,6 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	drawDialModRing(gn, st, &g);
 	const CurveIconStyle *ci = &st->curveIcon;
 	if(ci->frameCount > 0) {
 		int idx = curveIconIndex(gn->p->baseValue);
@@ -556,6 +556,7 @@ void drawDiscreteDialGuiNode(void *self) {
 	 * whenever the style named a knob asset, which left the shipped dial
 	 * with no value indication at all. */
 	drawDialValueRing(gn, st, &g, &angle);
+	drawDialModRing(gn, st, &g);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
@@ -569,7 +570,6 @@ void drawDiscreteDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
-	drawDialModRing(gn, st, &g);
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
 	Font *lf = styleFont(st->label.fontName);
 	/* labelX is the label's centre (cell-centred caption); centre the
