@@ -64,6 +64,7 @@
 
 #include "main.h"
 #include "gui.h"
+#include "io/config_io.h"
 #include "gui_layer.h"
 #include "gui_inst_internal.h"
 #include "gui_style.h"
@@ -161,7 +162,9 @@ typedef struct {
 	} a;
 	union {
 		int n;          /* secondary int (modulator_count), voiceCount, expanded-flag 0|1, scene index */
+		float f;        /* for SOP_MODFORCE: the base value */
 	} b;
+	bool hasBase;       /* SOP_MODFORCE: a base value was given */
 	char name[64];       /* for SOP_ASSERT_SELECTED, SOP_ASSERT_PRESET, SOP_ASSERT_FILE,
 	                      * SOP_ASSERT_CHIP_LABEL */
 } ScriptStep;
@@ -859,6 +862,11 @@ static void parseScript(const char *path) {
 			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
 			s->name[sizeof(s->name) - 1] = '\0';
 			s->a.f = (float)atof(tokens[2]);
+			/* Optional third token: the base value, so a fixture can put
+			 * the bright ring across a wide arc and watch the modulation
+			 * segment sit on top of it. */
+			s->b.f = (nt > 3) ? (float)atof(tokens[3]) : 0.0f;
+			s->hasBase = nt > 3;
 		} else if(strcmp(op, "QUIT") == 0) {
 			s->op = SOP_QUIT;
 		} else {
@@ -1634,6 +1642,9 @@ static void processScriptAssert(const ScriptStep *s) {
 			if(!match->p->modulators) {
 				match->p->modulators = &dummyConn;
 			}
+			if(s->hasBase) {
+				match->p->baseValue = s->b.f;
+			}
 			match->p->currentValue = s->a.f;
 			printf("[MODFORCE] %s base=%.3f eff=%.3f range=[%.3f..%.3f]\n", s->name,
 			       (double)match->p->baseValue, (double)match->p->currentValue,
@@ -2118,6 +2129,25 @@ int main(int argc, char **argv) {
 	int scripted = parseArgs(argc, argv, &scriptPath, &probeNSources);
 
 	InitGUI();
+	/* Load the shipped theme when it sits beside the binary (the harness runs
+	 * with cwd = bin/). Without this every fixture renders in the baked
+	 * default palette, which is not what the device shows -- a visual
+	 * fixture could not then be trusted about colour, only about geometry. */
+	{
+		FILE *th = fopen("clr.json", "rb");
+		if(th) {
+			fclose(th);
+			initDefaultColourScheme(getColourScheme());
+			FontConfig fontCfg;
+			strncpy(fontCfg.path, "resources/fonts/pixel_times.ttf", sizeof(fontCfg.path) - 1);
+			fontCfg.path[sizeof(fontCfg.path) - 1] = '\0';
+			fontCfg.size = 18;
+			fontCfg.spacing = 1;
+			setFontConfig(&fontCfg);
+			loadThemeJson("clr.json", getColourScheme(), getFontConfig());
+			markThemeLoaded();
+		}
+	}
 	compileLayoutConfig("layout.json", getColourScheme());
 	finalizeStyles();
 

@@ -287,6 +287,15 @@ Font *styleFont(const char *name) {
 }
 
 
+/* The radius of the drawn knob disc. The rings key off this, not off
+ * knob.radius: they must START at the disc's edge (touching it) and grow
+ * outward, so a knob drawn smaller than its cell does not leave a gap
+ * between the graphic and its ring. */
+static float dialGraphicRadius(const DialStyle *st) {
+	int graphic = st->knob.graphicSize > 0 ? st->knob.graphicSize : st->knob.size;
+	return (float)graphic * 0.5f;
+}
+
 /* The dial's value ring: a ring, not a pie, because the knob graphic is
  * opaque and covers a pie's interior, so only the band outside its edge
  * reads. baseAngleOut is the needle's rotation. */
@@ -295,15 +304,20 @@ static void drawDialValueRing(const GuiNode *gn, const DialStyle *st, const Dial
 	float modAngle = 0.0f;
 	dialArcAngles(gn->p, (float)st->knob.sweep, &baseAngle, &modAngle);
 	Vector2 centre = { g->knobX + (float)st->knob.radius, g->knobY + (float)st->knob.radius };
-	DrawRing(centre, (float)st->knob.radius, (float)st->knob.radius + 3.0f,
+	/* Anchored on the dial's edge and 3.5px wide: the widest band, so the
+	 * modulation segment drawn over its inner part still leaves it
+	 * visible. */
+	float r = dialGraphicRadius(st);
+	DrawRing(centre, r, r + 4.0f,
 	         (float)st->knob.startAngle, (float)st->knob.startAngle + baseAngle, 48, st->knob.color);
 	if(baseAngleOut) {
 		*baseAngleOut = baseAngle;
 	}
 }
 
-/* The modulation segment: the middle ring, inside the value ring and
- * outside the knob graphic, both of which are drawn after it. It starts
+/* The modulation segment: the same inner edge as the value ring and
+ * half its width, drawn on top of it and before the knob graphic (so it
+ * never covers the dial). It starts
  * at the base position and runs to the effective value, so its direction
  * carries the sign of the excursion and its length the distance.
  * Display-only: getParameterValue is a read the audio thread also makes. */
@@ -322,7 +336,11 @@ static void drawDialModRing(const GuiNode *gn, const DialStyle *st, const DialGe
 	if(accent.a == 0) {
 		accent = (Color){ 255, 255, 255, 255 };
 	}
-	DrawRing(centre, (float)st->knob.radius - 1.0f, (float)st->knob.radius + 2.0f,
+	/* Same inner edge as the value ring -- both touch the dial -- and
+	 * half its width, so the value ring's outer 2px stay visible where the
+	 * two overlap even though this one is painted on top. */
+	float r = dialGraphicRadius(st);
+	DrawRing(centre, r, r + 2.0f,
 	         (float)st->knob.startAngle + baseAngle, (float)st->knob.startAngle + modAngle, 48, accent);
 }
 
