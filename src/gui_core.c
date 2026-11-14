@@ -322,7 +322,7 @@ static void drawDialModRing(const GuiNode *gn, const DialStyle *st, const DialGe
 	if(accent.a == 0) {
 		accent = (Color){ 255, 255, 255, 255 };
 	}
-	DrawRing(centre, (float)st->knob.radius - 3.0f, (float)st->knob.radius - 1.0f,
+	DrawRing(centre, (float)st->knob.radius - 1.0f, (float)st->knob.radius + 2.0f,
 	         (float)st->knob.startAngle + baseAngle, (float)st->knob.startAngle + modAngle, 48, accent);
 }
 

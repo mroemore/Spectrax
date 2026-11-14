@@ -29,6 +29,7 @@
 #include "main.h"
 #include "audio.h"
 #include "audio_device.h"
+#include "alsa_output.h"
 #include "device_budget.h"
 #include "device_calibrate.h"
 
@@ -309,6 +310,10 @@ static volatile unsigned long g_audioCallbacks = 0;
 static DeviceBudget g_deviceBudget;
 static int g_deviceBudgetLoaded = 0;
 
+/* Set by --alsa-pcm: the PCM the direct-ALSA backend takes. NULL means the
+ * PortAudio path, which is the only one a host build needs. */
+static const char *g_alsaPcm = NULL;
+
 static PaError openAudioStream(PaStream **stream, paTestData *data) {
     /* The buffer size is a latency knob, not a parameter of the sound: the
      * engine's control rate is scheduled in samples, so every size here
@@ -507,6 +512,14 @@ int main(int argc, char **argv) {
 	 * the exit path can rebuild absolute cfg.json / clr.json paths. */
 	char cfgDir[1024];
 	char dataDir[1024];
+	/* --alsa-pcm <pcm>: take the PCM directly instead of going through
+	 * PortAudio. The launcher passes it on the handheld, whose PortAudio
+	 * ALSA path cannot pace the engine (see src/alsa_output.h). */
+	for(int i = 1; i < argc; i++) {
+		if(strcmp(argv[i], "--alsa-pcm") == 0 && i + 1 < argc) {
+			g_alsaPcm = argv[++i];
+		}
+	}
 	/* Task 9: scan argv for the --probe-route diagnostic flag. Off by
 	 * default; the probe must have zero effect when this flag is absent. */
 	for(int i = 1; i < argc; i++) {
@@ -616,13 +629,31 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	/* The direct backend owns its own thread and clock; it is tried first
+	 * when the launcher named a PCM, and PortAudio is the fallback so a
+	 * misconfigured PCM costs a warning rather than a silent app. */
+	bool directAudio = false;
+	if(g_alsaPcm) {
+		char alsaErr[256];
+		unsigned long buf = (unsigned long)(g_deviceBudgetLoaded ? g_deviceBudget.bufferFrames : 256);
+		if(alsaOutputStart(&data, g_alsaPcm, (unsigned)buf, alsaErr, sizeof alsaErr)) {
+			directAudio = true;
+			printf("audio: direct ALSA PCM %s at %d Hz, %lu-frame period\n",
+			       g_alsaPcm, alsaOutputRate(), alsaOutputPeriodFrames());
+		} else {
+			fprintf(stderr, "audio: %s; falling back to PortAudio\n", alsaErr);
+		}
+	}
+
 	err = Pa_Initialize();
-	if(err != paNoError)
+	if(err != paNoError && !directAudio)
 		goto error;
 
-	err = openAudioStream(&stream, &data);
-	if(err != paNoError)
-		goto error;
+	if(!directAudio) {
+		err = openAudioStream(&stream, &data);
+		if(err != paNoError)
+			goto error;
+	}
 
 	SetTraceLogLevel(LOG_WARNING);
 	RenderTexture2D gfx = createPresentTarget();
@@ -1109,6 +1140,14 @@ if(isKeyHeld(appState->inputState, KM_EDIT) && !isKeyHeld(appState->inputState, 
 		saveThemeJson(clrPath, getColourScheme(), getFontConfig());
 	}
 	printf("song save attempt result: %i", saveResult);
+	if(directAudio) {
+		alsaOutputStop();
+		Pa_Terminate();
+		freeSamplePool(data.samplePool);
+		cleanupModSystem(data.modList);
+		printf("The end! :).\n");
+		return 0;
+	}
 	err = Pa_StopStream(stream);
 	if(err != paNoError)
 		goto error;

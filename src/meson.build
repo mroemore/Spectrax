@@ -14,6 +14,7 @@ core_sources = files(
   'sintab.c',
   'canonical_math.c',
   'devicerate.c',
+  'alsa_output.c',
   'wavetable.c',
   'dstruct.c',
   'blit_synth.c',

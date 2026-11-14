@@ -62,13 +62,19 @@ egl = declare_dependency()
 glesv2 = declare_dependency()
 gbm = declare_dependency()
 drm = declare_dependency()
-asound = declare_dependency()
+# The device output backend calls libasound directly (src/alsa_output.c), so
+# ALSA is a link dependency of the app itself now, not just of PortAudio's
+# internals: a device build takes the bundle's link-time stub, a host build the
+# system library.
+asound = cc.find_library('asound', dirs: stubdirs, required: false)
+if not asound.found()
+  asound = cc.find_library('asound', required: false)
+endif
 if stubdirs.length() > 0
   egl = cc.find_library('EGL', dirs: stubdirs, required: false)
   glesv2 = cc.find_library('GLESv2', dirs: stubdirs, required: false)
   gbm = cc.find_library('gbm', dirs: stubdirs, required: false)
   drm = cc.find_library('drm', dirs: stubdirs, required: false)
-  asound = cc.find_library('asound', dirs: stubdirs, required: false)
 endif
 x11 = cc.find_library('X11', required: false)
 # The dev harnesses' X11 screenshot path is host-only: a DRM/KMS device
