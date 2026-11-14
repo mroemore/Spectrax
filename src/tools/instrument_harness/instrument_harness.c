@@ -139,6 +139,9 @@ typedef enum {
 	SOP_SHOWTL,        /* print the top non-passive layer's selected node name */
 	SOP_SHOW,          /* print the base graph's selected node name */
 	SOP_JUMP_TL,       /* changeGraphSelection on the top non-passive layer's graph */
+	SOP_MODFORCE,      /* test hook: pin a parameter's effective (modulated) value
+	                    * so the modulation ring can be photographed without
+	                    * waiting on an envelope's phase */
 	SOP_QUIT
 } ScriptOpKind;
 
@@ -842,6 +845,20 @@ static void parseScript(const char *path) {
 				failScript(lineno, "ASSERT target '%s' unknown (envcount|modulators|selected|preset|file|presetCount|algo|envCurvature0|envCurvature1|loadListActive|savedFlash|scene|chipExpanded|chipLabel|chipColour|voiceType|voiceCount)", tokens[1]);
 				return;
 			}
+		} else if(strcmp(op, "MODFORCE") == 0) {
+			/* MODFORCE <node> <value>: pin the parameter's effective
+			 * value. A parameter with no modulator is given a dummy
+			 * connection so the draw path takes the modulated branch --
+			 * this is a rendering hook, not a routing one. */
+			if(nt < 3) {
+				fclose(fp);
+				failScript(lineno, "MODFORCE requires a node name and a value");
+				return;
+			}
+			s->op = SOP_MODFORCE; s->frames = 1;
+			strncpy(s->name, tokens[1], sizeof(s->name) - 1);
+			s->name[sizeof(s->name) - 1] = '\0';
+			s->a.f = (float)atof(tokens[2]);
 		} else if(strcmp(op, "QUIT") == 0) {
 			s->op = SOP_QUIT;
 		} else {
@@ -1606,6 +1623,23 @@ static void processScriptAssert(const ScriptStep *s) {
 				failScript(s->lineno, "SHOT %s: capture failed", s->name);
 			}
 			break;
+		case SOP_MODFORCE: {
+			Graph *cg = getSelectedInstGraph();
+			GuiNode *match = cg ? findNodeByName(cg->root, s->name) : NULL;
+			if(!match || !match->p) {
+				printf("[MODFORCE] %s: not a dial\n", s->name);
+				break;
+			}
+			static ModConnection dummyConn;
+			if(!match->p->modulators) {
+				match->p->modulators = &dummyConn;
+			}
+			match->p->currentValue = s->a.f;
+			printf("[MODFORCE] %s base=%.3f eff=%.3f range=[%.3f..%.3f]\n", s->name,
+			       (double)match->p->baseValue, (double)match->p->currentValue,
+			       (double)match->p->minValue, (double)match->p->maxValue);
+			break;
+		}
 		case SOP_REPORT: {
 			/* Task 4 size verification — find the named GuiNode (any
 			 * depth, selectable or wrapper) and print its rect. Doesn't

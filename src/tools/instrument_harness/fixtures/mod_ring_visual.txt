@@ -1,0 +1,18 @@
+# Fixture: the modulation segment (Phase C part A).
+#
+# Pins the dial's effective value with MODFORCE so the shot does not
+# depend on an envelope's phase, then photographs the instrument screen.
+# RATIO1's base is 2.00 of 0.25..30; forcing 12.00 makes the segment start at
+# the base position and run three quarters of the way round.
+FRAMES 3
+ASSERT selected==RATIO1
+
+MODFORCE RATIO1 12.0
+FRAMES 2
+SHOT modring_positive.png
+
+# Negative excursion: the segment must run the other way from the base.
+MODFORCE RATIO1 1.0
+FRAMES 2
+SHOT modring_negative.png
+QUIT

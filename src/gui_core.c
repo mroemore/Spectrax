@@ -287,37 +287,43 @@ Font *styleFont(const char *name) {
 }
 
 
-/* The dial's two rings. Computes the base angle (which the needle
- * rotates by, returned through angleOut) and paints:
- *   - the modulation sector, startAngle -> effective value, dim;
- *   - the base sector, startAngle -> base value, bright, over it.
- * Unmodulated the two angles coincide and the dim ring is covered
- * entirely, so no branch is needed beyond "is there a modulator".
- * Display-only: getParameterValue is a read the audio thread also makes. */
-static void drawDialArcs(const GuiNode *gn, const DialStyle *st, const DialGeometry *g, float *angleOut) {
+/* The dial's value ring: a ring, not a pie, because the knob graphic is
+ * opaque and covers a pie's interior, so only the band outside its edge
+ * reads. baseAngleOut is the needle's rotation. */
+static void drawDialValueRing(const GuiNode *gn, const DialStyle *st, const DialGeometry *g, float *baseAngleOut) {
 	float baseAngle = 0.0f;
 	float modAngle = 0.0f;
 	dialArcAngles(gn->p, (float)st->knob.sweep, &baseAngle, &modAngle);
 	Vector2 centre = { g->knobX + (float)st->knob.radius, g->knobY + (float)st->knob.radius };
-	/* A ring, not a pie: the knob graphic is opaque and covers a pie's
-	 * interior, so only the band outside its edge reads. */
-	float rIn = (float)st->knob.radius - 2.0f;
-	float rOut = (float)st->knob.radius + 3.0f;
-	float start = (float)st->knob.startAngle;
-	if(gn->p->modulators && modAngle != baseAngle) {
-		Color dim = st->knob.modColor;
-		if(dim.a == 0) {
-			/* A style that never set modColor still gets a visible
-			 * second ring: the dial's own colour at 45%. */
-			dim = st->knob.color;
-			dim.a = (unsigned char)((float)dim.a * 0.45f);
-		}
-		DrawRing(centre, rIn, rOut, start, start + modAngle, 48, dim);
+	DrawRing(centre, (float)st->knob.radius - 2.0f, (float)st->knob.radius + 3.0f,
+	         (float)st->knob.startAngle, (float)st->knob.startAngle + baseAngle, 48, st->knob.color);
+	if(baseAngleOut) {
+		*baseAngleOut = baseAngle;
 	}
-	DrawRing(centre, rIn, rOut, start, start + baseAngle, 48, st->knob.color);
-	if(angleOut) {
-		*angleOut = baseAngle;
+}
+
+/* The modulation segment, drawn after the knob graphic because it sits
+ * inside the value ring, on the knob's face. It starts at the base
+ * position and runs to the effective value, so its direction carries the
+ * sign of the excursion; its length carries the distance. Display-only:
+ * getParameterValue is a read the audio thread also makes. */
+static void drawDialModRing(const GuiNode *gn, const DialStyle *st, const DialGeometry *g) {
+	if(!gn->p->modulators) {
+		return;
 	}
+	float baseAngle = 0.0f;
+	float modAngle = 0.0f;
+	dialArcAngles(gn->p, (float)st->knob.sweep, &baseAngle, &modAngle);
+	if(modAngle == baseAngle) {
+		return;
+	}
+	Vector2 centre = { g->knobX + (float)st->knob.radius, g->knobY + (float)st->knob.radius };
+	Color accent = st->knob.modColor;
+	if(accent.a == 0) {
+		accent = (Color){ 255, 255, 255, 255 };
+	}
+	DrawRing(centre, (float)st->knob.radius - 8.0f, (float)st->knob.radius - 4.0f,
+	         (float)st->knob.startAngle + baseAngle, (float)st->knob.startAngle + modAngle, 48, accent);
 }
 
 void drawDialGuiNode(void *self) {
@@ -342,11 +348,11 @@ void drawDialGuiNode(void *self) {
 	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
 	               st->border.color, st->border.colorSelected);
-	/* The value ring, then the modulation ring behind it, then the knob
-	 * graphic inside both. The ring used to be skipped whenever the style
-	 * named a knob asset, which left the shipped dial with no value
-	 * indication at all. */
-	drawDialArcs(gn, st, &g, &angle);
+	/* The value ring, then the knob graphic inside it, then the
+	 * modulation segment on the knob's face. The ring used to be skipped
+	 * whenever the style named a knob asset, which left the shipped dial
+	 * with no value indication at all. */
+	drawDialValueRing(gn, st, &g, &angle);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
@@ -360,6 +366,7 @@ void drawDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
+	drawDialModRing(gn, st, &g);
 	const CurveIconStyle *ci = &st->curveIcon;
 	if(ci->frameCount > 0) {
 		int idx = curveIconIndex(gn->p->baseValue);
@@ -544,11 +551,11 @@ void drawDiscreteDialGuiNode(void *self) {
 	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
 	               st->border.color, st->border.colorSelected);
-	/* The value ring, then the modulation ring behind it, then the knob
-	 * graphic inside both. The ring used to be skipped whenever the style
-	 * named a knob asset, which left the shipped dial with no value
-	 * indication at all. */
-	drawDialArcs(gn, st, &g, &angle);
+	/* The value ring, then the knob graphic inside it, then the
+	 * modulation segment on the knob's face. The ring used to be skipped
+	 * whenever the style named a knob asset, which left the shipped dial
+	 * with no value indication at all. */
+	drawDialValueRing(gn, st, &g, &angle);
 	if(st->knob.hasAsset && st->knob.assetTex.id != 0) {
 		DrawTexturePro(st->knob.assetTex, (Rectangle){ 0, 0, st->knob.assetTex.width, st->knob.assetTex.height },
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
@@ -562,6 +569,7 @@ void drawDiscreteDialGuiNode(void *self) {
 		               (Rectangle){ g.knobX + st->knob.radius + st->knob.offsetX, g.knobY + st->knob.radius + st->knob.offsetY, g.knobW, g.knobH },
 		               (Vector2){ st->knob.radius, st->knob.radius }, st->knob.startAngle + angle, WHITE);
 	}
+	drawDialModRing(gn, st, &g);
 	drawValueDisplay(g.valueX, g.valueY, g.valueW, g.valueH, paramValue, st->value.color, st->value.fontSize);
 	Font *lf = styleFont(st->label.fontName);
 	/* labelX is the label's centre (cell-centred caption); centre the
