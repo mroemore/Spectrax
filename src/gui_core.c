@@ -330,6 +330,14 @@ void drawDialGuiNode(void *self) {
 	snprintf(paramValue, 50, st->value.format, gn->p->baseValue);
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
+	/* The graphic can be drawn smaller than its cell: the value and
+	 * modulation rings live in the band between graphic and radius. */
+	int graphic = st->knob.graphicSize > 0 ? st->knob.graphicSize : st->knob.size;
+	if(graphic != st->knob.size && st->knob.size > 0) {
+		float k = (float)graphic / (float)st->knob.size;
+		g.knobW = (int)((float)g.knobW * k);
+		g.knobH = (int)((float)g.knobH * k);
+	}
 
 	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,
@@ -524,6 +532,14 @@ void drawDiscreteDialGuiNode(void *self) {
 	snprintf(paramValue, 50, st->value.format, (int)gn->p->baseValue);
 	DialGeometry g;
 	computeDialGeometry(gn, st, &g);
+	/* The graphic can be drawn smaller than its cell: the value and
+	 * modulation rings live in the band between graphic and radius. */
+	int graphic = st->knob.graphicSize > 0 ? st->knob.graphicSize : st->knob.size;
+	if(graphic != st->knob.size && st->knob.size > 0) {
+		float k = (float)graphic / (float)st->knob.size;
+		g.knobW = (int)((float)g.knobW * k);
+		g.knobH = (int)((float)g.knobH * k);
+	}
 
 	float angle = 0.0f;
 	drawPanelRect(gn->x, gn->y, gn->w, gn->h, st->border.borderWidth, gn->selected,

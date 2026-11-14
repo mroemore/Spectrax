@@ -38,6 +38,17 @@ static int test_dial_arc_angles(void) {
 	ASSERT_TRUE(base == 270.0f, "full-scale base sweeps the whole arc");
 	ASSERT_TRUE(mod == 270.0f, "effective value is clamped to maxValue");
 
+	/* With a modulator attached the ring follows the effective value:
+	 * base 25% of the sweep, current 60%. */
+	ModConnection conn = { 0 };
+	p.baseValue = 2.5f;
+	p.currentValue = 6.0f;
+	p.modulators = &conn;
+	dialArcAngles(&p, 270.0f, &base, &mod);
+	ASSERT_TRUE(base > 67.4f && base < 67.6f, "modulated: base angle unchanged");
+	ASSERT_TRUE(mod > 161.9f && mod < 162.1f, "modulated: ring follows the effective value");
+	ASSERT_TRUE(mod > base, "modulated: the dim ring extends past the bright one");
+
 	/* A zero range must not divide, and must leave both angles at zero. */
 	Parameter flat = { 0 };
 	flat.baseValue = 1.0f;

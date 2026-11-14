@@ -59,7 +59,7 @@ void applyLayout(GuiNode *container, const char *name) {
 /* Baked defaults — the current hardcoded draw-fn literals. */
 
 static DialStyle g_defaultDial = {
-	.knob   = { 31, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 31, 0, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.value  = { "%05.2f", 62, 26, 35, 2, 18, { 0, 0, 0, 0 }, "mono" },
 	.label  = { "pixel", 18, 1, 0, 34, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
@@ -68,7 +68,7 @@ static DialStyle g_defaultDial = {
 };
 
 static DialStyle g_defaultDialDiscrete = {
-	.knob   = { 31, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
+	.knob   = { 31, 0, 15, -225, 270, 0, 0, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, false, { 0 }, { 0 } },
 	.border = { 2.0f, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	.value  = { "%i", 50, 26, 37, 2, 18, { 0, 0, 0, 0 }, "mono" },
 	.label  = { "pixel", 18, 1, 8, 30, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
@@ -501,6 +501,7 @@ static void jsonStr(cJSON *o, const char *k, char *out, size_t sz) {
 
 static void overlayKnob(cJSON *o, const ColourScheme *cs, KnobStyle *k) {
 	k->size = jsonInt(o, "size", k->size);
+	k->graphicSize = jsonInt(o, "graphicSize", k->graphicSize);
 	k->radius = jsonInt(o, "radius", k->radius);
 	k->startAngle = jsonInt(o, "startAngle", k->startAngle);
 	k->sweep = jsonInt(o, "sweep", k->sweep);

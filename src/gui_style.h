@@ -11,6 +11,9 @@
 
 typedef struct {
 	int size;
+	/* The knob graphic's drawn size. 0 = size. Smaller than `size` leaves
+	 * the value/modulation ring a band to show in. */
+	int graphicSize;
 	int radius;
 	int startAngle;
 	int sweep;

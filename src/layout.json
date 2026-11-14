@@ -9,7 +9,8 @@
                 "offsetX": 0,
                 "offsetY": 0,
                 "asset": "resources/images/dial2.png",
-                "color": "control.dial"
+                "color": "control.dial",
+                "graphicSize": 25
             },
             "border": {
                 "borderWidth": 2.0,
