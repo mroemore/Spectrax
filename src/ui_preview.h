@@ -41,6 +41,38 @@ const char *uiPreviewShotPrefix(int argc, char **argv);
 int previewInstrumentChannels(const int *voiceTypes, int channelCount,
                               int *out, int max);
 
+/* --- display modes -------------------------------------------------------
+ *
+ * The panel window has three ways to show the same set of panels, cycled with
+ * TAB:
+ *   ALL    every panel at once in a grid (the original view)
+ *   PAGED  four panels per page, left/right for pages
+ *   SINGLE one panel filling the window, left/right to step
+ */
+#define PREVIEW_PER_PAGE 4
+
+typedef enum {
+	PREVIEW_MODE_ALL = 0,
+	PREVIEW_MODE_PAGED,
+	PREVIEW_MODE_SINGLE,
+	PREVIEW_MODE_COUNT
+} PreviewMode;
+
+PreviewMode previewNextMode(PreviewMode mode);
+const char *previewModeName(PreviewMode mode);
+PreviewMode previewModeFromName(const char *name);   /* unknown -> ALL */
+int previewPageCount(int panels);
+/* Wraps v into [0, n). n <= 0 gives 0. */
+int previewWrapIndex(int v, int n);
+/* Writes the panel indices visible in this mode and returns how many were
+ * written. ALL: every panel; PAGED: the page's four; SINGLE: the one. */
+int previewVisiblePanels(PreviewMode mode, int page, int index, int panels,
+                         int *out, int max);
+
+/* `--ui-preview-mode all|paged|single`, or NULL. Parsed with
+ * previewModeFromName, which falls back to ALL for an unknown word. */
+const char *uiPreviewModeArg(int argc, char **argv);
+
 /* --- hot reload -----------------------------------------------------------
  *
  * The preview watches three files and reports what changed since the last

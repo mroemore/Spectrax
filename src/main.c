@@ -605,16 +605,50 @@ static void previewBuildPanels(void) {
 	}
 }
 
+/* --- display modes ---------------------------------------------------
+ *
+ * TAB cycles: all panels at once, four per page (left/right), one panel
+ * filling the window (left/right). The mode only changes which targets are
+ * drawn and how big the window is; every panel keeps its own target.
+ */
+static PreviewMode g_previewMode = PREVIEW_MODE_ALL;
+static int g_previewPage = 0;
+static int g_previewIndex = 0;
+
 static int previewCols(void) {
-	return g_previewPanelCount > 1 ? 2 : 1;
+	return g_previewMode == PREVIEW_MODE_SINGLE ? 1 : 2;
+}
+
+static int previewVisible(int *out) {
+	return previewVisiblePanels(g_previewMode, g_previewPage, g_previewIndex,
+	                            g_previewPanelCount, out, PREVIEW_MAX_PANELS);
+}
+
+/* The window is sized to the current mode's grid, never larger than the
+ * monitor: a grid taller than the screen would put the last rows out of
+ * reach, and the presenter scales to whatever window it gets. */
+static void previewResizeWindow(int visibleCount) {
+	int cols = previewCols();
+	int rows = (visibleCount + cols - 1) / cols;
+	int wantW = cols * SCREEN_W;
+	int wantH = rows * SCREEN_H;
+	int monW = GetMonitorWidth(GetCurrentMonitor());
+	int monH = GetMonitorHeight(GetCurrentMonitor());
+	if(monW > 0 && wantW > monW) {
+		wantW = monW;
+	}
+	if(monH > 0 && wantH > monH) {
+		wantH = monH;
+	}
+	SetWindowSize(wantW, wantH);
 }
 
 /* presentFrame blits exactly one letterboxed texture into the window; a grid
  * needs its own presenter. Cells are SCREEN_W x SCREEN_H, laid out left to
- * right, top to bottom. */
-static void previewPresentGrid(void) {
+ * right, top to bottom, in the order the mode listed them. */
+static void previewPresentGrid(const int *vis, int visCount) {
 	int cols = previewCols();
-	int rows = (g_previewPanelCount + cols - 1) / cols;
+	int rows = (visCount + cols - 1) / cols;
 	BeginDrawing();
 	ClearBackground(BLACK);
 	int w = GetScreenWidth();
@@ -627,10 +661,10 @@ static void previewPresentGrid(void) {
 	int gh = ch * rows;
 	int ox = (w - gw) / 2;
 	int oy = (h - gh) / 2;
-	for(int i = 0; i < g_previewPanelCount; i++) {
+	for(int i = 0; i < visCount; i++) {
 		Rectangle dst = { (float)(ox + (i % cols) * cw), (float)(oy + (i / cols) * ch),
 		                  (float)cw, (float)ch };
-		DrawTexturePro(g_previewPanels[i].target.texture,
+		DrawTexturePro(g_previewPanels[vis[i]].target.texture,
 		               (Rectangle){ 0, 0, SCREEN_W, -SCREEN_H }, dst,
 		               (Vector2){ 0, 0 }, 0.0f, WHITE);
 	}
@@ -671,18 +705,24 @@ static void previewDrawPanel(PreviewPanel *p) {
 	EndTextureMode();
 }
 
-/* Draws every panel, then presents the grid. Mod strips must be updated
+/* Draws the visible panels, then presents them. Mod strips must be updated
  * OUTSIDE these target modes: each strip opens its own render texture and
  * raylib's EndTextureMode restores the default framebuffer (no FBO stack),
- * so a strip drawn inside a panel steals it. */
-static void previewDrawFrame(paTestData *data, ApplicationState *appState) {
+ * so a strip drawn inside a panel steals it.
+ *
+ * Returns how many panels were drawn, which is also how many PNGs a shot run
+ * writes: a panel that was not drawn has no meaningful image. */
+static int previewDrawFrame(paTestData *data, ApplicationState *appState) {
 	(void)data;
 	(void)appState;
+	int vis[PREVIEW_MAX_PANELS];
+	int visCount = previewVisible(vis);
 	updateModStripTextures();
-	for(int i = 0; i < g_previewPanelCount; i++) {
-		previewDrawPanel(&g_previewPanels[i]);
+	for(int i = 0; i < visCount; i++) {
+		previewDrawPanel(&g_previewPanels[vis[i]]);
 	}
-	previewPresentGrid();
+	previewPresentGrid(vis, visCount);
+	return visCount;
 }
 
 /* Applies a PREVIEW_RELOAD_* mask. The theme, the layout's style section and
@@ -731,25 +771,18 @@ static bool previewApplyReload(int mask, const char *cfgDir, const char *themeFi
 }
 
 static int runUiPreview(paTestData *data, ApplicationState *appState, int frames,
-                        const char *shotPrefix, const char *cfgDir, const char *themeFile) {
+                        const char *shotPrefix, const char *cfgDir, const char *themeFile,
+                        PreviewMode mode) {
 	SetTraceLogLevel(LOG_WARNING);
 	previewBuildPanels();
-	int cols = previewCols();
-	int rows = (g_previewPanelCount + cols - 1) / cols;
-	/* A grid taller than the monitor would put the last rows off-screen --
-	 * the whole point is seeing every screen at once. The presenter scales
-	 * to whatever window it gets, so clamping costs only cell size. */
-	int wantW = cols * SCREEN_W;
-	int wantH = rows * SCREEN_H;
-	int monW = GetMonitorWidth(GetCurrentMonitor());
-	int monH = GetMonitorHeight(GetCurrentMonitor());
-	if(monW > 0 && wantW > monW) {
-		wantW = monW;
+	g_previewMode = mode;
+	g_previewPage = previewWrapIndex(g_previewPage, previewPageCount(g_previewPanelCount));
+	g_previewIndex = previewWrapIndex(g_previewIndex, g_previewPanelCount);
+	{
+		int probe[PREVIEW_MAX_PANELS];
+		previewResizeWindow(previewVisible(probe));
 	}
-	if(monH > 0 && wantH > monH) {
-		wantH = monH;
-	}
-	SetWindowSize(wantW, wantH);
+	printf("UI_PREVIEW: mode=%s\n", previewModeName(g_previewMode));
 
 	/* Hot reload: the three files the preview watches are the ones a styling
 	 * pass edits. Paths are the LIVE ones, not copies. */
@@ -762,15 +795,46 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 	PreviewWatch watch = { 0 };
 	previewWatchChanges(&watch, layoutPath, themePath, fontPath);
 
+	/* The mode lists which panels are on screen; the window follows it. */
 	int drawn = 0;
+	int lastVisCount = 0;
 	while(!WindowShouldClose()) {
+		/* Input is only here for the display modes: TAB cycles, LEFT/RIGHT
+		 * steps the page (paged) or the panel (single). Nothing else in the
+		 * preview takes input, and nothing it draws consumes it. */
+		updateInputState(appState->inputState);
+		if(isKeyJustPressed(appState->inputState, KM_TAB)) {
+			g_previewMode = previewNextMode(g_previewMode);
+			g_previewPage = previewWrapIndex(g_previewPage, previewPageCount(g_previewPanelCount));
+			g_previewIndex = previewWrapIndex(g_previewIndex, g_previewPanelCount);
+			int probe[PREVIEW_MAX_PANELS];
+			previewResizeWindow(previewVisible(probe));
+			printf("UI_PREVIEW: mode=%s\n", previewModeName(g_previewMode));
+		}
+		if(isKeyJustPressed(appState->inputState, KM_LEFT)) {
+			if(g_previewMode == PREVIEW_MODE_PAGED) {
+				int pages = previewPageCount(g_previewPanelCount);
+				g_previewPage = previewWrapIndex(g_previewPage - 1, pages);
+			} else if(g_previewMode == PREVIEW_MODE_SINGLE) {
+				g_previewIndex = previewWrapIndex(g_previewIndex - 1, g_previewPanelCount);
+			}
+		}
+		if(isKeyJustPressed(appState->inputState, KM_RIGHT)) {
+			if(g_previewMode == PREVIEW_MODE_PAGED) {
+				int pages = previewPageCount(g_previewPanelCount);
+				g_previewPage = previewWrapIndex(g_previewPage + 1, pages);
+			} else if(g_previewMode == PREVIEW_MODE_SINGLE) {
+				g_previewIndex = previewWrapIndex(g_previewIndex + 1, g_previewPanelCount);
+			}
+		}
+
 		int reload = previewWatchChanges(&watch, layoutPath, themePath, fontPath);
 		if(reload) {
 			if(previewApplyReload(reload, cfgDir, themeFile)) {
 				previewWatchAck(&watch, layoutPath, themePath, fontPath);
 			}
 		}
-		previewDrawFrame(data, appState);
+		lastVisCount = previewDrawFrame(data, appState);
 		drawn++;
 		if(frames > 0 && drawn >= frames) {
 			break;
@@ -782,7 +846,13 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 	 * is already exactly one 640x480 screen. ImageFlipVertical is required
 	 * because render textures are bottom-up. */
 	if(shotPrefix) {
-		for(int i = 0; i < g_previewPanelCount; i++) {
+		int vis[PREVIEW_MAX_PANELS];
+		/* Only what the last frame drew: an off-screen panel's target holds
+		 * whatever was there when it was last visible. */
+		int visCount = previewVisible(vis);
+		(void)lastVisCount;
+		for(int k = 0; k < visCount; k++) {
+			int i = vis[k];
 			Image img = LoadImageFromTexture(g_previewPanels[i].target.texture);
 			ImageFlipVertical(&img);
 			char path[1024];
@@ -802,7 +872,10 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 	}
 	CloseWindow();
 
-	printf("UI_PREVIEW: panels=%d frames=%d\n", g_previewPanelCount, drawn);
+	printf("UI_PREVIEW: panels=%d frames=%d mode=%s page=%d/%d index=%d\n",
+	       g_previewPanelCount, drawn, previewModeName(g_previewMode),
+	       g_previewPage + 1, previewPageCount(g_previewPanelCount),
+	       g_previewIndex);
 	return 0;
 }
 
@@ -936,7 +1009,8 @@ int main(int argc, char **argv) {
 	if(uiPreviewRequested(argc, argv)) {
 		int rc = runUiPreview(&data, appState, uiPreviewFrames(argc, argv),
 		                      uiPreviewShotPrefix(argc, argv), cfgDir,
-		                      data.settings ? data.settings->themeFile : "clr.json");
+		                      data.settings ? data.settings->themeFile : "clr.json",
+		                      previewModeFromName(uiPreviewModeArg(argc, argv)));
 		freeSamplePool(data.samplePool);
 		cleanupModSystem(data.modList);
 		return rc;

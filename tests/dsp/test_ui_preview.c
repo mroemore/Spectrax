@@ -104,6 +104,49 @@ static int test_instrument_channels(void) {
 	return 0;
 }
 
+/* --- display modes ---------------------------------------------------- */
+
+static int test_display_modes(void) {
+	ASSERT_TRUE(previewNextMode(PREVIEW_MODE_ALL) == PREVIEW_MODE_PAGED, "all -> paged");
+	ASSERT_TRUE(previewNextMode(PREVIEW_MODE_PAGED) == PREVIEW_MODE_SINGLE, "paged -> single");
+	ASSERT_TRUE(previewNextMode(PREVIEW_MODE_SINGLE) == PREVIEW_MODE_ALL, "single -> all");
+	ASSERT_TRUE(strcmp(previewModeName(PREVIEW_MODE_PAGED), "paged") == 0, "paged name");
+	ASSERT_TRUE(previewModeFromName("single") == PREVIEW_MODE_SINGLE, "name round-trip");
+	ASSERT_TRUE(previewModeFromName("nonsense") == PREVIEW_MODE_ALL, "unknown means all");
+	ASSERT_TRUE(previewModeFromName(NULL) == PREVIEW_MODE_ALL, "null means all");
+
+	/* Five panels at four per page: two pages, the second holding one. */
+	ASSERT_INT(previewPageCount(0), 0, "no panels, no pages");
+	ASSERT_INT(previewPageCount(4), 1, "four panels fill one page");
+	ASSERT_INT(previewPageCount(5), 2, "five panels need two pages");
+	ASSERT_INT(previewPageCount(8), 2, "eight panels fill two pages");
+
+	ASSERT_INT(previewWrapIndex(-1, 2), 1, "wrap backwards");
+	ASSERT_INT(previewWrapIndex(2, 2), 0, "wrap forwards");
+	ASSERT_INT(previewWrapIndex(5, 0), 0, "nothing to wrap into");
+
+	int out[8];
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_ALL, 0, 0, 5, out, 8), 5, "all shows five");
+	ASSERT_INT(out[4], 4, "all keeps order");
+
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_PAGED, 0, 0, 5, out, 8), 4, "page 0 has four");
+	ASSERT_INT(out[0], 0, "page 0 starts at panel 0");
+	ASSERT_INT(out[3], 3, "page 0 ends at panel 3");
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_PAGED, 1, 0, 5, out, 8), 1, "page 1 has one");
+	ASSERT_INT(out[0], 4, "page 1 starts at panel 4");
+	/* A page past the end wraps rather than showing nothing. */
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_PAGED, 2, 0, 5, out, 8), 4, "page 2 wraps to 0");
+
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_SINGLE, 0, 2, 5, out, 8), 1, "single shows one");
+	ASSERT_INT(out[0], 2, "single shows the chosen panel");
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_SINGLE, 0, 7, 5, out, 8), 1, "single wraps");
+	ASSERT_INT(out[0], 2, "single wraps to panel 2");
+
+	/* The caller's buffer bounds the result. */
+	ASSERT_INT(previewVisiblePanels(PREVIEW_MODE_ALL, 0, 0, 5, out, 2), 2, "max is respected");
+	return 0;
+}
+
 /* --- hot reload ------------------------------------------------------- */
 
 static char g_dir[64];
@@ -207,6 +250,7 @@ int main(void) {
 	}
 	int rc = test_flags();
 	rc |= test_instrument_channels();
+	rc |= test_display_modes();
 	rc |= test_file_newer_than();
 	rc |= test_watch_masks();
 	static const char *files[] = { "watch.txt", "layout.json", "clr.json", "font.ttf" };

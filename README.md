@@ -93,7 +93,7 @@ next start; the app itself does not hot-reload, but `--ui-preview` does (below).
 ```
 spectrax [--config-dir DIR] [--data-dir DIR] [--volume N]
          [--alsa-pcm PCM] [--ui-preview [--ui-preview-frames N]
-                          [--ui-preview-shot BASE]]
+                          [--ui-preview-shot BASE] [--ui-preview-mode MODE]]
          [--probe-route] [--probe-tempo]
 ```
 
@@ -114,18 +114,31 @@ substituted rate puts every note at the wrong pitch.
 
 ## UI preview
 
-`--ui-preview` renders the app's screens side by side in one window — arranger,
-both pattern pages, one instrument panel per voice type, and the current
-modal — so a styling or layout change can be judged across every screen at
-once instead of navigating to each.
+`--ui-preview` renders the app's screens in one window — arranger, both
+pattern pages, one instrument panel per voice type, and the current modal —
+so a styling or layout change can be judged across every screen instead of
+navigating to each.
 
 ```sh
 cd bin && ./spectrax --ui-preview                       # until closed
 cd bin && ./spectrax --ui-preview --ui-preview-frames 60  # then exit
 cd bin && ./spectrax --ui-preview --ui-preview-shot /tmp/pv   # /tmp/pv-arranger.png, ...
+cd bin && ./spectrax --ui-preview --ui-preview-mode single
 ```
 
-It runs with no audio, no input and no save: an exporter, not a session. While
+Three display modes, cycled with **TAB** as you watch:
+
+| Mode | Shows | Keys |
+|------|-------|------|
+| `all` (default) | every panel at once, in a grid | — |
+| `paged` | four panels per page | **left/right** step pages |
+| `single` | one panel filling the window | **left/right** step panels |
+
+Left/right wrap at the ends. Start in a mode with
+`--ui-preview-mode {all|paged|single}`; the window resizes to fit the mode.
+
+It runs with no audio and no save: an exporter, not a session; the only input
+it takes is the mode keys above. While
 it is open it watches the live `layout.json`, the active theme file and the
 font, and recompiles on change — edit `~/.config/spectrax/layout.json` and the
 panels follow. A theme or layout edit that fails to parse is reported as

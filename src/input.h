@@ -39,6 +39,7 @@ typedef enum {
 	KM_SHIFT,
 	KM_EQUAL,
 	KM_MINUS,
+	KM_TAB,          /* desktop-only: cycles the UI preview's display modes */
 	KEY_MAPPING_COUNT
 } KeyMapping;
 
@@ -59,7 +60,8 @@ static const int KEYBOARD_MAP[KEY_MAPPING_COUNT][MAX_KEYS_PER_MAPPING] = {
 	{ KEY_LEFT_CONTROL, 0, 0, 0 },
 	{ KEY_LEFT_SHIFT, 0, 0, 0 },
 	{ KEY_EQUAL, 0, 0, 0 },
-	{ KEY_MINUS, 0, 0, 0 }
+	{ KEY_MINUS, 0, 0, 0 },
+	{ KEY_TAB, 0, 0, 0 }
 };
 
 static const char *KEY_NAMES[] = {
@@ -79,7 +81,8 @@ static const char *KEY_NAMES[] = {
 	"CTRL",
 	"SHIFT",
 	"=",
-	"-"
+	"-",
+	"TAB"
 };
 
 static const int GAMEPAD_MAP[KEY_MAPPING_COUNT][MAX_KEYS_PER_MAPPING] = {
@@ -98,6 +101,7 @@ static const int GAMEPAD_MAP[KEY_MAPPING_COUNT][MAX_KEYS_PER_MAPPING] = {
 	 * moved to RIGHT_FACE_UP (PS3 Triangle / Xbox Y), unused elsewhere. */
 	{ GAMEPAD_BUTTON_RIGHT_FACE_UP, 0, 0, 0 },
 	{ GAMEPAD_BUTTON_MIDDLE, 0, 0, 0 },
+	{ 0, 0, 0, 0 },
 	{ 0, 0, 0, 0 },
 	{ 0, 0, 0, 0 },
 	{ 0, 0, 0, 0 },

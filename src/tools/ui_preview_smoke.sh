@@ -1,6 +1,7 @@
 #!/bin/sh
 # --ui-preview smoke: the panel window boots, renders its frame budget and
-# exits 0 without touching the shipped song, theme or settings.
+# exits 0 without touching the shipped song, theme or settings; and each
+# display mode shows the panels it claims to.
 #
 # Runs from bin/ (resources/, layout.json and the theme are cwd-relative),
 # against a scratch config + data dir so the run writes nothing, and pins a
@@ -39,18 +40,53 @@ seeded_theme=$(md5sum "${scratch}/cfg/clr.json" | cut -d' ' -f1)
 seeded_song=$(md5sum "${scratch}/data/s1.sng" | cut -d' ' -f1)
 
 cd "$here" || exit 1
-out="${scratch}/run.log"
-# Touch the live layout mid-run: the preview must notice and recompile
-# without dying or losing the panels.
-( sleep 1.5; touch "${scratch}/cfg/layout.json";
+
+run_mode() {
+    mode=$1
+    frames=$2
+    shots=$3
+    out="${scratch}/run-${mode}.log"
+    rm -f "${scratch}/shot-${mode}"-*.png
+    timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
+        ./spectrax --ui-preview --ui-preview-mode "$mode" \
+        --ui-preview-frames "$frames" --ui-preview-shot "${scratch}/shot-${mode}" \
+        --config-dir "$scratch/cfg" --data-dir "$scratch/data" > "$out" 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        echo "FAIL $mode: exit $rc"
+        tail -20 "$out"
+        return 1
+    fi
+    if ! grep -q "^UI_PREVIEW: panels=.* mode=${mode} " "$out"; then
+        echo "FAIL $mode: marker does not report the mode"
+        grep '^UI_PREVIEW:' "$out"
+        return 1
+    fi
+    got=$(ls "${scratch}/shot-${mode}"-*.png 2>/dev/null | wc -l)
+    if [ "$got" -ne "$shots" ]; then
+        echo "FAIL $mode: $got shots, want $shots"
+        ls "${scratch}/shot-${mode}"-*.png 2>/dev/null
+        return 1
+    fi
+    for f in "${scratch}/shot-${mode}"-*.png; do
+        colors=$(identify -format '%k' "$f" 2>/dev/null)
+        if [ "${colors:-0}" -le 2 ]; then
+            echo "FAIL $mode: panel looks blank: $f"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# The all-panels mode also exercises hot reload: touch the live layout and the
+# font copy mid-run and require both reload paths to fire.
+( sleep 1.5; touch "${scratch}/cfg/layout.json"
   sleep 0.7; touch "${scratch}/fonts/pixel_times.ttf" ) > /dev/null 2>&1 &
 touch_pid=$!
-timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
-    ./spectrax --ui-preview --ui-preview-frames 300 \
-    --ui-preview-shot "${scratch}/shot" \
-    --config-dir "$scratch/cfg" --data-dir "$scratch/data" > "$out" 2>&1
-rc=$?
+run_mode all 300 5 || exit 1
 wait "$touch_pid" 2>/dev/null
+
+out="${scratch}/run-all.log"
 if ! grep -q '^UI_PREVIEW: reload mask=0x5' "$out"; then
     echo "FAIL a layout edit did not recompile styles and layouts"
     grep '^UI_PREVIEW:' "$out"
@@ -67,16 +103,10 @@ if grep -q 'reload failed' "$out"; then
     exit 1
 fi
 
-if [ "$rc" -ne 0 ]; then
-    echo "FAIL exit $rc"
-    tail -20 "$out"
-    exit 1
-fi
-if ! grep -q '^UI_PREVIEW: panels=' "$out"; then
-    echo "FAIL no UI_PREVIEW marker line"
-    tail -20 "$out"
-    exit 1
-fi
+# Five panels, four per page: paged shows a full page, single shows one.
+run_mode paged 60 4 || exit 1
+run_mode single 60 1 || exit 1
+
 # The preview must not save. The theme is seeded, so compare it rather than
 # looking for its presence: a session that fell through the normal teardown
 # rewrites clr.json and writes s1.sng.
@@ -88,20 +118,9 @@ if [ "$(md5sum "${scratch}/cfg/clr.json" | cut -d' ' -f1)" != "$seeded_theme" ];
     echo "FAIL preview rewrote the theme"
     exit 1
 fi
-# Every panel must have produced a PNG. A blank panel is a panel that did not
-# draw, which exit 0 and the marker line cannot tell apart.
-count=$(sed -n 's/^UI_PREVIEW: panels=\([0-9]*\).*/\1/p' "$out" | tail -1)
-[ -n "$count" ] || { echo "FAIL marker has no panel count"; exit 1; }
-shots=$(ls "${scratch}"/shot-*.png 2>/dev/null | wc -l)
-[ "$shots" -eq "$count" ] || {
-    echo "FAIL $shots shots for $count panels"
-    ls -l "${scratch}"/shot-*.png 2>/dev/null
-    exit 1
-}
-for f in "${scratch}"/shot-*.png; do
-    # A uniformly coloured panel is a draw that never happened.
-    colors=$(identify -format '%k' "$f" 2>/dev/null)
-    [ "${colors:-0}" -gt 2 ] || { echo "FAIL panel looks blank: $f"; exit 1; }
+
+for f in "$scratch"/run-*.log; do
+    printf '%s: %s\n' "$(basename "$f" .log)" \
+        "$(grep '^UI_PREVIEW: panels=' "$f" | tail -1)"
 done
-echo "UI_PREVIEW: panels=$count shots=$shots"
 echo "PASS ui_preview_smoke"
