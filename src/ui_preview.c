@@ -161,31 +161,53 @@ int previewWatchChanges(PreviewWatch *w, const char *layoutPath,
 	if(!w->primed) {
 		/* First call stamps the files as they are: the app has just loaded
 		 * them, so nothing is "changed" yet. */
-		previewWatchAck(w, layoutPath, themePath, fontPath);
+		previewWatchAck(w, PREVIEW_CHANGED_LAYOUT | PREVIEW_CHANGED_THEME
+		                   | PREVIEW_CHANGED_FONT,
+		                layoutPath, themePath, fontPath);
 		w->primed = 1;
 		return 0;
 	}
-	int mask = 0;
+	int changed = 0;
 	if(stampNewerThan(layoutPath, &w->layout)) {
-		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_LAYOUT;
+		changed |= PREVIEW_CHANGED_LAYOUT;
 	}
 	if(stampNewerThan(themePath, &w->theme)) {
-		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_FONTS;
+		changed |= PREVIEW_CHANGED_THEME;
 	}
 	if(stampNewerThan(fontPath, &w->font)) {
+		changed |= PREVIEW_CHANGED_FONT;
+	}
+	return changed;
+}
+
+int previewReloadMask(int changed) {
+	int mask = 0;
+	if(changed & PREVIEW_CHANGED_LAYOUT) {
+		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_LAYOUT;
+	}
+	if(changed & PREVIEW_CHANGED_THEME) {
+		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_FONTS;
+	}
+	if(changed & PREVIEW_CHANGED_FONT) {
 		mask |= PREVIEW_RELOAD_FONTS;
 	}
 	return mask;
 }
 
-void previewWatchAck(PreviewWatch *w, const char *layoutPath,
+void previewWatchAck(PreviewWatch *w, int changed, const char *layoutPath,
                      const char *themePath, const char *fontPath) {
 	if(!w) {
 		return;
 	}
-	fileNewerThan(layoutPath, &w->layout);
-	fileNewerThan(themePath, &w->theme);
-	fileNewerThan(fontPath, &w->font);
+	if(changed & PREVIEW_CHANGED_LAYOUT) {
+		fileNewerThan(layoutPath, &w->layout);
+	}
+	if(changed & PREVIEW_CHANGED_THEME) {
+		fileNewerThan(themePath, &w->theme);
+	}
+	if(changed & PREVIEW_CHANGED_FONT) {
+		fileNewerThan(fontPath, &w->font);
+	}
 }
 
 bool fileNewerThan(const char *path, struct timespec *stamp) {

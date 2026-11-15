@@ -46,6 +46,10 @@
 #include "modsystem.h"
 #include "raylib.h"
 
+/* The preview's mtime watcher (src/ui_preview.c, core_lib): a generic
+ * "has this file changed since I last read it" with apply-then-ack stamps. */
+#include "ui_preview.h"
+
 /* --- the three font slots the style core expects -------------------------
  *
  * gui_style.c's finalizeStyles() takes the address of these three, so a
@@ -1049,10 +1053,32 @@ static int runSelfTest(const char *layoutPath, const char *themePath) {
 
 /* --- windowed mode ------------------------------------------------------ */
 
-static void loadFonts(void) {
-	/* The same fonts the app uses, when they are reachable from the
-	 * current directory; otherwise raylib's built-in font. */
-	pixelFont = LoadFontEx("resources/fonts/console.ttf", 9, NULL, 255);
+/* Drops the demo's own atlases before reloading them. raylib's built-in
+ * font is not ours to free, so it is left alone. */
+static void unloadFonts(void) {
+	if(pixelFont.texture.id != 0
+	   && pixelFont.texture.id != GetFontDefault().texture.id) {
+		UnloadFont(pixelFont);
+	}
+	if(textFont.texture.id != 0
+	   && textFont.texture.id != GetFontDefault().texture.id) {
+		UnloadFont(textFont);
+	}
+	pixelFont.texture.id = 0;
+	textFont.texture.id = 0;
+}
+
+/* The typeface comes from the theme file (clr.json's "font"), the same
+ * block the app honours, so the demo shows the shipped face instead of a
+ * hard-coded 9px console font. A missing file falls back to raylib's. */
+static void loadFonts(const FontConfig *font) {
+	const char *path = (font && font->path[0]) ? font->path : "resources/fonts/console.ttf";
+	int size = (font && font->size > 0) ? font->size : 9;
+	unloadFonts();
+	pixelFont = LoadFontEx(path, size, NULL, 255);
+	if(pixelFont.texture.id == 0) {
+		pixelFont = LoadFontEx("resources/fonts/console.ttf", 9, NULL, 255);
+	}
 	if(pixelFont.texture.id == 0) {
 		pixelFont = GetFontDefault();
 	}
@@ -1070,7 +1096,7 @@ static int runWindow(const char *layoutPath, const char *themePath) {
 
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
 	InitWindow(640, 480, "Spectrax styling tutorial - Macro Bank");
-	loadFonts();
+	loadFonts(&font);
 	g_curveIcons = buildCurveIconTexture();
 
 	if(!compileLayoutConfig(layoutPath, &g_cs)) {
@@ -1090,8 +1116,42 @@ static int runWindow(const char *layoutPath, const char *themePath) {
 	g->root = mb.bank;
 	g->selected = NULL;
 
+	/* Hot reload: the demo exists to be edited, so a theme, layout or font
+	 * save must show up without a restart. The stamps are only taken when
+	 * the new file applied, so a half-written save is retried rather than
+	 * silently swallowed. */
+	PreviewWatch watch = { 0 };
+	previewWatchChanges(&watch, layoutPath, themePath, font.path);
+
 	SetTargetFPS(60);
 	while(!WindowShouldClose()) {
+		int changed = previewWatchChanges(&watch, layoutPath, themePath, font.path);
+		int reload = previewReloadMask(changed);
+		if(changed) {
+			if(reload & PREVIEW_RELOAD_STYLE) {
+				unloadStyleAssets();
+				FontConfig reloadedFont = font;
+				/* Reload over the current scheme rather than from a blank
+				 * one: colours the new file omits keep their last value
+				 * instead of going transparent black. */
+				loadThemeJson(themePath, &g_cs, &reloadedFont);
+				if(compileLayoutConfig(layoutPath, &g_cs)) {
+					finalizeStyles();
+					if(reload & PREVIEW_RELOAD_FONTS) {
+						loadFonts(&reloadedFont);
+					}
+					font = reloadedFont;
+					previewWatchAck(&watch, changed, layoutPath, themePath, font.path);
+					printf("reload: %s\n", (reload & PREVIEW_RELOAD_FONTS) ? "theme + fonts" : "layout");
+				} else {
+					printf("reload failed: %s (keeping the last good styles)\n", layoutPath);
+				}
+			} else if(reload & PREVIEW_RELOAD_FONTS) {
+				loadFonts(&font);
+				previewWatchAck(&watch, changed, layoutPath, themePath, font.path);
+				printf("reload: fonts\n");
+			}
+		}
 		if(IsKeyPressed(KEY_LEFT)) {
 			navigateGraphRefined(g, KM_LEFT);
 		}

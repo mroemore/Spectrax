@@ -7,9 +7,11 @@ adding new fields, classes, layouts, colours and style types.
 The short version: **there is no CSS.** A `GuiNode` tree is built in C; each
 drawable picks a C struct of style values by name, and `layout.json` supplies
 those values plus a few container layouts. The app itself does not hot-reload
-— restart it after editing. The panel window does: `cd bin && ./spectrax
---ui-preview` recompiles styles, rebuilds layouts and reloads fonts while it
-runs, which is the fast way to iterate on a change.
+— restart it after editing. Two windows do hot-reload: `cd bin && ./spectrax
+--ui-preview` (the panel window) and the styling tutorial
+(`./build/src/tools/styling_tutorial/styling_tutorial`). Both recompile styles,
+rebuild layouts and reload fonts when `layout.json`, the theme or the font
+file changes, and both print a `reload:` line so you can see it happen.
 
 A worked example of everything below is in
 [Building a new component](tutorials/building-a-component.md): a new layout

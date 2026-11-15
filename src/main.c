@@ -524,6 +524,8 @@ typedef enum {
 	PREVIEW_PATTERN,      /* arg = pattern page */
 	PREVIEW_INSTRUMENT,   /* arg = channel */
 	PREVIEW_MODAL,        /* whatever sits on the instrument layer stack */
+	PREVIEW_MOD_SCREEN,   /* the modulation screen, also a layer */
+	PREVIEW_VISUALISERS,  /* spectrogram + time graph */
 } PreviewKind;
 
 typedef struct {
@@ -597,12 +599,21 @@ static void previewBuildPanels(void) {
 		}
 	}
 
-	/* A modal panel: the delete-source confirm, opened once. The preview
-	 * process exits without saving, so leaving it on the layer stack costs
-	 * nothing. */
+	/* The visualisers the main loop draws after DrawGUI, as their own panel:
+	 * the preview feeds them from mock data (see ui_preview_mock_driver.c),
+	 * so this is the screen that proves they are alive. */
+	previewAddPanel("visualisers", PREVIEW_VISUALISERS, 0);
+
+	/* One modal at a time: the layer stack is single-instance, so each
+	 * modal is opened, captured as a panel, and popped before the next one
+	 * opens. Both panels still draw the stack, which is what makes them
+	 * live (the mod screen's selection and the confirm's buttons). */
 	if(ig && ig->vm && ig->vm->instruments[0]) {
 		openDeleteConfirmForSource(ig->vm->instruments[0], 0);
 		previewAddPanel("delete-confirm", PREVIEW_MODAL, 0);
+		popTopNonPassiveLayerFree(&ig->overlayLayers);
+		openModScreen();
+		previewAddPanel("mod-screen", PREVIEW_MOD_SCREEN, 0);
 	}
 }
 
@@ -676,7 +687,7 @@ static void previewPresentGrid(const int *vis, int visCount) {
  * pattern page, the selected instrument) save and restore it: the selection
  * int is &appState->selectedArrangerCell[0], so leaving it moved would also
  * move the arranger's cursor. */
-static void previewDrawPanel(PreviewPanel *p) {
+static void previewDrawPanel(PreviewPanel *p, paTestData *data) {
 	InstrumentGui *ig = getInstrumentGui();
 	BeginTextureMode(p->target);
 	clearBg();
@@ -698,10 +709,25 @@ static void previewDrawPanel(PreviewPanel *p) {
 			}
 			break;
 		case PREVIEW_MODAL:
+		case PREVIEW_MOD_SCREEN:
 			if(ig) {
 				layerStackDraw(&ig->overlayLayers);
 			}
 			break;
+		case PREVIEW_VISUALISERS: {
+			/* The app draws these at rects tuned for the arranger screen
+			 * (one of them starts below 480). A preview panel gives each
+			 * half the screen so the whole thing is visible. */
+			Rectangle spRect = data->spectrogram.dv.texProps;
+			Rectangle tgRect = data->timeGraph.dv.texProps;
+			data->spectrogram.dv.texProps = (Rectangle){ 0, 0, SCREEN_W, SCREEN_H / 2 };
+			data->timeGraph.dv.texProps = (Rectangle){ 0, SCREEN_H / 2, SCREEN_W, SCREEN_H / 2 };
+			drawSpectrogram(&data->spectrogram);
+			drawTimeGraph(&data->timeGraph);
+			data->spectrogram.dv.texProps = spRect;
+			data->timeGraph.dv.texProps = tgRect;
+			break;
+		}
 	}
 	EndTextureMode();
 }
@@ -714,13 +740,12 @@ static void previewDrawPanel(PreviewPanel *p) {
  * Returns how many panels were drawn, which is also how many PNGs a shot run
  * writes: a panel that was not drawn has no meaningful image. */
 static int previewDrawFrame(paTestData *data, ApplicationState *appState) {
-	(void)data;
 	(void)appState;
 	int vis[PREVIEW_MAX_PANELS];
 	int visCount = previewVisible(vis);
 	updateModStripTextures();
 	for(int i = 0; i < visCount; i++) {
-		previewDrawPanel(&g_previewPanels[vis[i]]);
+		previewDrawPanel(&g_previewPanels[vis[i]], data);
 	}
 	previewPresentGrid(vis, visCount);
 	return visCount;
@@ -775,10 +800,12 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
                         const char *shotPrefix, const char *cfgDir, const char *themeFile,
                         PreviewMode mode) {
 	SetTraceLogLevel(LOG_WARNING);
-	previewBuildPanels();
-	/* Mock data: the panel window has no audio and no input, so the screens
-	 * that are normally alive would all be still. Preview-only. */
+	/* Mock data first: the panels built below include the modulation screen,
+	 * whose source list is snapshot from the instrument's mod list when it
+	 * opens. Creating the demo sources afterwards left them out of the
+	 * list. */
 	previewMockInit(data, appState);
+	previewBuildPanels();
 	g_previewMode = mode;
 	g_previewPage = previewWrapIndex(g_previewPage, previewPageCount(g_previewPanelCount));
 	g_previewIndex = previewWrapIndex(g_previewIndex, g_previewPanelCount);
@@ -832,10 +859,10 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 			}
 		}
 
-		int reload = previewWatchChanges(&watch, layoutPath, themePath, fontPath);
-		if(reload) {
-			if(previewApplyReload(reload, cfgDir, themeFile)) {
-				previewWatchAck(&watch, layoutPath, themePath, fontPath);
+		int changed = previewWatchChanges(&watch, layoutPath, themePath, fontPath);
+		if(changed) {
+			if(previewApplyReload(previewReloadMask(changed), cfgDir, themeFile)) {
+				previewWatchAck(&watch, changed, layoutPath, themePath, fontPath);
 			}
 		}
 		previewMockStep(data, appState, drawn);

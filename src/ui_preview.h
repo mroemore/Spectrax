@@ -89,9 +89,21 @@ typedef struct {
 	int primed;
 } PreviewWatch;
 
+/* What the caller should do, derived from which files changed. */
 #define PREVIEW_RELOAD_STYLE  0x1  /* recompile styles (theme or layout) */
 #define PREVIEW_RELOAD_FONTS  0x2  /* reload the font atlas */
 #define PREVIEW_RELOAD_LAYOUT 0x4  /* rebuild graphs (layout.json) */
+
+/* Which file changed. previewWatchChanges reports these, so an acknowledged
+ * reload stamps only the file it actually applied -- a shared "all three
+ * are current" ack would swallow a theme edit that arrived while the layout
+ * was being applied. */
+#define PREVIEW_CHANGED_LAYOUT 0x1
+#define PREVIEW_CHANGED_THEME  0x2
+#define PREVIEW_CHANGED_FONT   0x4
+
+/* Maps the changed-file bits to the reload actions above. */
+int previewReloadMask(int changed);
 
 /* Fills *w with the current mtimes on the first call (returning 0), and
  * afterwards returns the PREVIEW_RELOAD_* bits for the files that changed.
@@ -104,9 +116,9 @@ typedef struct {
 int previewWatchChanges(PreviewWatch *w, const char *layoutPath,
                         const char *themePath, const char *fontPath);
 
-/* Takes the files' current mtimes as applied. Call after a successful
- * previewApplyReload. */
-void previewWatchAck(PreviewWatch *w, const char *layoutPath,
+/* Takes the current mtimes of the files in `changed` (PREVIEW_CHANGED_*)
+ * as applied. Call after a reload that succeeded for those files. */
+void previewWatchAck(PreviewWatch *w, int changed, const char *layoutPath,
                      const char *themePath, const char *fontPath);
 
 #endif

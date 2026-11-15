@@ -212,33 +212,45 @@ static int test_watch_masks(void) {
 	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "nothing changed");
 
 	stampFile("layout.json", 1001);
-	int mask = previewWatchChanges(&w, layout, theme, font);
+	int changed = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_INT(changed, PREVIEW_CHANGED_LAYOUT, "only the layout was touched");
+	int mask = previewReloadMask(changed);
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a layout edit recompiles styles");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) != 0, "a layout edit rebuilds graphs");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) == 0, "a layout edit leaves fonts alone");
 
 	/* Apply-then-stamp: until the caller acknowledges, the change keeps
 	 * reporting, so a failed reload (torn save, JSON error) is retried
 	 * instead of being swallowed by the stamp. */
-	mask = previewWatchChanges(&w, layout, theme, font);
-	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "unacknowledged edit still reports");
-	previewWatchAck(&w, layout, theme, font);
-	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "acknowledged edit is quiet");
-	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) != 0, "a layout edit rebuilds graphs");
-	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) == 0, "a layout edit leaves fonts alone");
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), PREVIEW_CHANGED_LAYOUT,
+	           "unacknowledged edit still reports");
 
+	/* An ack names the file it applied. Acknowledging the layout must not
+	 * swallow a theme edit that arrived at the same time -- that is the
+	 * bug the tutorial's two-file touch exposed. */
 	stampFile("clr.json", 1002);
-	mask = previewWatchChanges(&w, layout, theme, font);
+	int both = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_INT(both, PREVIEW_CHANGED_LAYOUT | PREVIEW_CHANGED_THEME,
+	           "both files changed");
+	previewWatchAck(&w, PREVIEW_CHANGED_LAYOUT, layout, theme, font);
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), PREVIEW_CHANGED_THEME,
+	           "the theme edit survived a layout-only ack");
+
+	mask = previewReloadMask(PREVIEW_CHANGED_THEME);
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a theme edit recompiles styles");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) != 0, "a theme edit may change the font");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) == 0, "a theme edit leaves layouts alone");
-	previewWatchAck(&w, layout, theme, font);
+	previewWatchAck(&w, PREVIEW_CHANGED_THEME, layout, theme, font);
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "acknowledged edit is quiet");
 
 	stampFile("font.ttf", 1003);
-	mask = previewWatchChanges(&w, layout, theme, font);
-	ASSERT_INT(mask, PREVIEW_RELOAD_FONTS, "a font file edit reloads the atlas only");
-	previewWatchAck(&w, layout, theme, font);
+	changed = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_INT(changed, PREVIEW_CHANGED_FONT, "the font file changed");
+	ASSERT_INT(previewReloadMask(changed), PREVIEW_RELOAD_FONTS,
+	           "a font file edit reloads the atlas only");
+	previewWatchAck(&w, changed, layout, theme, font);
 
-	mask = previewWatchChanges(&w, NULL, NULL, NULL);
-	ASSERT_INT(mask, 0, "unwatched paths report nothing");
+	ASSERT_INT(previewWatchChanges(&w, NULL, NULL, NULL), 0, "unwatched paths report nothing");
 	return 0;
 }
 
