@@ -107,6 +107,9 @@ ColourScheme *getColourScheme();
 /* Font config (Task 9): copied into gui.c file-scope gFontConfig. Call
  * BEFORE InitGUI so the window/raylib context exists when fonts load. */
 void setFontConfig(const FontConfig *cfg);
+/* Hot reload: UnloadFont the atlases and load them again from the current
+ * FontConfig. InitGUI is not re-runnable (it owns the window). */
+void reloadFonts(void);
 FontConfig *getFontConfig(void);
 
 /* Theme-loaded flag: once set, InitGUI() leaves the colour scheme alone

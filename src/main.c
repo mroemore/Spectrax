@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <limits.h>
 #include <math.h>
 #include <time.h>
 #include <unistd.h>
@@ -681,16 +682,61 @@ static void previewDrawFrame(paTestData *data, ApplicationState *appState) {
 	previewPresentGrid();
 }
 
+/* Applies a PREVIEW_RELOAD_* mask. The theme, the layout's style section and
+ * the font atlas all reload in place; only layout.json's `layouts` section is
+ * baked into node coordinates by applyLayout, so only that needs the graphs
+ * rebuilt. Runs between frames, never inside a texture mode. */
+static void previewApplyReload(int mask, const char *cfgDir, const char *themeFile) {
+	if(mask & PREVIEW_RELOAD_STYLE) {
+		char themePath[1088];
+		char layoutPath[1088];
+		snprintf(themePath, sizeof(themePath), "%s/%s", cfgDir, themeFile);
+		snprintf(layoutPath, sizeof(layoutPath), "%s/layout.json", cfgDir);
+		/* Theme first, then the layout, as the boot path orders them
+		 * (src/main.c): the layout resolves its colour tokens against the
+		 * scheme the theme just loaded. */
+		initDefaultColourScheme(getColourScheme());
+		loadThemeJson(themePath, getColourScheme(), getFontConfig());
+		unloadStyleAssets();
+		compileLayoutConfig(layoutPath, getColourScheme());
+		finalizeStyles();
+	}
+	if(mask & PREVIEW_RELOAD_FONTS) {
+		reloadFonts();
+	}
+	if(mask & PREVIEW_RELOAD_LAYOUT) {
+		/* Both rebuild every channel they own. */
+		rebuildInstrumentGraph();
+		rebuildPatternGraph();
+	}
+	printf("UI_PREVIEW: reload mask=0x%x\n", mask);
+}
+
 static int runUiPreview(paTestData *data, ApplicationState *appState, int frames,
-                        const char *shotPrefix) {
+                        const char *shotPrefix, const char *cfgDir, const char *themeFile) {
 	SetTraceLogLevel(LOG_WARNING);
 	previewBuildPanels();
 	int cols = previewCols();
 	int rows = (g_previewPanelCount + cols - 1) / cols;
 	SetWindowSize(cols * SCREEN_W, rows * SCREEN_H);
 
+	/* Hot reload: the three files the preview watches are the ones a styling
+	 * pass edits. Paths are the LIVE ones, not copies. */
+	char layoutPath[1088];
+	char themePath[1088];
+	char fontPath[1088];
+	snprintf(layoutPath, sizeof(layoutPath), "%s/layout.json", cfgDir);
+	snprintf(themePath, sizeof(themePath), "%s/%s", cfgDir, themeFile);
+	snprintf(fontPath, sizeof(fontPath), "%s", getFontConfig()->path);
+	PreviewWatch watch = { 0 };
+	previewWatchChanges(&watch, layoutPath, themePath, fontPath);
+
 	int drawn = 0;
 	while(!WindowShouldClose()) {
+		int reload = previewWatchChanges(&watch, layoutPath, themePath, fontPath);
+		if(reload) {
+			previewApplyReload(reload, cfgDir, themeFile);
+		}
 		previewDrawFrame(data, appState);
 		drawn++;
 		if(frames > 0 && drawn >= frames) {
@@ -767,6 +813,15 @@ int main(int argc, char **argv) {
 		}
 	}
 	resolveConfigDir(argc, argv, cfgDir, sizeof(cfgDir));
+	/* Absolute from here on: the app chdir()s into the data dir a few lines
+	 * below, after which a relative --config-dir no longer resolves. The
+	 * preview's hot-reload watcher re-reads these paths every frame. */
+	{
+		char abs[PATH_MAX];
+		if(cfgDir[0] && realpath(cfgDir, abs)) {
+			snprintf(cfgDir, sizeof(cfgDir), "%s", abs);
+		}
+	}
 	resolveDataDir(argc, argv, dataDir, sizeof(dataDir));
 	snprintf(data.configDir, sizeof(data.configDir), "%s", cfgDir);
 
@@ -847,7 +902,8 @@ int main(int argc, char **argv) {
 	 * a window with no audio has no use for a voice budget. */
 	if(uiPreviewRequested(argc, argv)) {
 		int rc = runUiPreview(&data, appState, uiPreviewFrames(argc, argv),
-		                      uiPreviewShotPrefix(argc, argv));
+		                      uiPreviewShotPrefix(argc, argv), cfgDir,
+		                      data.settings ? data.settings->themeFile : "clr.json");
 		freeSamplePool(data.samplePool);
 		cleanupModSystem(data.modList);
 		return rc;

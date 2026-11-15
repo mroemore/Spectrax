@@ -38,6 +38,33 @@ const char *uiPreviewShotPrefix(int argc, char **argv) {
 	return NULL;
 }
 
+int previewWatchChanges(PreviewWatch *w, const char *layoutPath,
+                        const char *themePath, const char *fontPath) {
+	if(!w) {
+		return 0;
+	}
+	if(!w->primed) {
+		/* First call stamps the files as they are: the app has just loaded
+		 * them, so nothing is "changed" yet. */
+		fileNewerThan(layoutPath, &w->layout);
+		fileNewerThan(themePath, &w->theme);
+		fileNewerThan(fontPath, &w->font);
+		w->primed = 1;
+		return 0;
+	}
+	int mask = 0;
+	if(fileNewerThan(layoutPath, &w->layout)) {
+		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_LAYOUT;
+	}
+	if(fileNewerThan(themePath, &w->theme)) {
+		mask |= PREVIEW_RELOAD_STYLE | PREVIEW_RELOAD_FONTS;
+	}
+	if(fileNewerThan(fontPath, &w->font)) {
+		mask |= PREVIEW_RELOAD_FONTS;
+	}
+	return mask;
+}
+
 bool fileNewerThan(const char *path, struct timespec *stamp) {
 	if(!path || !stamp) {
 		return false;

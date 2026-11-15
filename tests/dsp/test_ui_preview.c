@@ -8,6 +8,10 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "ui_preview.h"
 
@@ -77,11 +81,104 @@ static int test_flags(void) {
 	return 0;
 }
 
+/* --- hot reload ------------------------------------------------------- */
+
+static char g_dir[64];
+
+static void writeFile(const char *name) {
+	char path[256];
+	snprintf(path, sizeof(path), "%s/%s", g_dir, name);
+	FILE *f = fopen(path, "w");
+	if(f) {
+		fputs("{}", f);
+		fclose(f);
+	}
+}
+
+/* Explicit mtimes: two touches in the same second are exactly the case a
+ * second-resolution stamp misses, so the test cannot rely on wall time. */
+static void stampFile(const char *name, long sec) {
+	char path[256];
+	snprintf(path, sizeof(path), "%s/%s", g_dir, name);
+	struct timespec ts[2] = { { sec, 0 }, { sec, 0 } };
+	utimensat(AT_FDCWD, path, ts, 0);
+}
+
+static int test_file_newer_than(void) {
+	char path[256];
+	snprintf(path, sizeof(path), "%s/watch.txt", g_dir);
+	writeFile("watch.txt");
+	stampFile("watch.txt", 1000);
+
+	struct timespec stamp = { 0, 0 };
+	ASSERT_TRUE(fileNewerThan(path, &stamp), "fresh file is newer than zero");
+	ASSERT_TRUE(!fileNewerThan(path, &stamp), "same file twice is not newer");
+	ASSERT_INT(stamp.tv_sec, 1000, "stamp is taken from the file");
+
+	stampFile("watch.txt", 1001);
+	ASSERT_TRUE(fileNewerThan(path, &stamp), "a later mtime is newer");
+
+	ASSERT_TRUE(!fileNewerThan("/nonexistent/at/all", &stamp), "a missing file is not newer");
+	return 0;
+}
+
+static int test_watch_masks(void) {
+	char layout[256], theme[256], font[256];
+	snprintf(layout, sizeof(layout), "%s/layout.json", g_dir);
+	snprintf(theme, sizeof(theme), "%s/clr.json", g_dir);
+	snprintf(font, sizeof(font), "%s/font.ttf", g_dir);
+	writeFile("layout.json");
+	writeFile("clr.json");
+	writeFile("font.ttf");
+	stampFile("layout.json", 1000);
+	stampFile("clr.json", 1000);
+	stampFile("font.ttf", 1000);
+
+	PreviewWatch w = { 0 };
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "first call only primes");
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "nothing changed");
+
+	stampFile("layout.json", 1001);
+	int mask = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a layout edit recompiles styles");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) != 0, "a layout edit rebuilds graphs");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) == 0, "a layout edit leaves fonts alone");
+
+	stampFile("clr.json", 1002);
+	mask = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a theme edit recompiles styles");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) != 0, "a theme edit may change the font");
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) == 0, "a theme edit leaves layouts alone");
+
+	stampFile("font.ttf", 1003);
+	mask = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_INT(mask, PREVIEW_RELOAD_FONTS, "a font file edit reloads the atlas only");
+
+	mask = previewWatchChanges(&w, NULL, NULL, NULL);
+	ASSERT_INT(mask, 0, "unwatched paths report nothing");
+	return 0;
+}
+
 int main(void) {
-	if(test_flags()) {
-		fprintf(stderr, "FAILED (ui preview args)\n");
+	snprintf(g_dir, sizeof(g_dir), "./ui_preview_test.XXXXXX");
+	if(!mkdtemp(g_dir)) {
+		fprintf(stderr, "FAIL cannot create scratch dir\n");
 		return 1;
 	}
-	printf("PASSED (ui preview args)\n");
+	int rc = test_flags();
+	rc |= test_file_newer_than();
+	rc |= test_watch_masks();
+	static const char *files[] = { "watch.txt", "layout.json", "clr.json", "font.ttf" };
+	for(int i = 0; i < 4; i++) {
+		char path[256];
+		snprintf(path, sizeof(path), "%s/%s", g_dir, files[i]);
+		remove(path);
+	}
+	rmdir(g_dir);
+	if(rc) {
+		fprintf(stderr, "FAILED (ui preview)\n");
+		return 1;
+	}
+	printf("PASSED (ui preview)\n");
 	return 0;
 }

@@ -217,6 +217,9 @@ int dialComponentHeight(const DialStyle *st);
 
 bool compileLayoutConfig(const char *layoutPath, const ColourScheme *cs);
 void finalizeStyles(void);
+/* Unload every dial class's knob asset. Call before recompiling the layout,
+ * which re-seeds assetTex from the baked default and would otherwise leak. */
+void unloadStyleAssets(void);
 
 typedef struct {
 	int orientation;

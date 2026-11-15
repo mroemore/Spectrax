@@ -24,11 +24,21 @@ done
 
 cd "$here" || exit 1
 out="${scratch}/run.log"
+# Touch the live layout mid-run: the preview must notice and recompile
+# without dying or losing the panels.
+( sleep 1.5; touch "${scratch}/cfg/layout.json" ) > /dev/null 2>&1 &
+touch_pid=$!
 timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
-    ./spectrax --ui-preview --ui-preview-frames 60 \
+    ./spectrax --ui-preview --ui-preview-frames 300 \
     --ui-preview-shot "${scratch}/shot" \
     --config-dir "$scratch/cfg" --data-dir "$scratch/data" > "$out" 2>&1
 rc=$?
+wait "$touch_pid" 2>/dev/null
+if ! grep -q '^UI_PREVIEW: reload mask=' "$out"; then
+    echo "FAIL the layout edit was not picked up"
+    tail -20 "$out"
+    exit 1
+fi
 
 if [ "$rc" -ne 0 ]; then
     echo "FAIL exit $rc"

@@ -988,6 +988,24 @@ extern Font pixelFont;
 extern Font textFont;
 extern Font symbolFont;
 
+/* Drops every knob-asset texture. finalizeStyles only loads a class's asset
+ * when assetTex.id == 0, and a recompile re-seeds the field from the baked
+ * default, so without this a hot reload leaks the previous texture. */
+void unloadStyleAssets(void) {
+	for(int i = 0; i < g_dialClassCount; i++) {
+		if(g_dialClasses[i].knob.assetTex.id != 0) {
+			UnloadTexture(g_dialClasses[i].knob.assetTex);
+			g_dialClasses[i].knob.assetTex.id = 0;
+		}
+	}
+	for(int i = 0; i < g_discreteDialClassCount; i++) {
+		if(g_discreteDialClasses[i].knob.assetTex.id != 0) {
+			UnloadTexture(g_discreteDialClasses[i].knob.assetTex);
+			g_discreteDialClasses[i].knob.assetTex.id = 0;
+		}
+	}
+}
+
 void finalizeStyles(void) {
 	/* Load each dial class's knob texture (asset path from layout.json).
 	 * Runs after InitGUI so raylib is ready; a failed load leaves

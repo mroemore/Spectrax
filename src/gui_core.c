@@ -117,6 +117,24 @@ ColourScheme *getColourScheme() {
 }
 
 
+/* Reloads the font atlases from the current FontConfig.
+ *
+ * InitGUI cannot be re-run for this: it calls SetConfigFlags and InitWindow,
+ * which own the window's lifetime. Nothing in the tree unloaded a font
+ * before this, so the UnloadFont calls are what keep a hot reload from
+ * leaking one atlas per edit. Pointers handed out by styleFont() stay
+ * valid: they point at these file-scope Fonts, not at their contents. */
+void reloadFonts(void) {
+	UnloadFont(pixelFont);
+	UnloadFont(monoFont);
+	UnloadFont(textFont);
+	UnloadFont(symbolFont);
+	textFont = LoadFont("resources/fonts/setback.png");
+	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
+	monoFont = LoadFontEx("resources/fonts/console.ttf", gFontConfig.size, NULL, 255);
+	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
+}
+
 void setFontConfig(const FontConfig *cfg) {
 	if(!cfg) {
 		return;
