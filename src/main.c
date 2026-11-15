@@ -527,7 +527,7 @@ typedef enum {
 
 typedef struct {
 	RenderTexture2D target;
-	const char *name;
+	char name[32];
 	PreviewKind kind;
 	int arg;
 } PreviewPanel;
@@ -555,7 +555,7 @@ static void previewAddPanel(const char *name, PreviewKind kind, int arg) {
 	}
 	PreviewPanel *p = &g_previewPanels[g_previewPanelCount++];
 	p->target = createPresentTarget();
-	p->name = name;
+	snprintf(p->name, sizeof(p->name), "%s", name);
 	p->kind = kind;
 	p->arg = arg;
 }
@@ -575,21 +575,24 @@ static void previewBuildPanels(void) {
 
 	InstrumentGui *ig = getInstrumentGui();
 	if(ig && ig->vm) {
-		VoiceType seen[4];
-		int seenCount = 0;
-		for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS && seenCount < 4; ch++) {
-			VoiceType vt = ig->vm->instruments[ch]->voiceType;
-			bool dup = false;
-			for(int k = 0; k < seenCount; k++) {
-				if(seen[k] == vt) {
-					dup = true;
-				}
-			}
-			if(dup) {
-				continue;
-			}
-			seen[seenCount++] = vt;
-			previewAddPanel("instrument", PREVIEW_INSTRUMENT, ch);
+		/* Channels past enabledChannels have no instrument graph:
+		 * createInstrumentGui only builds that range, so a panel there would
+		 * be an empty cell. */
+		int types[MAX_SEQUENCER_CHANNELS];
+		int enabled = ig->vm->enabledChannels;
+		if(enabled > MAX_SEQUENCER_CHANNELS) {
+			enabled = MAX_SEQUENCER_CHANNELS;
+		}
+		for(int ch = 0; ch < enabled; ch++) {
+			types[ch] = (int)ig->vm->instruments[ch]->voiceType;
+		}
+		int picked[MAX_SEQUENCER_CHANNELS];
+		int n = previewInstrumentChannels(types, enabled, picked,
+		                                  VOICE_TYPE_COUNT);
+		for(int i = 0; i < n; i++) {
+			char name[32];
+			snprintf(name, sizeof(name), "instrument-%d", picked[i]);
+			previewAddPanel(name, PREVIEW_INSTRUMENT, picked[i]);
 		}
 	}
 
@@ -686,7 +689,8 @@ static void previewDrawFrame(paTestData *data, ApplicationState *appState) {
  * the font atlas all reload in place; only layout.json's `layouts` section is
  * baked into node coordinates by applyLayout, so only that needs the graphs
  * rebuilt. Runs between frames, never inside a texture mode. */
-static void previewApplyReload(int mask, const char *cfgDir, const char *themeFile) {
+static bool previewApplyReload(int mask, const char *cfgDir, const char *themeFile) {
+	bool ok = true;
 	if(mask & PREVIEW_RELOAD_STYLE) {
 		char themePath[1088];
 		char layoutPath[1088];
@@ -695,10 +699,23 @@ static void previewApplyReload(int mask, const char *cfgDir, const char *themeFi
 		/* Theme first, then the layout, as the boot path orders them
 		 * (src/main.c): the layout resolves its colour tokens against the
 		 * scheme the theme just loaded. */
-		initDefaultColourScheme(getColourScheme());
-		loadThemeJson(themePath, getColourScheme(), getFontConfig());
+		FILE *th = fopen(themePath, "rb");
+		if(th) {
+			fclose(th);
+			initDefaultColourScheme(getColourScheme());
+			loadThemeJson(themePath, getColourScheme(), getFontConfig());
+		} else {
+			ok = false;
+			printf("UI_PREVIEW: reload failed (%s)\n", themePath);
+		}
 		unloadStyleAssets();
-		compileLayoutConfig(layoutPath, getColourScheme());
+		/* compileLayoutConfig zeroes the class registry BEFORE it parses, so a
+		 * torn save leaves the tree on baked defaults. It reports false, and
+		 * the caller keeps the old stamps so the next write retries. */
+		if(!compileLayoutConfig(layoutPath, getColourScheme())) {
+			ok = false;
+			printf("UI_PREVIEW: reload failed (%s)\n", layoutPath);
+		}
 		finalizeStyles();
 	}
 	if(mask & PREVIEW_RELOAD_FONTS) {
@@ -709,7 +726,8 @@ static void previewApplyReload(int mask, const char *cfgDir, const char *themeFi
 		rebuildInstrumentGraph();
 		rebuildPatternGraph();
 	}
-	printf("UI_PREVIEW: reload mask=0x%x\n", mask);
+	printf("UI_PREVIEW: reload mask=0x%x%s\n", mask, ok ? "" : " (incomplete)");
+	return ok;
 }
 
 static int runUiPreview(paTestData *data, ApplicationState *appState, int frames,
@@ -718,7 +736,20 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 	previewBuildPanels();
 	int cols = previewCols();
 	int rows = (g_previewPanelCount + cols - 1) / cols;
-	SetWindowSize(cols * SCREEN_W, rows * SCREEN_H);
+	/* A grid taller than the monitor would put the last rows off-screen --
+	 * the whole point is seeing every screen at once. The presenter scales
+	 * to whatever window it gets, so clamping costs only cell size. */
+	int wantW = cols * SCREEN_W;
+	int wantH = rows * SCREEN_H;
+	int monW = GetMonitorWidth(GetCurrentMonitor());
+	int monH = GetMonitorHeight(GetCurrentMonitor());
+	if(monW > 0 && wantW > monW) {
+		wantW = monW;
+	}
+	if(monH > 0 && wantH > monH) {
+		wantH = monH;
+	}
+	SetWindowSize(wantW, wantH);
 
 	/* Hot reload: the three files the preview watches are the ones a styling
 	 * pass edits. Paths are the LIVE ones, not copies. */
@@ -735,7 +766,9 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 	while(!WindowShouldClose()) {
 		int reload = previewWatchChanges(&watch, layoutPath, themePath, fontPath);
 		if(reload) {
-			previewApplyReload(reload, cfgDir, themeFile);
+			if(previewApplyReload(reload, cfgDir, themeFile)) {
+				previewWatchAck(&watch, layoutPath, themePath, fontPath);
+			}
 		}
 		previewDrawFrame(data, appState);
 		drawn++;

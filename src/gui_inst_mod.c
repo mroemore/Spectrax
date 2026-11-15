@@ -652,6 +652,18 @@ void cbOpenClearAllLayer(void *ctx) {
 	guiNodeSetName(yesBtn, "CLEARALL_YES");
 	appendItem(g->root, noBtn, 1);
 	appendItem(g->root, yesBtn, 1);
+	/* appendItem reflows and overwrites child rects (see the note above
+	 * collectRoutableDialsRecurse), so the button layout is set again
+	 * afterwards. Without this the two buttons stretched to full screen and
+	 * the confirmation had no frame around them. */
+	noBtn->x = px + 16;
+	noBtn->y = py + 44;
+	noBtn->w = 120;
+	noBtn->h = 22;
+	yesBtn->x = px + 144;
+	yesBtn->y = py + 44;
+	yesBtn->w = 120;
+	yesBtn->h = 22;
 	changeGraphSelection(g, noBtn);
 	Layer *layer = createLayer(g, px, py, 300, 90, "CLEARALL", true, true);
 	pushLayer(&ig->overlayLayers, layer);
@@ -687,12 +699,24 @@ static void cbDeleteSource(void *ctx) {
 	Graph *g = createGraph(na_horizontal);
 	const int py = (SCREEN_H - 80) / 2;
 	const int px = (SCREEN_W - 280) / 2;
-	GuiNode *noBtn = createActionBtnGuiNode(px + 30, py + 44, 100, 22, 0, na_horizontal, "NO", 0, cbDeleteCancel, NULL);
+	GuiNode *noBtn = createActionBtnGuiNode(px + 16, py + 44, 120, 22, 0, na_horizontal, "NO", 0, cbDeleteCancel, NULL);
 	guiNodeSetName(noBtn, "DELETE_NO");
-	GuiNode *yesBtn = createActionBtnGuiNode(px + 150, py + 44, 100, 22, 0, na_horizontal, "YES", 0, cbDeleteConfirmYes, sc);
+	GuiNode *yesBtn = createActionBtnGuiNode(px + 144, py + 44, 120, 22, 0, na_horizontal, "YES", 0, cbDeleteConfirmYes, sc);
 	guiNodeSetName(yesBtn, "DELETE_YES");
 	appendItem(g->root, noBtn, 1);
 	appendItem(g->root, yesBtn, 1);
+	/* appendItem reflows and overwrites child rects (see the note above
+	 * collectRoutableDialsRecurse), so the button layout is set again
+	 * afterwards. Without this the two buttons stretched to full screen and
+	 * the confirmation had no frame around them. */
+	noBtn->x = px + 16;
+	noBtn->y = py + 44;
+	noBtn->w = 120;
+	noBtn->h = 22;
+	yesBtn->x = px + 144;
+	yesBtn->y = py + 44;
+	yesBtn->w = 120;
+	yesBtn->h = 22;
 	changeGraphSelection(g, noBtn);
 	Layer *layer = createLayer(g, px, py, 280, 80, "DELETE", true, true);
 	pushLayer(&ig->overlayLayers, layer);

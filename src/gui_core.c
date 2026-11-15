@@ -125,14 +125,28 @@ ColourScheme *getColourScheme() {
  * leaking one atlas per edit. Pointers handed out by styleFont() stay
  * valid: they point at these file-scope Fonts, not at their contents. */
 void reloadFonts(void) {
-	UnloadFont(pixelFont);
-	UnloadFont(monoFont);
-	UnloadFont(textFont);
-	UnloadFont(symbolFont);
-	textFont = LoadFont("resources/fonts/setback.png");
-	pixelFont = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
-	monoFont = LoadFontEx("resources/fonts/console.ttf", gFontConfig.size, NULL, 255);
-	initCustomFont(&symbolFont, "resources/fonts/iconzfin.png", 8, 10, 12);
+	/* Only the two typefaces come from the theme: textFont is the bitmap
+	 * backdrop font and symbolFont the icon sheet, neither of which a theme
+	 * edit changes.
+	 *
+	 * Load before unloading, and swap only on success: LoadFontEx returns a
+	 * zeroed Font for a path that will not load, and every DrawTextEx with
+	 * such a font silently falls back to raylib's built-in one, so a bad
+	 * theme edit would quietly change the UI's face rather than fail. */
+	Font newPixel = LoadFontEx(gFontConfig.path, gFontConfig.size, NULL, 255);
+	Font newMono = LoadFontEx("resources/fonts/console.ttf", gFontConfig.size, NULL, 255);
+
+	if(newPixel.texture.id != 0 && newPixel.glyphCount > 0) {
+		UnloadFont(pixelFont);
+		pixelFont = newPixel;
+	} else {
+		fprintf(stderr, "reloadFonts: %s failed to load; keeping the loaded face\n",
+		        gFontConfig.path);
+	}
+	if(newMono.texture.id != 0 && newMono.glyphCount > 0) {
+		UnloadFont(monoFont);
+		monoFont = newMono;
+	}
 }
 
 void setFontConfig(const FontConfig *cfg) {

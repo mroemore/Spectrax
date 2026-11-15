@@ -21,12 +21,29 @@ done
 # A song with content, so the note page and the arranger have something to
 # draw: an empty project renders a legitimately empty pattern page.
 [ -f "$here/s1.sng" ] && cp "$here/s1.sng" "$scratch/data/s1.sng"
+# The app chdir()s into the data dir and resolves resources/ and presets
+# from there. Without these the run has no font, no dial art and no presets
+# -- every panel would render in raylib's 10px default face, which is not a
+# preview of the app.
+ln -sfn "$here/resources" "$scratch/data/resources"
+[ -d "$here/data" ] && ln -sfn "$here/data" "$scratch/data/data"
+# The font is watched by absolute path so a reload can be provoked without
+# touching the tracked file in bin/.
+mkdir -p "$scratch/fonts"
+cp "$here/resources/fonts/pixel_times.ttf" "$scratch/fonts/pixel_times.ttf"
+sed -i "s|\"path\": *\"resources/fonts/pixel_times.ttf\"|\"path\": \"$scratch/fonts/pixel_times.ttf\"|" "$scratch/cfg/clr.json"
+
+# Hash what the app should leave alone, after seeding: the theme copy is
+# rewritten above (font path), so comparing it against bin/ would always fail.
+seeded_theme=$(md5sum "${scratch}/cfg/clr.json" | cut -d' ' -f1)
+seeded_song=$(md5sum "${scratch}/data/s1.sng" | cut -d' ' -f1)
 
 cd "$here" || exit 1
 out="${scratch}/run.log"
 # Touch the live layout mid-run: the preview must notice and recompile
 # without dying or losing the panels.
-( sleep 1.5; touch "${scratch}/cfg/layout.json" ) > /dev/null 2>&1 &
+( sleep 1.5; touch "${scratch}/cfg/layout.json";
+  sleep 0.7; touch "${scratch}/fonts/pixel_times.ttf" ) > /dev/null 2>&1 &
 touch_pid=$!
 timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
     ./spectrax --ui-preview --ui-preview-frames 300 \
@@ -34,9 +51,19 @@ timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
     --config-dir "$scratch/cfg" --data-dir "$scratch/data" > "$out" 2>&1
 rc=$?
 wait "$touch_pid" 2>/dev/null
-if ! grep -q '^UI_PREVIEW: reload mask=' "$out"; then
-    echo "FAIL the layout edit was not picked up"
-    tail -20 "$out"
+if ! grep -q '^UI_PREVIEW: reload mask=0x5' "$out"; then
+    echo "FAIL a layout edit did not recompile styles and layouts"
+    grep '^UI_PREVIEW:' "$out"
+    exit 1
+fi
+if ! grep -Eq '^UI_PREVIEW: reload mask=0x[2367]' "$out"; then
+    echo "FAIL a font edit did not reload the atlas"
+    grep '^UI_PREVIEW:' "$out"
+    exit 1
+fi
+if grep -q 'reload failed' "$out"; then
+    echo "FAIL a reload failed"
+    grep 'reload failed' "$out"
     exit 1
 fi
 
@@ -53,11 +80,11 @@ fi
 # The preview must not save. The theme is seeded, so compare it rather than
 # looking for its presence: a session that fell through the normal teardown
 # rewrites clr.json and writes s1.sng.
-if ! cmp -s "${here}/s1.sng" "${scratch}/data/s1.sng"; then
+if [ "$(md5sum "${scratch}/data/s1.sng" | cut -d' ' -f1)" != "$seeded_song" ]; then
     echo "FAIL preview rewrote the song"
     exit 1
 fi
-if ! cmp -s "${here}/clr.json" "${scratch}/cfg/clr.json"; then
+if [ "$(md5sum "${scratch}/cfg/clr.json" | cut -d' ' -f1)" != "$seeded_theme" ]; then
     echo "FAIL preview rewrote the theme"
     exit 1
 fi

@@ -81,6 +81,29 @@ static int test_flags(void) {
 	return 0;
 }
 
+/* --- panel selection -------------------------------------------------- */
+
+static int test_instrument_channels(void) {
+	/* FM, FM, SAMPLE, FM, BLEP across five enabled channels. */
+	int types[5] = { 1, 1, 0, 1, 2 };
+	int out[8];
+
+	ASSERT_INT(previewInstrumentChannels(types, 5, out, 8), 3, "one channel per distinct type");
+	ASSERT_INT(out[0], 0, "first FM channel");
+	ASSERT_INT(out[1], 2, "then the sample channel");
+	ASSERT_INT(out[2], 4, "then the blep channel");
+
+	/* Beyond the enabled count there is no graph: a channel there would
+	 * add a panel that cannot draw. */
+	ASSERT_INT(previewInstrumentChannels(types, 2, out, 8), 1, "only enabled channels");
+	ASSERT_INT(out[0], 0, "enabled prefix");
+
+	ASSERT_INT(previewInstrumentChannels(types, 5, out, 2), 2, "max is respected");
+	ASSERT_INT(previewInstrumentChannels(NULL, 5, out, 8), 0, "no types, no panels");
+	ASSERT_INT(previewInstrumentChannels(types, 0, out, 8), 0, "no channels, no panels");
+	return 0;
+}
+
 /* --- hot reload ------------------------------------------------------- */
 
 static char g_dir[64];
@@ -115,8 +138,15 @@ static int test_file_newer_than(void) {
 	ASSERT_TRUE(!fileNewerThan(path, &stamp), "same file twice is not newer");
 	ASSERT_INT(stamp.tv_sec, 1000, "stamp is taken from the file");
 
-	stampFile("watch.txt", 1001);
-	ASSERT_TRUE(fileNewerThan(path, &stamp), "a later mtime is newer");
+	/* Sub-second: same second, later nanoseconds. A whole-second stamp
+	 * would call this unchanged, and two saves in one second is exactly how
+	 * a layout gets iterated on. */
+	stampFile("watch.txt", 1000);
+	stamp.tv_sec = 1000;
+	stamp.tv_nsec = 0;
+	struct timespec fine[2] = { { 1000, 500000000 }, { 1000, 500000000 } };
+	utimensat(AT_FDCWD, path, fine, 0);
+	ASSERT_TRUE(fileNewerThan(path, &stamp), "a later nanosecond is newer");
 
 	ASSERT_TRUE(!fileNewerThan("/nonexistent/at/all", &stamp), "a missing file is not newer");
 	return 0;
@@ -141,6 +171,14 @@ static int test_watch_masks(void) {
 	stampFile("layout.json", 1001);
 	int mask = previewWatchChanges(&w, layout, theme, font);
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a layout edit recompiles styles");
+
+	/* Apply-then-stamp: until the caller acknowledges, the change keeps
+	 * reporting, so a failed reload (torn save, JSON error) is retried
+	 * instead of being swallowed by the stamp. */
+	mask = previewWatchChanges(&w, layout, theme, font);
+	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "unacknowledged edit still reports");
+	previewWatchAck(&w, layout, theme, font);
+	ASSERT_INT(previewWatchChanges(&w, layout, theme, font), 0, "acknowledged edit is quiet");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) != 0, "a layout edit rebuilds graphs");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) == 0, "a layout edit leaves fonts alone");
 
@@ -149,10 +187,12 @@ static int test_watch_masks(void) {
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_STYLE) != 0, "a theme edit recompiles styles");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_FONTS) != 0, "a theme edit may change the font");
 	ASSERT_TRUE((mask & PREVIEW_RELOAD_LAYOUT) == 0, "a theme edit leaves layouts alone");
+	previewWatchAck(&w, layout, theme, font);
 
 	stampFile("font.ttf", 1003);
 	mask = previewWatchChanges(&w, layout, theme, font);
 	ASSERT_INT(mask, PREVIEW_RELOAD_FONTS, "a font file edit reloads the atlas only");
+	previewWatchAck(&w, layout, theme, font);
 
 	mask = previewWatchChanges(&w, NULL, NULL, NULL);
 	ASSERT_INT(mask, 0, "unwatched paths report nothing");
@@ -166,6 +206,7 @@ int main(void) {
 		return 1;
 	}
 	int rc = test_flags();
+	rc |= test_instrument_channels();
 	rc |= test_file_newer_than();
 	rc |= test_watch_masks();
 	static const char *files[] = { "watch.txt", "layout.json", "clr.json", "font.ttf" };

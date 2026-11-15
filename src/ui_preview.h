@@ -33,6 +33,14 @@ bool fileNewerThan(const char *path, struct timespec *stamp);
  * texture is already exactly one screen. */
 const char *uiPreviewShotPrefix(int argc, char **argv);
 
+/* One preview panel per distinct voice type, in channel order: every channel
+ * the song uses would be noise, and the question a panel answers is what a
+ * sampler or a blep screen looks like next to an FM one. Channels at or past
+ * `channelCount` (the enabled count) have no graph and are skipped. Returns
+ * the number of channels written to `out`. */
+int previewInstrumentChannels(const int *voiceTypes, int channelCount,
+                              int *out, int max);
+
 /* --- hot reload -----------------------------------------------------------
  *
  * The preview watches three files and reports what changed since the last
@@ -55,8 +63,18 @@ typedef struct {
 
 /* Fills *w with the current mtimes on the first call (returning 0), and
  * afterwards returns the PREVIEW_RELOAD_* bits for the files that changed.
- * A NULL path is not watched. */
+ * A NULL path is not watched.
+ *
+ * The stamps are NOT updated here: a reload that fails (a torn save, a JSON
+ * error) must be retried, so the caller commits them with previewWatchAck
+ * only after the new file has been applied. Without that, one bad edit wipes
+ * the style tables for the rest of the run and is never retried. */
 int previewWatchChanges(PreviewWatch *w, const char *layoutPath,
                         const char *themePath, const char *fontPath);
+
+/* Takes the files' current mtimes as applied. Call after a successful
+ * previewApplyReload. */
+void previewWatchAck(PreviewWatch *w, const char *layoutPath,
+                     const char *themePath, const char *fontPath);
 
 #endif
