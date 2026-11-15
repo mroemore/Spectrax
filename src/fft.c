@@ -39,7 +39,7 @@ void initFFT(Fft *fft, int fftSize, int framesPerBuffer, int toAverage, bool rem
 	fft->navg = toAverage;
 	fft->removeDc = removeDC;
 
-	fft->rowCount = 0;
+	atomic_init(&fft->rowCount, 0);
 	fft->prevRowCount = 0;
 	fft->maxRows = 128;
 
@@ -145,21 +145,27 @@ void processFFTData(Fft *fft) {
 
 		kiss_fftr(fft->cfg, buffPtr, fft->fbuf);
 
-		fft->rowCount++;
-		if(fft->rowCount > fft->maxRows) {
-			fft->rowCount -= fft->maxRows;
-			fft->prevRowCount -= fft->maxRows;
+		/* Write the row first, then publish its presence. The reader runs on
+		 * the main thread; incrementing the cursor before the samples were in
+		 * place would let it draw a row that is still being filled. The ring
+		 * wraps here, at the write, so rowCount stays in [0, maxRows] and the
+		 * reader never has to subtract maxRows from its own cursor (that
+		 * subtraction is what drove prevRowCount negative and OOB). */
+		int row = atomic_load_explicit(&fft->rowCount, memory_order_relaxed);
+		if(row >= fft->maxRows) {
+			row = 0;
 		}
 
 		if(fft->cpxOut) {
 			for(int i = 0; i < fft->freqCount; ++i) {
-				fft->cpxvals[(fft->rowCount - 1) * fft->freqCount + i] = fft->fbuf[i];
+				fft->cpxvals[row * fft->freqCount + i] = fft->fbuf[i];
 			}
 		} else {
 			for(int i = 0; i < fft->freqCount; ++i) {
-				fft->vals[(fft->rowCount - 1) * fft->freqCount + i] = fft->fbuf[i].r * fft->fbuf[i].r + fft->fbuf[i].i * fft->fbuf[i].i;
+				fft->vals[row * fft->freqCount + i] = fft->fbuf[i].r * fft->fbuf[i].r + fft->fbuf[i].i * fft->fbuf[i].i;
 			}
 		}
+		atomic_store_explicit(&fft->rowCount, row + 1, memory_order_release);
 		// if(tbufIndex == 0) {
 		// 	fft->vals[(fft->rowCount - 1) * fft->freqCount + 256] = 1.0;
 		// }
@@ -182,4 +188,24 @@ void toggleFFTProcessing(Fft *fft) {
 	if(!fft->enabled) {
 		fft->frameIndex = 0;
 	}
+}
+
+bool fftPendingRows(Fft *fft, int *first, int *last) {
+	int rowCount = atomic_load_explicit(&fft->rowCount, memory_order_acquire);
+	int start = fft->prevRowCount;
+
+	/* The producer wrapped the ring past the reader: the rows it had not
+	 * drawn were overwritten, so start at the oldest live row. A negative
+	 * cursor is equally impossible to index with; treat it the same way
+	 * rather than trusting it. */
+	if(start < 0 || start > rowCount) {
+		start = 0;
+	}
+	if(start >= rowCount) {
+		return false;
+	}
+
+	*first = start;
+	*last = rowCount;
+	return true;
 }

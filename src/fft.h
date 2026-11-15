@@ -2,6 +2,7 @@
 #define FFT_H
 
 #include <stdbool.h>
+#include <stdatomic.h>
 
 #include "kiss_fft.h"
 #include "kiss_fftr.h"
@@ -42,7 +43,16 @@ typedef struct {
 	int bufferCount;
 	int overlapFrames;
 	int frameIndex;
-	int rowCount;
+	/* The row position the audio thread has filled up to, as a value in
+	 * [0, maxRows]: rowCount == 0 means no rows yet, rowCount == n means
+	 * rows [0, n) are published. It never leaves that range -- the row being
+	 * written wraps back to 0 inside processFFTData -- so a reader that lags
+	 * across the wrap cannot form an out-of-bounds row index. Published with
+	 * release semantics after the row's samples are written, so the reader
+	 * (main thread) sees complete rows. */
+	atomic_int rowCount;
+	/* The reader's cursor. Written only by the reader (the main thread), so
+	 * the audio thread must never move it. */
 	int prevRowCount;
 	int maxRows;
 	int avgctr;
@@ -67,5 +77,13 @@ void incWindowFunc(Fft *fft, bool increment);
 void pushFrameToFFT(Fft *fft, float frame);
 void processFFTData(Fft *fft);
 void toggleFFTProcessing(Fft *fft);
+
+/* The live row range [first, last) the reader has not drawn yet. False when
+ * there is nothing new. Both bounds are valid indexes into vals/cpxvals for
+ * every producer/reader interleaving: if the producer wrapped the ring past
+ * the reader, the range restarts at the oldest live row instead of exposing a
+ * negative index (which was a real SIGSEGV in updateSpectrogramData). The
+ * caller advances fft->prevRowCount to `last`. */
+bool fftPendingRows(Fft *fft, int *first, int *last);
 
 #endif
