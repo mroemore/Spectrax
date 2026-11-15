@@ -27,4 +27,10 @@ int uiPreviewFrames(int argc, char **argv);
  * the same second are a normal way to iterate on a layout file. */
 bool fileNewerThan(const char *path, struct timespec *stamp);
 
+/* The path prefix from `--ui-preview-shot BASE`, or NULL. Each panel is
+ * written to BASE-<name>.png after the frame budget is spent, read back from
+ * its own target: TakeScreenshot is blank under llvmpipe, and the render
+ * texture is already exactly one screen. */
+const char *uiPreviewShotPrefix(int argc, char **argv);
+
 #endif

@@ -515,22 +515,90 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
  * through rlgl's function pointers, which are NULL before a window exists
  * (see src/vizfx.c).
  */
-#define PREVIEW_MAX_PANELS 8
+#define PREVIEW_MAX_PANELS 10
+
+typedef enum {
+	PREVIEW_ARRANGER,
+	PREVIEW_PATTERN,      /* arg = pattern page */
+	PREVIEW_INSTRUMENT,   /* arg = channel */
+	PREVIEW_MODAL,        /* whatever sits on the instrument layer stack */
+} PreviewKind;
 
 typedef struct {
 	RenderTexture2D target;
 	const char *name;
+	PreviewKind kind;
+	int arg;
 } PreviewPanel;
 
 static PreviewPanel g_previewPanels[PREVIEW_MAX_PANELS];
 static int g_previewPanelCount = 0;
 
-/* One panel: the arranger. Task 12 fills the rest. */
-static void previewBuildPanels(void) {
-	PreviewPanel *p = &g_previewPanels[0];
+/* The pattern graph is one graph whose page is a field, so two pattern panels
+ * cannot coexist: the graph is rebuilt when the page differs from the last
+ * one drawn, and restored after. */
+static int g_previewPatternPage = -1;
+
+static void previewEnterPatternPage(int page) {
+	if(g_previewPatternPage == page) {
+		return;
+	}
+	setPatternPage(page);
+	rebuildPatternGraph();
+	g_previewPatternPage = page;
+}
+
+static void previewAddPanel(const char *name, PreviewKind kind, int arg) {
+	if(g_previewPanelCount >= PREVIEW_MAX_PANELS) {
+		return;
+	}
+	PreviewPanel *p = &g_previewPanels[g_previewPanelCount++];
 	p->target = createPresentTarget();
-	p->name = "arranger";
-	g_previewPanelCount = 1;
+	p->name = name;
+	p->kind = kind;
+	p->arg = arg;
+}
+
+/* One instrument panel per channel that differs by voice type, up to four:
+ * every channel the shipped song uses would be noise, and the interesting
+ * question is what a sampler or a blep instrument panel looks like next to
+ * an FM one. */
+static void previewBuildPanels(void) {
+	g_previewPanelCount = 0;
+	g_previewPatternPage = -1;
+
+	previewAddPanel("arranger", PREVIEW_ARRANGER, 0);
+	previewEnterPatternPage(0);
+	previewAddPanel("pattern", PREVIEW_PATTERN, 0);
+	previewAddPanel("pattern-mod", PREVIEW_PATTERN, 1);
+
+	InstrumentGui *ig = getInstrumentGui();
+	if(ig && ig->vm) {
+		VoiceType seen[4];
+		int seenCount = 0;
+		for(int ch = 0; ch < MAX_SEQUENCER_CHANNELS && seenCount < 4; ch++) {
+			VoiceType vt = ig->vm->instruments[ch]->voiceType;
+			bool dup = false;
+			for(int k = 0; k < seenCount; k++) {
+				if(seen[k] == vt) {
+					dup = true;
+				}
+			}
+			if(dup) {
+				continue;
+			}
+			seen[seenCount++] = vt;
+			previewAddPanel("instrument", PREVIEW_INSTRUMENT, ch);
+		}
+	}
+
+	/* A modal panel: the delete-source confirm, opened once. The preview
+	 * process exits without saving, so leaving it on the layer stack costs
+	 * nothing. */
+	if(ig && ig->vm && ig->vm->instruments[0]) {
+		openDeleteConfirmForSource(ig->vm->instruments[0], 0);
+		previewAddPanel("delete-confirm", PREVIEW_MODAL, 0);
+	}
 }
 
 static int previewCols(void) {
@@ -565,24 +633,56 @@ static void previewPresentGrid(void) {
 	EndDrawing();
 }
 
-/* Draws every panel into its own target, then presents the grid. Mod strips
- * must be updated OUTSIDE these target modes: each strip opens its own
- * render texture and raylib's EndTextureMode restores the default
- * framebuffer (no FBO stack), so a strip drawn inside a panel steals it. */
+/* Draws one panel into its own target. Panels that share global state (the
+ * pattern page, the selected instrument) save and restore it: the selection
+ * int is &appState->selectedArrangerCell[0], so leaving it moved would also
+ * move the arranger's cursor. */
+static void previewDrawPanel(PreviewPanel *p) {
+	InstrumentGui *ig = getInstrumentGui();
+	BeginTextureMode(p->target);
+	clearBg();
+	switch(p->kind) {
+		case PREVIEW_ARRANGER:
+			DrawGUI(SCENE_ARRANGER);
+			break;
+		case PREVIEW_PATTERN:
+			previewEnterPatternPage(p->arg);
+			DrawGUI(SCENE_PATTERN);
+			break;
+		case PREVIEW_INSTRUMENT:
+			if(ig && ig->selectedInstrument && ig->instrumentScreenGraphs[p->arg]
+			   && ig->instrumentScreenGraphs[p->arg]->root) {
+				int saved = *ig->selectedInstrument;
+				*ig->selectedInstrument = p->arg;
+				drawNode(ig->instrumentScreenGraphs[p->arg]->root);
+				*ig->selectedInstrument = saved;
+			}
+			break;
+		case PREVIEW_MODAL:
+			if(ig) {
+				layerStackDraw(&ig->overlayLayers);
+			}
+			break;
+	}
+	EndTextureMode();
+}
+
+/* Draws every panel, then presents the grid. Mod strips must be updated
+ * OUTSIDE these target modes: each strip opens its own render texture and
+ * raylib's EndTextureMode restores the default framebuffer (no FBO stack),
+ * so a strip drawn inside a panel steals it. */
 static void previewDrawFrame(paTestData *data, ApplicationState *appState) {
 	(void)data;
 	(void)appState;
 	updateModStripTextures();
 	for(int i = 0; i < g_previewPanelCount; i++) {
-		BeginTextureMode(g_previewPanels[i].target);
-		clearBg();
-		DrawGUI(SCENE_ARRANGER);
-		EndTextureMode();
+		previewDrawPanel(&g_previewPanels[i]);
 	}
 	previewPresentGrid();
 }
 
-static int runUiPreview(paTestData *data, ApplicationState *appState, int frames) {
+static int runUiPreview(paTestData *data, ApplicationState *appState, int frames,
+                        const char *shotPrefix) {
 	SetTraceLogLevel(LOG_WARNING);
 	previewBuildPanels();
 	int cols = previewCols();
@@ -595,6 +695,21 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 		drawn++;
 		if(frames > 0 && drawn >= frames) {
 			break;
+		}
+	}
+
+	/* Panel PNGs, read back from each panel's own target. TakeScreenshot is
+	 * blank under llvmpipe and would read the window, not a panel; the target
+	 * is already exactly one 640x480 screen. ImageFlipVertical is required
+	 * because render textures are bottom-up. */
+	if(shotPrefix) {
+		for(int i = 0; i < g_previewPanelCount; i++) {
+			Image img = LoadImageFromTexture(g_previewPanels[i].target.texture);
+			ImageFlipVertical(&img);
+			char path[1024];
+			snprintf(path, sizeof(path), "%s-%s.png", shotPrefix, g_previewPanels[i].name);
+			ExportImage(img, path);
+			UnloadImage(img);
 		}
 	}
 
@@ -731,7 +846,8 @@ int main(int argc, char **argv) {
 	 * measurement writes a profile into the config dir and takes time, and
 	 * a window with no audio has no use for a voice budget. */
 	if(uiPreviewRequested(argc, argv)) {
-		int rc = runUiPreview(&data, appState, uiPreviewFrames(argc, argv));
+		int rc = runUiPreview(&data, appState, uiPreviewFrames(argc, argv),
+		                      uiPreviewShotPrefix(argc, argv));
 		freeSamplePool(data.samplePool);
 		cleanupModSystem(data.modList);
 		return rc;

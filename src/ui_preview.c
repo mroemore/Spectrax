@@ -29,6 +29,15 @@ int uiPreviewFrames(int argc, char **argv) {
 	return 0;
 }
 
+const char *uiPreviewShotPrefix(int argc, char **argv) {
+	for(int i = 1; i < argc - 1; i++) {
+		if(strcmp(argv[i], "--ui-preview-shot") == 0 && argv[i + 1][0]) {
+			return argv[i + 1];
+		}
+	}
+	return NULL;
+}
+
 bool fileNewerThan(const char *path, struct timespec *stamp) {
 	if(!path || !stamp) {
 		return false;

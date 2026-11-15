@@ -18,11 +18,15 @@ mkdir -p "$scratch/cfg" "$scratch/data"
 for f in cfg.json clr.json layout.json; do
     [ -f "$here/$f" ] && cp "$here/$f" "$scratch/cfg/$f"
 done
+# A song with content, so the note page and the arranger have something to
+# draw: an empty project renders a legitimately empty pattern page.
+[ -f "$here/s1.sng" ] && cp "$here/s1.sng" "$scratch/data/s1.sng"
 
 cd "$here" || exit 1
 out="${scratch}/run.log"
 timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
     ./spectrax --ui-preview --ui-preview-frames 60 \
+    --ui-preview-shot "${scratch}/shot" \
     --config-dir "$scratch/cfg" --data-dir "$scratch/data" > "$out" 2>&1
 rc=$?
 
@@ -39,13 +43,28 @@ fi
 # The preview must not save. The theme is seeded, so compare it rather than
 # looking for its presence: a session that fell through the normal teardown
 # rewrites clr.json and writes s1.sng.
-if [ -f "${scratch}/data/s1.sng" ]; then
-    echo "FAIL preview wrote a song save"
+if ! cmp -s "${here}/s1.sng" "${scratch}/data/s1.sng"; then
+    echo "FAIL preview rewrote the song"
     exit 1
 fi
 if ! cmp -s "${here}/clr.json" "${scratch}/cfg/clr.json"; then
     echo "FAIL preview rewrote the theme"
     exit 1
 fi
-grep '^UI_PREVIEW: panels=' "$out"
+# Every panel must have produced a PNG. A blank panel is a panel that did not
+# draw, which exit 0 and the marker line cannot tell apart.
+count=$(sed -n 's/^UI_PREVIEW: panels=\([0-9]*\).*/\1/p' "$out" | tail -1)
+[ -n "$count" ] || { echo "FAIL marker has no panel count"; exit 1; }
+shots=$(ls "${scratch}"/shot-*.png 2>/dev/null | wc -l)
+[ "$shots" -eq "$count" ] || {
+    echo "FAIL $shots shots for $count panels"
+    ls -l "${scratch}"/shot-*.png 2>/dev/null
+    exit 1
+}
+for f in "${scratch}"/shot-*.png; do
+    # A uniformly coloured panel is a draw that never happened.
+    colors=$(identify -format '%k' "$f" 2>/dev/null)
+    [ "${colors:-0}" -gt 2 ] || { echo "FAIL panel looks blank: $f"; exit 1; }
+done
+echo "UI_PREVIEW: panels=$count shots=$shots"
 echo "PASS ui_preview_smoke"
