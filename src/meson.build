@@ -38,6 +38,7 @@ core_sources = files(
   'io/settings_io.c',
   'io/config_io.c',
   'paths.c',
+  'ui_preview.c',
   'verify.c',
 )
 

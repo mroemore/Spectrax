@@ -30,6 +30,7 @@
 #include "audio.h"
 #include "audio_device.h"
 #include "alsa_output.h"
+#include "ui_preview.h"
 #include "device_budget.h"
 #include "device_calibrate.h"
 
@@ -501,6 +502,116 @@ static int patestCallback(const void *inputBuffer, void *outputBuffer, unsigned 
 }
 
 #ifndef SPECTRAX_HARNESS
+
+/* --- --ui-preview: the panel window -------------------------------------
+ *
+ * Renders the app's screens side by side into one window, so a styling or
+ * layout change can be judged across every screen at once instead of
+ * navigating to each on the handheld. It is an exporter, not a session:
+ * no audio (the panel window has no clock and a device probe would burn
+ * seconds), no input, and no save on exit.
+ *
+ * Panel targets are created here, after InitGUI: LoadRenderTexture goes
+ * through rlgl's function pointers, which are NULL before a window exists
+ * (see src/vizfx.c).
+ */
+#define PREVIEW_MAX_PANELS 8
+
+typedef struct {
+	RenderTexture2D target;
+	const char *name;
+} PreviewPanel;
+
+static PreviewPanel g_previewPanels[PREVIEW_MAX_PANELS];
+static int g_previewPanelCount = 0;
+
+/* One panel: the arranger. Task 12 fills the rest. */
+static void previewBuildPanels(void) {
+	PreviewPanel *p = &g_previewPanels[0];
+	p->target = createPresentTarget();
+	p->name = "arranger";
+	g_previewPanelCount = 1;
+}
+
+static int previewCols(void) {
+	return g_previewPanelCount > 1 ? 2 : 1;
+}
+
+/* presentFrame blits exactly one letterboxed texture into the window; a grid
+ * needs its own presenter. Cells are SCREEN_W x SCREEN_H, laid out left to
+ * right, top to bottom. */
+static void previewPresentGrid(void) {
+	int cols = previewCols();
+	int rows = (g_previewPanelCount + cols - 1) / cols;
+	BeginDrawing();
+	ClearBackground(BLACK);
+	int w = GetScreenWidth();
+	int h = GetScreenHeight();
+	float scale = fminf((float)w / (float)(cols * SCREEN_W),
+	                    (float)h / (float)(rows * SCREEN_H));
+	int cw = (int)(SCREEN_W * scale);
+	int ch = (int)(SCREEN_H * scale);
+	int gw = cw * cols;
+	int gh = ch * rows;
+	int ox = (w - gw) / 2;
+	int oy = (h - gh) / 2;
+	for(int i = 0; i < g_previewPanelCount; i++) {
+		Rectangle dst = { (float)(ox + (i % cols) * cw), (float)(oy + (i / cols) * ch),
+		                  (float)cw, (float)ch };
+		DrawTexturePro(g_previewPanels[i].target.texture,
+		               (Rectangle){ 0, 0, SCREEN_W, -SCREEN_H }, dst,
+		               (Vector2){ 0, 0 }, 0.0f, WHITE);
+	}
+	EndDrawing();
+}
+
+/* Draws every panel into its own target, then presents the grid. Mod strips
+ * must be updated OUTSIDE these target modes: each strip opens its own
+ * render texture and raylib's EndTextureMode restores the default
+ * framebuffer (no FBO stack), so a strip drawn inside a panel steals it. */
+static void previewDrawFrame(paTestData *data, ApplicationState *appState) {
+	(void)data;
+	(void)appState;
+	updateModStripTextures();
+	for(int i = 0; i < g_previewPanelCount; i++) {
+		BeginTextureMode(g_previewPanels[i].target);
+		clearBg();
+		DrawGUI(SCENE_ARRANGER);
+		EndTextureMode();
+	}
+	previewPresentGrid();
+}
+
+static int runUiPreview(paTestData *data, ApplicationState *appState, int frames) {
+	SetTraceLogLevel(LOG_WARNING);
+	previewBuildPanels();
+	int cols = previewCols();
+	int rows = (g_previewPanelCount + cols - 1) / cols;
+	SetWindowSize(cols * SCREEN_W, rows * SCREEN_H);
+
+	int drawn = 0;
+	while(!WindowShouldClose()) {
+		previewDrawFrame(data, appState);
+		drawn++;
+		if(frames > 0 && drawn >= frames) {
+			break;
+		}
+	}
+
+	/* GL resources first: unloading a texture after CloseWindow derefs the
+	 * dead context. Nothing is saved -- the exporter must not overwrite the
+	 * shipped song, theme or settings. */
+	for(int i = 0; i < g_previewPanelCount; i++) {
+		if(g_previewPanels[i].target.id != 0) {
+			UnloadRenderTexture(g_previewPanels[i].target);
+		}
+	}
+	CloseWindow();
+
+	printf("UI_PREVIEW: panels=%d frames=%d\n", g_previewPanelCount, drawn);
+	return 0;
+}
+
 int main(int argc, char **argv) {
 	PaStream *stream;
 	PaError err;
@@ -613,6 +724,18 @@ int main(int argc, char **argv) {
 
 	initApplication(&data, &appState, NULL);
 	initModSystem();
+
+	/* --ui-preview: an exporter, not a session. No audio (the panel window
+	 * has no clock, and a device probe can burn 5s per candidate), no
+	 * input, and no save on exit. It also skips device calibration: the
+	 * measurement writes a profile into the config dir and takes time, and
+	 * a window with no audio has no use for a voice budget. */
+	if(uiPreviewRequested(argc, argv)) {
+		int rc = runUiPreview(&data, appState, uiPreviewFrames(argc, argv));
+		freeSamplePool(data.samplePool);
+		cleanupModSystem(data.modList);
+		return rc;
+	}
 
 	/* First run on this device: measure it and write the profile. The
 	 * measurement needs the voice manager, so it runs after the

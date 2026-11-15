@@ -6,11 +6,15 @@ test_names = [
   'test_io',
   'test_voice',
   'test_audio_concurrency',
+  'test_alsa_output',
+  'test_fft_ring',
   'test_modsystem',
   'test_mod_voice',
   'test_graph_nav',
   'test_cfg',
   'test_input',
+  'test_input_log',
+  'test_ui_preview',
   'test_layout',
   'test_theme',
   'test_waveform',
@@ -78,6 +82,19 @@ foreach name : test_names
     # The I32 regressions drive the loaded project through createSequencer /
     # startPlaying / advanceSequencerStep, which live in seq_lib.
     link_libs = gui_test_libs
+  elif name == 'test_input'
+    # input.c lives in seq_lib (with appstate/settings), not core. Only
+    # input.o is pulled in, so appstate's rebuildPatternGraph stub is not
+    # needed here.
+    link_libs = [core_lib, seq_lib]
+  elif name == 'test_alsa_output'
+    # alsa_output.c lives in core_lib next to audio.c, so the whole render
+    # surface comes along (sequencer + the vizfx the callback pushes into).
+    link_libs = [core_lib, seq_lib, gui_lib, vizfx_lib]
+  elif name == 'test_input_log'
+    # input_log.c is in seq_lib too; the test only calls its pure helpers, so
+    # raylib is linked but never entered.
+    link_libs = [core_lib, seq_lib]
   elif name == 'test_audio_concurrency'
     # audio.c lives in core_lib precisely so this can link it; it also needs
     # seq_lib for advanceSequencerStep and the GUI lib for the draw helpers
@@ -215,6 +232,11 @@ test('test_device_profile',
 
 # Cross-compile + qemu-user smoke test. The first run cross-builds the
 # device target, so it gets a generous timeout.
+#
+# The 'device' suite: the contract tier excludes it. This test cross-builds
+# and runs the DEVICE target under qemu, and its binaries contain neither
+# getNoteString nor layerStack*, so it reaches none of the three first-party
+# contract sites - while costing 12.85 s, 87% of the suite's critical path.
 test('test_qemu_smoke',
   find_program('dsp/test_qemu_smoke.sh'),
   args: [],

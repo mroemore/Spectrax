@@ -566,48 +566,149 @@ static int test_curve_icon_style(void) {
 
 ## Phase D — `--ui-preview`
 
+**Reviewed 2026-11-15 against the tree after the 1.5x type scale, ring
+rework, ALSA backend and harness changes; every step below is the amended
+version.** The original steps assumed `createPresentTarget()` could be
+called before the window, that `DrawGUI(scene)` could reach any channel,
+that fonts reload like layout, and that a preview exit could fall through
+the normal teardown — all four are wrong in the current code.
+
 ### Task 11: CLI plumbing + panel-mode skeleton
 
 **Files:**
-- Modify: `src/main.c` (argv scan ~520, boot branch ~633-1056)
-- Test: `src/tools/ui_preview_smoke.sh` (new) or a harness fixture
+- Create `src/ui_preview.c`, `src/ui_preview.h` — **pure helpers only**
+  (`uiPreviewRequested`, `uiPreviewFrames`, `fileNewerThan`), added to
+  `core_lib` in `src/meson.build`. `main.c` is `app_only_sources`
+  (`src/meson.build:60`) and is recompiled into the harness with
+  `-DSPECTRAX_HARNESS`, so helpers placed there cannot be linked by
+  `tests/dsp`.
+- Modify `src/main.c` (argv scan near `--probe-route` ~`:521`; audio block
+  `:641-655`; loop `:660-1119`; teardown `:1120-1145`).
+- Create `src/tools/ui_preview_smoke.sh`; `tests/dsp/test_ui_preview.c`.
 
-- [ ] **Step 1: Write the test** — a shell smoke: `timeout -k 2 20 xvfb-run -a ./bin/spectrax --ui-preview --ui-preview-frames 60`; assert exit 0.
-- [ ] **Step 2: Run to verify it fails** → flag ignored.
+- [ ] **Step 1: Write the smoke** — runs from `bin/` (resources/layout/theme
+  are cwd-relative), scratch config + data dirs so a run writes nothing,
+  a screen big enough for the grid, and asserts **stdout**, not just exit:
+  `cd bin && timeout -k 2 60 xvfb-run -a -s "-screen 0 1920x1440x24" \
+   ./spectrax --ui-preview --ui-preview-frames 60 \
+   --config-dir "$SCRATCH/cfg" --data-dir "$SCRATCH/data" | tee out` then
+  `grep -q '^UI_PREVIEW: panels=' out`.
+- [ ] **Step 2: Run to verify it fails** → no `UI_PREVIEW:` line (an
+  "exit 0" assertion alone proves nothing: the flag is ignored and the
+  app then hangs until the timeout, indistinguishable from the audio probe).
 - [ ] **Step 3: Implement**
-  Add `bool uiPreviewRequested(int argc, char **argv)` and `int uiPreviewFrames(int argc, char **argv)` (mirroring the `--probe-route` scan; `--ui-preview-frames N` parses the following int, default 0 = run until closed). In `main`, if requested and `frames > 0`, render exactly N frames then exit 0. Skeleton: create a window, a grid of `createPresentTarget()`-style render textures, and draw one panel (the arranger) into cell 0.
-- [ ] **Step 4: Run** → smoke exits 0.
+  - helpers in `src/ui_preview.c` (pure; one argv scan mirroring
+    `src/main.c:521-538`; `fileNewerThan` takes `struct timespec` and uses
+    `st_mtim` — a `long` stamp loses two saves in the same second).
+  - in `main`: when preview is requested, **skip the audio block entirely**
+    (`:641-655`) and its stop calls in teardown — the export has no clock
+    and the candidate probe can burn 5 s per device.
+  - create one 640x480 `RenderTexture2D` per panel **after `InitGUI()`**
+    (`:600`): `LoadRenderTexture` goes through rlgl's function pointers,
+    which are null before a window exists (`src/vizfx.c:179-187`).
+  - `SetWindowSize` to the grid and add a grid presenter: `presentFrame`
+    (`src/gui_core.c:180`) blits one letterboxed texture, it does not tile.
+  - frame counter immediately after `presentFrame(gfx)` (`:1118`);
+    on the Nth frame `goto preview_done`, which unloads each panel
+    texture, `freeBufferScroller`, `CloseWindow`, and returns 0 —
+    **before** `:1126-1141`. A plain `break` falls into
+    `saveSequencerState("s1.sng")` + `saveSettingsJson`/`saveThemeJson`,
+    overwriting the shipped song and theme on every preview run.
+  - print `UI_PREVIEW: panels=<N>` once, after the last frame.
+- [ ] **Step 4: Run** → smoke exits 0 and the marker line matches.
 - [ ] **Step 5: Commit** `git commit -m "feat(main): --ui-preview panel-mode skeleton"`
 
 ---
 
 ### Task 12: Representative panels
 
-**Files:**
-- Modify: `src/main.c` / a new `src/ui_preview.c` (preferred if it exceeds ~150 lines)
-- Test: smoke with more panels
+**Files:** `src/main.c` (panel table + presenter), `src/ui_preview.c`
+(panel bookkeeping), smoke extended.
 
-- [ ] **Step 1** Write/extend the smoke to assert the panel count string (printed once).
+- [ ] **Step 1** Extend the smoke to assert the panel count matches
+  `UI_PREVIEW: panels=<N>` for the build.
 - [ ] **Step 2** Run → fails (only one panel).
-- [ ] **Step 3** Implement panels: arranger; note-pattern; a modulation-track pattern page; one instrument panel per distinct `settings.voiceTypes` entry; route picker, delete-confirm, preset load list; routing overlay with a scripted route wired. Each renders via `DrawGUI(scene)` with the appropriate module state into its render texture.
-- [ ] **Step 4** Run → smoke passes; visually inspect via a harness SHOT if useful.
+- [ ] **Step 3** Implement panels, each into its own target:
+  - **arranger** — `DrawGUI(SCENE_ARRANGER)` is scene-independent
+    (`src/gui_core.c:647` → `drawNode(agui->root)`).
+  - **pattern, note page** — `DrawGUI(SCENE_PATTERN)` at the current page.
+  - **pattern, mod-track page** — `setPatternPage(n)` **and**
+    `rebuildPatternGraph()`, draw, then restore both (`src/gui_pattern.c:33`,
+    `:672`; `patternPage` is a file-static, `:26`).
+  - **instrument per channel** — do **not** call `gui_instrument_draw()`:
+    it draws only `instrumentScreenGraphs[*selectedInstrument]`
+    (`src/gui_instrument.c:1631`) and scrolls that graph first (`:1630`).
+    Per channel, save `int saved = *igui->selectedInstrument`, set it,
+    `drawNode(igui->instrumentScreenGraphs[ch]->root)`, restore. That int
+    is `&appState->selectedArrangerCell[0]` (`src/main.c:1347`), so the
+    restore is mandatory or the arranger's cursor moves too.
+    Channels are picked by `igui->vm->instruments[ch]->voiceType`, not by
+    `settings.voiceTypes` — that list is loaded and saved but never applied
+    (`src/settings.c:10-12`, `src/io/config_io.c:402`); every channel
+    starts FM (`src/voice.c:702`).
+  - **delete-confirm modal** — `openDeleteConfirmForSource(inst, srcIdx)`
+    (`src/gui_inst_internal.h:178`) is public: draw the layer stack, pop it.
+  - **route picker** — select a MODLINE then fire the ROUTE action (the
+    `--probe-route` path already does this, `src/main.c:225-240`); the
+    `SourceCtx` must be resolved for the displayed instrument
+    (`src/gui_inst_mod.c:388-409`). Restore `g_routePickerCount`
+    (`:451`) after popping.
+  - **routing overlay** — only meaningful for the *selected* channel:
+    `syncRouteLinesOverlay` ignores its argument and calls
+    `getSelectedInstGraph()` itself (`src/gui_inst_mod.c:1049-1058`).
+    Select, sync, draw, remove the `ROUTELINES` layer (it is
+    early-return-cached by name, `:1059-1081`).
+  - **preset load list** — dropped: its opener is static
+    (`src/gui_instrument.c:24`, `:1351`). Adding a public opener is a
+    separate change, not a preview feature.
+  - `updateModStripTextures()` stays **outside** every panel's
+    `BeginTextureMode` (`src/main.c:676`): each strip opens its own target
+    and raylib's `EndTextureMode` restores the default framebuffer — no FBO
+    stack (`src/vizfx.c:194-199`), so a strip drawn inside a panel steals
+    the frame.
+- [ ] **Step 4: Run** → smoke passes. Capture a panel with
+  `LoadImageFromTexture(panel.texture)`, not `TakeScreenshot` (blank under
+  llvmpipe, `src/tools/instrument_harness/instrument_harness.c:52-55`) and
+  not a harness `SHOT` — that is a different binary with no preview loop.
 - [ ] **Step 5** Commit `git commit -m "feat(ui-preview): representative screen panels"`
 
 ---
 
 ### Task 13: Hot reload of theme/layout/fonts
 
-**Files:**
-- Modify: `src/main.c` / `src/ui_preview.c`
-- Test: smoke (touch layout.json mid-run is hard headless; assert the mtime-check function with a unit test)
+**Files:** `src/ui_preview.c` (`fileNewerThan`), `src/gui_core.c` +
+`src/gui.h` (`reloadFonts`), `src/gui_style.c` (knob-asset unload),
+`tests/dsp/test_ui_preview.c`.
 
-- [ ] **Step 1** Unit test: a pure `bool fileNewerThan(const char *path, long *stamp)` helper (stat + compare, updates stamp) — true on touch, false on unchanged.
-- [ ] **Step 2** Run → fails.
-- [ ] **Step 3** Implement: per-frame mtime check on `layout.json`, the active theme file, and the font file; on change re-run `compileLayoutConfig` + colour-scheme reload + font reload (`InitGUI` font portion) + rebuild panel graphs.
-- [ ] **Step 4** Run → unit test passes.
+- [ ] **Step 1** Unit test `bool fileNewerThan(const char *path, struct timespec *stamp)`:
+  true on touch, false twice, true again after a second touch.
+- [ ] **Step 2** Run → fails (helper absent).
+- [ ] **Step 3** Implement, per frame, between frames and outside any
+  texture mode:
+  - **theme** (`cfgDir/<themeFile>`) → `loadThemeJson`, then
+    `compileLayoutConfig(layoutPath, getColourScheme())`, then
+    `finalizeStyles()` (ordering as `src/main.c:570-591`). The recompile
+    clean-slates every class (`src/gui_style.c:719-733`, `:780`) and there
+    are **no style-resolution caches and no per-node style pointers** —
+    every draw re-resolves (`src/gui_style.c:225-352`), so colour and
+    `fontSize` edits appear on the next frame with no rebuild.
+  - **knob assets** — unload before recompiling: `finalizeStyles` reloads
+    only when `assetTex.id == 0` (`src/gui_style.c:998-1005`) and the
+    recompile re-seeds from the default, so the old texture leaks.
+  - **fonts** — `font.path`/`font.size` change → `reloadFonts()` in
+    `src/gui_core.c`: `UnloadFont` the three fonts (there is **no**
+    `UnloadFont` call anywhere in the tree today), then `LoadFontEx` ×2 +
+    `initCustomFont`, mirroring `src/gui_core.c:215-221`. Never re-run
+    `InitGUI` (it calls `SetConfigFlags`/`InitWindow`, `:212-214`).
+    Reloading changes the typeface only — draw sizes come from resolved
+    styles plus literals (`src/gui_inst_mod.c:584`, `src/gui_arranger.c:379`).
+  - **layout `layouts`** — `applyLayout` bakes padding/gap/weights into the
+    nodes (`src/gui_style.c:31-57`), so only that section needs
+    `rebuildInstrumentGraph()` / `rebuildPatternGraph()` /
+    `createArrangerGraph()`.
+- [ ] **Step 4** Run → unit test passes; smoke with a mid-run `touch
+  layout.json` exits 0.
 - [ ] **Step 5** Commit `git commit -m "feat(ui-preview): hot-reload layout/theme/fonts"`
-
----
 
 ## Phase E — Fonts & icons
 
