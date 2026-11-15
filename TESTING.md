@@ -1,7 +1,7 @@
 # Spectrax testing stack
 
-Piloting the SQLite / DO-178B-style testing discipline on Spectrax, on the
-`testing-stack` branch (worktree `.slim/worktrees/testing-stack`).
+Piloting the SQLite / DO-178B-style testing discipline on Spectrax. It began on
+the `testing-stack` branch and now lands on the main line.
 
 The point of this file is twofold: describe the stack, and keep a running log
 of every issue hit while building it and how it was solved (see

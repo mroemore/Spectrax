@@ -6,8 +6,10 @@ adding new fields, classes, layouts, colours and style types.
 
 The short version: **there is no CSS.** A `GuiNode` tree is built in C; each
 drawable picks a C struct of style values by name, and `layout.json` supplies
-those values plus a few container layouts. Nothing hot-reloads — restart the
-app after editing.
+those values plus a few container layouts. The app itself does not hot-reload
+— restart it after editing. The panel window does: `cd bin && ./spectrax
+--ui-preview` recompiles styles, rebuilds layouts and reloads fonts while it
+runs, which is the fast way to iterate on a change.
 
 A worked example of everything below is in
 [Building a new component](tutorials/building-a-component.md): a new layout
@@ -317,9 +319,9 @@ theme `highlightedCell` for `dial`/`btn`, `border.color` for `type-label`.
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `format` | string | `"%05.2f"` | `printf` format; continuous dials pass a `float`, discrete pass `(int)` |
-| `width` / `height` | int | 38 / 14 | readout box; **≤ 0 hides the numeric** |
-| `offsetX` / `offsetY` | int | 28 / 2 | from the knob's top-left |
-| `fontSize` | int | 9 | 0 → 9 |
+| `width` / `height` | int | 62 / 26 | readout box; **≤ 0 hides the numeric** |
+| `offsetX` / `offsetY` | int | 35 / 2 | from the knob's top-left |
+| `fontSize` | int | 18 | 0 → the baked 9 |
 | `color` | colour | `valueText` | text colour |
 
 The box is filled with theme `valueDisplayBg`; text is inset 4 px with a
@@ -586,7 +588,7 @@ Read this before debugging a style that "does nothing".
 ```jsonc
 {
   "schema": 2,
-  "font": { "path": "resources/fonts/console.ttf", "size": 9, "spacing": 1 },
+  "font": { "path": "resources/fonts/pixel_times.ttf", "size": 18, "spacing": 1 },
   "colors": {
     "surface": { "window": "#CF6E3AFF", "panel": "#503C3CFF", ... },
     "text":    { "primary": "#631100FF", "muted": "#C8B4B4FF", ... },
