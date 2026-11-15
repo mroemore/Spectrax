@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "main.h"       /* paTestData (the app's whole data set) */
+#include "appstate.h"   /* ApplicationState */
+
 /* Mock data for the --ui-preview panel window.
  *
  * The preview renders screens that are normally alive: dials with modulation
@@ -38,5 +41,20 @@ int previewMockPlayhead(int frame, int rows, int framesPerRow);
 
 /* value forced into [minValue, maxValue]; an inverted range returns minValue. */
 float previewMockClampToRange(float value, float minValue, float maxValue);
+
+/* --- the driver ----------------------------------------------------------
+ *
+ * Called only from runUiPreview. Both entry points are no-ops when the
+ * instrument the preview shows has no parameter list. */
+
+/* Enables the visualisers, creates the demo modulators and routes them, and
+ * parks the playheads at row 0. */
+void previewMockInit(paTestData *data, ApplicationState *appState);
+
+/* One frame of mock time: advance the modulation engine by a fixed 1/60 s,
+ * push synthetic samples into the FFT, the time graph and the buffer
+ * scroller, move the playheads, and re-route the modulators when the subject
+ * timer ticks over. */
+void previewMockStep(paTestData *data, ApplicationState *appState, int frame);
 
 #endif

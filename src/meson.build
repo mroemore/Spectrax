@@ -63,6 +63,7 @@ seq_sources = files(
 app_only_sources = files(
   'main.c',
   'distortion.c',
+  'ui_preview_mock_driver.c',
 )
 
 # The instrument-chip UI sources. These used to be recompiled per test from

@@ -32,6 +32,7 @@
 #include "audio_device.h"
 #include "alsa_output.h"
 #include "ui_preview.h"
+#include "ui_preview_mock.h"
 #include "device_budget.h"
 #include "device_calibrate.h"
 
@@ -775,6 +776,9 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
                         PreviewMode mode) {
 	SetTraceLogLevel(LOG_WARNING);
 	previewBuildPanels();
+	/* Mock data: the panel window has no audio and no input, so the screens
+	 * that are normally alive would all be still. Preview-only. */
+	previewMockInit(data, appState);
 	g_previewMode = mode;
 	g_previewPage = previewWrapIndex(g_previewPage, previewPageCount(g_previewPanelCount));
 	g_previewIndex = previewWrapIndex(g_previewIndex, g_previewPanelCount);
@@ -834,6 +838,7 @@ static int runUiPreview(paTestData *data, ApplicationState *appState, int frames
 				previewWatchAck(&watch, layoutPath, themePath, fontPath);
 			}
 		}
+		previewMockStep(data, appState, drawn);
 		lastVisCount = previewDrawFrame(data, appState);
 		drawn++;
 		if(frames > 0 && drawn >= frames) {
