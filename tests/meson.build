@@ -15,6 +15,7 @@ test_names = [
   'test_input',
   'test_input_log',
   'test_ui_preview',
+  'test_ui_preview_mock',
   'test_layout',
   'test_theme',
   'test_waveform',
