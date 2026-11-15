@@ -72,42 +72,80 @@ fi
 
 # --- XDG provisioning -------------------------------------------------
 
-# Never touch the real $HOME during a destdir (packaging) install.
+# Two modes:
+#   developer checkout (no DESTDIR, HOME set): provision the user's XDG dirs
+#     from bin/ so the app starts working immediately;
+#   packaging (DESTDIR set): lay the same tree under the prefix, so a
+#     packaged install is self-contained and relocatable.
+#
+# Assets are COPIED, never symlinked. A symlink into a checkout breaks the
+# moment the checkout moves, is garbage after a rebuild, and is invisible to
+# any packager walking the tree. Copies also mean a shipped font or theme fix
+# reaches an existing install on the next install run, which is the whole
+# point of re-installing.
 if [ -n "${DESTDIR:-}" ]; then
-    echo "xdg: skipped (destdir install)"
-    exit 0
+    PREFIX="${MESON_INSTALL_PREFIX:-/usr/local}"
+    TARGET_DATA="$DESTDIR$PREFIX/share/spectrax"
+    TARGET_CONFIG="$DESTDIR$PREFIX/share/spectrax/config"
+    MODE="destdir"
+else
+    if [ -z "${HOME:-}" ]; then
+        echo "xdg: skipped (HOME unset and no DESTDIR)"
+        exit 0
+    fi
+    TARGET_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/spectrax"
+    TARGET_DATA="${XDG_DATA_HOME:-$HOME/.local/share}/spectrax"
+    MODE="xdg"
 fi
-if [ -z "${HOME:-}" ]; then
-    echo "xdg: skipped (HOME unset)"
-    exit 0
+mkdir -p "$TARGET_DATA" "$TARGET_CONFIG"
+
+# A previous install may have left symlinks here; a link would be followed by
+# the copy below and the checkout would stay the source of truth.
+for name in resources data s1.sng; do
+    if [ -L "$TARGET_DATA/$name" ]; then
+        rm -f "$TARGET_DATA/$name"
+        echo "$MODE: replaced legacy symlink $name"
+    fi
+done
+
+# Resources are shipped art, fonts and samples: always refreshed, so a fixed
+# or replaced asset lands on the next install. --delete keeps the copy honest
+# when a file is removed from the repo.
+if [ -d "$BIN/resources" ]; then
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "$BIN/resources/" "$TARGET_DATA/resources/"
+    else
+        rm -rf "$TARGET_DATA/resources"
+        mkdir -p "$TARGET_DATA/resources"
+        cp -R "$BIN/resources/." "$TARGET_DATA/resources/"
+    fi
+    echo "$MODE: resources -> $TARGET_DATA/resources"
 fi
 
-XDG_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
-XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
-CONFIG_DIR="$XDG_CONFIG/spectrax"
-DATA_DIR="$XDG_DATA/spectrax"
-mkdir -p "$CONFIG_DIR" "$DATA_DIR"
+# Presets are content the user may add to, so shipped ones are copied only
+# when the target lacks them.
+if [ -d "$BIN/data" ]; then
+    if command -v rsync >/dev/null 2>&1; then
+        rsync -a --ignore-existing "$BIN/data/" "$TARGET_DATA/data/"
+    else
+        cp -Rn "$BIN/data/." "$TARGET_DATA/data/" 2>/dev/null || true
+    fi
+    echo "$MODE: data -> $TARGET_DATA/data"
+fi
 
-# Config: copy the shipped defaults only if absent (never clobber user config).
+# The shipped song is a starting point, not an asset: never overwrite a
+# user's saved song.
+if [ -f "$BIN/s1.sng" ] && [ ! -e "$TARGET_DATA/s1.sng" ]; then
+    cp "$BIN/s1.sng" "$TARGET_DATA/s1.sng"
+    echo "$MODE: s1.sng -> $TARGET_DATA/s1.sng"
+fi
+
+# Config: shipped defaults only when absent (never clobber user config).
 for name in cfg.json clr.json layout.json; do
-    if [ ! -e "$CONFIG_DIR/$name" ] && [ -f "$BIN/$name" ]; then
-        cp "$BIN/$name" "$CONFIG_DIR/$name"
-        echo "xdg: config $name -> $CONFIG_DIR/$name"
+    if [ ! -e "$TARGET_CONFIG/$name" ] && [ -f "$BIN/$name" ]; then
+        cp "$BIN/$name" "$TARGET_CONFIG/$name"
+        echo "$MODE: config $name -> $TARGET_CONFIG/$name"
     fi
 done
 
-# Data: symlink assets into the data dir pointing at bin/ (the checkout is
-# the single source of truth). Idempotent; never replaces a real file.
-for name in data resources s1.sng; do
-    if [ -L "$DATA_DIR/$name" ]; then
-        continue
-    fi
-    if [ -e "$DATA_DIR/$name" ]; then
-        echo "xdg: skip $name (exists at $DATA_DIR/$name, not a symlink)"
-        continue
-    fi
-    if [ -e "$BIN/$name" ]; then
-        ln -s "$BIN/$name" "$DATA_DIR/$name"
-        echo "xdg: data $name -> $DATA_DIR/$name"
-    fi
-done
+echo "$MODE: provisioned $TARGET_DATA"

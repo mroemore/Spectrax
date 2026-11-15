@@ -81,11 +81,14 @@ library named in the error.
 | What | Path |
 |------|------|
 | Config | `~/.config/spectrax/` — `cfg.json` (settings), `clr.json` (theme + font), `layout.json` (styles + layouts) |
-| Data | `~/.local/share/spectrax/` — symlinks to `bin/` for `resources/`, `data/` and `s1.sng` |
+| Data | `~/.local/share/spectrax/` — a real copy of `resources/`, `data/` and the shipped song, refreshed by every `meson install` |
 | Overrides | `--config-dir DIR`, `--data-dir DIR` |
 
-`meson install` creates both directories and never overwrites an existing
-config file. Editing the theme or layout in the config dir takes effect on the
+`meson install` creates both directories. Resources and the shipped presets are
+copied (not symlinked) so the install is self-contained and survives moving the
+checkout; `resources/` is refreshed on every install, so a fixed font or theme
+asset reaches an existing install. Config files and a saved song are never
+overwritten. Editing the theme or layout in the config dir takes effect on the
 next start; the app itself does not hot-reload, but `--ui-preview` does (below).
 
 ## Command line
