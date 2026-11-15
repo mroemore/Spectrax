@@ -49,6 +49,7 @@ seq_sources = files(
   'sequencer.c',
   'appstate.c',
   'input.c',
+  'input_log.c',
   'settings.c',
 )
 
