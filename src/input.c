@@ -36,13 +36,35 @@ void updateInputState(InputState *state) {
 		 * hjkl, etc.). Any one of them held produces the command. */
 		bool down = false;
 		for(int k = 0; k < MAX_KEYS_PER_MAPPING; k++) {
-			int key = state->currentMap[i][k];
+			int key = KEYBOARD_MAP[i][k];
 			if(key == 0) {
 				break;
 			}
 			if(IsKeyDown(key)) {
 				down = true;
 				break;
+			}
+		}
+		/* The two maps are polled together, not one selected by deviceType:
+		 * the handheld's buttons are an evdev gamepad (BTN_* only -- the H700
+		 * Gamepad reports no KEY_* codes at all), while a desktop has a
+		 * keyboard, and raylib's DRM backend delivers the gamepad through
+		 * IsGamepadButtonDown rather than as keys. Polling the keyboard map
+		 * alone left a deployed build with no working input, which is also
+		 * why the app felt impossible to leave. */
+		for(int g = 0; g < POLLED_GAMEPADS && !down; g++) {
+			if(!IsGamepadAvailable(g)) {
+				continue;
+			}
+			for(int k = 0; k < MAX_KEYS_PER_MAPPING; k++) {
+				int button = GAMEPAD_MAP[i][k];
+				if(button == 0) {
+					break;
+				}
+				if(IsGamepadButtonDown(g, button)) {
+					down = true;
+					break;
+				}
 			}
 		}
 		state->keys[i].isPressed = down;
@@ -55,6 +77,18 @@ void addToHistory(InputState *state, KeyMapping keyCode) {
 	if(state->historyIndex > MAX_INPUT_HISTORY) {
 		state->historyIndex = 0;
 	}
+}
+
+bool updateQuitHold(bool selectHeld, bool startHeld, double now, double *heldSince) {
+	if(!selectHeld || !startHeld) {
+		*heldSince = -1.0;
+		return false;
+	}
+	if(*heldSince < 0.0) {
+		*heldSince = now;
+		return false;
+	}
+	return now - *heldSince >= QUIT_HOLD_SECONDS;
 }
 
 bool isKeyHeld(InputState *state, KeyMapping keyCode) {

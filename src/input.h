@@ -11,6 +11,11 @@
  * any one of them produces the command (e.g. arrow keys + vim hjkl). */
 #define MAX_KEYS_PER_MAPPING 4
 
+/* The three or four gamepad slots raylib can expose; poll them all rather
+ * than assuming the one pad has index 0 (the handheld's own pad may not be
+ * first after other evdev devices are enumerated). */
+#define POLLED_GAMEPADS 4
+
 typedef enum {
 	INPUT_TYPE_KEYBOARD,
 	INPUT_TYPE_GAMEPAD
@@ -117,6 +122,17 @@ typedef struct {
 } AppStateData;
 
 typedef void (*SceneInputHandler)(InputState *input, AppStateData *data);
+
+/* Native-DRM builds have no window manager, so there is no window close
+ * button to leave the app with. SELECT+START held this long is the exit
+ * gesture: a hold rather than a tap, because START on its own is the
+ * play/stop (and commit) key. */
+#define QUIT_HOLD_SECONDS 1.5
+
+/* True once select+start have been held together for QUIT_HOLD_SECONDS.
+ * *heldSince is the caller's sentinel (-1.0 when not holding) and is reset by
+ * any release, so the gesture must be deliberate. */
+bool updateQuitHold(bool selectHeld, bool startHeld, double now, double *heldSince);
 
 InputState *createInputState(InputDeviceType type);
 void freeInputState(InputState *state);
